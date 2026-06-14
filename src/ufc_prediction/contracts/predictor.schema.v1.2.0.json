@@ -1,0 +1,231 @@
+{
+  "$defs": {
+    "PredictionMetadataV12": {
+      "description": "CONTRACT-V24-02: additive v1.2.0 prediction_metadata block.\n\nSix partner-facing observability fields. Forward-compat: defaults to\nNone on PredictorOutputV1, so v1.0.0 + v1.1.0 partners see this field\nabsent / null (Phase 25 forward-compat lock).",
+      "properties": {
+        "odds_source": {
+          "description": "Source of the BFO closing-odds feature at predict time: 'live' (just-fetched), 'cache' (DB-stashed), 'nan' (absent).",
+          "enum": [
+            "live",
+            "cache",
+            "nan"
+          ],
+          "title": "Odds Source",
+          "type": "string"
+        },
+        "odds_timestamp_iso": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ISO-8601 timestamp of when the odds row was fetched/cached. None when odds_source == 'nan'.",
+          "title": "Odds Timestamp Iso"
+        },
+        "fighter_a_n_ufc_fights": {
+          "description": "Count of fighter_a's UFC fights at predict time.",
+          "minimum": 0,
+          "title": "Fighter A N Ufc Fights",
+          "type": "integer"
+        },
+        "fighter_b_n_ufc_fights": {
+          "description": "Count of fighter_b's UFC fights at predict time.",
+          "minimum": 0,
+          "title": "Fighter B N Ufc Fights",
+          "type": "integer"
+        },
+        "is_debutant_either": {
+          "description": "True if either fighter has zero prior UFC fights.",
+          "title": "Is Debutant Either",
+          "type": "boolean"
+        },
+        "calibration_slice_brier": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Brier score of the calibration slice whose date-window contains event_date (from models/meta/meta_v2_meta.json). None when no slice metadata is available.",
+          "title": "Calibration Slice Brier"
+        }
+      },
+      "required": [
+        "odds_source",
+        "fighter_a_n_ufc_fights",
+        "fighter_b_n_ufc_fights",
+        "is_debutant_either"
+      ],
+      "title": "PredictionMetadataV12",
+      "type": "object"
+    }
+  },
+  "description": "Response body for POST /api/v1/predict.\n\nTwo production response shapes (both validate against this single schema \u2014\nbase_prob / meta_prob / meta_learner_version / meta_skipped_reason are\nOptional per Phase 25 D-05(P19) forward-compat \u2014 Pitfall #5 prevention):\n\n1. **META-V22-active (default since Phase 26, 2026-05-17):** the\n   meta-learner `models/meta/meta_v2.joblib` loads on startup; for any\n   matchup where BFO closing odds yield a non-NaN `closing_prob_diff`\n   feature, the meta is invoked and `win_probability == meta_prob`\n   (calibrated logistic stack over xgb_v2 OOF + Elo + closing odds + style\n   differentials). `meta_skipped=False`, `meta_skipped_reason=None`,\n   `meta_learner_version=\"v2\"`.\n\n2. **xgb_v2 base fallback:** triggers in two cases \u2014 (a) `closing_prob_diff`\n   is NaN at predict time (no BFO closing odds for the matchup; typical\n   for early-week or novel matchups before lines firm up), in which case\n   `meta_skipped_reason=\"nan_closing_prob_diff\"`; (b) the meta artifact is\n   absent from disk, in which case `meta_skipped_reason=\"no_meta_artifact\"`\n   (a deployment misconfiguration; should not occur in production). In\n   both cases `win_probability == base_prob == xgb_v2.predict_proba(...)`.\n\nThe same PredictorOutputV1 type covers both. Clients reading\n`meta_skipped_reason` can detect which path served their request.",
+  "properties": {
+    "schema_version": {
+      "default": "1.0.0",
+      "description": "Envelope minor version (per D-03; URL is major).",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "win_probability": {
+      "description": "Canonical user-facing probability fighter_a wins (D-05(P19)).",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Win Probability",
+      "type": "number"
+    },
+    "fighter_a": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Fighter A",
+      "type": "string"
+    },
+    "fighter_b": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Fighter B",
+      "type": "string"
+    },
+    "event_date": {
+      "format": "date",
+      "title": "Event Date",
+      "type": "string"
+    },
+    "base_prob": {
+      "anyOf": [
+        {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Raw XGBoost probability before meta-learner wrapping.",
+      "title": "Base Prob"
+    },
+    "meta_prob": {
+      "anyOf": [
+        {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Meta-learner output probability; None when meta is skipped.",
+      "title": "Meta Prob"
+    },
+    "meta_learner_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Meta-learner version (e.g., 'v22.1') when meta is active; None otherwise.",
+      "title": "Meta Learner Version"
+    },
+    "meta_skipped_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Reason meta was skipped (e.g., 'no_meta_artifact'); None when meta is active.",
+      "title": "Meta Skipped Reason"
+    },
+    "gate_contract_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Path/version of gate contract used at prediction time (e.g., '.planning/gate_contract_v2.3.json'). Phase 32 D-04 (PARTNER-V23-01).",
+      "title": "Gate Contract Ref"
+    },
+    "model_candidates": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Supported model candidates with byte-identity SHAs. Each entry: {name: str, sha256: str, phase: str}. Phase 32 D-04 (PARTNER-V23-01).",
+      "title": "Model Candidates"
+    },
+    "phase_chain_audit_sha": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "AUDIT-01 chain leaf SHA (xgb_v2.joblib byte-identity). Phase 32 D-04 (PARTNER-V23-01).",
+      "title": "Phase Chain Audit Sha"
+    },
+    "prediction_metadata": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PredictionMetadataV12"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "v1.2.0 additive observability block. Populated when client passes accept_schema_version='1.2.0'; None for v1.0.0/v1.1.0."
+    },
+    "disclaimer": {
+      "default": "UFC Fight Prediction is a fantasy-MMA decision-support tool intended to help fantasy players reason about matchups using historical performance data. For informational and entertainment purposes; not financial or wagering advice; statistical estimates may diverge from actual outcomes. The win-probability values, baseline comparisons, and calibration metrics surfaced by this API are machine-learning estimates trained on historical UFC fight data through May 2026. They are NOT predictions of future events, NOT guarantees of any particular outcome, and NOT a recommendation to place, modify, or refrain from any wager, fantasy pick, or other transaction. Model uncertainty is real and material: closing-odds-derived features can be missing or stale at predict time, sample sizes for debutants and short-tenured fighters are small, and the underlying corpus is incomplete in well-documented ways (significant-strike classification noise, referee scoring variance, late-injury substitutions, weight-cut anomalies, and judging idiosyncrasies). Partners integrating this API into a downstream product are solely responsible for assessing fitness for purpose, complying with local laws regarding fantasy contests, sports wagering, and games of skill, and clearly framing model outputs to their end users as statistical estimates rather than outcome predictions or guaranteed results. Nothing in this API constitutes regulated financial advice, tax guidance, sports-betting recommendations, legal counsel, or professional consultation of any kind, and use of the API does not establish any advisory or fiduciary relationship.",
+      "description": "Entertainment / no-warranty / no-financial-advice disclaimer (HYGIENE-V24-02). Always populated; partners may surface or ignore. Constant string equal to ufc_prediction.api.disclaimer.DISCLAIMER_200W.",
+      "title": "Disclaimer",
+      "type": "string"
+    }
+  },
+  "required": [
+    "win_probability",
+    "fighter_a",
+    "fighter_b",
+    "event_date"
+  ],
+  "title": "PredictorOutputV1",
+  "type": "object"
+}

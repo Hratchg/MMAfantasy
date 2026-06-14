@@ -1,0 +1,151 @@
+{
+  "generated_at": "2026-05-31T23:20:00+00:00",
+  "fixture_purpose": "CORPUS-V25-02 forward-compat lock — pins ufc_prediction.scraper.bfo_scraper.canonicalize_event_url output post-fix to prevent v2.6+ silent re-drift. Each record carries a relative BFO href (the input the BFO page emits) plus the absolute URL the post-Phase-40 generator MUST produce. Mirrors the v2.4 CONTRACT-V24-03 forward-compat pattern.",
+  "phase_origin": "Phase 40 Plan 40-01 Task 3",
+  "tightening_lineage": "WR-01 fix from Phase 21 scripts/bfo_backfill.py:111 propagated into src/ufc_prediction/scraper/bfo_scraper.py:_EVENT_HREF_RE (was: re.compile(r'^/events/(.+-\\d+)$') — permissive, allowed trailing-dash slugs like 'foo--123' to match as slug='foo-', id='123').",
+  "events": [
+    {
+      "event_id": 1849,
+      "event_name": "UFC 297: Strickland vs. Du Plessis",
+      "event_date": "2024-01-20",
+      "bfo_href": "/events/ufc-297-strickland-vs-du-plessis-9180",
+      "expected_url": "https://www.bestfightodds.com/events/ufc-297-strickland-vs-du-plessis-9180"
+    },
+    {
+      "event_id": 1852,
+      "event_name": "UFC 298: Volkanovski vs. Topuria",
+      "event_date": "2024-02-17",
+      "bfo_href": "/events/ufc-298-volkanovski-vs-topuria-9197",
+      "expected_url": "https://www.bestfightodds.com/events/ufc-298-volkanovski-vs-topuria-9197"
+    },
+    {
+      "event_id": 1855,
+      "event_name": "UFC 299: O'Malley vs. Vera 2",
+      "event_date": "2024-03-09",
+      "bfo_href": "/events/ufc-299-omalley-vs-vera-2-9221",
+      "expected_url": "https://www.bestfightodds.com/events/ufc-299-omalley-vs-vera-2-9221"
+    },
+    {
+      "event_id": 1860,
+      "event_name": "UFC 300: Pereira vs. Hill",
+      "event_date": "2024-04-13",
+      "bfo_href": "/events/ufc-300-pereira-vs-hill-9244",
+      "expected_url": "https://www.bestfightodds.com/events/ufc-300-pereira-vs-hill-9244"
+    },
+    {
+      "event_id": 1865,
+      "event_name": "UFC 302: Makhachev vs. Poirier",
+      "event_date": "2024-06-01",
+      "bfo_href": "/events/ufc-302-makhachev-vs-poirier-9277",
+      "expected_url": "https://www.bestfightodds.com/events/ufc-302-makhachev-vs-poirier-9277"
+    },
+    {
+      "event_id": 1891,
+      "event_name": "UFC 311: Makhachev vs. Moicano",
+      "event_date": "2025-01-18",
+      "bfo_href": "/events/ufc-311-makhachev-vs-moicano-9401",
+      "expected_url": "https://www.bestfightodds.com/events/ufc-311-makhachev-vs-moicano-9401"
+    },
+    {
+      "event_id": 1893,
+      "event_name": "UFC 312: Du Plessis vs. Strickland 2",
+      "event_date": "2025-02-08",
+      "bfo_href": "/events/ufc-312-du-plessis-vs-strickland-2-9423",
+      "expected_url": "https://www.bestfightodds.com/events/ufc-312-du-plessis-vs-strickland-2-9423"
+    },
+    {
+      "event_id": 1933,
+      "event_name": "UFC 324: Gaethje vs. Pimblett",
+      "event_date": "2026-01-24",
+      "bfo_href": "/events/ufc-324-gaethje-vs-pimblett-9571",
+      "expected_url": "https://www.bestfightodds.com/events/ufc-324-gaethje-vs-pimblett-9571"
+    },
+    {
+      "event_id": 1934,
+      "event_name": "UFC 325: Volkanovski vs. Lopes 2",
+      "event_date": "2026-01-31",
+      "bfo_href": "/events/ufc-325-volkanovski-vs-lopes-2-9583",
+      "expected_url": "https://www.bestfightodds.com/events/ufc-325-volkanovski-vs-lopes-2-9583"
+    }
+  ],
+  "drift_negative_cases": [
+    {
+      "description": "Trailing-dash slug (the WR-01 bug class). Must fall back to fallback URL.",
+      "bfo_href": "/events/ufc-300-pereira-vs-hill--9244",
+      "fallback": "https://www.bestfightodds.com/events/unknown",
+      "expected_url": "https://www.bestfightodds.com/events/unknown"
+    },
+    {
+      "description": "Non-events path. Must fall back.",
+      "bfo_href": "/fighters/Jon-Jones-819",
+      "fallback": "https://www.bestfightodds.com/events/unknown",
+      "expected_url": "https://www.bestfightodds.com/events/unknown"
+    },
+    {
+      "description": "Missing numeric id suffix. Must fall back.",
+      "bfo_href": "/events/ufc-300-pereira-vs-hill",
+      "fallback": "https://www.bestfightodds.com/events/unknown",
+      "expected_url": "https://www.bestfightodds.com/events/unknown"
+    },
+    {
+      "description": "Empty href. Must fall back.",
+      "bfo_href": "",
+      "fallback": "https://www.bestfightodds.com/events/unknown",
+      "expected_url": "https://www.bestfightodds.com/events/unknown"
+    },
+    {
+      "description": "HYG-V26-02: uppercase chars in slug. Regex is lowercase-only; must fall back.",
+      "bfo_href": "/events/UFC-300-Pereira-vs-Hill-9244",
+      "fallback": "https://www.bestfightodds.com/events/unknown",
+      "expected_url": "https://www.bestfightodds.com/events/unknown"
+    },
+    {
+      "description": "HYG-V26-02: URL-encoded space in slug. Must fall back.",
+      "bfo_href": "/events/ufc-300%20pereira-vs-hill-9244",
+      "fallback": "https://www.bestfightodds.com/events/unknown",
+      "expected_url": "https://www.bestfightodds.com/events/unknown"
+    },
+    {
+      "description": "HYG-V26-02: trailing slash after numeric id. Must fall back (regex anchored at $).",
+      "bfo_href": "/events/ufc-300-pereira-vs-hill-9244/",
+      "fallback": "https://www.bestfightodds.com/events/unknown",
+      "expected_url": "https://www.bestfightodds.com/events/unknown"
+    },
+    {
+      "description": "HYG-V26-02: query string suffix. Must fall back.",
+      "bfo_href": "/events/ufc-300-pereira-vs-hill-9244?foo=bar",
+      "fallback": "https://www.bestfightodds.com/events/unknown",
+      "expected_url": "https://www.bestfightodds.com/events/unknown"
+    },
+    {
+      "description": "HYG-V26-02: fragment suffix. Must fall back.",
+      "bfo_href": "/events/ufc-300-pereira-vs-hill-9244#section",
+      "fallback": "https://www.bestfightodds.com/events/unknown",
+      "expected_url": "https://www.bestfightodds.com/events/unknown"
+    },
+    {
+      "description": "HYG-V26-02: absolute URL form. Must fall back (regex requires path-only href).",
+      "bfo_href": "https://www.bestfightodds.com/events/ufc-300-pereira-vs-hill-9244",
+      "fallback": "https://www.bestfightodds.com/events/unknown",
+      "expected_url": "https://www.bestfightodds.com/events/unknown"
+    },
+    {
+      "description": "HYG-V26-02: leading-dash slug. Must fall back (slug must start [a-z0-9]).",
+      "bfo_href": "/events/-ufc-300-9244",
+      "fallback": "https://www.bestfightodds.com/events/unknown",
+      "expected_url": "https://www.bestfightodds.com/events/unknown"
+    },
+    {
+      "description": "HYG-V26-02: numeric id only, no slug. Must fall back.",
+      "bfo_href": "/events/9244",
+      "fallback": "https://www.bestfightodds.com/events/unknown",
+      "expected_url": "https://www.bestfightodds.com/events/unknown"
+    },
+    {
+      "description": "HYG-V26-02: leading whitespace. Must fall back (regex anchored at ^).",
+      "bfo_href": " /events/ufc-300-pereira-vs-hill-9244",
+      "fallback": "https://www.bestfightodds.com/events/unknown",
+      "expected_url": "https://www.bestfightodds.com/events/unknown"
+    }
+  ]
+}

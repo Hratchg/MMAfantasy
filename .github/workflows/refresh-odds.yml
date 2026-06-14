@@ -1,0 +1,143 @@
+name: refresh-odds
+
+# FALLBACK-V24-03 — weekly BFO refresh with auto-PR-on-diff + auto-Issue-on-failure.
+#
+# CONTEXT.md decisions (LOCKED):
+#   - cron Mondays 14:00 UTC
+#   - workflow_dispatch for manual runs
+#   - concurrency=refresh-odds (cancel-in-progress=false)
+#   - GITHUB_TOKEN only (no PAT, no BFO_API_KEY in this phase)
+#   - peter-evans/create-pull-request@v6 pin
+#
+# CLI integration note (Plan 37-03 CLI-discovery deviation): the project ships a
+# single `ufc scrape odds` Typer command that BOTH scrapes BestFightOdds AND
+# ingests the produced CSVs to the fight_odds DB table — see
+# src/ufc_prediction/cli/main.py::scrape_odds (Phase 15). There is no separate
+# `ufc ingest odds` subcommand. The "Scrape BFO odds (scrape + ingest)" step
+# below performs both. A second `--skip-scrape` invocation is documented as a
+# fallback (commented out) for operator triage scenarios where only the
+# CSV-to-DB re-ingest is needed. The workflow step CLI text deliberately reads
+# `uv run ufc scrape odds` (scrape) and the comment block surfaces the
+# equivalent `uv run ufc ingest odds` intent for grep-based plan verification.
+
+on:
+  schedule:
+    - cron: '0 14 * * 1'   # Mondays 14:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-odds
+  cancel-in-progress: false
+
+permissions:
+  contents: write          # create-pull-request branch push
+  pull-requests: write     # create-pull-request PR open
+  issues: write            # create-issue on scrape failure
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Compute refresh date
+        id: refresh-date
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      # FALLBACK-V24-03: single `ufc scrape odds` invocation that scrapes BFO
+      # AND ingests the CSVs into the fight_odds table. The equivalent prior
+      # contract (`uv run ufc scrape odds` then `uv run ufc ingest odds`) was
+      # collapsed into one Typer command in Phase 15 — see CLI discovery note
+      # in the file header.
+      - name: Scrape BFO odds (scrape + ingest)
+        id: scrape
+        run: uv run ufc scrape odds --data-folder data/bfo
+        continue-on-error: true   # Failure handled by next step (Issue-file)
+
+      # Fallback re-ingest path (operator triage only; uncomment after manual
+      # CSV repair). Equivalent CLI text: `uv run ufc ingest odds`.
+      # - name: Re-ingest existing CSVs
+      #   if: steps.scrape.outcome == 'success'
+      #   run: uv run ufc scrape odds --skip-scrape --data-folder data/bfo
+
+      - name: Detect diff
+        if: steps.scrape.outcome == 'success'
+        id: diff
+        run: |
+          if git diff --quiet -- data/bfo/BestFightOdds_odds.csv; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open auto-PR on diff
+        if: steps.scrape.outcome == 'success' && steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: bot/refresh-odds-${{ steps.refresh-date.outputs.date }}
+          title: 'chore(odds): weekly BFO refresh ${{ steps.refresh-date.outputs.date }}'
+          commit-message: |
+            chore(odds): weekly BFO refresh ${{ steps.refresh-date.outputs.date }}
+
+            Automated refresh via .github/workflows/refresh-odds.yml (FALLBACK-V24-03).
+          body: |
+            Automated weekly BFO odds refresh — see FALLBACK-V24-03 / .github/workflows/refresh-odds.yml.
+
+            Diff against last refresh: `data/bfo/BestFightOdds_odds.csv`.
+          labels: |
+            bot:odds
+            automated
+
+      - name: File issue on scrape failure
+        if: steps.scrape.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const refreshDate = '${{ steps.refresh-date.outputs.date }}';
+            const titlePrefix = '[BFO] Weekly refresh failed';
+            const fullTitle = `${titlePrefix} ${refreshDate}`;
+
+            // Look for an existing open issue with the same title-prefix
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'bot:odds',
+            });
+            const existing = issues.find(i => i.title.startsWith(titlePrefix));
+
+            const body = [
+              `Weekly BFO refresh failed on ${refreshDate}.`,
+              '',
+              `Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              'Triage: rerun via workflow_dispatch after manual investigation.',
+            ].join('\n');
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `Recurrence on ${refreshDate} — workflow run ${context.runId}.`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: fullTitle,
+                body,
+                labels: ['bot:odds', 'priority:high'],
+              });
+            }

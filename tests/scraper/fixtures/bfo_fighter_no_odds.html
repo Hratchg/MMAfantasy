@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Test Fighter — No Odds</title>
+</head>
+<body>
+  <h1>Test Fighter</h1>
+  <table class="team-stats-table">
+    <thead>
+      <tr><th>Matchup</th><th>Open</th><th>Closing range</th><th>Movement</th><th>Event</th></tr>
+    </thead>
+    <tbody>
+      <!-- Future event header (1 td) -->
+      <tr class="event-header item-mobile-only-row">
+        <td colspan="5"><a href="/events/future-event-9999">Future Events</a></td>
+      </tr>
+      <!-- Main row: fighter side, 3 moneylines empty -->
+      <tr class="main-row">
+        <th class="oppcell"><a href="/fighters/Test-Fighter-1234">Test Fighter</a></th>
+        <td class="moneyline"><span></span></td>
+        <td class="moneyline"></td>
+        <td class="dash-cell">...</td>
+        <td class="moneyline"></td>
+        <td class="chart-cell" rowspan="2"></td>
+        <td class="change-cell" rowspan="2"></td>
+        <td class="item-non-mobile" scope="row"><a href="/events/future-event-9999">Future Events</a></td>
+      </tr>
+      <!-- Detail row: opponent side, 3 moneylines empty, no date -->
+      <tr>
+        <th class="oppcell"><a href="/fighters/Test-Opponent-5678">Test Opponent</a></th>
+        <td class="moneyline"></td>
+        <td class="moneyline"></td>
+        <td class="dash-cell">...</td>
+        <td class="moneyline"></td>
+        <td class="item-non-mobile"></td>
+      </tr>
+      <!-- Past event with valid odds (sanity row to ensure parser still works) -->
+      <tr class="event-header item-mobile-only-row">
+        <td colspan="5"><a href="/events/ufc-fake-1">UFC Fake 1</a></td>
+      </tr>
+      <tr class="main-row">
+        <th class="oppcell"><a href="/fighters/Test-Fighter-1234">Test Fighter</a></th>
+        <td class="moneyline"><span>-150</span></td>
+        <td class="moneyline"><span>-160</span></td>
+        <td class="dash-cell">...</td>
+        <td class="moneyline"><span>-140</span></td>
+        <td class="chart-cell" rowspan="2"></td>
+        <td class="change-cell" rowspan="2"></td>
+        <td class="item-non-mobile"><a href="/events/ufc-fake-1">UFC Fake 1</a></td>
+      </tr>
+      <tr>
+        <th class="oppcell"><a href="/fighters/Past-Opponent-7777">Past Opponent</a></th>
+        <td class="moneyline"><span>+130</span></td>
+        <td class="moneyline"><span>+135</span></td>
+        <td class="dash-cell">...</td>
+        <td class="moneyline"><span>+145</span></td>
+        <td class="item-non-mobile">Jan 1st 2024</td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

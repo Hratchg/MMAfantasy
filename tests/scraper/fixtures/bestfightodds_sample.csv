@@ -1,0 +1,7 @@
+fight_id,fighter_id,opening,closing_range_min,closing_range_max
+2013-09-21|bfo_a_Jon_Jones|bfo_b_Gustafsson,bfo_a_Jon_Jones,-200,-205,-195
+2013-09-21|bfo_a_Jon_Jones|bfo_b_Gustafsson,bfo_b_Gustafsson,170,165,175
+2018-10-06|bfo_a_Khabib|bfo_b_McGregor,bfo_a_Khabib,-320,-340,-310
+2018-10-06|bfo_a_Khabib|bfo_b_McGregor,bfo_b_McGregor,260,250,280
+2019-10-05|bfo_a_Adesanya|bfo_b_Whittaker,bfo_a_Adesanya,,,
+2019-10-05|bfo_a_Adesanya|bfo_b_Whittaker,bfo_b_Whittaker,,,

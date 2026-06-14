@@ -1,0 +1,175 @@
+venue_id,name,city,state,country,lat,lon,timezone_iana,n_events,geocode_source
+1,"Jacksonville, Florida, USA",Jacksonville,Florida,United States,30.3262247,-81.6579179,America/New_York,15,nominatim:2026-05-16
+2,"Sao Paulo, Sao Paulo, Brazil",,São Paulo,Brasil,-23.5506507,-46.6333824,America/Sao_Paulo,15,nominatim:2026-05-16
+3,"Atlanta, Georgia, USA",Atlanta,Georgia,United States,33.7544657,-84.3898151,America/New_York,13,nominatim:2026-05-16
+4,"Austin, Texas, USA",Austin,Texas,United States,30.2711286,-97.7436995,America/Chicago,13,nominatim:2026-05-16
+5,"Kallang, Singapore",Singapore,,Singapore,1.3111254,103.8665434,Asia/Singapore,13,nominatim:2026-05-16
+6,"Seattle, Washington, USA",Seattle,Washington,United States,47.6038321,-122.330062,America/Los_Angeles,13,nominatim:2026-05-16
+7,"Manchester, England, United Kingdom",Manchester,England,United Kingdom,53.4424618,-2.2324547,Europe/London,12,nominatim:2026-05-16
+8,"Melbourne, Victoria, Australia",Melbourne,Victoria,Australia,-37.8142454,144.9631732,Australia/Melbourne,12,nominatim:2026-05-16
+9,"Saitama, Japan",,,日本,35.9754168,139.4160114,Asia/Tokyo,12,nominatim:2026-05-16
+10,"San Jose, California, USA",San Jose,California,United States,37.3361663,-121.890591,America/Los_Angeles,12,nominatim:2026-05-16
+11,"Macau, China",,澳門 Macau,中国,22.1757605,113.5514142,Asia/Macau,11,nominatim:2026-05-16
+12,"New Orleans, Louisiana, USA",New Orleans,Louisiana,United States,29.9561422,-90.0733934,America/Chicago,11,nominatim:2026-05-16
+13,"Orlando, Florida, USA",Orlando,Florida,United States,28.5421218,-81.379045,America/New_York,11,nominatim:2026-05-16
+14,"Phoenix, Arizona, USA",Phoenix,Arizona,United States,33.4484367,-112.074141,America/Phoenix,11,nominatim:2026-05-16
+15,"Charlotte, North Carolina, USA",Charlotte,North Carolina,United States,35.2272086,-80.8430827,America/New_York,10,nominatim:2026-05-16
+16,"San Diego, California, USA",San Diego,California,United States,32.7174202,-117.162772,America/Los_Angeles,10,nominatim:2026-05-16
+17,"Tampa, Florida, USA",Tampa,Florida,United States,27.9449854,-82.4583107,America/New_York,10,nominatim:2026-05-16
+18,"Auckland, New Zealand",Auckland,Auckland,New Zealand / Aotearoa,-36.852095,174.7631803,Pacific/Auckland,9,nominatim:2026-05-16
+19,"Perth, Western Australia, Australia",Perth,Western Australia,Australia,-31.9558967,115.8605784,Australia/Perth,9,nominatim:2026-05-16
+20,"Salt Lake City, Utah, USA",Salt Lake City,Utah,United States,40.7596198,-111.886797,America/Denver,9,nominatim:2026-05-16
+21,"Abu Dhabi, United Arab Emirates",أبو ظبي,أبو ظبي,الإمارات العربية المتحدة,24.4538352,54.3774014,Asia/Dubai,6,nominatim:2026-05-16
+22,"Adelaide, South Australia, Australia",Adelaide,South Australia,Australia,-34.9281805,138.5999312,Australia/Adelaide,6,nominatim:2026-05-16
+23,"Brisbane, Queensland, Australia",Brisbane,Queensland,Australia,-27.4689623,153.0235009,Australia/Brisbane,6,nominatim:2026-05-16
+24,"Glasgow, Scotland, United Kingdom",Glasgow,Alba / Scotland,United Kingdom,55.861155,-4.2501687,Europe/London,6,nominatim:2026-05-16
+25,Universität Hamburg - Institut für Bewegungswissenschaften,Hamburg,,Deutschland,53.5909051,9.9753758,Europe/Berlin,6,nominatim:2026-05-16
+26,"Jaragua do Sul, Santa Catarina, Brazil",,Santa Catarina,Brasil,-26.4897432,-49.0778063,America/Sao_Paulo,6,nominatim:2026-05-16
+27,"Moscow, Moscow, Russia",Москва,Москва,Россия,55.7505412,37.6174782,Europe/Moscow,6,nominatim:2026-05-16
+28,"Norfolk, Virginia, USA",Norfolk,Virginia,United States,36.8493695,-76.2899539,America/New_York,6,nominatim:2026-05-16
+29,"Shanghai, Hebei, China",遵化市,河北省,中国,40.1840602,117.5932807,Asia/Shanghai,6,nominatim:2026-05-16
+30,"Sunrise, Florida, USA",,Florida,United States,26.1666888,-80.2787573,America/New_York,6,nominatim:2026-05-16
+31,"Washington, DC, USA",Washington,District of Columbia,United States,38.8950982,-77.0363849,America/New_York,6,nominatim:2026-05-16
+32,"Belfast, Northern Ireland, United Kingdom",Belfast,Northern Ireland / Tuaisceart Éireann,United Kingdom,54.596391,-5.9301829,Europe/London,5,nominatim:2026-05-16
+33,"Birmingham, England, United Kingdom",Birmingham,England,United Kingdom,52.4948994,-1.8518439,Europe/London,5,nominatim:2026-05-16
+34,"Cincinnati, Ohio, USA",Cincinnati,Ohio,United States,39.1014537,-84.5124602,America/New_York,5,nominatim:2026-05-16
+35,"Glendale, Arizona, USA",Glendale,Arizona,United States,33.5386858,-112.185994,America/Phoenix,5,nominatim:2026-05-16
+36,"Louisville, Kentucky, USA",Louisville,Kentucky,United States,38.2542376,-85.759407,America/Kentucky/Louisville,5,nominatim:2026-05-16
+37,"Oklahoma City, Oklahoma, USA",Oklahoma City,Oklahoma,United States,35.4729886,-97.5170536,America/Chicago,5,nominatim:2026-05-16
+38,"Portland, Oregon, USA",Portland,Oregon,United States,45.5202471,-122.674194,America/Los_Angeles,5,nominatim:2026-05-16
+39,"Sao Paulo, Brazil",,São Paulo,Brasil,-23.5506507,-46.6333824,America/Sao_Paulo,5,nominatim:2026-05-16
+40,"St. Louis, Missouri, USA",Saint Louis,Missouri,United States,38.6254063,-90.190009,America/Chicago,5,nominatim:2026-05-16
+41,"Buenos Aires, Buenos Aires, Argentina",,Buenos Aires,Argentina,-34.5121516,-58.5248182,America/Argentina/Buenos_Aires,3,nominatim:2026-05-16
+42,"Copenhagen, Denmark",København,Region Hovedstaden,Danmark,55.6867243,12.5700724,Europe/Copenhagen,3,nominatim:2026-05-16
+43,"Gdansk, Poland",Gdańsk,województwo pomorskie,Polska,54.3482907,18.6540233,Europe/Warsaw,3,nominatim:2026-05-16
+44,"Ledyard, Connecticut, USA",Ledyard,Connecticut,United States,41.4423732,-72.0168822,America/New_York,3,nominatim:2026-05-16
+45,"Liverpool, England, United Kingdom",Liverpool,England,United Kingdom,53.3933411,-2.9166389,Europe/London,3,nominatim:2026-05-16
+46,"Moncton, New Brunswick, Canada",City of Moncton,New Brunswick / Nouveau-Brunswick,Canada,46.0985679,-64.8004265,America/Moncton,3,nominatim:2026-05-16
+47,"Natal, Rio Grande do Norte, Brazil",,Rio Grande do Norte,Brasil,-5.805398,-35.2080905,America/Fortaleza,3,nominatim:2026-05-16
+48,"Nottingham, England, United Kingdom",City of Nottingham,England,United Kingdom,52.9534193,-1.1496461,Europe/London,3,nominatim:2026-05-16
+49,"Oakland, California, USA",Oakland,California,United States,37.8044557,-122.271356,America/Los_Angeles,3,nominatim:2026-05-16
+50,"Raleigh, North Carolina, USA",Raleigh,North Carolina,United States,35.7803977,-78.6390989,America/New_York,3,nominatim:2026-05-16
+51,"Santiago, Chile",Santiago,Región Metropolitana de Santiago,Chile,-33.4376995,-70.6510671,America/Santiago,3,nominatim:2026-05-16
+52,"Shenzhen, Guangdong, China",深圳市,广东省,中国,22.5445741,114.0545429,Asia/Shanghai,3,nominatim:2026-05-16
+53,"Las Vegas, Nevada, USA",Las Vegas,Nevada,United States,36.1674263,-115.1484131,America/Los_Angeles,611,nominatim:2026-05-19
+54,"Abu Dhabi, Abu Dhabi, United Arab Emirates",أبو ظبي,أبو ظبي,الإمارات العربية المتحدة,24.4538352,54.3774014,Asia/Dubai,53,nominatim:2026-05-19
+55,"London, England, United Kingdom",Greater London,England,United Kingdom,51.5074456,-0.1277653,Europe/London,40,nominatim:2026-05-19
+56,"Newark, New Jersey, USA",Newark,New Jersey,United States,40.735657,-74.1723667,America/New_York,29,nominatim:2026-05-19
+57,"Anaheim, California, USA",Anaheim,California,United States,33.8347516,-117.911732,America/Los_Angeles,25,nominatim:2026-05-19
+58,"Houston, Texas, USA",Houston,Texas,United States,29.7589382,-95.3676974,America/Chicago,25,nominatim:2026-05-19
+59,"Chicago, Illinois, USA",Chicago,Illinois,United States,41.8755616,-87.6244212,America/Chicago,23,nominatim:2026-05-19
+60,"New York City, New York, USA",New York,New York,United States,40.7127281,-74.0060152,America/New_York,22,nominatim:2026-05-19
+61,"Montreal, Quebec, Canada",Montréal,Québec,Canada,45.5031824,-73.5698065,America/Toronto,21,nominatim:2026-05-19
+62,"Mexico City, Distrito Federal, Mexico",Ciudad de México,Ciudad de México,México,19.4326296,-99.1331785,America/Mexico_City,21,nominatim:2026-05-19
+63,"Boston, Massachusetts, USA",Boston,Massachusetts,United States,42.3588336,-71.0578303,America/New_York,20,nominatim:2026-05-19
+64,"Sydney, New South Wales, Australia",Sydney,New South Wales,Australia,-33.8698439,151.2082848,Australia/Sydney,20,nominatim:2026-05-19
+65,"Toronto, Ontario, Canada",Toronto,Ontario,Canada,43.6534817,-79.3839347,America/Toronto,20,nominatim:2026-05-19
+66,"Los Angeles, California, USA",Los Angeles,California,United States,34.0536909,-118.242766,America/Los_Angeles,19,nominatim:2026-05-19
+67,"Vancouver, British Columbia, Canada",Vancouver,British Columbia,Canada,49.2608724,-123.113952,America/Vancouver,19,nominatim:2026-05-19
+68,"Rio de Janeiro, Brazil",,Rio de Janeiro,Brasil,-22.9110137,-43.2093727,America/Sao_Paulo,18,nominatim:2026-05-19
+69,"Nashville, Tennessee, USA",Nashville,Tennessee,United States,36.1622767,-86.7742984,America/Chicago,18,nominatim:2026-05-19
+70,"Stockholm, Sweden",Stockholm,,Sverige,59.3251172,18.0710935,Europe/Stockholm,18,nominatim:2026-05-19
+71,"Rio de Janeiro, Rio de Janeiro, Brazil",,Rio de Janeiro,Brasil,-22.9110137,-43.2093727,America/Sao_Paulo,18,nominatim:2026-05-19
+72,"Denver, Colorado, USA",Denver,Colorado,United States,39.7392364,-104.984862,America/Denver,17,nominatim:2026-05-19
+73,"Atlantic City, New Jersey, USA",Atlantic City,New Jersey,United States,39.3642852,-74.4229351,America/New_York,17,nominatim:2026-05-19
+74,"Sacramento, California, USA",Sacramento,California,United States,38.5810606,-121.493895,America/Los_Angeles,16,nominatim:2026-05-19
+75,"Dallas, Texas, USA",Dallas,Texas,United States,32.7762719,-96.7968559,America/Chicago,16,nominatim:2026-05-19
+76,"Pittsburgh, Pennsylvania, USA",Pittsburgh,Pennsylvania,United States,40.4406968,-80.0025666,America/New_York,9,nominatim:2026-05-19
+77,"Fortaleza, Ceara, Brazil",,Ceará,Brasil,-3.7932167,-38.5280359,America/Fortaleza,9,nominatim:2026-05-19
+78,"Brooklyn, New York, USA",New York,New York,United States,40.6526006,-73.9497211,America/New_York,9,nominatim:2026-05-19
+79,"Milwaukee, Wisconsin, USA",Milwaukee,Wisconsin,United States,43.0386475,-87.9090751,America/Chicago,9,nominatim:2026-05-19
+80,"Hollywood, Florida, USA",,Florida,United States,26.0112014,-80.1494901,America/New_York,9,nominatim:2026-05-19
+81,"Brasilia, Distrito Federal, Brazil",Brasília,Distrito Federal,Brasil,-15.7939869,-47.8828,America/Sao_Paulo,9,nominatim:2026-05-19
+82,"Fairfax, Virginia, USA",Fairfax,Virginia,United States,38.8462236,-77.3063733,America/New_York,8,nominatim:2026-05-19
+83,"San Antonio, Texas, USA",San Antonio,Texas,United States,29.4246002,-98.4951405,America/Chicago,8,nominatim:2026-05-19
+84,"Edmonton, Alberta, Canada",Edmonton,Alberta,Canada,53.5462055,-113.491241,America/Edmonton,8,nominatim:2026-05-19
+85,"Columbus, Ohio, USA",Columbus,Ohio,United States,39.9622601,-83.0007065,America/New_York,8,nominatim:2026-05-19
+86,"Miami, Florida, USA",Miami,Florida,United States,25.7741566,-80.1935973,America/New_York,8,nominatim:2026-05-19
+87,"Paris, Ile-de-France, France",Paris,Île-de-France,France,48.8534951,2.3483915,Europe/Paris,8,nominatim:2026-05-19
+88,"Broomfield, Colorado, USA",Broomfield,Colorado,United States,39.9403995,-105.05208,America/Denver,8,nominatim:2026-05-19
+89,"Minneapolis, Minnesota, USA",Minneapolis,Minnesota,United States,44.9772995,-93.2654692,America/Chicago,8,nominatim:2026-05-19
+90,"Philadelphia, Pennsylvania, USA",Philadelphia,Pennsylvania,United States,39.9527237,-75.1635262,America/New_York,8,nominatim:2026-05-19
+91,"Dublin, Leinster, Ireland",Dublin,,Éire / Ireland,53.3493795,-6.2605593,Europe/Dublin,8,nominatim:2026-05-19
+92,"Kansas City, Missouri, USA",Kansas City,Missouri,United States,39.100105,-94.5781416,America/Chicago,7,nominatim:2026-05-19
+93,"Winnipeg, Manitoba, Canada",Winnipeg,Manitoba,Canada,49.8955367,-97.1384584,America/Winnipeg,7,nominatim:2026-05-19
+94,"Rotterdam, Zuid-Holland, Netherlands",Rotterdam,Zuid-Holland,Nederland,51.9244424,4.47775,Europe/Amsterdam,6,nominatim:2026-05-19
+95,"Indianapolis, Indiana, USA",Indianapolis,Indiana,United States,39.7683331,-86.1583502,America/Indiana/Indianapolis,6,nominatim:2026-05-19
+96,"Calgary, Alberta, Canada",Calgary,Alberta,Canada,51.0456064,-114.057541,America/Edmonton,6,nominatim:2026-05-19
+97,"Goiania, Goias, Brazil",,Goiás,Brasil,-16.680882,-49.2532691,America/Sao_Paulo,6,nominatim:2026-05-19
+98,"Barueri, Sao Paulo, Brazil",,São Paulo,Brasil,-23.5112184,-46.8764612,America/Sao_Paulo,6,nominatim:2026-05-19
+99,"Belo Horizonte, Minas Gerais, Brazil",,Minas Gerais,Brasil,-19.9227318,-43.9450948,America/Sao_Paulo,6,nominatim:2026-05-19
+100,"Ottawa, Ontario, Canada",Ottawa,Ontario,Canada,45.4208777,-75.6901106,America/Toronto,6,nominatim:2026-05-19
+101,"Hamburg, Hamburg, Germany",Hamburg,,Deutschland,53.5909051,9.9753758,Europe/Berlin,6,nominatim:2026-05-16
+102,"Omaha, Nebraska, USA",Omaha,Nebraska,United States,41.2587459,-95.9383758,America/Chicago,5,nominatim:2026-05-19
+103,"Halifax, Nova Scotia, Canada",Halifax,Nova Scotia,Canada,44.648618,-63.5859487,America/Halifax,4,nominatim:2026-05-19
+104,"Detroit, Michigan, USA",Detroit,Michigan,United States,42.3315509,-83.0466403,America/Detroit,4,nominatim:2026-05-19
+105,"East Rutherford, New Jersey, USA",East Rutherford,New Jersey,United States,40.833989,-74.0970865,America/New_York,4,nominatim:2026-05-19
+106,"Buffalo, New York, USA",Buffalo,New York,United States,42.8864163,-78.8781493,America/New_York,4,nominatim:2026-05-19
+107,"Riyadh, Riyadh, Saudi Arabia",الرياض,منطقة الرياض,السعودية,24.638916,46.7160104,Asia/Riyadh,4,nominatim:2026-05-19
+108,"Uncasville, Connecticut, USA",Montville,Connecticut,United States,41.4346637,-72.109987,America/New_York,4,nominatim:2026-05-19
+109,"Birmingham, Alabama, USA",Birmingham,Alabama,United States,33.5206824,-86.8024326,America/Chicago,4,nominatim:2026-05-19
+110,"Uberlandia, Minas Gerais, Brazil",,Minas Gerais,Brasil,-18.9188041,-48.2767837,America/Sao_Paulo,3,nominatim:2026-05-19
+111,"Killeen, Texas, USA",Killeen,Texas,United States,31.1171441,-97.727796,America/Chicago,3,nominatim:2026-05-19
+112,"Quebec City, Quebec, Canada",Québec,Québec,Canada,46.8137431,-71.2084061,America/Toronto,3,nominatim:2026-05-19
+113,"Busan, South Korea",부산광역시,,대한민국,35.1799528,129.0752365,Asia/Seoul,3,nominatim:2026-05-19
+114,"Utica, New York, USA",City of Utica,New York,United States,43.1009031,-75.2326641,America/New_York,3,nominatim:2026-05-19
+115,"Fresno, California, USA",Fresno,California,United States,36.7394421,-119.78483,America/Los_Angeles,3,nominatim:2026-05-19
+116,"Albany, New York, USA",City of Albany,New York,United States,42.6511674,-73.754968,America/New_York,3,nominatim:2026-05-19
+117,"Saskatoon, Saskatchewan, Canada",Saskatoon,Saskatchewan,Canada,52.131802,-106.660767,America/Regina,3,nominatim:2026-05-19
+118,"Saint Petersburg, Saint Petersburg, Russia",Санкт-Петербург,Санкт-Петербург,Россия,59.938732,30.316229,Europe/Moscow,3,nominatim:2026-05-19
+119,"Bangor, Maine, USA",Bangor,Maine,United States,44.8016255,-68.7713289,America/New_York,3,nominatim:2026-05-19
+120,"Manila, Philippines",Manila,,Philippines,14.5904492,120.9803621,Asia/Manila,3,nominatim:2026-05-19
+121,"Cleveland, Ohio, USA",Cleveland,Ohio,United States,41.4996574,-81.6936772,America/New_York,3,nominatim:2026-05-19
+122,"Rio Rancho, New Mexico, USA",Rio Rancho,New Mexico,United States,35.3108227,-106.6847453,America/Denver,3,nominatim:2026-05-19
+123,"Prague, Czech Republic",Praha,,Česko,50.0874654,14.4212535,Europe/Prague,3,nominatim:2026-05-19
+124,"Oberhausen, North Rhine-Westphalia, Germany",Oberhausen,Nordrhein-Westfalen,Deutschland,51.4696137,6.8514435,Europe/Berlin,3,nominatim:2026-05-19
+125,"Rochester, New York, USA",City of Rochester,New York,United States,43.157285,-77.615214,America/New_York,3,nominatim:2026-05-19
+126,"Curitiba, Parana, Brazil",,Paraná,Brasil,-25.4295963,-49.2712724,America/Sao_Paulo,3,nominatim:2026-05-19
+127,"Montevideo, Uruguay",Montevideo,Montevideo,Uruguay,-34.9058916,-56.1913095,America/Montevideo,3,nominatim:2026-05-19
+128,"Zagreb, Croatia",Grad Zagreb,,Hrvatska,45.8130967,15.9772795,Europe/Zagreb,3,nominatim:2026-05-19
+129,"Hidalgo, Texas, USA",,Texas,United States,26.3530256,-98.216445,America/Chicago,3,nominatim:2026-05-19
+130,"Singapore, Singapore",,,Singapore,1.357107,103.8194992,Asia/Singapore,3,nominatim:2026-05-19
+131,"Monterrey, Nuevo Leon, Mexico",Monterrey,Nuevo León,México,25.6802019,-100.315258,America/Monterrey,3,nominatim:2026-05-19
+132,"Porto Alegre, Rio Grande do Sul, Brazil",Porto Alegre,Rio Grande do Sul,Brasil,-30.0324999,-51.2303767,America/Sao_Paulo,3,nominatim:2026-05-19
+133,"Boise, Idaho, USA",Boise,Idaho,United States,43.6166163,-116.200886,America/Boise,3,nominatim:2026-05-19
+134,"Krakow, Poland",,województwo małopolskie,Polska,50.0469432,19.9971534,Europe/Warsaw,3,nominatim:2026-05-19
+135,"Berlin, Germany",Berlin,,Deutschland,52.5173885,13.3951309,Europe/Berlin,3,nominatim:2026-05-19
+136,"Albuquerque, New Mexico, USA",Albuquerque,New Mexico,United States,35.0841034,-106.650985,America/Denver,3,nominatim:2026-05-19
+137,"Auburn Hills, Michigan, USA",Auburn Hills,Michigan,United States,42.6875323,-83.2341028,America/Detroit,3,nominatim:2026-05-19
+138,"Seoul, South Korea",서울특별시,,대한민국,37.5666791,126.9782914,Asia/Seoul,3,nominatim:2026-05-19
+139,"Beijing, China",北京市,,中国,39.9057136,116.3912972,Asia/Shanghai,3,nominatim:2026-05-19
+140,"Gold Coast, Queensland, Australia",Gold Coast,Queensland,Australia,-28.0023731,153.4145987,Australia/Brisbane,3,nominatim:2026-05-19
+141,"Sioux Falls, South Dakota, USA",Sioux Falls,South Dakota,United States,43.5476008,-96.7293629,America/Chicago,3,nominatim:2026-05-19
+142,"Wichita, Kansas, USA",Wichita,Kansas,United States,37.6922361,-97.3375448,America/Chicago,3,nominatim:2026-05-19
+143,"Duluth, Georgia, USA",Duluth,Georgia,United States,34.0028569,-84.1441046,America/New_York,3,nominatim:2026-05-19
+144,"Baltimore, Maryland, USA",Baltimore,Maryland,United States,39.2908816,-76.610759,America/New_York,3,nominatim:2026-05-19
+145,"Saitama, Saitama, Japan",さいたま市,,日本,35.8616141,139.6455666,Asia/Tokyo,3,nominatim:2026-05-19
+146,"Berlin, Berlin, Germany",Berlin,,Deutschland,52.503379,13.3386522,Europe/Berlin,3,nominatim:2026-05-19
+147,"Greenville, South Carolina, USA",Greenville,South Carolina,United States,34.851354,-82.3984882,America/New_York,3,nominatim:2026-05-19
+148,"Uniondale, New York, USA",Uniondale,New York,United States,40.7157545,-73.5898872,America/New_York,3,nominatim:2026-05-19
+149,"Lincoln, Nebraska, USA",Lincoln,Nebraska,United States,40.8088861,-96.7077751,America/Chicago,3,nominatim:2026-05-19
+150,"Fort Campbell, Kentucky, USA",,Tennessee,United States,36.6313383,-87.6156884,America/Chicago,3,nominatim:2026-05-19
+151,"Belem, Para, Brazil",,Pará,Brasil,-1.45056,-48.4682453,America/Belem,3,nominatim:2026-05-19
+152,"Cedar Rapids, Iowa, USA",Cedar Rapids,Iowa,United States,41.9758872,-91.6704053,America/Chicago,2,nominatim:2026-05-19
+153,"Augusta, Georgia, USA",Augusta,Georgia,United States,33.4709714,-81.9748429,America/New_York,2,nominatim:2026-05-19
+154,"Doha, Qatar",,الدوحة,قطر,25.3108807,51.5081812,Asia/Qatar,2,nominatim:2026-05-19
+155,"Tulsa, Oklahoma, USA",Tulsa,Oklahoma,United States,36.1563122,-95.9927516,America/Chicago,2,nominatim:2026-05-19
+156,"Bay St. Louis, Mississippi, USA",Bay St. Louis,Mississippi,United States,30.3105666,-89.3275482,America/Chicago,2,nominatim:2026-05-19
+157,"Elmont, New York, USA",Elmont,New York,United States,40.7053335,-73.7078294,America/New_York,2,nominatim:2026-05-19
+158,"Rosemont, Illinois, USA",Rosemont,Illinois,United States,41.9941334,-87.8756737,America/Chicago,2,nominatim:2026-05-19
+159,"Baku, Azerbaijan",Bakı İnzibati Ərazisi,,Azərbaycan,40.3755885,49.8328009,Asia/Baku,2,nominatim:2026-05-19
+160,"Inglewood, California, USA",Inglewood,California,United States,33.9562003,-118.353132,America/Los_Angeles,2,nominatim:2026-05-19
+161,"Fayetteville, North Carolina, USA",Fayetteville,North Carolina,United States,35.0525759,-78.878292,America/New_York,2,nominatim:2026-05-19
+162,"Newcastle, England, United Kingdom",Newcastle upon Tyne,England,United Kingdom,54.9738474,-1.6131572,Europe/London,2,nominatim:2026-05-19
+163,"Tokyo, Japan",,,日本,35.6768601,139.7638947,Asia/Tokyo,2,nominatim:2026-05-19
+164,"Cologne, North Rhine-Westphalia, Germany",Köln,Nordrhein-Westfalen,Deutschland,50.938361,6.959974,Europe/Berlin,2,nominatim:2026-05-19
+165,"Lake Charles, Louisiana, USA",Lake Charles,Louisiana,United States,30.2305095,-93.2169807,America/Chicago,2,nominatim:2026-05-19
+166,"Des Moines, Iowa, USA",Des Moines,Iowa,United States,41.5868654,-93.6249494,America/Chicago,2,nominatim:2026-05-19
+167,"Memphis, Tennessee, USA",Memphis,Tennessee,United States,35.1460249,-90.0517638,America/Chicago,2,nominatim:2026-05-19
+168,"San Juan, Puerto Rico",,Puerto Rico,United States,18.384239,-66.05344,America/Puerto_Rico,1,nominatim:2026-05-19
+169,"Dothan, Alabama, USA",Dothan,Alabama,United States,31.2237285,-85.3934375,America/Chicago,1,nominatim:2026-05-19
+170,"Yokohama, Kanagawa, Japan",横浜市,,日本,35.4503381,139.6343802,Asia/Tokyo,1,nominatim:2026-05-19
+171,"Casper, Wyoming, USA",Casper,Wyoming,United States,42.8501191,-106.325138,America/Denver,1,nominatim:2026-05-19
+172,"Chiba, Japan",,,日本,35.549399,140.2647303,Asia/Tokyo,1,nominatim:2026-05-19
+173,"Mobile, Alabama, USA",Mobile,Alabama,United States,30.6913462,-88.0437509,America/Chicago,1,nominatim:2026-05-19
+174,"Bossier City, Louisiana, USA",Bossier City,Louisiana,United States,32.515887,-93.7336536,America/Chicago,1,nominatim:2026-05-19

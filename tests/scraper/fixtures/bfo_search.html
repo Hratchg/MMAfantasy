@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+            <title>Search results | Best Fight Odds</title>
+        <meta name="description" content="UFC/MMA odds comparison service. Compare the latest UFC/MMA fight odds and betting lines from the top online sportsbooks">
+    <meta name="keywords" content="mma odds, mma betting, mma lines, ufc odds, ufc, mma, odds, betting">
+    <meta name="bfo-version" content="2024-02-15">
+    <meta property="og:image" content="https://www.bestfightodds.com/img/iconv2.jpg">
+            <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+                            <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="preconnect" href="https://www.google-analytics.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
+    <noscript>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+    </noscript>
+    <link rel="stylesheet" type="text/css" href="/css/bfo.min.css?v=0.3.41">
+    <link rel="shortcut icon" href="https://www.bestfightodds.com/favicon.ico">
+    <link rel="apple-touch-icon" sizes="144x144" href="/apple-touch-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/apple-touch-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/apple-touch-icon-72x72.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon-iphone.png">
+    <!-- Google Tag Manager -->
+    <script>
+        (function(w, d, s, l, i) {
+            w[l] = w[l] || [];
+            w[l].push({
+                'gtm.start':
+
+                    new Date().getTime(),
+                event: 'gtm.js'
+            });
+            var f = d.getElementsByTagName(s)[0],
+
+                j = d.createElement(s),
+                dl = l != 'dataLayer' ? '&l=' + l : '';
+            j.async = true;
+            j.src =
+
+                'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+            f.parentNode.insertBefore(j, f);
+
+        })(window, document, 'script', 'dataLayer', 'GTM-WGLQH4ZQ');
+    </script>
+    <!-- End Google Tag Manager -->
+    </head>
+
+<body>
+    <script async src="/js/bfo.min.js?v=0.4.10"></script>
+    <script>
+    if(document.cookie.indexOf('bfo_admin=1')!==-1){document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('.bfo-admin-link').forEach(function(el){el.style.display='';});});}
+    document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('.table-scroller').forEach(function(scroller){var rh=scroller.parentElement.parentElement.querySelector('.odds-table-responsive-header');if(!rh)return;var scrollRows=scroller.querySelectorAll('thead tr, tbody tr');var rhRows=rh.querySelectorAll('thead tr, tbody tr');for(var i=0;i<Math.min(scrollRows.length,rhRows.length);i++){var h=scrollRows[i].offsetHeight;rhRows[i].style.height=h+'px';}});});
+    document.addEventListener('DOMContentLoaded',function(){if(window.innerWidth<=961){document.querySelectorAll('.event-banners[data-mobile-show]').forEach(function(c){var show=parseInt(c.dataset.mobileShow)||0;c.querySelectorAll('.event-banner-card').forEach(function(b){if(parseInt(b.dataset.bannerIdx)!==show)b.classList.add('mobile-hidden');});});}});
+    </script>
+    <div class="flex-header">
+        <div class="flex-header-wrap">
+            <a href="/"><img src="/img/logo_3.png" class="logo" width="290" height="54" alt="Best Fight Odds logo"></a>
+            <div id="header-search-box">
+                <form method="get" action="/search"><input type="text" id="search-box1" class="search-box" name="query" placeholder="MMA Event / Fighter"> <input type="submit" class="search-button" id="search-button" value="&#128269;"></form>
+            </div>
+            <div id="flex-header-menu-right">
+                <div id="parlay-mode-container"  style="visibility: hidden" >
+                    <a href="#" id="parlay-mode-box">
+                        <div class="bfo-check-box">✓</div> Parlay
+                    </a>
+                </div>
+                <div class="menu-divider"  style="display: none" ></div>
+                <div id="auto-refresh-container"  style="display: none" >
+                    <ul class="dropdown">
+                        <li><a href="#" onclick="toggleRefresh()" style="padding-left: 20px;"><img src="/img/refresh.png" class="refresh-ind" id="autoRefresh" alt="Toggle auto-refresh">&#9660;</a>
+                            <ul class="sub_menu">
+                                <li><a href="#" id="afSelectorOn" class="list-checked"><span style="display: inline-block">&#10004;</span>Auto-refresh: On</a></li>
+                                <li><a href="#" id="afSelectorOff"><span>&#10004;</span>Auto-refresh: Off</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+                <div id="mob-divider" class="menu-divider"  style="display: none" ></div>
+                <div id="format-container">
+                    <ul class="dropdown">
+                        <li><a href="#" id="format-toggle-text"><span>Settings &#9660;</span></a>
+                            <ul class="sub_menu">
+                                                                <li><a href="#" id="formatSelector1" class="list-checked"><span style="display: inline-block">&#10003;</span>Moneyline</a></li>
+                                <li><a href="#" id="formatSelector2"><span>&#10003;</span>Decimal</a></li>
+                                <li><a href="#" id="formatSelector4"><span>&#10003;</span>Fractional</a></li>
+                                <li style="border-bottom: 1px solid #4a4c53"><a href="#" id="formatSelector3" style="display: inline"><span>&#10003;</span>Return on </a>$<input type="text" name="amountBox" id="format-amount-box1" maxlength="4" value="100" style="display: inline"></li>
+                                <li><a href="#" id="bookieHideSelector">Customize view</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="mobile-search-box">
+        <form method="get" action="/search"><input type="text" class="search-box" name="query" placeholder="Search MMA Event / Fighter"> <input type="submit" class="search-button" value="&#128269;"></form>
+    </div>
+    <div class="flex-nav">
+        <div class="flex-nav-wrap">
+            <div class="flex-header-menu">
+                <a href="/">
+                    <div class="header-menu-item " style="margin-left: 10px">Latest<span class="item-non-mob-mini"> odds</span></div>
+                </a>
+                <a href="/archive">
+                    <div class="header-menu-item  header-menu-selected ">Archive</div>
+                </a>
+                <a href="/alerts">
+                    <div class="header-menu-item ">Alerts</div>
+                </a>
+                <a href="/prediction">
+                    <div class="header-menu-item ">Prediction<span class="item-non-mob-mini"> Markets</span></div>
+                </a>
+                <a href="/promos/kalshi">
+                    <div class="header-menu-item ">Kalshi</div>
+                </a>
+                <a href="/links">
+                    <div class="header-menu-item  item-non-mobile">Widget</div>
+                </a>
+                <a href="https://www.proboxingodds.com" target="_blank" rel="noopener">
+                    <div class="header-menu-item  item-non-mobile">Boxing</div>
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="flex-section">
+        <div class="flex-content-wrap">
+            
+<div id="page-wrapper"  style="max-width: 700px;">
+    <div id="page-container">
+        <div id="page-inner-wrapper">
+            <div id="page-content">
+                <form name="search_fighters" style="margin-top: 10px; margin-bottom: 22px;" method="get" action="/search">
+                    <p>Search the archive for events/fighters:<input type="text" name="query" value="" style="width: 195px; margin-left: 5px;" /><input type="submit" value="&#128269;" class="archive_search_button" style="margin-left: -1px;"/></p>
+                </form>
+    
+                
+                    
+                        <p style="font-size: 12px">Showing results for search query <b><i>Jon Jones</i></b>:</p>
+
+                        
+                            <div class="content-header" style="margin-top: 15px;">Fighters <span style="font-weight: normal;">(displaying 25 out of 92 matches)</span></div>
+                            <table class="content-list">
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Jones-819">Jon Jones</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Adams-9127">Jon Adams</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Arce-9233">Jon Arce</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Barnard-4891">Jon Barnard</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Chris-Corton-6359">Jon Chris Corton</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Ciampa-14358">Jon Ciampa</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Cunningham-13506">Jon Cunningham</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Delos-Reyes-4562">Jon Delos Reyes</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Di-Bella-17403">Jon Di Bella</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Durrant-9015">Jon Durrant</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Fitch-3">Jon Fitch</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Furuheim-16839">Jon Furuheim</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Gover-7385">Jon Gover</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Harris-3080">Jon Harris</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Hill-8430">Jon Hill</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Hollis-2275">Jon Hollis</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Kirk-502">Jon Kirk</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Knutson-14303">Jon Knutson</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Lemke-3943">Jon Lemke</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Madsen-1676">Jon Madsen</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Manley-3806">Jon Manley</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Marc-Cortez-6555">Jon Marc Cortez</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-McNeil-12186">Jon McNeil</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Murphy-644">Jon Murphy</a></td>
+                                </tr>
+
+                                            
+                                <tr>
+                                    <td class="content-list-date"></td>
+                                    <td><a href="/fighters/Jon-Neal-9031">Jon Neal</a></td>
+                                </tr>
+
+                                                        </table>
+
+                        
+                        
+                            <div class="content-header" style="margin-top: 15px;">Events <span style="font-weight: normal;">(displaying 20 out of 20 matches)</span></div>
+                            <table class="content-list">
+                                                            <tr>
+                                    <td class="content-list-date">Apr 23rd 2016</td>
+                                    <td><a href="/events/ufc-197-jones-vs-saint-preux-1080">UFC 197: Jones vs. Saint Preux</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Nov 11th 2023</td>
+                                    <td><a href="/events/ufc-295-jones-vs-miocic-2957">UFC 295: Jones vs. Miocic</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">May 28th 2021</td>
+                                    <td><a href="/events/cffc-96-jones-vs-cleveland-2152">CFFC 96: Jones vs. Cleveland</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Sep 26th 2020</td>
+                                    <td><a href="/events/cage-warriors-116-jones-vs-proctor-1966">Cage Warriors 116: Jones vs. Proctor</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Feb 8th 2020</td>
+                                    <td><a href="/events/ufc-247-jones-vs-reyes-1837">UFC 247: Jones vs. Reyes</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Oct 12th 2019</td>
+                                    <td><a href="/events/cage-warriors-108-jones-vs-mantykivi-1792">Cage Warriors 108: Jones vs. Mantykivi</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Jul 6th 2019</td>
+                                    <td><a href="/events/ufc-239-jones-vs-santos-1686">UFC 239: Jones vs. Santos</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Mar 2nd 2019</td>
+                                    <td><a href="/events/ufc-235-jones-vs-smith-1625">UFC 235: Jones vs. Smith</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Dec 29th 2018</td>
+                                    <td><a href="/events/ufc-232-jones-vs-gustafsson-2-1583">UFC 232: Jones vs. Gustafsson 2</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Jul 29th 2017</td>
+                                    <td><a href="/events/ufc-214-cormier-vs-jones-2-1303">UFC 214: Cormier vs. Jones 2</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Mar 21st 2010</td>
+                                    <td><a href="/events/ufc-on-versus-1-vera-vs-jones-242">UFC on Versus 1: Vera vs. Jones</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Jan 3rd 2015</td>
+                                    <td><a href="/events/ufc-182-jones-vs-cormier-864">UFC 182: Jones vs. Cormier</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Apr 26th 2014</td>
+                                    <td><a href="/events/ufc-172-jones-vs-teixeira-772">UFC 172: Jones vs. Teixeira</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Sep 21st 2013</td>
+                                    <td><a href="/events/ufc-165-jones-vs-gustafsson-697">UFC 165: Jones vs. Gustafsson</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Apr 27th 2013</td>
+                                    <td><a href="/events/ufc-159-jones-vs-sonnen-633">UFC 159: Jones vs. Sonnen</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Sep 22nd 2012</td>
+                                    <td><a href="/events/ufc-152-jones-vs-belfort-561">UFC 152: Jones vs. Belfort</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Apr 21st 2012</td>
+                                    <td><a href="/events/ufc-145-jones-vs-evans-490">UFC 145: Jones vs. Evans</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Dec 10th 2011</td>
+                                    <td><a href="/events/ufc-140-jones-vs-machida-451">UFC 140: Jones vs. Machida</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Sep 24th 2011</td>
+                                    <td><a href="/events/ufc-135-jones-vs-rampage-417">UFC 135: Jones vs. Rampage</a></td>
+                                </tr>
+                                                            <tr>
+                                    <td class="content-list-date">Mar 19th 2011</td>
+                                    <td><a href="/events/ufc-128-shogun-vs-jones-346">UFC 128: Shogun vs. Jones</a></td>
+                                </tr>
+                                                        </table>
+
+                        
+                    
+                
+            </div>
+        </div>
+        <div class="content-sidebar">
+            <p>
+                <img src="img/info.gif" class="img-info-box" /> Results are limited to 25 events/fighters. Refine your search criteria to narrow down specific results
+            </p>
+        </div>
+        <div class="clear"></div>
+    </div>
+</div>
+
+<div id="page-bottom"></div>
+        </div>
+    </div>
+    <div class="legend-container">
+        <img src="/img/loading.gif" class="hidden-image" alt="Loading indicator" width="0" height="0">
+        <img src="/img/expu.png" class="hidden-image" alt="Expand symbol" width="0" height="0">
+    </div>
+
+    <div id="bottom-container">
+        <a href="/">Home</a><span class="menu-seperator">|</span>
+                    <a href="#" onclick="setDesktop(true);">Desktop&nbsp;site</a><span class="menu-seperator">|</span>
+                <a href="https://www.proboxingodds.com" target="_blank" rel="noopener">Boxing&nbsp;Odds</a><span class="menu-seperator">|</span><a href="/terms">Terms&nbsp;of&nbsp;service</a><span class="menu-seperator">|</span><a href="/privacy">Privacy Policy</a><span class="menu-seperator">|</span><a href="#">21+</a><span class="menu-seperator">|</span><a href="/responsiblegaming">Responsible&nbsp;Gaming</a><span class="menu-seperator">|</span><a href="https://www.begambleaware.org/">BeGambleAware</a><span class="menu-seperator">|</span><a href="/cdn-cgi/l/email-protection#59383d343037193b3c2a2d3f303e312d363d3d2a773a3634">Contact</a><span class="menu-seperator">|</span><a href="/cdn-cgi/l/email-protection#82e3e6efebecc2e0e7f1f6e4ebe5eaf6ede6e6f1ace1edef">Copyright &copy; 2026 Pacific Tide Media Inc.</a>
+        <div style="display: block; clear: both; margin-top: 10px; padding: 10px 0; font-size: 0.9em; width: 100%;">
+            Know your limits. For support with gambling issues, call 1-800-GAMBLER or visit <a href="https://www.ncpgambling.org/" target="_blank" rel="noopener" style="font-size: inherit; padding: 0;">ncpgambling.org</a>
+        </div>
+
+    </div>
+
+    <div id="chart-window" class="popup-window">
+        <div class="popup-header" id="chart-header">
+            <div></div><a href="#" class="cd-popup-close">&#10005;</a>
+        </div>
+        <div id="chart-area"></div><a href="#" target="_blank" rel="noopener">
+            <div id="chart-link" class="highlighted-button">Bet this line at bookie</div>
+        </a>
+        <div id="chart-disc" style="display: none; color: #333">*Currently this Sportsbook does not accept players that reside in the US. 18+ Gamble Responsibly</div>
+    </div>
+    <div id="parlay-window" class="popup-window">
+        <div class="popup-header" id="parlay-header">Parlay</div>
+        <div id="parlay-area">Click on a line to add it to your parlay</div>
+    </div>
+    <div id="bookie-settings-window" class="popup-window">
+        <div class="popup-header">Bookie display settings <a href="#" class="cd-popup-close">&#10005;</a></div>
+        <div id="bookie-settings-area">Drag to change order, show/hide using checkbox<ul id="bookie-order-items"></ul><input type="button" class="button" value="Reset to default settings" id="bookieResetDefault"></div>
+    </div>
+            <!-- Google Tag Manager (noscript) -->
+        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WGLQH4ZQ" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+        <!-- End Google Tag Manager (noscript) -->
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script></body>
+
+</html>

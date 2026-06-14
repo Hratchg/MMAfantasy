@@ -1,0 +1,76 @@
+# Phase 50 DX-V26-01 — pre-commit framework.
+#
+# Hooks:
+#   - ruff (lint + format)
+#   - mypy (strict subset — pilot allow-list; Phase 51 expands)
+#   - trailing-whitespace + end-of-file-fixer
+#   - audit-01-protected-files (custom local hook; CONTRIBUTING.md L58-78)
+#
+# Install + use:
+#   uv tool install pre-commit && pre-commit install
+#   pre-commit run --all-files     # one-shot
+#   git commit --no-verify ...     # discouraged (use AUDIT01_OVERRIDE=1
+#                                  # for protected files; for other hooks
+#                                  # always investigate the failure first)
+#
+# CI: `.github/workflows/ci.yml :: pre-commit` job runs all hooks against
+# every PR. The matrix mirrors the local invocation.
+
+# Older Python language version pin so the hook tools install reliably on
+# minimal CI runners.
+default_language_version:
+  python: python3.13
+
+repos:
+  # Whitespace + EOF hygiene.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        exclude: ^\.github/workflows/.*\.yml$  # GH Actions YAML uses on: which check-yaml mis-parses
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+
+  # Ruff lint + format.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.10
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # Mypy strict — pilot allow-list (pyproject.toml [tool.mypy] files=).
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        # Pass through to pyproject.toml [tool.mypy]; pre-commit's own
+        # arg list intentionally NOT used so the source of truth stays
+        # in pyproject.toml.
+        args: ["--config-file=pyproject.toml"]
+        # Skip pre-commit's automatic file-args injection; we rely on
+        # the `files` list inside pyproject.toml [tool.mypy] for the
+        # pilot allow-list.
+        pass_filenames: false
+        additional_dependencies:
+          - rapidfuzz>=3.14
+          - beautifulsoup4>=4.13
+          - lxml>=6.0
+
+  # AUDIT-01 protected-file guard — CONTRIBUTING.md L58-78.
+  - repo: local
+    hooks:
+      - id: audit-01-protected-files
+        name: AUDIT-01 protected-file guard
+        entry: uv run python scripts/check_audit01_protected_files.py
+        language: system
+        pass_filenames: true
+        always_run: true
+        # Override mechanism: set AUDIT01_OVERRIDE=1 in env to bypass.
+        # Bypassing without operator approval is a CONTRIBUTING.md
+        # violation; the override is itself audited by leaving a shell-
+        # history trace and a PR-description checkbox citation.

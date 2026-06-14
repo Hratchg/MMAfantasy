@@ -1,0 +1,74 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+*.egg-info/
+dist/
+build/
+.ruff_cache/
+.pytest_cache/
+models/
+logs/
+
+# DB dumps (published via GitHub Releases)
+*.sql.gz
+*.sql.gz.sha256
+*.sql
+
+# Phase 22 — UFCStats event-detail HTML cache (REF audit; runtime-only)
+data/ufcstats_event_detail_cache/
+
+# Phase 20 / 29 — Sherdog fighter-page HTML cache (CAMP audit; runtime-only)
+data/sherdog_html_cache/
+data/sherdog_html_cache
+
+# v2.4 hygiene
+data/bfo/*.csv
+data/bfo/*.precanon
+data/bfo/*.bak
+*.precanon
+*.bak
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+TECHNICAL_HANDOFF.pdf
+# Plan 38-04 Wave 3 catch — local sqlite cache (CONTEXT silent; consistent with .env/.venv/models/ posture)
+ufc.db
+*.db
+
+# Phase 64 — TRAVEL substrate snapshot (regeneratable from scripts/build_travel_substrate_v261.py)
+data/intermediate/travel_substrate_v261.parquet
+
+# Phase 65 — xgb_v2_refv2 OOF predictions (regeneratable from scripts/retrain_xgb_v2_refv2.py)
+data/intermediate/xgb_v2_refv2_oof.parquet
+
+# Phase 65 — REF substrate snapshot (regeneratable from scripts/build_ref_substrate_v261.py)
+data/intermediate/ref_substrate_v261.parquet
+
+# Phase 66 — xgb_v2_netd OOF predictions (regeneratable from scripts/retrain_xgb_v2_netd.py)
+data/intermediate/xgb_v2_netd_oof.parquet
+
+# Phase 66 — NET substrate snapshot (regeneratable from scripts/build_net_substrate_v261.py)
+data/intermediate/net_substrate_v261.parquet
+
+# Phase 75 — canonical substrate snapshot (regeneratable from scripts/build_canonical_substrate_v27.py)
+# Default path + per-paired-substrate variants + filtered candidate sidecars.
+data/intermediate/canonical_substrate_v27.parquet
+data/intermediate/canonical_substrate_v27_*.parquet
+data/intermediate/*_filtered_v27.parquet
+
+# Phase 70 — TypeScript SDK build artifacts (regeneratable from `cd clients/typescript && npm ci`)
+clients/typescript/node_modules/
+
+# Phase 88 — corpus seed dump (HANDOFF-V30-02)
+# Allowlist: the seed directory holds the portable corpus snapshot + provenance.
+# If the compressed dump > 30 MB, the .dump file itself is excluded and is
+# shipped via the v3.0 GitHub Release; the .sha256 sidecar + PROVENANCE.md
+# always stay tracked. The 2026-06-10 dump landed at 10.42 MB → in-repo route.
+!data/seed/
+!data/seed/*.dump
+!data/seed/*.dump.sha256
+!data/seed/PROVENANCE.md
+!data/seed/download_corpus.sh
+
+# Build intermediates from scripts/generate_*_pdf.py
+docs/pdfs/*.html

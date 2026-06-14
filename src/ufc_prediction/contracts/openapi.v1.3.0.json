@@ -1,0 +1,1033 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "UFC Fight Prediction API",
+    "description": "UFC Fight Prediction is a fantasy-MMA decision-support tool intended to help fantasy players reason about matchups using historical performance data. For informational and entertainment purposes; not financial or wagering advice; statistical estimates may diverge from actual outcomes. The win-probability values, baseline comparisons, and calibration metrics surfaced by this API are machine-learning estimates trained on historical UFC fight data through May 2026. They are NOT predictions of future events, NOT guarantees of any particular outcome, and NOT a recommendation to place, modify, or refrain from any wager, fantasy pick, or other transaction. Model uncertainty is real and material: closing-odds-derived features can be missing or stale at predict time, sample sizes for debutants and short-tenured fighters are small, and the underlying corpus is incomplete in well-documented ways (significant-strike classification noise, referee scoring variance, late-injury substitutions, weight-cut anomalies, and judging idiosyncrasies). Partners integrating this API into a downstream product are solely responsible for assessing fitness for purpose, complying with local laws regarding fantasy contests, sports wagering, and games of skill, and clearly framing model outputs to their end users as statistical estimates rather than outcome predictions or guaranteed results. Nothing in this API constitutes regulated financial advice, tax guidance, sports-betting recommendations, legal counsel, or professional consultation of any kind, and use of the API does not establish any advisory or fiduciary relationship.",
+    "version": "2.3.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Liveness",
+        "description": "Liveness probe \u2014 no DB touch, returns app version.",
+        "operationId": "liveness_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Liveness Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Readiness",
+        "description": "Readiness probe \u2014 200 if SELECT 1 succeeds within 1s, else 503.",
+        "operationId": "readiness_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fighters/{name}": {
+      "get": {
+        "tags": [
+          "fighters"
+        ],
+        "summary": "Get Fighter",
+        "description": "Get fighter ratings by name.\n\nReturns full rating details for a single match, or a candidate list\nwhen multiple fighters match the search term (D-03, D-13).",
+        "operationId": "get_fighter_api_v1_fighters__name__get",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/FighterSearchResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FighterRatingResponse"
+                    }
+                  ],
+                  "title": "Response Get Fighter Api V1 Fighters  Name  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rankings/{division}": {
+      "get": {
+        "tags": [
+          "rankings"
+        ],
+        "summary": "Get Rankings",
+        "description": "Get top fighters in a division ranked by Elo.\n\nThe division parameter supports partial matching (e.g., 'light' matches\n'Lightweight'). The top parameter caps at 100 (T-09-02).",
+        "operationId": "get_rankings_api_v1_rankings__division__get",
+        "parameters": [
+          {
+            "name": "division",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Division"
+            }
+          },
+          {
+            "name": "top",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 15,
+              "title": "Top"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/matchup": {
+      "get": {
+        "tags": [
+          "matchup"
+        ],
+        "summary": "Get Matchup",
+        "description": "Compare two fighters across all matchup dimensions.\n\nReturns physical differentials, Elo comparison, striking/grappling\nmatrices, and style analysis.",
+        "operationId": "get_matchup_api_v1_matchup_get",
+        "parameters": [
+          {
+            "name": "a",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Fighter A name",
+              "title": "A"
+            },
+            "description": "Fighter A name"
+          },
+          {
+            "name": "b",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Fighter B name",
+              "title": "B"
+            },
+            "description": "Fighter B name"
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fighters/{name}/history": {
+      "get": {
+        "tags": [
+          "history"
+        ],
+        "summary": "Get Fighter History",
+        "description": "Get a fighter's chronological Elo trajectory.\n\nOptionally filter by division and elo_type (overall, striking, grappling).",
+        "operationId": "get_fighter_history_api_v1_fighters__name__history_get",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "division",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Division"
+            }
+          },
+          {
+            "name": "elo_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "overall",
+              "title": "Elo Type"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/FighterSearchResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/EloHistoryResponse"
+                    }
+                  ],
+                  "title": "Response Get Fighter History Api V1 Fighters  Name  History Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/predict": {
+      "post": {
+        "tags": [
+          "predict"
+        ],
+        "summary": "Predict",
+        "description": "Predict fight outcome for fighter_a vs fighter_b.\n\nForward-compatible with future META-V22-active responses (Phase 25 D-02).",
+        "operationId": "predict_api_v1_predict_post",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictMatchupRequestV1"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictorOutputV1"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DivisionRating": {
+        "properties": {
+          "division": {
+            "type": "string",
+            "title": "Division"
+          },
+          "elo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elo"
+          },
+          "striking_elo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Striking Elo"
+          },
+          "grappling_elo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grappling Elo"
+          },
+          "wins": {
+            "type": "integer",
+            "title": "Wins",
+            "default": 0
+          },
+          "losses": {
+            "type": "integer",
+            "title": "Losses",
+            "default": 0
+          },
+          "total_fights": {
+            "type": "integer",
+            "title": "Total Fights",
+            "default": 0
+          },
+          "last_fight_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Fight Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "division"
+        ],
+        "title": "DivisionRating",
+        "description": "Rating detail for one division a fighter competes in."
+      },
+      "EloHistoryPoint": {
+        "properties": {
+          "fight_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Fight Date"
+          },
+          "division": {
+            "type": "string",
+            "title": "Division"
+          },
+          "elo_before": {
+            "type": "number",
+            "title": "Elo Before"
+          },
+          "elo_after": {
+            "type": "number",
+            "title": "Elo After"
+          },
+          "elo_after_shrinkage": {
+            "type": "number",
+            "title": "Elo After Shrinkage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fight_date",
+          "division",
+          "elo_before",
+          "elo_after",
+          "elo_after_shrinkage"
+        ],
+        "title": "EloHistoryPoint",
+        "description": "A single point in a fighter's Elo trajectory."
+      },
+      "EloHistoryResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "fighter_id": {
+            "type": "integer",
+            "title": "Fighter Id"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/EloHistoryPoint"
+            },
+            "type": "array",
+            "title": "History"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "fighter_id",
+          "history"
+        ],
+        "title": "EloHistoryResponse",
+        "description": "Chronological Elo history for a fighter."
+      },
+      "FighterRatingResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "divisions": {
+            "items": {
+              "$ref": "#/components/schemas/DivisionRating"
+            },
+            "type": "array",
+            "title": "Divisions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "id",
+          "divisions"
+        ],
+        "title": "FighterRatingResponse",
+        "description": "Full fighter rating details (single match)."
+      },
+      "FighterSearchResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/FighterSearchResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "results"
+        ],
+        "title": "FighterSearchResponse",
+        "description": "Returned when a name search matches multiple fighters (D-13)."
+      },
+      "FighterSearchResult": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "division": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Division"
+          },
+          "elo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "id"
+        ],
+        "title": "FighterSearchResult",
+        "description": "Single fighter candidate returned when multiple matches exist."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PredictMatchupRequestV1": {
+        "properties": {
+          "fighter_a": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Fighter A",
+            "description": "Fighter A name (resolved via search_fighters)."
+          },
+          "fighter_b": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Fighter B",
+            "description": "Fighter B name."
+          },
+          "event_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Date",
+            "description": "As-of date for the prediction. Defaults to today() if omitted."
+          },
+          "accept_schema_version": {
+            "type": "string",
+            "enum": [
+              "1.0.0",
+              "1.1.0",
+              "1.2.0",
+              "1.3.0"
+            ],
+            "title": "Accept Schema Version",
+            "description": "Response schema_version to emit. Default 1.2.0; partners on older contracts pass '1.0.0' or '1.1.0' to opt out of new fields. v1.3.0 is identical to v1.2.0 on the success path (byte-identical via forward-compat lock); v1.3.0 partners additionally opt in to the RFC 7807 application/problem+json error wrapper by sending `Accept: application/problem+json` on the request. See Phase 52 API-V26-01 / API-V26-02.",
+            "default": "1.2.0"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fighter_a",
+          "fighter_b"
+        ],
+        "title": "PredictMatchupRequestV1",
+        "description": "Request body for POST /api/v1/predict."
+      },
+      "PredictionMetadataV12": {
+        "properties": {
+          "odds_source": {
+            "type": "string",
+            "enum": [
+              "live",
+              "cache",
+              "nan"
+            ],
+            "title": "Odds Source",
+            "description": "Source of the BFO closing-odds feature at predict time: 'live' (just-fetched), 'cache' (DB-stashed), 'nan' (absent)."
+          },
+          "odds_timestamp_iso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Odds Timestamp Iso",
+            "description": "ISO-8601 timestamp of when the odds row was fetched/cached. None when odds_source == 'nan'."
+          },
+          "fighter_a_n_ufc_fights": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Fighter A N Ufc Fights",
+            "description": "Count of fighter_a's UFC fights at predict time."
+          },
+          "fighter_b_n_ufc_fights": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Fighter B N Ufc Fights",
+            "description": "Count of fighter_b's UFC fights at predict time."
+          },
+          "is_debutant_either": {
+            "type": "boolean",
+            "title": "Is Debutant Either",
+            "description": "True if either fighter has zero prior UFC fights."
+          },
+          "calibration_slice_brier": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Slice Brier",
+            "description": "Brier score of the calibration slice whose date-window contains event_date (from models/meta/meta_v2_meta.json). None when no slice metadata is available."
+          }
+        },
+        "type": "object",
+        "required": [
+          "odds_source",
+          "fighter_a_n_ufc_fights",
+          "fighter_b_n_ufc_fights",
+          "is_debutant_either"
+        ],
+        "title": "PredictionMetadataV12",
+        "description": "CONTRACT-V24-02: additive v1.2.0 prediction_metadata block.\n\nSix partner-facing observability fields. Forward-compat: defaults to\nNone on PredictorOutputV1, so v1.0.0 + v1.1.0 partners see this field\nabsent / null (Phase 25 forward-compat lock)."
+      },
+      "PredictorOutputV1": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "title": "Schema Version",
+            "description": "Envelope minor version (per D-03; URL is major).",
+            "default": "1.0.0"
+          },
+          "win_probability": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Win Probability",
+            "description": "Canonical user-facing probability fighter_a wins (D-05(P19))."
+          },
+          "fighter_a": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Fighter A"
+          },
+          "fighter_b": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Fighter B"
+          },
+          "event_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Event Date"
+          },
+          "base_prob": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Prob",
+            "description": "Raw XGBoost probability before meta-learner wrapping."
+          },
+          "meta_prob": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta Prob",
+            "description": "Meta-learner output probability; None when meta is skipped."
+          },
+          "meta_learner_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta Learner Version",
+            "description": "Meta-learner version (e.g., 'v22.1') when meta is active; None otherwise."
+          },
+          "meta_skipped_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta Skipped Reason",
+            "description": "Reason meta was skipped (e.g., 'no_meta_artifact'); None when meta is active."
+          },
+          "gate_contract_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gate Contract Ref",
+            "description": "Path/version of gate contract used at prediction time (e.g., '.planning/gate_contract_v2.3.json'). Phase 32 D-04 (PARTNER-V23-01)."
+          },
+          "model_candidates": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Candidates",
+            "description": "Supported model candidates with byte-identity SHAs. Each entry: {name: str, sha256: str, phase: str}. Phase 32 D-04 (PARTNER-V23-01)."
+          },
+          "phase_chain_audit_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Chain Audit Sha",
+            "description": "AUDIT-01 chain leaf SHA (xgb_v2.joblib byte-identity). Phase 32 D-04 (PARTNER-V23-01)."
+          },
+          "prediction_metadata": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PredictionMetadataV12"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "v1.2.0 additive observability block. Populated when client passes accept_schema_version='1.2.0'; None for v1.0.0/v1.1.0."
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "description": "Entertainment / no-warranty / no-financial-advice disclaimer (HYGIENE-V24-02). Always populated; partners may surface or ignore. Constant string equal to ufc_prediction.api.disclaimer.DISCLAIMER_200W.",
+            "default": "UFC Fight Prediction is a fantasy-MMA decision-support tool intended to help fantasy players reason about matchups using historical performance data. For informational and entertainment purposes; not financial or wagering advice; statistical estimates may diverge from actual outcomes. The win-probability values, baseline comparisons, and calibration metrics surfaced by this API are machine-learning estimates trained on historical UFC fight data through May 2026. They are NOT predictions of future events, NOT guarantees of any particular outcome, and NOT a recommendation to place, modify, or refrain from any wager, fantasy pick, or other transaction. Model uncertainty is real and material: closing-odds-derived features can be missing or stale at predict time, sample sizes for debutants and short-tenured fighters are small, and the underlying corpus is incomplete in well-documented ways (significant-strike classification noise, referee scoring variance, late-injury substitutions, weight-cut anomalies, and judging idiosyncrasies). Partners integrating this API into a downstream product are solely responsible for assessing fitness for purpose, complying with local laws regarding fantasy contests, sports wagering, and games of skill, and clearly framing model outputs to their end users as statistical estimates rather than outcome predictions or guaranteed results. Nothing in this API constitutes regulated financial advice, tax guidance, sports-betting recommendations, legal counsel, or professional consultation of any kind, and use of the API does not establish any advisory or fiduciary relationship."
+          }
+        },
+        "type": "object",
+        "required": [
+          "win_probability",
+          "fighter_a",
+          "fighter_b",
+          "event_date"
+        ],
+        "title": "PredictorOutputV1",
+        "description": "Response body for POST /api/v1/predict.\n\nTwo production response shapes (both validate against this single schema \u2014\nbase_prob / meta_prob / meta_learner_version / meta_skipped_reason are\nOptional per Phase 25 D-05(P19) forward-compat \u2014 Pitfall #5 prevention):\n\n1. **META-V22-active (default since Phase 26, 2026-05-17):** the\n   meta-learner `models/meta/meta_v2.joblib` loads on startup; for any\n   matchup where BFO closing odds yield a non-NaN `closing_prob_diff`\n   feature, the meta is invoked and `win_probability == meta_prob`\n   (calibrated logistic stack over xgb_v2 OOF + Elo + closing odds + style\n   differentials). `meta_skipped=False`, `meta_skipped_reason=None`,\n   `meta_learner_version=\"v2\"`.\n\n2. **xgb_v2 base fallback:** triggers in two cases \u2014 (a) `closing_prob_diff`\n   is NaN at predict time (no BFO closing odds for the matchup; typical\n   for early-week or novel matchups before lines firm up), in which case\n   `meta_skipped_reason=\"nan_closing_prob_diff\"`; (b) the meta artifact is\n   absent from disk, in which case `meta_skipped_reason=\"no_meta_artifact\"`\n   (a deployment misconfiguration; should not occur in production). In\n   both cases `win_probability == base_prob == xgb_v2.predict_proba(...)`.\n\nThe same PredictorOutputV1 type covers both. Clients reading\n`meta_skipped_reason` can detect which path served their request."
+      },
+      "RankedFighter": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "fighter_id": {
+            "type": "integer",
+            "title": "Fighter Id"
+          },
+          "elo": {
+            "type": "number",
+            "title": "Elo"
+          },
+          "fights": {
+            "type": "integer",
+            "title": "Fights"
+          },
+          "last_active": {
+            "type": "string",
+            "format": "date",
+            "title": "Last Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "name",
+          "fighter_id",
+          "elo",
+          "fights",
+          "last_active"
+        ],
+        "title": "RankedFighter",
+        "description": "A fighter entry within a division ranking."
+      },
+      "RankingsResponse": {
+        "properties": {
+          "division": {
+            "type": "string",
+            "title": "Division"
+          },
+          "fighters": {
+            "items": {
+              "$ref": "#/components/schemas/RankedFighter"
+            },
+            "type": "array",
+            "title": "Fighters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "division",
+          "fighters"
+        ],
+        "title": "RankingsResponse",
+        "description": "Ranked list of fighters within a division."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

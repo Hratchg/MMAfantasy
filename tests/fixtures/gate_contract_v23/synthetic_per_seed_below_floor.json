@@ -1,0 +1,74 @@
+{
+  "_description": "Synthetic per-seed metrics with random_15pct slice formula_output < 0.70 (HALT-AND-DECIDE integration fixture).",
+  "_shape": "{seed: {slice: {brier_score, accuracy}}} (subset of evaluate_per_slice output).",
+  "per_seed": {
+    "42": {
+      "most_recent_12mo": {"brier_score": 0.21, "accuracy": 0.74},
+      "most_recent_24mo": {"brier_score": 0.22, "accuracy": 0.73},
+      "random_15pct":     {"brier_score": 0.24, "accuracy": 0.65}
+    },
+    "43": {
+      "most_recent_12mo": {"brier_score": 0.211, "accuracy": 0.741},
+      "most_recent_24mo": {"brier_score": 0.221, "accuracy": 0.731},
+      "random_15pct":     {"brier_score": 0.241, "accuracy": 0.651}
+    },
+    "44": {
+      "most_recent_12mo": {"brier_score": 0.209, "accuracy": 0.739},
+      "most_recent_24mo": {"brier_score": 0.219, "accuracy": 0.729},
+      "random_15pct":     {"brier_score": 0.239, "accuracy": 0.649}
+    },
+    "45": {
+      "most_recent_12mo": {"brier_score": 0.210, "accuracy": 0.740},
+      "most_recent_24mo": {"brier_score": 0.220, "accuracy": 0.730},
+      "random_15pct":     {"brier_score": 0.240, "accuracy": 0.650}
+    },
+    "46": {
+      "most_recent_12mo": {"brier_score": 0.212, "accuracy": 0.742},
+      "most_recent_24mo": {"brier_score": 0.222, "accuracy": 0.732},
+      "random_15pct":     {"brier_score": 0.242, "accuracy": 0.652}
+    },
+    "47": {
+      "most_recent_12mo": {"brier_score": 0.208, "accuracy": 0.738},
+      "most_recent_24mo": {"brier_score": 0.218, "accuracy": 0.728},
+      "random_15pct":     {"brier_score": 0.238, "accuracy": 0.648}
+    },
+    "48": {
+      "most_recent_12mo": {"brier_score": 0.213, "accuracy": 0.743},
+      "most_recent_24mo": {"brier_score": 0.223, "accuracy": 0.733},
+      "random_15pct":     {"brier_score": 0.243, "accuracy": 0.653}
+    },
+    "49": {
+      "most_recent_12mo": {"brier_score": 0.207, "accuracy": 0.737},
+      "most_recent_24mo": {"brier_score": 0.217, "accuracy": 0.727},
+      "random_15pct":     {"brier_score": 0.237, "accuracy": 0.647}
+    },
+    "50": {
+      "most_recent_12mo": {"brier_score": 0.214, "accuracy": 0.744},
+      "most_recent_24mo": {"brier_score": 0.224, "accuracy": 0.734},
+      "random_15pct":     {"brier_score": 0.244, "accuracy": 0.654}
+    },
+    "51": {
+      "most_recent_12mo": {"brier_score": 0.206, "accuracy": 0.736},
+      "most_recent_24mo": {"brier_score": 0.216, "accuracy": 0.726},
+      "random_15pct":     {"brier_score": 0.236, "accuracy": 0.646}
+    }
+  },
+  "_aggregated_synthetic": {
+    "_description": "Synthetic variance dict; random_15pct std small so formula_output = 0.65 + 0.01 = 0.66 < 0.70 (BREACH).",
+    "most_recent_12mo": {
+      "seed_std_brier": 0.0025, "seed_std_acc": 0.0025,
+      "bootstrap_ci_half_brier": 0.0035, "bootstrap_ci_half_acc": 0.0035,
+      "std_brier_used": 0.0035, "std_acc_used": 0.0035
+    },
+    "most_recent_24mo": {
+      "seed_std_brier": 0.0025, "seed_std_acc": 0.0025,
+      "bootstrap_ci_half_brier": 0.0035, "bootstrap_ci_half_acc": 0.0035,
+      "std_brier_used": 0.0035, "std_acc_used": 0.0035
+    },
+    "random_15pct": {
+      "seed_std_brier": 0.0025, "seed_std_acc": 0.005,
+      "bootstrap_ci_half_brier": 0.0035, "bootstrap_ci_half_acc": 0.010,
+      "std_brier_used": 0.0035, "std_acc_used": 0.010
+    }
+  }
+}

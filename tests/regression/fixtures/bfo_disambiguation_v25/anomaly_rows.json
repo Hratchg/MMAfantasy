@@ -1,0 +1,99 @@
+[
+  {
+    "year": 2011,
+    "bfo_name": "Antonio Banuelos",
+    "bfo_fighter_id": "bfo-2011-a",
+    "database": "ufcstats",
+    "database_id": "4957",
+    "candidate_pool": [
+      [4957, "Antonio Banuelos"],
+      [9001, "Antonio Banuelos Jr."],
+      [9002, "Tony Banuelos"]
+    ],
+    "expected_canonical_fighter_id": 4957,
+    "notes": "Anomaly row sourced from Plan 41-01 cascade Stage 2->3 drop sample: db_fight_id=10311 (2011-03-19, db:4957 vs db:4956). Canonical database_id=4957 exists in fighters_names.csv; pre-fix _match_fighters re-fuzz-matched and could mis-attribute to a near-name homonym in the broader DB pool, causing _resolve_fight to fail downstream."
+  },
+  {
+    "year": 2011,
+    "bfo_name": "Cole Escovedo",
+    "bfo_fighter_id": "bfo-2011-b",
+    "database": "ufcstats",
+    "database_id": "4956",
+    "candidate_pool": [
+      [4956, "Cole Escovedo"],
+      [9010, "Cole Escobar"],
+      [9011, "Kole Escovedo"]
+    ],
+    "expected_canonical_fighter_id": 4956,
+    "notes": "Anomaly row sourced from Plan 41-01 cascade Stage 2->3 drop sample (paired with 2011-03-19 anomaly fight db:10311). database_id=4956 from canonical alias substrate."
+  },
+  {
+    "year": 2013,
+    "bfo_name": "Jorge Masvidal",
+    "bfo_fighter_id": "bfo-2013-a",
+    "database": "ufcstats",
+    "database_id": "5036",
+    "candidate_pool": [
+      [5036, "Jorge Masvidal"],
+      [9020, "Jorge Macedo"],
+      [9021, "George Masvidal"]
+    ],
+    "expected_canonical_fighter_id": 5036,
+    "notes": "Anomaly row sourced from Plan 41-01 cascade Stage 2->3 drop sample: db_fight_id=11042 (2013-05-25, db:5036 vs db:5066). Canonical alias substrate gives database_id=5036 directly; fuzzy fallback risks selecting near-name candidate."
+  },
+  {
+    "year": 2019,
+    "bfo_name": "Niko Price",
+    "bfo_fighter_id": "bfo-2019-a",
+    "database": "ufcstats",
+    "database_id": "5054",
+    "candidate_pool": [
+      [5054, "Niko Price"],
+      [9030, "Nico Price"],
+      [9031, "Nick Price"]
+    ],
+    "expected_canonical_fighter_id": 5054,
+    "notes": "Anomaly row sourced from Plan 41-01 cascade Stage 2->3 drop sample: db_fight_id=14159 (2019-12-07, db:5054 vs db:6017). Canonical database_id=5054 short-circuits the fuzzy matcher and prevents mis-attribution that would fail _resolve_fight."
+  },
+  {
+    "year": 2020,
+    "bfo_name": "Tim Means",
+    "bfo_fighter_id": "bfo-2020-a",
+    "database": "ufcstats",
+    "database_id": "4865",
+    "candidate_pool": [
+      [4865, "Tim Means"],
+      [9040, "Timothy Means"],
+      [9041, "Tim Meens"]
+    ],
+    "expected_canonical_fighter_id": 4865,
+    "notes": "Anomaly-year fixture (2020). Plan 41-01 cascade reports 2020 anomaly: stage0=632 BFO src -> stage2=409 resolvable pairs -> stage3=2 actually populated (99.51% silent ingest drop). database_id=4865 from canonical alias substrate; pre-fix re-fuzz at ingest is the documented drop source."
+  },
+  {
+    "year": 2020,
+    "bfo_name": "Marvin Vettori",
+    "bfo_fighter_id": "bfo-2020-b",
+    "database": "ufcstats",
+    "database_id": "5781",
+    "candidate_pool": [
+      [5781, "Marvin Vettori"],
+      [9050, "Marvin Vettoria"],
+      [9051, "Martin Vettori"]
+    ],
+    "expected_canonical_fighter_id": 5781,
+    "notes": "Anomaly-year fixture (2020). Second 2020 fixture to exercise multiple near-name homonym scenarios within the worst-coverage anomaly year (2.69%). database_id=5781 canonical."
+  },
+  {
+    "year": 2019,
+    "bfo_name": "Joaquin Buckley",
+    "bfo_fighter_id": "bfo-2019-no-canonical",
+    "database": "ufcstats",
+    "database_id": null,
+    "candidate_pool": [
+      [9060, "Joaquin Buckley"],
+      [9061, "Joaquin Buckly"]
+    ],
+    "expected_canonical_fighter_id": 9060,
+    "notes": "FALLBACK path fixture: canonical database_id missing (blank in alias substrate); fix MUST fall back to match_bfo_name() and return 9060 via fuzzy matching. Verifies the fix does not regress legitimate fuzzy-fallback cases."
+  }
+]

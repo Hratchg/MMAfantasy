@@ -1,0 +1,95 @@
+{
+  "_provenance": "Integration-tier BFO-V25-03 regression fixture. Sourced from Plan 41-01 §2.6 cascade Stage 2->3 drop sample (anomaly: 2019-12-07 Niko Price vs db:6017, db_fight_id=14159) + control row (2022-07-02 Alexander Volkanovski showcase) reshaped to the real Postgres schema (events + fighters + fights + BFO source CSV + alias map). The DB ids in this fixture are FIXTURE-LOCAL ints — they do NOT have to match the production database. The integration test seeds these into a fresh testcontainers Postgres, exercises BFOOddsIngester._match_fighters() against the seeded substrate, and asserts the resolved DB Fighter.id matches expected_resolutions. Notes carry a pointer back to Plan 41-02's anomaly_rows.json fixture row by bfo_fighter_id.",
+  "anomaly_row": {
+    "year": 2019,
+    "event": {
+      "name": "UFC on ESPN 7 (integration fixture)",
+      "event_date": "2019-12-07",
+      "source": "test-integration"
+    },
+    "fighters": [
+      {
+        "fixture_db_id": 5054,
+        "canonical_name": "Niko Price",
+        "near_name_homonyms": ["Nico Price", "Nick Price"],
+        "source": "test-integration"
+      },
+      {
+        "fixture_db_id": 6017,
+        "canonical_name": "James Vick",
+        "near_name_homonyms": ["James Vic"],
+        "source": "test-integration"
+      }
+    ],
+    "fight": {
+      "weight_class": "Welterweight",
+      "fixture_db_fighter_a_id": 5054,
+      "fixture_db_fighter_b_id": 6017,
+      "source": "test-integration",
+      "_provenance": "Mirrors Plan 41-01 §2.6 cascade sample row 'Resolved key 2019-12-07|db:5054|db:6017' (DB fight_id=14159 in production). Pre-fix bfo_ingest dropped this row at Stage 2->3 via fuzzy-matcher mis-attribution."
+    },
+    "bfo_source": {
+      "bfo_fighter_a": {
+        "bfo_fighter_id": "bfo-2019-anomaly-a",
+        "bfo_name": "Niko Price",
+        "database": "ufcstats",
+        "database_id": "5054"
+      },
+      "bfo_fighter_b": {
+        "bfo_fighter_id": "bfo-2019-anomaly-b",
+        "bfo_name": "James Vick",
+        "database": "ufcstats",
+        "database_id": "6017"
+      }
+    }
+  },
+  "control_row": {
+    "year": 2022,
+    "event": {
+      "name": "UFC 276 (integration control fixture)",
+      "event_date": "2022-07-02",
+      "source": "test-integration"
+    },
+    "fighters": [
+      {
+        "fixture_db_id": 5610,
+        "canonical_name": "Alexander Volkanovski",
+        "near_name_homonyms": ["Alex Volkanovski"],
+        "source": "test-integration"
+      },
+      {
+        "fixture_db_id": 5611,
+        "canonical_name": "Max Holloway",
+        "near_name_homonyms": ["Max Holoway"],
+        "source": "test-integration"
+      }
+    ],
+    "fight": {
+      "weight_class": "Featherweight",
+      "fixture_db_fighter_a_id": 5610,
+      "fixture_db_fighter_b_id": 5611,
+      "source": "test-integration",
+      "_provenance": "Non-anomaly-year (2022) control row. Healthy post-2021 cohort. No-regression guard: this row's resolution MUST be identical pre-fix and post-fix."
+    },
+    "bfo_source": {
+      "bfo_fighter_a": {
+        "bfo_fighter_id": "bfo-2022-control-a",
+        "bfo_name": "Alexander Volkanovski",
+        "database": "ufcstats",
+        "database_id": "5610"
+      },
+      "bfo_fighter_b": {
+        "bfo_fighter_id": "bfo-2022-control-b",
+        "bfo_name": "Max Holloway",
+        "database": "ufcstats",
+        "database_id": "5611"
+      }
+    }
+  },
+  "expected_resolutions": {
+    "anomaly_fighter_a_id": 5054,
+    "anomaly_fighter_b_id": 6017,
+    "control_fighter_a_id": 5610,
+    "control_fighter_b_id": 5611
+  }
+}

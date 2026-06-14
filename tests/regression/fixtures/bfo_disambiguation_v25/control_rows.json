@@ -1,0 +1,28 @@
+[
+  {
+    "year": 2018,
+    "bfo_name": "Khabib Nurmagomedov",
+    "bfo_fighter_id": "bfo-2018-a",
+    "database": "ufcstats",
+    "database_id": "5499",
+    "candidate_pool": [
+      [5499, "Khabib Nurmagomedov"],
+      [9070, "Khabib Nurmagomev"]
+    ],
+    "expected_canonical_fighter_id": 5499,
+    "notes": "CONTROL row (non-anomaly year 2018, BFO coverage 10.07%). Canonical database_id present and resolves to the same id pre-fix and post-fix. No-regression guard: this row's resolution MUST be byte-identical across the fix boundary."
+  },
+  {
+    "year": 2022,
+    "bfo_name": "Alexander Volkanovski",
+    "bfo_fighter_id": "bfo-2022-a",
+    "database": "ufcstats",
+    "database_id": "5610",
+    "candidate_pool": [
+      [5610, "Alexander Volkanovski"],
+      [9080, "Alex Volkanovski"]
+    ],
+    "expected_canonical_fighter_id": 5610,
+    "notes": "CONTROL row (non-anomaly year 2022, BFO coverage 31.56%). database_id=5610 canonical; post-2021 regime is already healthy. Verifies the fix is benign on the healthy cohort."
+  }
+]

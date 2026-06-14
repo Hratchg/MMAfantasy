@@ -1,0 +1,100 @@
+{
+  "description": "Response body for POST /api/v1/predict.\n\nForward-compatible with future META-V22-active responses:\nbase_prob / meta_prob / meta_learner_version / meta_skipped_reason\nare Optional. Current xgb_v2-only production responses populate\nbase_prob == win_probability and meta_skipped_reason=\"no_meta_artifact\".",
+  "properties": {
+    "schema_version": {
+      "default": "1.0.0",
+      "description": "Envelope minor version (per D-03; URL is major).",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "win_probability": {
+      "description": "Canonical user-facing probability fighter_a wins (D-05(P19)).",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Win Probability",
+      "type": "number"
+    },
+    "fighter_a": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Fighter A",
+      "type": "string"
+    },
+    "fighter_b": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Fighter B",
+      "type": "string"
+    },
+    "event_date": {
+      "format": "date",
+      "title": "Event Date",
+      "type": "string"
+    },
+    "base_prob": {
+      "anyOf": [
+        {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Raw XGBoost probability before meta-learner wrapping.",
+      "title": "Base Prob"
+    },
+    "meta_prob": {
+      "anyOf": [
+        {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Meta-learner output probability; None when meta is skipped.",
+      "title": "Meta Prob"
+    },
+    "meta_learner_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Meta-learner version (e.g., 'v22.1') when meta is active; None otherwise.",
+      "title": "Meta Learner Version"
+    },
+    "meta_skipped_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Reason meta was skipped (e.g., 'no_meta_artifact'); None when meta is active.",
+      "title": "Meta Skipped Reason"
+    }
+  },
+  "required": [
+    "win_probability",
+    "fighter_a",
+    "fighter_b",
+    "event_date"
+  ],
+  "title": "PredictorOutputV1",
+  "type": "object"
+}

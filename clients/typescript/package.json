@@ -1,0 +1,30 @@
+{
+  "name": "@ufc-fight-prediction/sdk-ts",
+  "version": "1.3.0",
+  "private": true,
+  "description": "TypeScript SDK for the UFC Fight Prediction PARTNER v1.x API. Auto-generated from the OpenAPI schema in src/ufc_prediction/contracts/. Ships read-only types — wrap with your fetch client of choice.",
+  "license": "MIT",
+  "main": "src/v1/predict.ts",
+  "types": "src/v1/predict.ts",
+  "files": [
+    "src/v1/predict.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "codegen": "./codegen.sh",
+    "codegen:check": "./codegen.sh && git diff --exit-code src/v1/predict.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.6.1",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anthropic/ufc-fight-prediction.git",
+    "directory": "clients/typescript"
+  }
+}

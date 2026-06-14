@@ -1,0 +1,36 @@
+{
+  "emitter": "scripts/_emit_30_variance_fixtures.py",
+  "meta_v22_feature_columns": [
+    "xgb_oof_prob",
+    "elo_prob",
+    "closing_prob_diff",
+    "stance_matchup",
+    "height_diff",
+    "reach_diff",
+    "days_since_last_fight_diff",
+    "age_diff",
+    "elo_overall_diff",
+    "elo_striking_diff",
+    "elo_grappling_diff",
+    "division_finish_rate_shrunk",
+    "sharp_money_signal"
+  ],
+  "n_cols": 13,
+  "n_rows": 600,
+  "note": "Fixture column count is 13 (len(META_V22_FEATURE_COLUMNS)), not 14 as stated in 30-01-PLAN.md. The plan miscounts the dedup'd set by 1; the constant is the load-bearing identity. Documented as Rule-1 deviation in 30-01-SUMMARY.md.",
+  "per_slice_counts": {
+    "most_recent_12mo": 189,
+    "most_recent_24mo": 375,
+    "random_15pct": 104
+  },
+  "per_slice_keys": [
+    "most_recent_12mo",
+    "most_recent_24mo",
+    "random_15pct"
+  ],
+  "plan": "30-01",
+  "produced_at": "2026-05-22T00:09:46.613425+00:00",
+  "synthetic": true,
+  "synthetic_seed": 0,
+  "today_anchor": "2026-05-21"
+}

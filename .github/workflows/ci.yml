@@ -1,0 +1,81 @@
+name: ci
+
+# HYGIENE-V24-05 (Phase 38) — Pull-request gate.
+# DX-V26-01/04 (Phase 50) — extended with pre-commit job.
+#
+# CONTEXT.md decisions (LOCKED):
+#   - on: pull_request (any branch) + workflow_dispatch (manual)
+#   - Python 3.13 only (matches Phase 36 DEPLOY-V24-02 pin)
+#   - concurrency: ci-${{ github.head_ref }} with cancel-in-progress: true
+#   - astral-sh/setup-uv@v3 (handles uv cache automatically)
+#   - jobs:
+#       lint-and-test: ruff check → ruff format --check → pytest -q -m "not slow"
+#       pre-commit:    pre-commit run --all-files (DX-V26-01; Phase 50)
+#
+# Branch protection (operator-managed via GitHub Settings → Branches per
+# CONTRIBUTING.md) requires BOTH workflow status checks to pass before
+# PRs into master can merge.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-test:
+    name: Lint + tests (Python 3.13)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv (Python 3.13)
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies (frozen lockfile)
+        run: uv sync --frozen
+
+      - name: ruff check
+        run: uv run ruff check
+
+      - name: ruff format --check
+        run: uv run ruff format --check
+
+      - name: pytest (excluding slow-marked tests)
+        run: uv run pytest -q -m "not slow"
+
+  pre-commit:
+    name: pre-commit hooks (DX-V26-01)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv (for the AUDIT-01 guard's `uv run` invocation)
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies (frozen lockfile)
+        run: uv sync --frozen
+
+      - name: Cache pre-commit hook environments
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            pre-commit-${{ runner.os }}-
+
+      - name: Run pre-commit (all hooks, all files)
+        uses: pre-commit/action@v3.0.1

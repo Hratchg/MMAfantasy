@@ -1,0 +1,48 @@
+# Version control
+.git/
+.gitignore
+.github/
+
+# Virtual envs / cached Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Tests + dev tooling
+tests/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Planning + docs (keep README.md only)
+.planning/
+docs/
+.claude/
+*.md
+!README.md
+
+# Local data scrape outputs
+data/bfo/*.csv
+data/bfo/*.csv.precanon
+data/bfo/*.bak
+*.bak
+*.precanon
+
+# Sqlite working DB
+ufc.db
+*.sqlite
+*.sqlite-journal
+
+# Generated PDFs / handoff binaries
+*.pdf
+TECHNICAL_HANDOFF.md
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Existing/already-tracked artifacts we don't need in the image
+generate_pdf.py
+generate_subset_pdf.py

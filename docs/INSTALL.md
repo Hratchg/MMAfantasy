@@ -10,7 +10,8 @@
 
 - Python `>=3.13.0,!=3.13.1` — pinned in `pyproject.toml`.
 - [`uv`](https://github.com/astral-sh/uv) — canonical install / venv manager for this repo. `uv` is the only supported toolchain entry point; `pip install -e .` is unsupported.
-- Docker (recommended) **or** a local Postgres 16 install.
+- Docker (recommended) **or** a local Postgres 17+ install. (Postgres **17 or newer** — `ufc db seed` restores via a modern host `pg_restore`, which emits a `SET transaction_timeout` that Postgres 16 servers reject.)
+- `pg_restore` on your `PATH` — `ufc db seed` shells out to it. On macOS: `brew install libpq` then `export PATH="/opt/homebrew/opt/libpq/bin:$PATH"`. On Linux it ships with `postgresql-client`. (`psql` from the same package is handy for the connectivity check below but not strictly required.)
 - Linux or macOS. Windows is out of scope for v3.0.
 
 ## 1. Clone the repo
@@ -36,26 +37,40 @@ available via `uv run ufc …`. If `uv` itself is missing, install it first with
 
 ## 3. Start a local Postgres
 
-Primary path — Docker (recommended):
+Primary path — Docker Compose (recommended). This is the canonical local DB: it
+matches the `database_url` default in `config.py`, `.env.example`, and the
+shipped corpus provenance (host port **5433**, database **`ufc_prediction`**).
+
+```bash
+docker compose up -d db
+```
+
+Raw `docker run` alternative (same credentials, host port `5433`, Postgres 18):
 
 ```bash
 docker run -d --name ufc-pg \
   -e POSTGRES_USER=ufc \
   -e POSTGRES_PASSWORD=ufc \
-  -e POSTGRES_DB=ufc \
-  -p 5432:5432 \
-  postgres:16-alpine
+  -e POSTGRES_DB=ufc_prediction \
+  -p 5433:5432 \
+  postgres:18-alpine
 ```
 
-Bare-metal fallback: install Postgres 16 (`brew install postgresql@16` on macOS, distro package on Linux), then create role `ufc` and database `ufc` matching the Docker credentials above.
+> **Postgres version:** use **17 or newer**. `ufc db seed` restores the corpus
+> with the host `pg_restore`; a modern client (17/18) emits `SET
+> transaction_timeout`, which a Postgres 16 server rejects and the restore
+> fails. The bundled `docker-compose.yml` pins `postgres:18` for this reason.
 
-Create a project-local `.env` file at the repo root:
+Bare-metal fallback: install Postgres 17+ (`brew install postgresql@17` on macOS, distro package on Linux), then create role `ufc` and database `ufc_prediction` matching the credentials above (and either run it on port `5433` or adjust `DATABASE_URL`).
+
+Create a project-local `.env` file at the repo root (the `postgresql+psycopg://`
+scheme is required — SQLAlchemy rejects a bare `postgres://` URL):
 
 ```env
-DATABASE_URL=postgres://ufc:ufc@localhost:5432/ufc
+DATABASE_URL=postgresql+psycopg://ufc:ufc@localhost:5433/ufc_prediction
 ```
 
-**What you should see:** `docker ps` lists `ufc-pg` as `Up`. `psql $DATABASE_URL -c '\dt'` connects and returns an empty table list (that is expected pre-seed).
+**What you should see:** `docker ps` lists the Postgres container as `Up`. `psql "$DATABASE_URL" -c '\dt'` connects and returns an empty table list (that is expected pre-seed).
 
 ## 4. Load the corpus seed
 

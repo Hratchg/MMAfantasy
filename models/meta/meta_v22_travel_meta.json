@@ -1,0 +1,63 @@
+{
+  "meta_version": "v22_travel",
+  "meta_kind": "logistic",
+  "base_model_version": "v2",
+  "base_model_sha256": "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099",
+  "meta_v2_base_sha256": "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196",
+  "phase": "42",
+  "trained_by_script": "scripts/compose_v25_travel.py",
+  "feature_columns": [
+    "xgb_oof_prob",
+    "elo_prob",
+    "closing_prob_diff",
+    "stance_matchup",
+    "height_diff",
+    "reach_diff",
+    "days_since_last_fight_diff",
+    "age_diff",
+    "elo_overall_diff",
+    "elo_striking_diff",
+    "elo_grappling_diff",
+    "division_finish_rate_shrunk",
+    "sharp_money_signal",
+    "travel_distance_km",
+    "tz_shift_hours"
+  ],
+  "slice_metrics": {
+    "most_recent_12mo": {
+      "brier_score": 0.13038022070645106,
+      "accuracy": 0.8177777777777778
+    },
+    "most_recent_24mo": {
+      "brier_score": 0.13038022070645106,
+      "accuracy": 0.8177777777777778
+    },
+    "random_15pct": {
+      "brier_score": 0.1442543919033044,
+      "accuracy": 0.8227848101265823
+    }
+  },
+  "baseline_slice_metrics": {
+    "most_recent_12mo": {
+      "brier_score": 0.37959114241038405,
+      "accuracy": 0.5866666666666667
+    },
+    "most_recent_24mo": {
+      "brier_score": 0.37959114241038405,
+      "accuracy": 0.5866666666666667
+    },
+    "random_15pct": {
+      "brier_score": 0.384741893115681,
+      "accuracy": 0.6075949367088608
+    }
+  },
+  "gate_contract_ref": ".planning/gate_contract_v2.3.json",
+  "formula_hash": "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a",
+  "substrate_version": "v2.5",
+  "path_materialized": "path_a",
+  "produced_at": "2026-06-02T03:47:59.064346+00:00",
+  "sibling_of": "models/meta/meta_v2.joblib",
+  "canonical_status": "candidate_sibling_NOT_canonical",
+  "phase_45_input_stack": "[META-V22, CALIB, TRAVEL]",
+  "operator_caveat": "Baseline Brier in baseline_slice_metrics is from runtime XGB OOF regeneration on v2.5 substrate (--no-cache-oof), not the training-time OOF that meta_v2.joblib was calibrated against. Delta vs slice_metrics is apples-to-apples on the SAME eval matrix; absolute magnitudes are NOT comparable to Phase 26 / Phase 32 published baselines. Phase 45 should reproduce on training-time OOF before any canonical-promotion decision."
+}

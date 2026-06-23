@@ -1,6 +1,10 @@
 services:
   db:
-    image: postgres:16
+    # postgres:18 — must be >= the host `pg_restore` client used by `ufc db seed`.
+    # A modern pg_restore (17/18, shipped by current libpq) emits
+    # `SET transaction_timeout` which a postgres:16 server rejects, failing the
+    # restore. Keeping the server >= client avoids that version skew.
+    image: postgres:18
     environment:
       POSTGRES_USER: ufc
       POSTGRES_PASSWORD: ufc
@@ -8,7 +12,10 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # postgres:18+ stores data in a major-version subdir, so the volume must
+      # mount the parent (/var/lib/postgresql), NOT /var/lib/postgresql/data.
+      # See https://github.com/docker-library/postgres/pull/1259
+      - pgdata:/var/lib/postgresql
 
 volumes:
   pgdata:

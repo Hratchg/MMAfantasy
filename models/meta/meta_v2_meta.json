@@ -1,0 +1,189 @@
+{
+  "meta_version": "v2_candidate",
+  "meta_kind": "logistic",
+  "meta_feature_columns": [
+    "xgb_oof_prob",
+    "elo_prob",
+    "closing_prob_diff",
+    "stance_matchup",
+    "height_diff",
+    "reach_diff",
+    "days_since_last_fight_diff",
+    "age_diff",
+    "elo_overall_diff",
+    "elo_striking_diff",
+    "elo_grappling_diff",
+    "division_finish_rate_shrunk",
+    "sharp_money_signal"
+  ],
+  "meta_input_distribution_hash": "92b1cd3084f1ad94f93e80389ff826db0681240317438a7c3a933cea27f29dae",
+  "meta_oof_parquet_sha256": "edb413cd760169f9de6a38786c65a9447fb34fec8f6b80ae2846f0a7cbbd936d",
+  "base_model_version": "v2",
+  "base_model_sha256": "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099",
+  "meta_learner_brier_delta_vs_logistic": 0.0,
+  "best_params": {
+    "C": 1.0,
+    "penalty": "l2",
+    "solver": "lbfgs",
+    "PolynomialFeatures": "degree=2 interaction_only=True include_bias=False"
+  },
+  "metrics": {
+    "per_slice_median": {
+      "most_recent_12mo": {
+        "brier_score": 0.2130592930571425,
+        "auc_roc": 0.7321961620469083,
+        "accuracy": 0.7007299270072993,
+        "calibration_curve": {
+          "fraction_of_positives": [
+            0.2727272727272727,
+            0.29411764705882354,
+            0.21428571428571427,
+            0.25,
+            0.3548387096774194,
+            0.6296296296296297,
+            0.6206896551724138,
+            0.6666666666666666,
+            0.71875,
+            0.8666666666666667
+          ],
+          "mean_predicted_value": [
+            0.073620313356833,
+            0.15867293890662854,
+            0.247941601631937,
+            0.3437666264760613,
+            0.4455964909259628,
+            0.5533332583460107,
+            0.6603728509336882,
+            0.7512099719013372,
+            0.8483774009477644,
+            0.9339770641154028
+          ]
+        }
+      },
+      "most_recent_24mo": {
+        "brier_score": 0.2130592930571425,
+        "auc_roc": 0.7321961620469083,
+        "accuracy": 0.7007299270072993,
+        "calibration_curve": {
+          "fraction_of_positives": [
+            0.2727272727272727,
+            0.29411764705882354,
+            0.21428571428571427,
+            0.25,
+            0.3548387096774194,
+            0.6296296296296297,
+            0.6206896551724138,
+            0.6666666666666666,
+            0.71875,
+            0.8666666666666667
+          ],
+          "mean_predicted_value": [
+            0.073620313356833,
+            0.15867293890662854,
+            0.247941601631937,
+            0.3437666264760613,
+            0.4455964909259628,
+            0.5533332583460107,
+            0.6603728509336882,
+            0.7512099719013372,
+            0.8483774009477644,
+            0.9339770641154028
+          ]
+        }
+      },
+      "random_15pct": {
+        "brier_score": 0.18669529738223767,
+        "auc_roc": 0.7863636363636364,
+        "accuracy": 0.7857142857142857,
+        "calibration_curve": {
+          "fraction_of_positives": [
+            0.0,
+            0.5,
+            0.0,
+            0.3333333333333333,
+            0.0,
+            0.8571428571428571,
+            0.0,
+            0.75,
+            0.8333333333333334,
+            0.8
+          ],
+          "mean_predicted_value": [
+            0.09540518030037558,
+            0.1565140916378303,
+            0.24994997467444105,
+            0.36179722038512824,
+            0.46641323768961107,
+            0.5774416220312322,
+            0.6772095806056545,
+            0.7613838011937999,
+            0.8544694679423651,
+            0.9304920713581876
+          ]
+        }
+      }
+    },
+    "gate_verdict_passed": true,
+    "stepwise_clears_vs_xgb_v2": true,
+    "hurdle_failures": [],
+    "ship_outcome": "PASS"
+  },
+  "trained_at": "2026-05-17T18:19:42.032803+00:00",
+  "trained_by_script": "scripts/train_meta_v22.py",
+  "phase": "26",
+  "sklearn_version": "1.8.0",
+  "python_version": "3.14.4 (main, Apr 14 2026, 14:46:33) [Clang 22.1.3 ]",
+  "v2_3_slice_metrics": {
+    "most_recent_12mo": {
+      "brier_score": 0.9316660838576767,
+      "auc_roc": null,
+      "accuracy": 0.0,
+      "calibration_curve": {
+        "fraction_of_positives": [
+          1.0
+        ],
+        "mean_predicted_value": [
+          0.03477148619734784
+        ],
+        "n_bins": 2,
+        "strategy": "uniform"
+      },
+      "n": 1,
+      "n_total_slice": 459,
+      "n_after_nan_drop": 1,
+      "measured_at": "2026-05-27T05:23:12.136428+00:00"
+    },
+    "most_recent_24mo": {
+      "brier_score": 0.1863376384900389,
+      "auc_roc": 1.0,
+      "accuracy": 0.8,
+      "calibration_curve": {
+        "fraction_of_positives": [
+          0.3333333333333333,
+          1.0
+        ],
+        "mean_predicted_value": [
+          0.013138358621804356,
+          0.9982826377324718
+        ],
+        "n_bins": 2,
+        "strategy": "uniform"
+      },
+      "n": 5,
+      "n_total_slice": 967,
+      "n_after_nan_drop": 5,
+      "measured_at": "2026-05-27T05:23:12.137078+00:00"
+    },
+    "random_15pct": {
+      "brier_score": null,
+      "auc_roc": null,
+      "accuracy": null,
+      "calibration_curve": null,
+      "n": 0,
+      "n_total_slice": 267,
+      "n_after_nan_drop": 0,
+      "measured_at": "2026-05-27T05:23:12.137092+00:00",
+      "nan_drop_caveat": "Level-1 features include closing_prob_diff which is 99.5% NaN on post-cutoff Event.source='ufcstats' rows (pre-existing data gap \u2014 BFO Phase 21 backfill primarily covered training-side fights). Per RESEARCH Open Q1 + Pitfall 3."
+    }
+  }
+}

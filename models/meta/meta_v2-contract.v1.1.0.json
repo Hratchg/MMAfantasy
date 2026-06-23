@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.1.0",
+  "gate_contract_ref": ".planning/gate_contract_v2.3.json",
+  "feature_columns_hash": "2251bb67a2ebd4db34b5631aa7cef7e47aca6d445390489ac20003a7c35b36b7",
+  "min_partner_version_supported": "1.0.0",
+  "deprecation_policy": "N >= 2 minor versions",
+  "model_artifact_sha256": "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196",
+  "created_at": "2026-05-17",
+  "promoted_at": "2026-05-17",
+  "candidate_or_promoted": "promoted",
+  "promoted_to_production_in_phase": "26",
+  "preserved_through_milestone": "v2.3",
+  "v2_3_gate_assessment": "preserved-without-re-measurement: Phase 32 composition tested a fresh META-V22-shape candidate on the v2.3 widened substrate (Path B materialized — CALIB cleared triple-gate but REF+TRAVEL didn't add value). The production meta_v2.joblib weights were not re-trained or re-measured on v2.3 widened slices. Re-measurement is open as v2.4+ scope.",
+  "notes": "Emitted 2026-05-26 to close the gap where Phase 32 Plan 32-02 created xgb_v2-contract.v1.1.0.json but did not emit the meta sibling. The v1.0.0 sibling at meta_v2-contract.json remains byte-frozen as the historical Phase 26 artifact (gate_contract_v2.2.json reference, candidate_or_promoted='candidate' from training time)."
+}

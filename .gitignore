@@ -7,7 +7,13 @@ dist/
 build/
 .ruff_cache/
 .pytest_cache/
-models/
+# Top-level production-artifact dir ONLY. Anchored with a leading slash so this
+# does NOT also swallow the `src/ufc_prediction/models/` ORM source package —
+# an unanchored `models/` matched it at any depth and dropped the entire ORM
+# layer from the initial commit. The curated, published model artifacts under
+# this dir are force-added past this ignore; experiment joblibs dropped here
+# stay untracked.
+/models/
 logs/
 
 # DB dumps (published via GitHub Releases)

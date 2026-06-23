@@ -61,16 +61,17 @@ source ~/.zshrc
 # Verify:
 pg_restore --version       # should print "pg_restore (PostgreSQL) 16.x" or similar
 
-# 3. Start Postgres in Docker
-docker run -d --name ufc-db \
-  -p 5432:5432 \
-  -e POSTGRES_USER=ufc \
-  -e POSTGRES_PASSWORD=ufc \
-  -e POSTGRES_DB=ufc_prediction \
-  postgres:16-alpine
+# 3. Start Postgres in Docker (canonical: docker compose, host port 5433, postgres:18)
+docker compose up -d db
+# ...or the raw-docker equivalent:
+#   docker run -d --name ufc-db -p 5433:5432 \
+#     -e POSTGRES_USER=ufc -e POSTGRES_PASSWORD=ufc -e POSTGRES_DB=ufc_prediction \
+#     postgres:18-alpine
+# Use Postgres 17+: a modern pg_restore emits `SET transaction_timeout`, which a
+# Postgres 16 server rejects and the `ufc db seed` restore fails.
 
 # 4. Tell the CLI how to reach it
-export DATABASE_URL='postgresql+psycopg://ufc:ufc@localhost:5432/ufc_prediction'
+export DATABASE_URL='postgresql+psycopg://ufc:ufc@localhost:5433/ufc_prediction'
 
 # 5. Load the shipped corpus dump (~10 MB pg_dump file in data/seed/)
 uv run ufc db seed
@@ -81,7 +82,7 @@ uv run ufc predict matchup "Israel Adesanya" vs "Sean Strickland"
 
 You should see a Rich-formatted table with win probability for each fighter, Elo ratings, and the top contributing features.
 
-**If `5432` is already in use** on your machine (ssh tunnels, another Postgres, Fly.io's flyctl), pick a different host port: `-p 5433:5432` and update `DATABASE_URL` to `localhost:5433`.
+**The canonical host port is `5433`** (chosen so it does not collide with a stock `5432` Postgres — ssh tunnels, another Postgres, Fly.io's flyctl). If `5433` is also taken, pick another host port (`-p 5440:5432`) and update `DATABASE_URL` to match.
 
 ---
 
@@ -264,7 +265,7 @@ uv run pytest -m integration            # integration tests (needs Docker)
 
 | Variable | Purpose | Example |
 |---|---|---|
-| `DATABASE_URL` | Postgres connection (use `postgresql+psycopg://` scheme, not `postgres://`) | `postgresql+psycopg://ufc:ufc@localhost:5432/ufc_prediction` |
+| `DATABASE_URL` | Postgres connection (use `postgresql+psycopg://` scheme, not `postgres://`) | `postgresql+psycopg://ufc:ufc@localhost:5433/ufc_prediction` |
 | `UFC_API_KEYS` | API auth (for FastAPI). The whole `key:secret` string is what clients send in the `X-API-Key` header. | `dev:devsecret,partner:realsecret` |
 | `UFC_ENV` | Gates `/docs` and `/redoc` (set to `dev` in dev) | `dev` |
 | `UFC_CORS_ORIGINS` | CORS allow-list | `https://your-frontend.example.com` |

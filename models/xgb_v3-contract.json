@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "model_name": "xgb_v3",
+  "model_version": "v3",
+  "parent_model": "xgb_v2",
+  "gate_contract_ref": ".planning/gate_contract_v2.3.json",
+  "feature_columns_hash": "fcbc43948a8ff2ee29ae5081f872c969932b0fce15ece700e54cd7c364b68f9f",
+  "n_features": 72,
+  "min_partner_version_supported": "1.0.0",
+  "deprecation_policy": "N >= 2 minor versions",
+  "model_artifact_sha256": "b0c79a6fb9bb2f86ea1c5b7bdc4af99a495337e9b4c63461988b73de9442c2ce",
+  "sha256": "b0c79a6fb9bb2f86ea1c5b7bdc4af99a495337e9b4c63461988b73de9442c2ce",
+  "candidate_or_promoted": "candidate",
+  "created_at": "2026-06-02",
+  "trained_at": "2026-06-02T21:48:34.730892+00:00"
+}

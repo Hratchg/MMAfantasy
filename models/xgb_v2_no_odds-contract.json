@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0.0",
+  "model_name": "xgb_v2_no_odds",
+  "parent_model": "xgb_v2",
+  "gate_contract_ref": ".planning/gate_contract_v2.3.json",
+  "feature_columns_hash": "d9e519268d49d5aa2994d5c86e643709664737abddfd861f5ddb2102be91515f",
+  "min_partner_version_supported": "1.0.0",
+  "deprecation_policy": "N >= 2 minor versions",
+  "model_artifact_sha256": "2272915b19662703629c0fbc77683b534148f88d64b65ef5e58ce98d0cf4cd3f",
+  "candidate_or_promoted": "promoted",
+  "created_at": "2026-05-26"
+}

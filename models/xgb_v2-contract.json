@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0.0",
+  "gate_contract_ref": ".planning/gate_contract_v2.2.json",
+  "feature_columns_hash": "402d59aed0edac88062f3c76e1c9d96b05fe168cda218ea5ee610058c32caead",
+  "min_partner_version_supported": "1.0.0",
+  "deprecation_policy": "N >= 2 minor versions",
+  "model_artifact_sha256": "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099",
+  "created_at": "2026-05-17"
+}

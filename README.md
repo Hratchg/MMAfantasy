@@ -38,11 +38,9 @@ brew install libpq
 echo 'export PATH="/opt/homebrew/opt/libpq/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 
-# 3. Start Postgres + load the corpus dump
-docker run -d --name ufc-db -p 5432:5432 \
-  -e POSTGRES_USER=ufc -e POSTGRES_PASSWORD=ufc -e POSTGRES_DB=ufc_prediction \
-  postgres:16-alpine
-export DATABASE_URL='postgresql+psycopg://ufc:ufc@localhost:5432/ufc_prediction'
+# 3. Start Postgres + load the corpus dump (Postgres 17+ required; see docs/INSTALL.md)
+docker compose up -d db   # canonical: host port 5433, db ufc_prediction, postgres:18
+export DATABASE_URL='postgresql+psycopg://ufc:ufc@localhost:5433/ufc_prediction'
 uv run ufc db seed
 
 # 4. Predict a matchup (the `vs` literal is required)

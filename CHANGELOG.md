@@ -6,6 +6,13 @@ The project follows a continuous-milestone format. Each milestone delivers a coh
 
 ---
 
+## Unreleased
+
+**Fixed:**
+- Matchup predictions are now **order-invariant**. The raw predictor was asymmetric — swapping `fighter_a`/`fighter_b` shifted the probability by ~10 points on close fights (caused by three non-anti-symmetric style/stance features: `stance_matchup`, `a_striking_vs_b_grappling`, `a_grappling_vs_b_striking`). A new `ufc_prediction.ml.order_invariant.predict_order_invariant` wrapper averages both orderings; the CLI and API now call it, so whoever you list first no longer changes the result. The AUDIT-01-locked `predictor.py` and the model artifacts are untouched.
+
+---
+
 ## v3.0.1 — Regression Patch · 2026-06-14
 
 Resolves the two regressions surfaced during v3.0 close before handoff to a new owner. Both fixes are small (handful of lines) and touch only non-protected files.

@@ -11,7 +11,7 @@ A predictive analytics service that estimates the win probability of any UFC mat
 
 You give it two fighter names. It returns:
 
-- A calibrated probability (e.g. "Adesanya 44% / Strickland 56%")
+- A calibrated probability (e.g. "Adesanya 49% / Strickland 51%")
 - A skill rating for each fighter
 - The top features driving the prediction (so users can see *why*)
 

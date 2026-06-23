@@ -19,6 +19,7 @@ from ufc_prediction.api.v1.models import (
     PredictorOutputV1,
 )
 from ufc_prediction.elo.fighter_queries import search_fighters
+from ufc_prediction.ml.order_invariant import predict_order_invariant
 from ufc_prediction.ml.predictor import ModelPredictor
 
 router = APIRouter(tags=["predict"])
@@ -87,8 +88,8 @@ def predict(
 
     ev_date = body.event_date or date.today()
     try:
-        result = _get_predictor().predict(
-            db, body.fighter_a, body.fighter_b, event_date=ev_date,
+        result = predict_order_invariant(
+            _get_predictor(), db, body.fighter_a, body.fighter_b, event_date=ev_date,
         )
     except ValueError as exc:
         # Predictor raises ValueError on unknown fighter / no Elo / etc.

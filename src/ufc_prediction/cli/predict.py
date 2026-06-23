@@ -35,6 +35,7 @@ from ufc_prediction.ml.feature_matrix import (
     compute_division_medians,
     split_temporal,
 )
+from ufc_prediction.ml.order_invariant import predict_order_invariant
 from ufc_prediction.ml.persistence import load_metadata, load_model, save_model
 from ufc_prediction.ml.predictor import ModelPredictor
 from ufc_prediction.ml.queries import (
@@ -1283,7 +1284,7 @@ def predict_matchup(
 
     session = SessionLocal()
     try:
-        result = predictor.predict(session, fighter_a, fighter_b)
+        result = predict_order_invariant(predictor, session, fighter_a, fighter_b)
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(code=1) from e

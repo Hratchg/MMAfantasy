@@ -121,7 +121,7 @@ uv run ufc predict matchup "Israel Adesanya" vs "Sean Strickland"
 │ ┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓                           │
 │ ┃            ┃ Israel Adesanya ┃ Sean Strickland ┃                           │
 │ ┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩                           │
-│ │ ML Model   │      43.9%      │      56.1%      │                           │
+│ │ ML Model   │      49.3%      │      50.7%      │                           │
 │ │ Elo Rating │      1532       │      1554       │                           │
 │ │ Elo Prob   │      46.9%      │      53.1%      │                           │
 │ └────────────┴─────────────────┴─────────────────┘                           │
@@ -144,8 +144,10 @@ uv run ufc predict matchup "Israel Adesanya" vs "Sean Strickland"
 ```
 
 > **What you should see:** the table above, with `ML Model` giving Adesanya
-> 43.9% and Strickland 56.1%. Numbers will drift over time as the corpus
-> refreshes; what matters is that the command exits 0 and prints both blocks.
+> 49.3% and Strickland 50.7%. (The prediction is order-invariant — you get the
+> same numbers whichever fighter you list first.) Numbers will drift over time
+> as the corpus refreshes; what matters is that the command exits 0 and prints
+> both blocks.
 
 The `ML Model` row is the META-V22 stacked output — a calibrated win
 probability that combines the gradient-boosted base model (`xgb_v2`) with the
@@ -262,7 +264,7 @@ curl -s -X POST http://localhost:8000/api/v1/predict \
 ```
 
 ```
-{"schema_version":"1.2.0","win_probability":0.4393,"fighter_a":"Israel Adesanya","fighter_b":"Sean Strickland",...}
+{"schema_version":"1.2.0","win_probability":0.4931,"fighter_a":"Israel Adesanya","fighter_b":"Sean Strickland",...}
 ```
 
 > **What you should see:** HTTP 200 with a JSON body matching the

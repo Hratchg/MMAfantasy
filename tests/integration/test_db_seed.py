@@ -1,7 +1,7 @@
 """Docker-gated round-trip integration test for `ufc db seed`.
 
 Scaffolded in Plan 88-02; first live execution happens in Plan 88-03.
-Spins up an ephemeral postgres:16-alpine container on a disposable host
+Spins up an ephemeral postgres:18-alpine container on a disposable host
 port, runs `ufc db seed` against it, asserts per-table row counts match
 PROVENANCE.md goldens, then tears the container down.
 """
@@ -40,7 +40,7 @@ pytestmark = [
 
 EXPECTED_ROW_COUNTS = {
     "elo_snapshots": 89_988,
-    "round_stats": 68_886,
+    "round_stats": 68_960,
     "computed_features": 28_624,
     "fight_odds": 25_632,
     "fights": 16_902,
@@ -102,7 +102,7 @@ def test_round_trip_seed_against_disposable_postgres():
                 "POSTGRES_DB=ufc_prediction",
                 "-p",
                 f"{port}:5432",
-                "postgres:16-alpine",
+                "postgres:18-alpine",
             ],
             check=True,
             capture_output=True,
@@ -112,7 +112,11 @@ def test_round_trip_seed_against_disposable_postgres():
 
         env = {
             **os.environ,
-            "DATABASE_URL": f"postgres://ufc:ufc@localhost:{port}/ufc_prediction",
+            # Canonical scheme: SQLAlchemy's create_engine (used by the seed
+            # command's empty-target check) rejects a bare `postgres://` URL.
+            "DATABASE_URL": (
+                f"postgresql+psycopg://ufc:ufc@localhost:{port}/ufc_prediction"
+            ),
         }
         result = subprocess.run(
             [
@@ -136,7 +140,11 @@ def test_round_trip_seed_against_disposable_postgres():
 
         import psycopg
 
-        conn = psycopg.connect(env["DATABASE_URL"])
+        from ufc_prediction.cli.db import _normalize_for_psycopg
+
+        # psycopg.connect can't parse the SQLAlchemy `+psycopg` driver tag, so
+        # strip it the same way the seed command does.
+        conn = psycopg.connect(_normalize_for_psycopg(env["DATABASE_URL"]))
         try:
             with conn.cursor() as cur:
                 for table, expected in EXPECTED_ROW_COUNTS.items():

@@ -279,7 +279,7 @@ class TestFightOddsMigration:
         alembic_ini = project_root / "alembic.ini"
         assert alembic_ini.exists(), alembic_ini
 
-        with PostgresContainer("postgres:16", driver="psycopg") as pg:
+        with PostgresContainer("postgres:18", driver="psycopg") as pg:
             url = pg.get_connection_url()
             cfg = Config(str(alembic_ini))
             cfg.set_main_option("script_location", str(project_root / "migrations"))

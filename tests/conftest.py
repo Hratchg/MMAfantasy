@@ -19,8 +19,8 @@ from ufc_prediction.models import *  # noqa: F403 -- register all models
 
 @pytest.fixture(scope="session")
 def postgres_container():
-    """Start a PostgreSQL 16 container for the entire test session."""
-    with PostgresContainer("postgres:16", driver="psycopg") as pg:
+    """Start a PostgreSQL 18 container for the entire test session."""
+    with PostgresContainer("postgres:18", driver="psycopg") as pg:
         yield pg
 
 

@@ -42,14 +42,17 @@ SHA256 sidecar. No external GitHub Release hosting required for v3.0.
 
 ## Tables included (12)
 
-Per-table live row counts captured at dump time
-(`SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY n_live_tup DESC`):
+Per-table exact row counts in the dump (`SELECT COUNT(*)`). NOTE: earlier
+versions of this file reported `n_live_tup` from `pg_stat_user_tables`, which is
+a planner *estimate* refreshed only on VACUUM/ANALYZE — it undercounted
+`round_stats` by 74 rows (68886 vs the true 68960). The values below are exact
+and match the goldens in `tests/integration/test_db_seed.py`:
 
 ```
-      relname      | n_live_tup
+      relname      |   count
 -------------------+------------
  elo_snapshots     |      89988
- round_stats       |      68886
+ round_stats       |      68960
  computed_features |      28624
  fight_odds        |      25632
  fights            |      16902

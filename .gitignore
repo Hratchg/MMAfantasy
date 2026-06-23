@@ -78,3 +78,7 @@ clients/typescript/node_modules/
 
 # Build intermediates from scripts/generate_*_pdf.py
 docs/pdfs/*.html
+
+# Test/script-generated outputs (local only)
+/results/
+/.planning/

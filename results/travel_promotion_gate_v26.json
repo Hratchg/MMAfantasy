@@ -1,0 +1,21 @@
+{
+  "phase": "58-feat-v26-02",
+  "candidate": "models/meta/meta_v22_travel.joblib",
+  "canonical": "models/meta/meta_v2.joblib",
+  "verdict": "path_b_provisional",
+  "rationale": "Provisional Path B based on Phase 42 + Phase 45 evidence (OOF-source-divergence artifact pattern; substrate-drift confound suspected). v2.6.1 actual verifier-run against Phase 42 substrate parquet may revise.",
+  "methodology": "refit_baseline (planned for v2.6.1 actual run)",
+  "verifier_version": "v2.6.0",
+  "confound_threshold": 0.05,
+  "audit_01_invariant": {
+    "xgb_v2_sha": "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099",
+    "meta_v2_sha": "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196",
+    "status": "UNCHANGED"
+  },
+  "v2_6_1_followon_needed": true,
+  "references": [
+    "results/travel_oof_verification_v25.md",
+    ".planning/gate_methodology_v2.6.md",
+    "src/ufc_prediction/ml/gate_verifier.py"
+  ]
+}

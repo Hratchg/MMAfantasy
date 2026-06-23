@@ -28,7 +28,7 @@ It runs as a Python service with two access methods: a command-line tool for ana
 | Predict any matchup from a 16,000-fight historical corpus | Working |
 | Command-line interface for analysts | Working |
 | HTTP API ready for downstream product integration | Working |
-| Fly.io deployment with one-command production rollout | Working |
+| Containerized deployment (Docker; runs on any container host) | Working |
 | Versioned partner contracts (schemas v1.0, v1.1, v1.2, v1.3) with semver guarantees | Working |
 | Authentication, rate limiting, observability hooks | Working |
 | Portable database snapshot for self-hosted users | Working |

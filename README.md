@@ -123,39 +123,23 @@ The hook chain runs on every `git commit`: `ruff` lint+format, `mypy --strict` a
 
 CI re-runs everything in [`.github/workflows/ci.yml`](.github/workflows/ci.yml). PRs cannot merge into `master` until both `lint-and-test` and `pre-commit` pass.
 
-## Deploy to Fly.io
+## Deploy (Docker)
 
-This project ships with a production-ready `Dockerfile` + `fly.toml`.
+This project ships with a production-ready `Dockerfile` that runs the FastAPI
+app under uvicorn. It runs on any container host (a VM with Docker, ECS, Cloud
+Run, Render, Railway, Kubernetes, etc.) — point it at a PostgreSQL database via
+`DATABASE_URL` and set the API key(s).
 
 ### Prerequisites
 
-- [Fly.io CLI](https://fly.io/docs/hands-on/install-flyctl/) (`flyctl`) authenticated (`fly auth login`)
-- A PostgreSQL database — Fly Postgres add-on works; external Postgres (Supabase / Neon / RDS) also works via the `DATABASE_URL` secret
+- A container host that can run the `Dockerfile`.
+- A reachable PostgreSQL database (managed Postgres — RDS / Cloud SQL / Supabase / Neon — or your own). Load the corpus into it once with `ufc db seed` (see [`docs/INSTALL.md`](docs/INSTALL.md)).
 
-### One-time setup
-
-```bash
-# 1. Create the Fly app (edit fly.toml's `app = "..."` placeholder to match)
-fly launch --no-deploy
-
-# 2. Provision the Fly Postgres add-on and attach it
-fly postgres create --name ufc-fp-db --region iad
-fly postgres attach ufc-fp-db   # automatically sets DATABASE_URL secret
-
-# 3. Set the required + optional secrets (see table below)
-fly secrets set UFC_API_KEYS="partner-alpha:replace-with-real-secret"
-fly secrets set UFC_CORS_ORIGINS="https://your-partner.example.com"
-fly secrets set UFC_ENV="prod"
-
-# Optional observability:
-fly secrets set SENTRY_DSN="https://...@sentry.io/..." UFC_LOG_LEVEL="INFO"
-```
-
-### Secrets
+### Configuration (environment variables)
 
 | Env Var | Required | Default | Example |
 |---|---|---|---|
-| `DATABASE_URL` | yes | — | `postgresql+psycopg://user:pass@host/db` (set automatically by `fly postgres attach`) |
+| `DATABASE_URL` | yes | — | `postgresql+psycopg://user:pass@host/db` |
 | `UFC_API_KEYS` | yes | — | `partner-alpha:rawsecret1,partner-beta:rawsecret2` |
 | `UFC_CORS_ORIGINS` | no | `[]` | `https://partner.example.com,https://app.partner.com` |
 | `SENTRY_DSN` | no | unset | `https://abc123@o0.ingest.sentry.io/0` |
@@ -163,17 +147,24 @@ fly secrets set SENTRY_DSN="https://...@sentry.io/..." UFC_LOG_LEVEL="INFO"
 | `UFC_LOG_LEVEL` | no | `INFO` | `DEBUG` |
 | `UFC_ENV` | no | `dev` | `prod` (gates `/docs` + `/redoc` to 404) |
 
-### Deploy + verify
+### Build, run + verify
 
 ```bash
-fly deploy
+docker build -t ufc-fp .
+
+# The container serves on port 8080 (override with -e PORT=...).
+docker run -d -p 8080:8080 \
+  -e DATABASE_URL='postgresql+psycopg://user:pass@host/db' \
+  -e UFC_API_KEYS='partner-alpha:rawsecret1' \
+  -e UFC_ENV='prod' \
+  ufc-fp
 
 # Liveness (no auth)
-curl https://<your-app>.fly.dev/health
+curl http://localhost:8080/health
 # {"status":"ok","version":"2.3.0"}
 
 # Predict (requires X-API-Key)
-curl -X POST https://<your-app>.fly.dev/api/v1/predict \
+curl -X POST http://localhost:8080/api/v1/predict \
   -H "X-API-Key: partner-alpha:rawsecret1" \
   -H "Content-Type: application/json" \
   -d '{"fighter_a": "Conor McGregor", "fighter_b": "Khabib Nurmagomedov"}'

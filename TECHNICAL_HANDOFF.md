@@ -82,7 +82,7 @@ uv run ufc predict matchup "Israel Adesanya" vs "Sean Strickland"
 
 You should see a Rich-formatted table with win probability for each fighter, Elo ratings, and the top contributing features.
 
-**The canonical host port is `5433`** (chosen so it does not collide with a stock `5432` Postgres — ssh tunnels, another Postgres, Fly.io's flyctl). If `5433` is also taken, pick another host port (`-p 5440:5432`) and update `DATABASE_URL` to match.
+**The canonical host port is `5433`** (chosen so it does not collide with a stock `5432` Postgres — ssh tunnels or another local Postgres). If `5433` is also taken, pick another host port (`-p 5440:5432`) and update `DATABASE_URL` to match.
 
 ---
 
@@ -162,7 +162,7 @@ ufc-fight-prediction/
 │   └── ufc_corpus_v30.dump        ← portable corpus snapshot (10.42 MB pg_dump)
 ├── pyproject.toml                 ← Python deps (uv-managed)
 ├── KNOWN_ISSUES.md                ← scraper status + known regressions
-└── README.md                      ← short intro + Fly.io deploy guide
+└── README.md                      ← short intro + Docker deploy guide
 ```
 
 ---
@@ -174,7 +174,7 @@ ufc-fight-prediction/
 - BFO odds scraper (`src/ufc_prediction/scraper/bfo_scraper.py`)
 - The Elo engine, feature assembly, and the trained model itself
 - The FastAPI server, including authentication and rate limiting
-- Deployment to Fly.io (working `Dockerfile` + `fly.toml`)
+- Containerized deployment (working `Dockerfile`, runs on any container host)
 
 ### Broken or blocked
 - **Most other scrapers.** UFCStats blocks us with anti-bot protection. Sherdog and Tapology block us via Content-Signal `ai-train=no`. Oddsportal blocks us via robots.txt. **Only BFO works for refreshing data.** Full status per scraper is in `KNOWN_ISSUES.md`.
@@ -288,7 +288,7 @@ As of v3.0.1, this returns HTTP 200 with a `PredictorOutputV1` JSON body.
 
 - `docs/INSTALL.md` — install walkthrough
 - `KNOWN_ISSUES.md` — scraper + regression status
-- `README.md` — short intro + Fly.io deploy
+- `README.md` — short intro + Docker deploy
 - `docs/ARCHITECTURE.md` — system architecture writeup
 - `docs/PARTNER-CONTRACT.md` — API contract for downstream consumers
 - `.planning/RETROSPECTIVE-v3.0.md` — what was shipped in v3.0
@@ -302,7 +302,7 @@ If you can still reach the previous owner, things worth confirming:
 
 1. Are there any partners actively consuming the API? If yes, what's their contact and what version of the schema are they on?
 2. Is the `v3.0` git tag the canonical handoff point, or has work continued past it?
-3. Are there credentials (BFO API, Sentry, Fly.io) that need to be transferred?
+3. Are there credentials (BFO API, Sentry, container host / DB) that need to be transferred?
 4. Are there any v3.0.1 patch follow-ups (e.g., regression tests covering the default-version pinning)?
 5. What's the practical plan for ongoing data refresh?
 

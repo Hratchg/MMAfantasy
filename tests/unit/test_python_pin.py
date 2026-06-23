@@ -1,7 +1,7 @@
-"""DEPLOY-V24-02: enforce Python pin for Fly.io deployment runtime (3.13).
+"""DEPLOY-V24-02: enforce Python pin for the deployment runtime (3.13).
 
 Phase 36-02 dropped the original HOUSE-06 pin `>=3.14.0,!=3.14.1` down to
-`>=3.13.0,!=3.13.1` because Fly.io's official `python:3.13-slim` runtime
+`>=3.13.0,!=3.13.1` because the `python:3.13-slim` container runtime
 is the deployment target and python:3.14-slim is not yet broadly available
 (see .planning/phases/36-deployment-python-pin/36-CONTEXT.md decision
 "Python 3.14 → 3.13 Downgrade Risk").

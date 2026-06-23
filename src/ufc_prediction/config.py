@@ -36,7 +36,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("UFC_ENV", "ENV"),
     )
 
-    # API-V24-01 storage decision: plaintext keys in env, Fly secrets encrypted
+    # API-V24-01 storage decision: plaintext keys in env, host secret store encrypted
     # at rest. Format: "partner_label:secret_token" entries, comma-separated.
     # Default empty so missing env var blocks all API access by default.
     # NoDecode disables JSON decoding so the field_validator below handles

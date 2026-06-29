@@ -24,6 +24,14 @@ concurrency:
   group: ci-${{ github.head_ref }}
   cancel-in-progress: true
 
+# Bind the interpreter uv uses to 3.13. The setup-uv `python-version` input does
+# NOT constrain `uv sync`, which otherwise picks the newest interpreter allowed
+# by requires-python (>=3.13). Runner images now ship CPython 3.14, on which
+# lxml 5.4.0 has no wheel and builds from source (missing libxml2/libxslt
+# headers → failure). UV_PYTHON enforces the 3.13 pin this workflow declares.
+env:
+  UV_PYTHON: "3.13"
+
 jobs:
   lint-and-test:
     name: Lint + tests (Python 3.13)

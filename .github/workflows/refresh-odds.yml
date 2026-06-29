@@ -29,6 +29,15 @@ concurrency:
   group: refresh-odds
   cancel-in-progress: false
 
+# Pin the interpreter uv uses. The setup-uv `python-version` input does NOT bind
+# `uv sync`, which otherwise grabs the newest interpreter allowed by
+# requires-python (>=3.13). When the runner image rolled to CPython 3.14, uv
+# used 3.14 and lxml 5.4.0 (no cp314 wheel) fell back to a source build that
+# needs libxml2/libxslt headers → install failed. UV_PYTHON forces the 3.13
+# interpreter the lock has prebuilt wheels for.
+env:
+  UV_PYTHON: "3.13"
+
 permissions:
   contents: write          # create-pull-request branch push
   pull-requests: write     # create-pull-request PR open

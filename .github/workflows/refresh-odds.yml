@@ -24,6 +24,14 @@ on:
   schedule:
     - cron: '0 14 * * 1'   # Mondays 14:00 UTC
   workflow_dispatch:
+    inputs:
+      min_date:
+        description: >-
+          Earliest event date to scrape (YYYY-MM-DD). Leave blank for the
+          rolling 90-day window the weekly cron uses; set 2007-08-01 for a
+          full-history backfill.
+        required: false
+        default: ''
 
 concurrency:
   group: refresh-odds
@@ -37,6 +45,13 @@ concurrency:
 # interpreter the lock has prebuilt wheels for.
 env:
   UV_PYTHON: "3.13"
+  # `ufc scrape odds` reads the fighter roster from Postgres (BFOScraper needs a
+  # session) and upserts matched odds into the fight_odds table. The runner has
+  # no DB by default, so the scrape failed at connect (OperationalError on
+  # 127.0.0.1). Point the CLI at the postgres service below; the canonical
+  # `+psycopg` scheme is required (SQLAlchemy's create_engine rejects a bare
+  # `postgres://` URL — see tests/integration/test_db_seed.py).
+  DATABASE_URL: "postgresql+psycopg://ufc:ufc@localhost:5432/ufc_prediction"
 
 permissions:
   contents: write          # create-pull-request branch push
@@ -46,6 +61,25 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+
+    # Postgres 16 to match the shipped corpus dump's origin server
+    # (PostgreSQL 16.13 — see data/seed/PROVENANCE.md), so the runner's
+    # preinstalled pg_restore (v16) restores it natively without a PGDG client.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ufc
+          POSTGRES_PASSWORD: ufc
+          POSTGRES_DB: ufc_prediction
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ufc -d ufc_prediction"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,9 +92,31 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
+      # Restore the shipped corpus so the scraper has a fighter roster to match
+      # against and the ingester has a fight_odds table to upsert into. Mirrors
+      # the proven path in tests/integration/test_db_seed.py (--no-migrate
+      # --force: the dump already carries the alembic head stamp).
+      - name: Seed corpus into Postgres
+        run: >-
+          uv run ufc db seed
+          --from data/seed/ufc_corpus_v30.dump
+          --no-migrate --force
+
+      # `date` labels the refresh; `min-date` scopes the scrape. The weekly cron
+      # only needs recent events, so it uses a rolling 90-day window (fast, low
+      # block-risk) rather than re-scraping all of BFO history every Monday. A
+      # manual workflow_dispatch can override min_date (e.g. 2007-08-01 for a
+      # full backfill).
       - name: Compute refresh date
         id: refresh-date
-        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          min_date="${{ github.event.inputs.min_date }}"
+          if [ -z "$min_date" ]; then
+            min_date="$(date -u -d '90 days ago' +%Y-%m-%d)"
+          fi
+          echo "min-date=$min_date" >> "$GITHUB_OUTPUT"
+          echo "Scraping BFO from min-date=$min_date"
 
       # FALLBACK-V24-03: single `ufc scrape odds` invocation that scrapes BFO
       # AND ingests the CSVs into the fight_odds table. The equivalent prior
@@ -69,7 +125,10 @@ jobs:
       # in the file header.
       - name: Scrape BFO odds (scrape + ingest)
         id: scrape
-        run: uv run ufc scrape odds --data-folder data/bfo
+        run: >-
+          uv run ufc scrape odds
+          --data-folder data/bfo
+          --min-date ${{ steps.refresh-date.outputs.min-date }}
         continue-on-error: true   # Failure handled by next step (Issue-file)
 
       # Fallback re-ingest path (operator triage only; uncomment after manual

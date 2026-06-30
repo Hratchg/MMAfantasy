@@ -37,6 +37,13 @@ concurrency:
 # interpreter the lock has prebuilt wheels for.
 env:
   UV_PYTHON: "3.13"
+  # `ufc scrape odds` reads the fighter roster from Postgres (BFOScraper needs a
+  # session) and upserts matched odds into the fight_odds table. The runner has
+  # no DB by default, so the scrape failed at connect (OperationalError on
+  # 127.0.0.1). Point the CLI at the postgres service below; the canonical
+  # `+psycopg` scheme is required (SQLAlchemy's create_engine rejects a bare
+  # `postgres://` URL — see tests/integration/test_db_seed.py).
+  DATABASE_URL: "postgresql+psycopg://ufc:ufc@localhost:5432/ufc_prediction"
 
 permissions:
   contents: write          # create-pull-request branch push
@@ -46,6 +53,25 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+
+    # Postgres 16 to match the shipped corpus dump's origin server
+    # (PostgreSQL 16.13 — see data/seed/PROVENANCE.md), so the runner's
+    # preinstalled pg_restore (v16) restores it natively without a PGDG client.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ufc
+          POSTGRES_PASSWORD: ufc
+          POSTGRES_DB: ufc_prediction
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ufc -d ufc_prediction"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,6 +83,16 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --frozen
+
+      # Restore the shipped corpus so the scraper has a fighter roster to match
+      # against and the ingester has a fight_odds table to upsert into. Mirrors
+      # the proven path in tests/integration/test_db_seed.py (--no-migrate
+      # --force: the dump already carries the alembic head stamp).
+      - name: Seed corpus into Postgres
+        run: >-
+          uv run ufc db seed
+          --from data/seed/ufc_corpus_v30.dump
+          --no-migrate --force
 
       - name: Compute refresh date
         id: refresh-date

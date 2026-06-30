@@ -170,6 +170,7 @@ def _capture_inference_vec(monkeypatch):
 # ── Test 1: cold cache → live fetch populates closing_prob_diff ─────────────
 
 
+@pytest.mark.slow  # live BFO fetch — excluded from default CI run
 def test_cold_cache_live_fetch_populates_closing_prob_diff(
     patched_predictor,
     predict_log_path,
@@ -238,6 +239,7 @@ def test_cold_cache_live_fetch_populates_closing_prob_diff(
 # ── Test 2: warm cache → no HTTP, closing_prob_diff still populated ─────────
 
 
+@pytest.mark.slow  # live BFO fetch — excluded from default CI run
 def test_warm_cache_skips_http_populates_closing_prob_diff(
     patched_predictor,
     predict_log_path,

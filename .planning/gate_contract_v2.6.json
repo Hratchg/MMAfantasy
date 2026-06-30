@@ -1,0 +1,77 @@
+{
+  "version": "v2.6",
+  "derived_at": "2026-06-03",
+  "n_seeds_observed": 10,
+  "base_features_set": "FEATURE_COLUMNS_V22",
+  "n_features": 90,
+  "k_value": 1,
+  "formula_hash": "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a",
+  "cutoff_date": "2023-01-01",
+  "per_slice": {
+    "most_recent_12mo": {
+      "brier_max": 0.1512,
+      "accuracy_min": 0.7814,
+      "median_brier_xgb_v2": 0.16066960133077848,
+      "median_acc_xgb_v2": 0.7592592592592593,
+      "seed_std_brier": 0.008742858812662341,
+      "seed_std_acc": 0.02218112689050624,
+      "bootstrap_ci_half_brier": 0.009423904879197878,
+      "bootstrap_ci_half_acc": 0.019607843137254888,
+      "std_brier_used": 0.009423904879197878,
+      "std_acc_used": 0.02218112689050624,
+      "operator_floor_applied": true,
+      "operator_floor_value": 0.7,
+      "operator_decision": "path_a_floor_applied"
+    },
+    "most_recent_24mo": {
+      "brier_max": 0.1583,
+      "accuracy_min": 0.7627,
+      "median_brier_xgb_v2": 0.16525600681403227,
+      "median_acc_xgb_v2": 0.7471561530506722,
+      "seed_std_brier": 0.0069111086647350535,
+      "seed_std_acc": 0.015539062344132763,
+      "bootstrap_ci_half_brier": 0.006388592098298895,
+      "bootstrap_ci_half_acc": 0.014477766287487093,
+      "std_brier_used": 0.0069111086647350535,
+      "std_acc_used": 0.015539062344132763,
+      "operator_floor_applied": true,
+      "operator_floor_value": 0.7,
+      "operator_decision": "path_a_floor_applied"
+    },
+    "random_15pct": {
+      "brier_max": 0.1374,
+      "accuracy_min": 0.7812,
+      "median_brier_xgb_v2": 0.15414710047964392,
+      "median_acc_xgb_v2": 0.746875,
+      "seed_std_brier": 0.011591569032430788,
+      "seed_std_acc": 0.02538762001448737,
+      "bootstrap_ci_half_brier": 0.0167147387122991,
+      "bootstrap_ci_half_acc": 0.03437499999999999,
+      "std_brier_used": 0.0167147387122991,
+      "std_acc_used": 0.03437499999999999,
+      "operator_floor_applied": true,
+      "operator_floor_value": 0.7,
+      "operator_decision": "path_a_floor_applied"
+    }
+  },
+  "secondary_metrics_observed": {},
+  "supersedes": [
+    "v2.1",
+    "v2.2",
+    "v2.3"
+  ],
+  "notes": "Phase 55 GATE-V26-04. v2.6 methodology spec: .planning/gate_methodology_v2.6.md (operator-approved 2026-06-03). Per-slice thresholds preserved verbatim from v2.3 \u2014 Phase 56 GATE-RECALIB CLI re-derives only on corpus-growth >10% trigger. Confound detection added at the meta-gate layer (substrate-drift safety; see methodology \u00a75.4 + \u00a76.3).",
+  "feature_columns_hash": "402d59aed0edac88062f3c76e1c9d96b05fe168cda218ea5ee610058c32caead",
+  "bfo_backfill_committed_at": "2026-05-15T15:06:49-07:00",
+  "ingest_completed_at": "2026-05-20T01:59:08-07:00",
+  "operator_decision": {
+    "decision": "path_a_operator_floor_pre_committed_at_milestone_open",
+    "decided_at": "2026-05-22",
+    "rationale": "v2.3 is the first public partner release; Path A pre-commit reinforces the 0.70 partner-facing floor. D-18 binding: no post-measurement renegotiation.",
+    "phase_32_implication": "Forward-stepwise composition (Phase 32) gates against accuracy_min post-floor (i.e., the >= 0.70 surface). REF/TRAVEL re-tested on populated substrate against this gate."
+  },
+  "methodology_version": "v2.6",
+  "substrate_alignment_strategy": "refit_baseline",
+  "gate_verifier_module": "ufc_prediction.ml.gate_verifier",
+  "confound_threshold": 0.05
+}

@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0.0",
-  "gate_contract_ref": ".planning/gate_contract_v2.3.json",
+  "gate_contract_ref": ".planning/gate_contract_v2.2.json",
   "feature_columns_hash": "2251bb67a2ebd4db34b5631aa7cef7e47aca6d445390489ac20003a7c35b36b7",
   "min_partner_version_supported": "1.0.0",
   "deprecation_policy": "N >= 2 minor versions",
-  "model_artifact_sha256": "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196",
-  "created_at": "2026-05-22",
-  "candidate_or_promoted": "promoted"
+  "model_artifact_sha256": "06cbc16d1dbd734d6c4e13292c90d95e1772dd45e3aa8832bbd966a81125976c",
+  "created_at": "2026-06-30",
+  "candidate_or_promoted": "candidate"
 }

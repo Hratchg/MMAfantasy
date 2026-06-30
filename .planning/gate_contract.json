@@ -1,0 +1,69 @@
+{
+  "version": "v2.1",
+  "derived_at": "2026-05-04",
+  "n_seeds_observed": 10,
+  "base_features_set": "FEATURE_COLUMNS_NO_NET",
+  "n_features": 72,
+  "k_value": 1,
+  "formula_hash": "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a",
+  "cutoff_date": "2023-01-01",
+  "per_slice": {
+    "most_recent_12mo": {
+      "brier_max": 0.2102,
+      "accuracy_min": 0.687,
+      "median_brier_xgb_v2": 0.21467067176950605,
+      "median_acc_xgb_v2": 0.6713362068965518,
+      "seed_std_brier": 0.0011675873882600917,
+      "seed_std_acc": 0.007352897460875844,
+      "bootstrap_ci_half_brier": 0.004509110472592226,
+      "bootstrap_ci_half_acc": 0.015625,
+      "std_brier_used": 0.004509110472592226,
+      "std_acc_used": 0.015625
+    },
+    "most_recent_24mo": {
+      "brier_max": 0.2134,
+      "accuracy_min": 0.6673,
+      "median_brier_xgb_v2": 0.21635612588988323,
+      "median_acc_xgb_v2": 0.6569472616632861,
+      "seed_std_brier": 0.0006558585715441919,
+      "seed_std_acc": 0.005111652418786426,
+      "bootstrap_ci_half_brier": 0.0029183449600075073,
+      "bootstrap_ci_half_acc": 0.010395537525354936,
+      "std_brier_used": 0.0029183449600075073,
+      "std_acc_used": 0.010395537525354936
+    },
+    "random_15pct": {
+      "brier_max": 0.2151,
+      "accuracy_min": 0.6809,
+      "median_brier_xgb_v2": 0.22098123909572254,
+      "median_acc_xgb_v2": 0.6609848484848484,
+      "seed_std_brier": 0.0006933364579448228,
+      "seed_std_acc": 0.005819049808991349,
+      "bootstrap_ci_half_brier": 0.005851864205668869,
+      "bootstrap_ci_half_acc": 0.019886363636363646,
+      "std_brier_used": 0.005851864205668869,
+      "std_acc_used": 0.019886363636363646
+    }
+  },
+  "secondary_metrics_observed": {
+    "auc": {
+      "per_slice_median": {
+        "most_recent_12mo": 0.7214155614871129,
+        "most_recent_24mo": 0.7135327283577175,
+        "random_15pct": 0.6983854764638346
+      }
+    },
+    "ece": {
+      "per_slice_median": {
+        "most_recent_12mo": 0.04497266307369768,
+        "most_recent_24mo": 0.03728586121413056,
+        "random_15pct": 0.04115686148937775
+      }
+    }
+  },
+  "supersedes": [
+    "D-13(P16)",
+    "D-17(v2.0)"
+  ],
+  "notes": "Operator-approved formula, mechanically derived thresholds. No relaxation pathway. No post-measurement renegotiation. Formula: gate_brier_max = round(median_brier - 1 * max(seed_std_brier, bootstrap_ci_half_brier), 4); gate_accuracy_min = round(median_acc + 1 * max(seed_std_acc, bootstrap_ci_half_acc), 4)"
+}

@@ -1,0 +1,86 @@
+{
+  "version": "v2.2",
+  "derived_at": "2026-05-16",
+  "n_seeds_observed": 10,
+  "base_features_set": "FEATURE_COLUMNS_V22",
+  "n_features": 90,
+  "k_value": 1,
+  "formula_hash": "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a",
+  "cutoff_date": "2023-01-01",
+  "per_slice": {
+    "most_recent_12mo": {
+      "brier_max": 0.2132,
+      "accuracy_min": 0.6798,
+      "median_brier_xgb_v2": 0.21737563265452975,
+      "median_acc_xgb_v2": 0.6642699115044248,
+      "seed_std_brier": 0.0009975699152866564,
+      "seed_std_acc": 0.006747787610619464,
+      "bootstrap_ci_half_brier": 0.004158722568174483,
+      "bootstrap_ci_half_acc": 0.015486725663716838,
+      "std_brier_used": 0.004158722568174483,
+      "std_acc_used": 0.015486725663716838,
+      "operator_floor_applied": false,
+      "operator_floor_value": 0.7,
+      "operator_decision": "accept_truth"
+    },
+    "most_recent_24mo": {
+      "brier_max": 0.2164,
+      "accuracy_min": 0.6587,
+      "median_brier_xgb_v2": 0.21921367687292506,
+      "median_acc_xgb_v2": 0.6480228928199792,
+      "seed_std_brier": 0.0007807874601620063,
+      "seed_std_acc": 0.00422846779880933,
+      "bootstrap_ci_half_brier": 0.002851778069159372,
+      "bootstrap_ci_half_acc": 0.010665972944849111,
+      "std_brier_used": 0.002851778069159372,
+      "std_acc_used": 0.010665972944849111,
+      "operator_floor_applied": false,
+      "operator_floor_value": 0.7,
+      "operator_decision": "accept_truth"
+    },
+    "random_15pct": {
+      "brier_max": 0.2172,
+      "accuracy_min": 0.6648,
+      "median_brier_xgb_v2": 0.22254214351771856,
+      "median_acc_xgb_v2": 0.6439393939393939,
+      "seed_std_brier": 0.001405952215659498,
+      "seed_std_acc": 0.008246795854953495,
+      "bootstrap_ci_half_brier": 0.005328427599792476,
+      "bootstrap_ci_half_acc": 0.02083333333333337,
+      "std_brier_used": 0.005328427599792476,
+      "std_acc_used": 0.02083333333333337,
+      "operator_floor_applied": false,
+      "operator_floor_value": 0.7,
+      "operator_decision": "accept_truth"
+    }
+  },
+  "secondary_metrics_observed": {
+    "auc": {
+      "per_slice_median": {
+        "most_recent_12mo": 0.714400687032266,
+        "most_recent_24mo": 0.7062382135123924,
+        "random_15pct": 0.6960462112514352
+      }
+    },
+    "ece": {
+      "per_slice_median": {
+        "most_recent_12mo": 0.04352485366266941,
+        "most_recent_24mo": 0.030621708399219225,
+        "random_15pct": 0.040984901860220024
+      }
+    }
+  },
+  "supersedes": [
+    "D-18(P17)",
+    "v2.1-gate"
+  ],
+  "notes": "v2.2 gate contract \u2014 mechanically re-derived on the 90-col FEATURE_COLUMNS_V22 substrate using the same formula hash as v2.1 (D-18 binding). Operator floor accuracy_min >= 0.70 applied at spike time via max(formula_output, 0.70). HALT-AND-DECIDE artifact emitted if any slice formula_output < 0.70 (D-06 binding). v2.1 contract at .planning/gate_contract.json PRESERVED for audit lineage. Formula: gate_brier_max = round(median_brier - 1 * max(seed_std_brier, bootstrap_ci_half_brier), 4); gate_accuracy_min = round(median_acc + 1 * max(seed_std_acc, bootstrap_ci_half_acc), 4)",
+  "feature_columns_hash": "402d59aed0edac88062f3c76e1c9d96b05fe168cda218ea5ee610058c32caead",
+  "bfo_backfill_committed_at": "2026-05-15T15:06:49-07:00",
+  "operator_decision": {
+    "decision": "v2.2_gate_breaks_floor_accept_truth",
+    "decided_at": "2026-05-16",
+    "rationale": "D-18 honored: thresholds reflect mechanical formula output, not the breached 0.70 floor. Operator floor moves to v2.3+ tighter empirical commitment.",
+    "phase_26_implication": "Forward-stepwise META retry proceeds against the empirical thresholds (lower bar than v2.1; no auto-relaxation downstream)."
+  }
+}

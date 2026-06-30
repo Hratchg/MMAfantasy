@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -75,14 +76,45 @@ SOFT_PROTECT_TOKEN: str = "refit-driver-re-emit"
 SOFT_PROTECT_ENV_VAR: str = "GSD_REFIT_REEMIT"
 
 
+def _differs_from_head(path: str) -> bool:
+    """True if ``path`` actually differs from HEAD (i.e. is being changed).
+
+    pre-commit passes the in-scope filenames to this hook. On a real commit
+    that scope is the changed files, so a protected file appearing there is
+    genuinely being modified. But `pre-commit run --all-files` (the CI path)
+    passes EVERY tracked file — including unchanged protected ones — which the
+    old presence-only check flagged as false violations, making the CI
+    pre-commit job impossible to pass. Gate on a real diff against HEAD so the
+    guard fires on edits (commit-time and CI) but not on a clean tree.
+
+    Fail safe: if git can't answer (no HEAD, not a repo), treat as changed so
+    the guard never silently lets a protected edit through.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--quiet", "HEAD", "--", path],
+            capture_output=True,
+        )
+    except OSError:
+        return True
+    # 0 = identical to HEAD; 1 = differs; anything else = git error → fail safe.
+    return result.returncode != 0
+
+
 def find_violations(staged_paths: list[str]) -> list[str]:
-    """Return staged paths that fall inside the HARD-protected set."""
+    """Return paths in the HARD-protected set that are actually being changed."""
     # Normalize via Path to handle ./ prefixes + alternate separators.
-    return sorted({str(Path(p)) for p in staged_paths if str(Path(p)) in PROTECTED_FILES})
+    return sorted(
+        {
+            str(Path(p))
+            for p in staged_paths
+            if str(Path(p)) in PROTECTED_FILES and _differs_from_head(str(Path(p)))
+        }
+    )
 
 
 def find_soft_violations(staged_paths: list[str]) -> list[str]:
-    """Return staged paths matching the SOFT-protect patterns.
+    """Return changed paths matching the SOFT-protect patterns.
 
     These are NOT in the HARD-protected set — they are refit-baseline
     siblings that the GATE-RECALIB workflow may legitimately overwrite.
@@ -91,7 +123,7 @@ def find_soft_violations(staged_paths: list[str]) -> list[str]:
     for p in staged_paths:
         normalized = str(Path(p))
         for pattern in SOFT_PROTECTED_PATTERNS:
-            if pattern.match(normalized):
+            if pattern.match(normalized) and _differs_from_head(normalized):
                 matches.add(normalized)
                 break
     return sorted(matches)

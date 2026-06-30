@@ -26,8 +26,25 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
+      # Generated model-metadata JSON, byte-exact scraper/test fixtures, and the
+      # Alembic-generated migrations/README are intentionally byte-frozen (drift
+      # sentinels + parser fixtures assert on their exact bytes). The auto-fixing
+      # whitespace hooks must not rewrite them, or `--all-files` runs fail by
+      # modifying committed artifacts.
       - id: trailing-whitespace
+        exclude: |
+          (?x)^(
+            models/.*\.json|
+            tests/.*fixtures/.*|
+            migrations/README
+          )$
       - id: end-of-file-fixer
+        exclude: |
+          (?x)^(
+            models/.*\.json|
+            tests/.*fixtures/.*|
+            migrations/README
+          )$
       - id: check-yaml
         exclude: ^\.github/workflows/.*\.yml$  # GH Actions YAML uses on: which check-yaml mis-parses
       - id: check-toml
@@ -44,22 +61,20 @@ repos:
       - id: ruff-format
 
   # Mypy strict — pilot allow-list (pyproject.toml [tool.mypy] files=).
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
+  # Runs as a local `uv run mypy` hook (not mirrors-mypy) so it type-checks in
+  # the project venv where every runtime dependency (sqlalchemy, fastapi,
+  # pydantic, …) is resolvable. The mirrors-mypy isolated venv only had a
+  # handful of `additional_dependencies`, so it failed every import in
+  # `pre-commit run --all-files` with import-not-found. `pass_filenames: false`
+  # keeps the `[tool.mypy] files` allow-list as the source of truth.
+  - repo: local
     hooks:
       - id: mypy
-        # Pass through to pyproject.toml [tool.mypy]; pre-commit's own
-        # arg list intentionally NOT used so the source of truth stays
-        # in pyproject.toml.
-        args: ["--config-file=pyproject.toml"]
-        # Skip pre-commit's automatic file-args injection; we rely on
-        # the `files` list inside pyproject.toml [tool.mypy] for the
-        # pilot allow-list.
+        name: mypy (strict, allow-list)
+        entry: uv run mypy --config-file=pyproject.toml
+        language: system
         pass_filenames: false
-        additional_dependencies:
-          - rapidfuzz>=3.14
-          - beautifulsoup4>=4.13
-          - lxml>=6.0
+        always_run: true
 
   # AUDIT-01 protected-file guard — CONTRIBUTING.md L58-78.
   - repo: local

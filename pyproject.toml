@@ -317,4 +317,9 @@ dev = [
     "ruff>=0.15.10",
     "hypothesis>=6.152.7",
     "openapi-spec-validator>=0.8.5",
+    # mypy runs via the local pre-commit hook (`uv run mypy`) so it type-checks
+    # in the project venv with all runtime deps resolvable — the mirrors-mypy
+    # isolated venv could not see sqlalchemy/fastapi/etc. Pinned to the 1.13.x
+    # line the hook previously used.
+    "mypy>=1.13.0,<1.14",
 ]

@@ -47,6 +47,7 @@ def test_enumerate_debutants_query_shape(ingest_module):
     - Aggregates min(event.date) per fighter (first UFC appearance)
     - Returns tuples (fighter_id, sherdog_url, first_ufc_date)
     """
+
     # We can't run a real DB here, so use a mock session capturing the
     # query() / filter() / all() chain. We assert: the function returns
     # whatever the session returns (it's a thin SELECT wrapper).
@@ -231,9 +232,20 @@ def test_build_csv_row_emits_locked_14_columns(ingest_module):
         scraped_at="2026-06-02T12:00:00Z",
     )
     expected_keys = {
-        "fighter_id", "sherdog_url", "n_pre_ufc_fights", "wins", "losses",
-        "draws", "nc_dq", "win_rate", "kos", "submissions", "decisions",
-        "last_organization", "org_tier", "scraped_at",
+        "fighter_id",
+        "sherdog_url",
+        "n_pre_ufc_fights",
+        "wins",
+        "losses",
+        "draws",
+        "nc_dq",
+        "win_rate",
+        "kos",
+        "submissions",
+        "decisions",
+        "last_organization",
+        "org_tier",
+        "scraped_at",
     }
     assert set(row.keys()) == expected_keys
     assert len(row) == 14
@@ -269,8 +281,12 @@ def test_build_csv_row_zero_wins_zero_finishes(ingest_module):
         fights=[],
     )
     row = ingest_module.build_csv_row(
-        fighter_id=99, sherdog_url=None, record=record,
-        last_org=None, tier="none", scraped_at="2026-06-02T12:00:00Z",
+        fighter_id=99,
+        sherdog_url=None,
+        record=record,
+        last_org=None,
+        tier="none",
+        scraped_at="2026-06-02T12:00:00Z",
     )
     assert row["kos"] == 0
     assert row["submissions"] == 0
@@ -299,7 +315,7 @@ def test_upsert_csv_appends_and_replaces(ingest_module, tmp_path):
     # Now upsert: 2 new rows, one of which overlaps fighter_id=2
     new_batch = [
         _stub_row(ingest_module, fighter_id=2, wins=99),  # REPLACE
-        _stub_row(ingest_module, fighter_id=4, wins=7),   # NEW
+        _stub_row(ingest_module, fighter_id=4, wins=7),  # NEW
     ]
     ingest_module.upsert_csv(csv_path, new_batch)
     rows2 = _read_csv(csv_path)
@@ -308,9 +324,9 @@ def test_upsert_csv_appends_and_replaces(ingest_module, tmp_path):
     by_id = {int(r["fighter_id"]): r for r in rows2}
     assert set(by_id.keys()) == {1, 2, 3, 4}
     assert int(by_id[2]["wins"]) == 99  # REPLACED, not appended
-    assert int(by_id[1]["wins"]) == 5   # untouched
+    assert int(by_id[1]["wins"]) == 5  # untouched
     assert int(by_id[3]["wins"]) == 10  # untouched
-    assert int(by_id[4]["wins"]) == 7   # new
+    assert int(by_id[4]["wins"]) == 7  # new
 
 
 def test_upsert_csv_creates_file_with_header(ingest_module, tmp_path):
@@ -346,18 +362,20 @@ def test_detect_antibot_status_codes(ingest_module):
 
 
 def test_detect_antibot_cloudflare_signatures(ingest_module):
-    assert ingest_module.detect_antibot(
-        "<html><body>Just a moment...</body></html>", 200
-    ) is True
-    assert ingest_module.detect_antibot(
-        "<html><div class='cf-browser-verification'></div></html>", 200
-    ) is True
-    assert ingest_module.detect_antibot(
-        "<html>Cloudflare Ray ID: abc123</html>", 200
-    ) is True
-    assert ingest_module.detect_antibot(
-        "<html><title>Attention Required! | Cloudflare</title></html>", 200
-    ) is True
+    assert ingest_module.detect_antibot("<html><body>Just a moment...</body></html>", 200) is True
+    assert (
+        ingest_module.detect_antibot(
+            "<html><div class='cf-browser-verification'></div></html>", 200
+        )
+        is True
+    )
+    assert ingest_module.detect_antibot("<html>Cloudflare Ray ID: abc123</html>", 200) is True
+    assert (
+        ingest_module.detect_antibot(
+            "<html><title>Attention Required! | Cloudflare</title></html>", 200
+        )
+        is True
+    )
 
 
 def test_detect_antibot_clean_page_passes(ingest_module):

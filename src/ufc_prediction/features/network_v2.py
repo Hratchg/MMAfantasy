@@ -102,7 +102,7 @@ def _decay_subgraph(graph: nx.DiGraph, as_of_date: date) -> nx.DiGraph:
         days = (as_of_date - attrs["earliest_date"]).days
         # Pitfall #9 mitigation: as_of_date is the prediction-time date; days
         # is therefore non-negative (we filtered earliest_date < as_of_date).
-        decayed = attrs["mov_weight"] * (DECAY_BASE ** days)
+        decayed = attrs["mov_weight"] * (DECAY_BASE**days)
         sub.add_edge(u, v, weight=decayed)
     return sub
 
@@ -177,8 +177,7 @@ def apply_network_features_v2(
     if not raw_results:
         return
     decisive = [
-        f for f in fights
-        if f.get("winner_id") is not None and f.get("loser_id") is not None
+        f for f in fights if f.get("winner_id") is not None and f.get("loser_id") is not None
     ]
     graph = build_fight_graph_v2(decisive, scope=scope, weight_mode=weight_mode)
     nan = float("nan")

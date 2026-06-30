@@ -23,6 +23,7 @@ NOTE: A Phase 16-era scripts/retrain_xgb_v3.py exists with stale gate
 thresholds (Brier ≤ 0.215, Acc ≥ 0.67 — wrong v2.5 binding). This script is
 a NEW Phase 45-specific driver to avoid mutating that legacy.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -59,20 +60,14 @@ XGB_V3_PATH = MODELS_DIR / "xgb_v3.joblib"
 XGB_V3_META_PATH = MODELS_DIR / "xgb_v3_meta.json"
 XGB_V3_CONTRACT_PATH = MODELS_DIR / "xgb_v3-contract.json"
 
-PHASE_DIR = (
-    PROJECT_ROOT / ".planning/phases/45-meta-v3-candidate-retrain"
-)
+PHASE_DIR = PROJECT_ROOT / ".planning/phases/45-meta-v3-candidate-retrain"
 OOF_PARQUET_PATH = PHASE_DIR / "45-XGB-V3-OOF-PREDICTIONS.parquet"
 SHA_MID_XGB_V2_PATH = PHASE_DIR / "45-XGB-V2-SHA-PHASE-45-MID.txt"
 SHA_MID_META_V2_PATH = PHASE_DIR / "45-META-V2-SHA-PHASE-45-MID.txt"
 
 # AUDIT-01 invariants (PROJECT.md cross-cutting invariants #1 + #2).
-EXPECTED_XGB_V2_SHA = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
-EXPECTED_META_V2_SHA = (
-    "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
-)
+EXPECTED_XGB_V2_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+EXPECTED_META_V2_SHA = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
 
 # 5-seed harness per D-CONTEXT §Training-Strategy (same as xgb_v2).
 SEEDS: tuple[int, ...] = (42, 43, 44, 45, 46)
@@ -159,6 +154,7 @@ def debutant_elo_is_seeded(fight_record: dict) -> bool:
 # Helpers
 # ────────────────────────────────────────────────────────────────────────
 
+
 def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -209,7 +205,10 @@ def _audit01_postflight() -> None:
 
 
 def _train_with_fixed_params(
-    X_train: np.ndarray, y_train: np.ndarray, best_params: dict, seed: int,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    best_params: dict,
+    seed: int,
 ) -> CalibratedClassifierCV:
     """Single-seed train mirroring scripts/retrain_xgb_v3.py::_train_with_fixed_params.
 
@@ -248,6 +247,7 @@ def _accuracy(y_true: np.ndarray, y_prob: np.ndarray) -> float:
 # ────────────────────────────────────────────────────────────────────────
 # Orchestrator
 # ────────────────────────────────────────────────────────────────────────
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -327,15 +327,21 @@ def main() -> int:
 
     print("[xgb_v3] Computing division medians (training-set only)...")
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
 
     print("[xgb_v3] Assembling full feature matrix (75 cols; NET-* included)...")
     ml_config = MLConfig(cutoff_date=cutoff_str)
     assembler = FeatureMatrixAssembler(ml_config)
     X_full, y, fight_dates_full = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
     )
@@ -357,17 +363,17 @@ def main() -> int:
     # Defensive: fight_records → assemble preserves order (CONTEXT D-04 of P15
     # asserts no row drops). Verify length.
     if len(fight_ids_full) != X.shape[0]:
-        msg = (
-            f"row-count mismatch: fight_records={len(fight_ids_full)} vs "
-            f"X.shape[0]={X.shape[0]}"
-        )
+        msg = f"row-count mismatch: fight_records={len(fight_ids_full)} vs X.shape[0]={X.shape[0]}"
         print(f"[xgb_v3] FATAL: {msg}", file=sys.stderr)
         return 2
 
     # ─── Step 4: Temporal split at cutoff ─────────────────────────────
     print("[xgb_v3] Temporal split at cutoff_date...")
     X_train, X_test, y_train, y_test = split_temporal(
-        X, y, fight_dates_full, cutoff_date_obj,
+        X,
+        y,
+        fight_dates_full,
+        cutoff_date_obj,
     )
     train_mask = np.array([d < cutoff_date_obj for d in fight_dates_full])
     test_mask = np.array([d >= cutoff_date_obj for d in fight_dates_full])
@@ -375,9 +381,7 @@ def main() -> int:
     fight_ids_test = [fid for fid, m in zip(fight_ids_full, test_mask) if m]
     fight_dates_train = np.array(fight_dates_full)[train_mask]
     fight_dates_test = np.array(fight_dates_full)[test_mask]
-    print(
-        f"  Train: {X_train.shape[0]} fights, Test: {X_test.shape[0]} fights"
-    )
+    print(f"  Train: {X_train.shape[0]} fights, Test: {X_test.shape[0]} fights")
 
     # ─── Step 5: 5-seed candidate training ────────────────────────────
     seeds = build_seed_list()
@@ -397,16 +401,15 @@ def main() -> int:
         per_seed_test_probs.append(test_prob)
         brier_seed = _brier(y_test, test_prob)
         acc_seed = _accuracy(y_test, test_prob)
-        per_seed_metrics.append({
-            "seed": int(seed),
-            "brier_score": brier_seed,
-            "accuracy": acc_seed,
-        })
-        elapsed = time.time() - t_seed
-        print(
-            f"  seed={seed} done in {elapsed:.1f}s — "
-            f"brier={brier_seed:.4f} acc={acc_seed:.4f}"
+        per_seed_metrics.append(
+            {
+                "seed": int(seed),
+                "brier_score": brier_seed,
+                "accuracy": acc_seed,
+            }
         )
+        elapsed = time.time() - t_seed
+        print(f"  seed={seed} done in {elapsed:.1f}s — brier={brier_seed:.4f} acc={acc_seed:.4f}")
 
     # ─── Step 6: 5-seed median predictions for OOF parquet + canon model ──
     # Per Plan: 5-seed median is the canonical artifact. For the persisted
@@ -428,11 +431,9 @@ def main() -> int:
     )
 
     # OOF train predictions: TimeSeriesSplit per seed → median across seeds.
-    print(
-        "[xgb_v3] Generating OOF train predictions "
-        "(TimeSeriesSplit, 5 splits per seed)..."
-    )
+    print("[xgb_v3] Generating OOF train predictions (TimeSeriesSplit, 5 splits per seed)...")
     from sklearn.model_selection import TimeSeriesSplit
+
     t_oof = time.time()
     # Pre-sort train data chronologically once (TimeSeriesSplit requires this).
     sort_idx = np.argsort(fight_dates_train)
@@ -468,23 +469,22 @@ def main() -> int:
     print(f"  OOF generation: {time.time() - t_oof:.1f}s")
 
     # Build the parquet: train rows (OOF median) + test rows (5-seed test median).
-    oof_df = pd.DataFrame({
-        "fight_id": fight_ids_train_sorted + fight_ids_test,
-        "xgb_v3_oof_prob": np.concatenate([
-            oof_probs_train_median,
-            test_prob_median,
-        ]),
-        "split": (
-            ["train"] * n_train + ["test"] * len(fight_ids_test)
-        ),
-        "train_or_test": (
-            ["train"] * n_train + ["test"] * len(fight_ids_test)
-        ),
-        "event_date": (
-            [str(d) for d in fight_dates_train_sorted]
-            + [str(d) for d in fight_dates_test]
-        ),
-    })
+    oof_df = pd.DataFrame(
+        {
+            "fight_id": fight_ids_train_sorted + fight_ids_test,
+            "xgb_v3_oof_prob": np.concatenate(
+                [
+                    oof_probs_train_median,
+                    test_prob_median,
+                ]
+            ),
+            "split": (["train"] * n_train + ["test"] * len(fight_ids_test)),
+            "train_or_test": (["train"] * n_train + ["test"] * len(fight_ids_test)),
+            "event_date": (
+                [str(d) for d in fight_dates_train_sorted] + [str(d) for d in fight_dates_test]
+            ),
+        }
+    )
     print(f"[xgb_v3] Writing OOF parquet ({len(oof_df)} rows) to {oof_path}...")
     oof_df.to_parquet(oof_path, index=False)
 
@@ -503,9 +503,8 @@ def main() -> int:
     # AUC-ROC of median is a single scalar over median probs.
     try:
         from sklearn.metrics import roc_auc_score
-        median_metrics_dict["auc_roc"] = float(
-            roc_auc_score(y_test, test_prob_median)
-        )
+
+        median_metrics_dict["auc_roc"] = float(roc_auc_score(y_test, test_prob_median))
     except Exception:
         median_metrics_dict["auc_roc"] = float("nan")
 
@@ -551,10 +550,12 @@ def main() -> int:
         "feature_columns_hash": feature_cols_hash,
         "n_features": len(feature_columns),
         "min_partner_version_supported": parent_contract.get(
-            "min_partner_version_supported", "1.0.0",
+            "min_partner_version_supported",
+            "1.0.0",
         ),
         "deprecation_policy": parent_contract.get(
-            "deprecation_policy", "N >= 2 minor versions",
+            "deprecation_policy",
+            "N >= 2 minor versions",
         ),
         "model_artifact_sha256": xgb_v3_sha,
         "sha256": xgb_v3_sha,  # alias for plan verification command

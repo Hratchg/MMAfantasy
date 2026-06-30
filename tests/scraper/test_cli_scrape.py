@@ -231,7 +231,10 @@ class TestScrapeSherdogCommand:
         mock_client_cls.return_value.__exit__ = MagicMock(return_value=False)
         mock_scraper = MagicMock()
         mock_scraper.scrape_all_fighters.return_value = {
-            "matched": 0, "unmatched": 0, "skipped": 0, "errors": 0,
+            "matched": 0,
+            "unmatched": 0,
+            "skipped": 0,
+            "errors": 0,
             "unmatched_names": [],
         }
         mock_scraper_cls.return_value = mock_scraper
@@ -263,7 +266,10 @@ class TestScrapeSherdogCommand:
         mock_client_cls.return_value.__exit__ = MagicMock(return_value=False)
         mock_scraper = MagicMock()
         mock_scraper.scrape_all_fighters.return_value = {
-            "matched": 0, "unmatched": 0, "skipped": 0, "errors": 0,
+            "matched": 0,
+            "unmatched": 0,
+            "skipped": 0,
+            "errors": 0,
             "unmatched_names": [],
         }
         mock_scraper_cls.return_value = mock_scraper
@@ -290,14 +296,15 @@ class TestScrapeSherdogCommand:
         mock_client_cls.return_value.__exit__ = MagicMock(return_value=False)
         mock_scraper = MagicMock()
         mock_scraper.scrape_all_fighters.return_value = {
-            "matched": 0, "unmatched": 0, "skipped": 0, "errors": 0,
+            "matched": 0,
+            "unmatched": 0,
+            "skipped": 0,
+            "errors": 0,
             "unmatched_names": [],
         }
         mock_scraper_cls.return_value = mock_scraper
 
-        result = runner.invoke(
-            app, ["scrape", "sherdog", "--since-year", "2015"]
-        )
+        result = runner.invoke(app, ["scrape", "sherdog", "--since-year", "2015"])
 
         assert result.exit_code == 0
         _, call_kwargs = mock_scraper.scrape_all_fighters.call_args

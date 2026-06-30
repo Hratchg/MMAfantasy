@@ -110,8 +110,7 @@ def test_legitimate_as_of_date_is_included(session):
     result = load_computed_features(session)
 
     assert (fa.id, fight.id) in result, (
-        "legitimate pre-event-date row was dropped by the filter — "
-        "over-filtering bug (T-37-02-02)"
+        "legitimate pre-event-date row was dropped by the filter — over-filtering bug (T-37-02-02)"
     )
 
 
@@ -194,9 +193,7 @@ def test_null_as_of_date_is_included(session):
     # legacy NULL-as_of_date row that mirrors pre-Phase-37 data shape.
     # We temporarily drop the NOT NULL constraint inside the transaction so
     # the rollback restores it cleanly on teardown.
-    session.execute(
-        text("ALTER TABLE computed_features ALTER COLUMN as_of_date DROP NOT NULL")
-    )
+    session.execute(text("ALTER TABLE computed_features ALTER COLUMN as_of_date DROP NOT NULL"))
     session.execute(
         text(
             "INSERT INTO computed_features "

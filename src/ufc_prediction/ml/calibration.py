@@ -29,8 +29,7 @@ from sklearn.calibration import CalibratedClassifierCV
 def audit_xgb_v2_calibration(
     model_path: Path = Path("models/xgb_v2.joblib"),
     out_path: Path = Path(
-        ".planning/phases/26-forward-stepwise-candidate-promotion/"
-        "CALIB_00_CURRENT_STATE.json"
+        ".planning/phases/26-forward-stepwise-candidate-promotion/CALIB_00_CURRENT_STATE.json"
     ),
 ) -> dict[str, Any]:
     """CALIB-V22-00: introspect xgb_v2's pipeline; emit `CALIB_00_CURRENT_STATE.json`.
@@ -49,9 +48,7 @@ def audit_xgb_v2_calibration(
     model = joblib.load(model_path)
     is_calibrated = isinstance(model, CalibratedClassifierCV)
     method = getattr(model, "method", None) if is_calibrated else None
-    n_calibrators = (
-        len(model.calibrated_classifiers_) if is_calibrated else 0
-    )
+    n_calibrators = len(model.calibrated_classifiers_) if is_calibrated else 0
     # Derive double_calibration_risk from introspection (NOT hardcoded False).
     # The risk is "True" only if the loaded model already has >1 CalibratedClassifierCV
     # layer (i.e. stacked). Single-layer with method='sigmoid' is the expected state.

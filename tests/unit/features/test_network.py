@@ -70,30 +70,86 @@ def toy_fights() -> list[dict]:
         2024-06-01: F5 beats F3  (KO/TKO,    weight=1.2)   loser=F3 -> F5
     """
     return [
-        {"fight_id": 1,  "event_date": date(2010, 1, 1),
-         "fighter_a_id": 1, "fighter_b_id": 2, "winner_id": 1, "loser_id": 2,
-         "method": "KO/TKO", "weight_class": "Lightweight"},
-        {"fight_id": 2,  "event_date": date(2010, 6, 1),
-         "fighter_a_id": 1, "fighter_b_id": 3, "winner_id": 1, "loser_id": 3,
-         "method": "Decision", "weight_class": "Lightweight"},
-        {"fight_id": 3,  "event_date": date(2011, 1, 1),
-         "fighter_a_id": 2, "fighter_b_id": 3, "winner_id": 2, "loser_id": 3,
-         "method": "KO/TKO", "weight_class": "Lightweight"},
-        {"fight_id": 4,  "event_date": date(2011, 6, 1),
-         "fighter_a_id": 4, "fighter_b_id": 1, "winner_id": 4, "loser_id": 1,
-         "method": "Submission", "weight_class": "Lightweight"},
-        {"fight_id": 5,  "event_date": date(2018, 1, 1),
-         "fighter_a_id": 5, "fighter_b_id": 4, "winner_id": 5, "loser_id": 4,
-         "method": "KO/TKO", "weight_class": "Lightweight"},
-        {"fight_id": 6,  "event_date": date(2018, 6, 1),
-         "fighter_a_id": 5, "fighter_b_id": 1, "winner_id": 5, "loser_id": 1,
-         "method": "Decision", "weight_class": "Lightweight"},
-        {"fight_id": 7,  "event_date": date(2024, 1, 1),
-         "fighter_a_id": 5, "fighter_b_id": 2, "winner_id": 5, "loser_id": 2,
-         "method": "Decision", "weight_class": "Lightweight"},
-        {"fight_id": 8,  "event_date": date(2024, 6, 1),
-         "fighter_a_id": 5, "fighter_b_id": 3, "winner_id": 5, "loser_id": 3,
-         "method": "KO/TKO", "weight_class": "Lightweight"},
+        {
+            "fight_id": 1,
+            "event_date": date(2010, 1, 1),
+            "fighter_a_id": 1,
+            "fighter_b_id": 2,
+            "winner_id": 1,
+            "loser_id": 2,
+            "method": "KO/TKO",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 2,
+            "event_date": date(2010, 6, 1),
+            "fighter_a_id": 1,
+            "fighter_b_id": 3,
+            "winner_id": 1,
+            "loser_id": 3,
+            "method": "Decision",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 3,
+            "event_date": date(2011, 1, 1),
+            "fighter_a_id": 2,
+            "fighter_b_id": 3,
+            "winner_id": 2,
+            "loser_id": 3,
+            "method": "KO/TKO",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 4,
+            "event_date": date(2011, 6, 1),
+            "fighter_a_id": 4,
+            "fighter_b_id": 1,
+            "winner_id": 4,
+            "loser_id": 1,
+            "method": "Submission",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 5,
+            "event_date": date(2018, 1, 1),
+            "fighter_a_id": 5,
+            "fighter_b_id": 4,
+            "winner_id": 5,
+            "loser_id": 4,
+            "method": "KO/TKO",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 6,
+            "event_date": date(2018, 6, 1),
+            "fighter_a_id": 5,
+            "fighter_b_id": 1,
+            "winner_id": 5,
+            "loser_id": 1,
+            "method": "Decision",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 7,
+            "event_date": date(2024, 1, 1),
+            "fighter_a_id": 5,
+            "fighter_b_id": 2,
+            "winner_id": 5,
+            "loser_id": 2,
+            "method": "Decision",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 8,
+            "event_date": date(2024, 6, 1),
+            "fighter_a_id": 5,
+            "fighter_b_id": 3,
+            "winner_id": 5,
+            "loser_id": 3,
+            "method": "KO/TKO",
+            "weight_class": "Lightweight",
+        },
     ]
 
 
@@ -213,13 +269,15 @@ class TestPageRankAsOfDate:
         raw_results = []
         for f in toy_fights:
             for fid in (f["fighter_a_id"], f["fighter_b_id"]):
-                raw_results.append({
-                    "fighter_id": fid,
-                    "fight_id": f["fight_id"],
-                    "as_of_date": f["event_date"],
-                    "feature_set_version": "v3",
-                    "features": {},
-                })
+                raw_results.append(
+                    {
+                        "fighter_id": fid,
+                        "fight_id": f["fight_id"],
+                        "as_of_date": f["event_date"],
+                        "feature_set_version": "v3",
+                        "features": {},
+                    }
+                )
 
         network.apply_network_features(raw_results, toy_fights)
 
@@ -281,9 +339,7 @@ class TestPageRankAsOfDate:
         # Train-time differential (mirrors feature_matrix.py:560-625 pattern).
         train_pagerank_diff = feats_a["pagerank"] - feats_b["pagerank"]
         train_sos_diff = feats_a["sos_2hop"] - feats_b["sos_2hop"]
-        train_debutant_diff = (
-            feats_a["is_debutant_in_graph"] - feats_b["is_debutant_in_graph"]
-        )
+        train_debutant_diff = feats_a["is_debutant_in_graph"] - feats_b["is_debutant_in_graph"]
 
         # Predict-time differential (mirrors inference_features.py).
         # network.compute_network_diff_features encapsulates the math both
@@ -391,31 +447,47 @@ class TestTwoHopSoS:
         # Graph (i): F_strong (fid=99) beats F_GOAT (fid=5, who's the
         # GOAT in our toy_fights). At as_of=2025-01-01, F5 has high PR.
         graph_i_fights = toy_fights + [
-            {"fight_id": 99, "event_date": date(2024, 12, 1),
-             "fighter_a_id": 99, "fighter_b_id": 5,
-             "winner_id": 99, "loser_id": 5,
-             "method": "Decision", "weight_class": "Lightweight"},
+            {
+                "fight_id": 99,
+                "event_date": date(2024, 12, 1),
+                "fighter_a_id": 99,
+                "fighter_b_id": 5,
+                "winner_id": 99,
+                "loser_id": 5,
+                "method": "Decision",
+                "weight_class": "Lightweight",
+            },
         ]
-        g_i = network.build_fight_graph(graph_i_fights, scope="pan-mma",
-                                        weight_mode="mov")
+        g_i = network.build_fight_graph(graph_i_fights, scope="pan-mma", weight_mode="mov")
         sos_i = network.compute_2hop_sos_at(g_i, 99, date(2025, 1, 1))
 
         # Graph (ii): F_strong beats F_TomatoCan (fid=99 beats fid=98 who
         # has no wins). The toy_fights graph never references F98.
         graph_ii_fights = toy_fights + [
-            {"fight_id": 100, "event_date": date(2024, 12, 1),
-             "fighter_a_id": 99, "fighter_b_id": 98,
-             "winner_id": 99, "loser_id": 98,
-             "method": "Decision", "weight_class": "Lightweight"},
+            {
+                "fight_id": 100,
+                "event_date": date(2024, 12, 1),
+                "fighter_a_id": 99,
+                "fighter_b_id": 98,
+                "winner_id": 99,
+                "loser_id": 98,
+                "method": "Decision",
+                "weight_class": "Lightweight",
+            },
             # Also add a 101 fight where F98 loses to someone else so
             # F98 IS in the graph (otherwise compute_pagerank skips entirely).
-            {"fight_id": 101, "event_date": date(2024, 11, 1),
-             "fighter_a_id": 97, "fighter_b_id": 98,
-             "winner_id": 97, "loser_id": 98,
-             "method": "Decision", "weight_class": "Lightweight"},
+            {
+                "fight_id": 101,
+                "event_date": date(2024, 11, 1),
+                "fighter_a_id": 97,
+                "fighter_b_id": 98,
+                "winner_id": 97,
+                "loser_id": 98,
+                "method": "Decision",
+                "weight_class": "Lightweight",
+            },
         ]
-        g_ii = network.build_fight_graph(graph_ii_fights, scope="pan-mma",
-                                         weight_mode="mov")
+        g_ii = network.build_fight_graph(graph_ii_fights, scope="pan-mma", weight_mode="mov")
         sos_ii = network.compute_2hop_sos_at(g_ii, 99, date(2025, 1, 1))
 
         assert sos_i is not None and sos_ii is not None
@@ -437,10 +509,8 @@ class TestTwoHopSoS:
         for fighter_id in (1, 2, 3, 4, 5):
             if fighter_id not in sub_pr.nodes:
                 # Debutant case both functions handle identically.
-                assert network.compute_pagerank_at(
-                    toy_graph, fighter_id, as_of) is None
-                assert network.compute_2hop_sos_at(
-                    toy_graph, fighter_id, as_of) is None
+                assert network.compute_pagerank_at(toy_graph, fighter_id, as_of) is None
+                assert network.compute_2hop_sos_at(toy_graph, fighter_id, as_of) is None
                 continue
             pr_val = network.compute_pagerank_at(toy_graph, fighter_id, as_of)
             sos_val = network.compute_2hop_sos_at(toy_graph, fighter_id, as_of)

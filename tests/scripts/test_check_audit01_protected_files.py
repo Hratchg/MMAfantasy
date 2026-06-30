@@ -24,7 +24,8 @@ SCRIPT_PATH = PROJECT_ROOT / "scripts" / "check_audit01_protected_files.py"
 @pytest.fixture(scope="module")
 def mod():
     spec = importlib.util.spec_from_file_location(
-        "check_audit01_protected_files", SCRIPT_PATH,
+        "check_audit01_protected_files",
+        SCRIPT_PATH,
     )
     assert spec is not None and spec.loader is not None
     m = importlib.util.module_from_spec(spec)

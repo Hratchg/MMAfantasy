@@ -4,6 +4,7 @@ Per Pitfall 8 (CONTEXT regression budget), kept in a NEW file separate from
 tests/ml/test_feature_matrix.py to avoid the 9 pre-existing elo_momentum_diff
 fixture failures. Tests use NumPy literals (no fixture dependency).
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -17,8 +18,7 @@ def _make_inputs():
     X = np.array([[1.0], [2.0], [3.0], [4.0], [5.0]])
     y = np.array([0, 1, 0, 1, 0])
     dates = np.array(
-        [date(2010, 1, 1), date(2015, 1, 1), date(2020, 1, 1),
-         date(2023, 6, 1), date(2024, 6, 1)],
+        [date(2010, 1, 1), date(2015, 1, 1), date(2020, 1, 1), date(2023, 6, 1), date(2024, 6, 1)],
         dtype=object,
     )
     return X, y, dates
@@ -26,9 +26,7 @@ def _make_inputs():
 
 def test_default_unchanged_when_train_lower_none() -> None:
     X, y, dates = _make_inputs()
-    X_tr, X_te, y_tr, y_te = split_temporal(
-        X, y, dates, cutoff_date=date(2023, 1, 1)
-    )
+    X_tr, X_te, y_tr, y_te = split_temporal(X, y, dates, cutoff_date=date(2023, 1, 1))
     # All 5 rows partitioned: 3 train (pre-2023), 2 test (>= 2023)
     assert X_tr.shape[0] == 3
     assert X_te.shape[0] == 2
@@ -38,7 +36,9 @@ def test_default_unchanged_when_train_lower_none() -> None:
 def test_train_lower_drops_pre_lower_rows() -> None:
     X, y, dates = _make_inputs()
     X_tr, X_te, y_tr, y_te = split_temporal(
-        X, y, dates,
+        X,
+        y,
+        dates,
         cutoff_date=date(2023, 1, 1),
         train_lower=date(2014, 1, 1),
     )
@@ -52,11 +52,11 @@ def test_train_lower_drops_pre_lower_rows() -> None:
 def test_test_fold_unchanged_by_train_lower() -> None:
     """Pitfall 5: train_lower must ONLY mask train; test fold unchanged."""
     X, y, dates = _make_inputs()
-    _, X_te_no_lower, _, _ = split_temporal(
-        X, y, dates, cutoff_date=date(2023, 1, 1)
-    )
+    _, X_te_no_lower, _, _ = split_temporal(X, y, dates, cutoff_date=date(2023, 1, 1))
     _, X_te_with_lower, _, _ = split_temporal(
-        X, y, dates,
+        X,
+        y,
+        dates,
         cutoff_date=date(2023, 1, 1),
         train_lower=date(2014, 1, 1),
     )
@@ -66,7 +66,9 @@ def test_test_fold_unchanged_by_train_lower() -> None:
 def test_train_lower_equals_cutoff_drops_all_train() -> None:
     X, y, dates = _make_inputs()
     X_tr, X_te, _, _ = split_temporal(
-        X, y, dates,
+        X,
+        y,
+        dates,
         cutoff_date=date(2023, 1, 1),
         train_lower=date(2023, 1, 1),
     )
@@ -77,7 +79,9 @@ def test_train_lower_equals_cutoff_drops_all_train() -> None:
 def test_train_lower_after_cutoff_yields_empty_train() -> None:
     X, y, dates = _make_inputs()
     X_tr, _, _, _ = split_temporal(
-        X, y, dates,
+        X,
+        y,
+        dates,
         cutoff_date=date(2023, 1, 1),
         train_lower=date(2024, 1, 1),
     )

@@ -34,9 +34,7 @@ def trained_model():
     )
     base_model.fit(X[:48], y[:48])
 
-    calibrated = CalibratedClassifierCV(
-        FrozenEstimator(base_model), method="sigmoid"
-    )
+    calibrated = CalibratedClassifierCV(FrozenEstimator(base_model), method="sigmoid")
     calibrated.fit(X[48:], y[48:])
 
     return calibrated

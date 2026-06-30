@@ -64,9 +64,7 @@ def _prefer_canonical(results: list[Fighter]) -> Fighter:
     Raises:
         ValueError: If `results` is empty (raised by `prefer_canonical`).
     """
-    return prefer_canonical(
-        results, source_key=lambda f: f.source, tiebreak_key=lambda f: f.id
-    )
+    return prefer_canonical(results, source_key=lambda f: f.source, tiebreak_key=lambda f: f.id)
 
 
 class ModelPredictor:
@@ -105,7 +103,7 @@ class ModelPredictor:
                 f"{len(FEATURE_COLUMNS)} vs meta {len(meta_cols_for_msg)}. "
                 f"Halt."
             )
-        self._include_net = (n_features == 75)
+        self._include_net = n_features == 75
         # LIVE-03 (Pitfall #12) — Phase 18 evolved: hard-fail if the model was
         # trained against a different feature-column list than current code
         # knows about. Stale meta = silent feature drift that ships garbage
@@ -141,12 +139,14 @@ class ModelPredictor:
                 get_latest_meta_version,
                 load_meta_model,
             )
+
             latest = get_latest_meta_version(meta_dir)
             if latest is not None:
                 meta_path = Path(meta_dir) / f"meta_{latest}.joblib"
                 if meta_path.exists():
                     self.meta_model, self.meta_metadata = load_meta_model(
-                        meta_dir, version=latest,
+                        meta_dir,
+                        version=latest,
                     )
                     # SHA invariant (unchanged from Phase 19)
                     base_path = Path(model_dir) / f"xgb_{self.version}.joblib"
@@ -165,10 +165,13 @@ class ModelPredictor:
                         from ufc_prediction.ml.meta_features_v22 import (
                             META_V22_FEATURE_COLUMNS,
                         )
+
                         expected_meta_cols = list(META_V22_FEATURE_COLUMNS)
                     else:
                         expected_meta_cols = [
-                            "xgb_oof_prob", "elo_prob", "closing_prob_diff",
+                            "xgb_oof_prob",
+                            "elo_prob",
+                            "closing_prob_diff",
                         ]
                     if list(self.meta_metadata["meta_feature_columns"]) != expected_meta_cols:
                         raise RuntimeError(
@@ -189,6 +192,7 @@ class ModelPredictor:
         self.fallback_keep_idx: list[int] | None = None
         try:
             import joblib as _joblib
+
             fallback_joblib = Path(model_dir) / "xgb_v2_no_odds.joblib"
             fallback_meta_path = Path(model_dir) / "xgb_v2_no_odds_meta.json"
             if fallback_joblib.exists() and fallback_meta_path.exists():
@@ -198,6 +202,7 @@ class ModelPredictor:
                 # subset the fallback was trained on. The fallback meta's feature_columns
                 # list is the source of truth.
                 from ufc_prediction.ml.config import FEATURE_COLUMNS_NO_NET as _FC72
+
                 fallback_cols = self.fallback_meta["feature_columns"]
                 if len(fallback_cols) != 67:
                     raise RuntimeError(
@@ -205,9 +210,7 @@ class ModelPredictor:
                         f"meta lists {len(fallback_cols)}, expected 67. Halt."
                     )
                 self.fallback_keep_idx = [_FC72.index(c) for c in fallback_cols]
-                logger.info(
-                    "predictor: loaded xgb_v2_no_odds fallback (67-col); SHA pinned"
-                )
+                logger.info("predictor: loaded xgb_v2_no_odds fallback (67-col); SHA pinned")
         except FileNotFoundError:
             # Backward-compat: no fallback artifact present → predict uses today's
             # pre-Phase-34 path. Tests against historical checkpoints stay green.
@@ -313,8 +316,11 @@ class ModelPredictor:
 
         # Step 4: live odds (D-09: cache → live HTTP → None)
         live_odds = fetch_matchup_odds(
-            fighter_a.name, fighter_b.name, ev_date,
-            refresh=refresh, session=session,
+            fighter_a.name,
+            fighter_b.name,
+            ev_date,
+            refresh=refresh,
+            session=session,
         )
 
         # Step 5: feature vector (LIVE-02 — replaces NaN-pad block).
@@ -322,7 +328,10 @@ class ModelPredictor:
         # so 72-col (ablation/xgb_v2) and 75-col (time-decayed) models receive
         # the matching feature space at predict-time (Pitfall #12 parity).
         feature_vector = build_inference_features(
-            session, fighter_a, fighter_b, ev_date,
+            session,
+            fighter_a,
+            fighter_b,
+            ev_date,
             live_odds=live_odds,
             include_net=self._include_net,
         )
@@ -347,9 +356,9 @@ class ModelPredictor:
         # we have an xgb_v2_no_odds fallback loaded, route to the 67-col fallback model
         # and SKIP META entirely. META's Level-1 set includes closing_prob_diff which is
         # the missing signal — META would silently degrade (RESEARCH Pitfall 2).
-        closing_prob_diff_idx = get_feature_columns(
-            include_net=self._include_net
-        ).index("closing_prob_diff")
+        closing_prob_diff_idx = get_feature_columns(include_net=self._include_net).index(
+            "closing_prob_diff"
+        )
         closing_prob_diff = float(feature_vector[0, closing_prob_diff_idx])
         fallback_used = False
         if (
@@ -403,7 +412,11 @@ class ModelPredictor:
         # Step 8: D-11 distribution-shift observability log + result
         feature_importances = self._get_top_importances(model_columns)
         self._log_predict_call(
-            fighter_a, fighter_b, ev_date, live_odds, prob_a,
+            fighter_a,
+            fighter_b,
+            ev_date,
+            live_odds,
+            prob_a,
             meta_kind=meta_kind,
             meta_skipped=meta_skipped,
             meta_skipped_reason=meta_skipped_reason,
@@ -421,10 +434,7 @@ class ModelPredictor:
         try:
             n_a = int(
                 session.query(Fight)
-                .filter(
-                    (Fight.fighter_a_id == fighter_a.id)
-                    | (Fight.fighter_b_id == fighter_a.id)
-                )
+                .filter((Fight.fighter_a_id == fighter_a.id) | (Fight.fighter_b_id == fighter_a.id))
                 .count()
             )
         except (TypeError, AttributeError, Exception):  # noqa: BLE001 — defensive only
@@ -432,19 +442,14 @@ class ModelPredictor:
         try:
             n_b = int(
                 session.query(Fight)
-                .filter(
-                    (Fight.fighter_a_id == fighter_b.id)
-                    | (Fight.fighter_b_id == fighter_b.id)
-                )
+                .filter((Fight.fighter_a_id == fighter_b.id) | (Fight.fighter_b_id == fighter_b.id))
                 .count()
             )
         except (TypeError, AttributeError, Exception):  # noqa: BLE001 — defensive only
             n_b = 0
         is_debutant_either = (n_a == 0) or (n_b == 0)
         slice_brier = self._select_slice_brier(ev_date)
-        odds_ts_iso = (
-            live_odds.fetched_at.isoformat() if live_odds is not None else None
-        )
+        odds_ts_iso = live_odds.fetched_at.isoformat() if live_odds is not None else None
         odds_src = live_odds.source if live_odds is not None else "nan"
 
         prediction_metadata = {
@@ -454,9 +459,7 @@ class ModelPredictor:
             "fighter_a_n_ufc_fights": int(n_a),
             "fighter_b_n_ufc_fights": int(n_b),
             "is_debutant_either": bool(is_debutant_either),
-            "calibration_slice_brier": (
-                float(slice_brier) if slice_brier is not None else None
-            ),
+            "calibration_slice_brier": (float(slice_brier) if slice_brier is not None else None),
         }
 
         return {
@@ -547,7 +550,9 @@ class ModelPredictor:
         except Exception as exc:  # noqa: BLE001 — observability MUST NOT break predict
             logger.warning("predict log write failed: %s", exc)
 
-    def _get_top_importances(self, feature_columns: list[str] | None = None, top_n: int = 10) -> dict[str, float]:
+    def _get_top_importances(
+        self, feature_columns: list[str] | None = None, top_n: int = 10
+    ) -> dict[str, float]:
         """Extract top N feature importances from the base XGBoost model."""
         cols = feature_columns or self.metadata.get("feature_columns") or FEATURE_COLUMNS
         # Try to get from the calibrated model's base estimator. Tolerate
@@ -555,20 +560,19 @@ class ModelPredictor:
         # patch self.model; importances are not asserted by those tests).
         try:
             base_estimator = (
-                self.model
-                .calibrated_classifiers_[0]
-                .estimator
-                .estimator  # FrozenEstimator wraps the real one
+                self.model.calibrated_classifiers_[
+                    0
+                ].estimator.estimator  # FrozenEstimator wraps the real one
             )
             raw = base_estimator.feature_importances_
-            importances = dict(
-                zip(cols, [float(v) for v in raw], strict=True)
-            )
+            importances = dict(zip(cols, [float(v) for v in raw], strict=True))
         except (AttributeError, IndexError, ValueError, TypeError):
             importances = {}
 
         sorted_feats = sorted(
-            importances.items(), key=lambda x: x[1], reverse=True,
+            importances.items(),
+            key=lambda x: x[1],
+            reverse=True,
         )
         return dict(sorted_feats[:top_n])
 

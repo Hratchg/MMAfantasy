@@ -94,12 +94,8 @@ ARTIFACT_THRESHOLD_RE_MEASURED_DELTA = 0.05  # |Δ| < 0.05 = evaporation
 ARTIFACT_THRESHOLD_PHASE_42_DELTA = 0.20  # phase_42 > 0.20 = order-of-magnitude
 
 # Cross-cutting invariants (mirrors PROJECT.md cross-cutting invariants).
-XGB_V2_SHA_INVARIANT = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
-META_V2_SHA_INVARIANT = (
-    "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
-)
+XGB_V2_SHA_INVARIANT = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+META_V2_SHA_INVARIANT = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
 
 
 logger = logging.getLogger(__name__)
@@ -147,10 +143,8 @@ def classify_verdict(
         if (
             s in re_measured_per_slice_delta_brier
             and s in phase_42_per_slice_delta_brier
-            and abs(re_measured_per_slice_delta_brier[s])
-            < ARTIFACT_THRESHOLD_RE_MEASURED_DELTA
-            and phase_42_per_slice_delta_brier[s]
-            > ARTIFACT_THRESHOLD_PHASE_42_DELTA
+            and abs(re_measured_per_slice_delta_brier[s]) < ARTIFACT_THRESHOLD_RE_MEASURED_DELTA
+            and phase_42_per_slice_delta_brier[s] > ARTIFACT_THRESHOLD_PHASE_42_DELTA
         )
     )
     if artifact_slices >= 2:
@@ -161,12 +155,7 @@ def classify_verdict(
 
     # Hurdle majority on re-measurement.
     hurdle_majority = (
-        sum(
-            1
-            for s in SLICES
-            if re_measured_per_slice_delta_brier.get(s, 0.0) >= hurdle
-        )
-        >= 2
+        sum(1 for s in SLICES if re_measured_per_slice_delta_brier.get(s, 0.0) >= hurdle) >= 2
     )
 
     if floor_all_clear and hurdle_majority:
@@ -311,8 +300,7 @@ def load_training_time_baseline(
         brier = slice_blob.get("brier_score")
         if brier is None:
             raise ValueError(
-                f"meta_v2_meta.json::metrics.per_slice_median missing brier "
-                f"for slice={s}"
+                f"meta_v2_meta.json::metrics.per_slice_median missing brier for slice={s}"
             )
         baselines[s] = float(brier)
     return baselines
@@ -386,9 +374,7 @@ def compute_re_measured_deltas(
         cand_brier = candidate_block.get(s, {}).get("brier_score")
         baseline_brier = training_time_baselines.get(s)
         if cand_brier is None or baseline_brier is None:
-            raise ValueError(
-                f"Cannot re-measure slice={s}: missing candidate or baseline brier"
-            )
+            raise ValueError(f"Cannot re-measure slice={s}: missing candidate or baseline brier")
         delta = float(baseline_brier) - float(cand_brier)
         out[s] = _PerSliceMeasurement(
             baseline_brier=float(baseline_brier),
@@ -488,9 +474,9 @@ recomposition candidate vs META-V22 baseline:
 
 | Slice | Phase 42 Δ Brier | Source |
 |-------|------------------|--------|
-| most_recent_12mo | +{phase_42_deltas['most_recent_12mo']:.4f} | runtime-regenerated XGB OOF (Phase 42 `--no-cache-oof`) |
-| most_recent_24mo | +{phase_42_deltas['most_recent_24mo']:.4f} | runtime-regenerated XGB OOF |
-| random_15pct | +{phase_42_deltas['random_15pct']:.4f} | runtime-regenerated XGB OOF |
+| most_recent_12mo | +{phase_42_deltas["most_recent_12mo"]:.4f} | runtime-regenerated XGB OOF (Phase 42 `--no-cache-oof`) |
+| most_recent_24mo | +{phase_42_deltas["most_recent_24mo"]:.4f} | runtime-regenerated XGB OOF |
+| random_15pct | +{phase_42_deltas["random_15pct"]:.4f} | runtime-regenerated XGB OOF |
 
 **Operator caveat verbatim (from `42-VERIFICATION.md` and
 `travel_composition_v25.json::operator_caveats`):**
@@ -636,8 +622,7 @@ def main(argv: list[str] | None = None) -> int:
     phase_42_report = load_phase_42_report()
     phase_42_per_slice = phase_42_report.get("per_slice", {})
     phase_42_deltas = {
-        s: float(phase_42_per_slice.get(s, {}).get("delta_brier", 0.0))
-        for s in SLICES
+        s: float(phase_42_per_slice.get(s, {}).get("delta_brier", 0.0)) for s in SLICES
     }
 
     # Resolve training-time OOF source.
@@ -656,12 +641,8 @@ def main(argv: list[str] | None = None) -> int:
 
     # Load training-time baselines + re-measure.
     training_time_baselines = load_training_time_baseline()
-    re_measurements = compute_re_measured_deltas(
-        phase_42_report, training_time_baselines
-    )
-    re_measured_deltas = {
-        s: re_measurements[s].delta_brier for s in SLICES
-    }
+    re_measurements = compute_re_measured_deltas(phase_42_report, training_time_baselines)
+    re_measured_deltas = {s: re_measurements[s].delta_brier for s in SLICES}
     floor_clears = floor_clears_per_slice(re_measurements, phase_42_report)
 
     # Classify verdict using a minimal gate stub (the binding hurdle value

@@ -29,8 +29,7 @@ class TestPredictAppRegistration:
         from ufc_prediction.cli.predict import predict_app
 
         command_names = [
-            cmd.name or cmd.callback.__name__
-            for cmd in predict_app.registered_commands
+            cmd.name or cmd.callback.__name__ for cmd in predict_app.registered_commands
         ]
         assert "train" in command_names
 
@@ -39,8 +38,7 @@ class TestPredictAppRegistration:
         from ufc_prediction.cli.predict import predict_app
 
         command_names = [
-            cmd.name or cmd.callback.__name__
-            for cmd in predict_app.registered_commands
+            cmd.name or cmd.callback.__name__ for cmd in predict_app.registered_commands
         ]
         assert "evaluate" in command_names
 

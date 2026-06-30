@@ -1,4 +1,5 @@
 """RED tests for MLConfig.train_lower_bound_date (Phase 15.1 D-05/D-06/D-07)."""
+
 from __future__ import annotations
 
 import dataclasses

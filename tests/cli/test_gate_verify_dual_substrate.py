@@ -88,9 +88,7 @@ CANDIDATE = REPO_ROOT / "models/meta/meta_v2_refv2.joblib"
 CANONICAL = REPO_ROOT / "models/meta/meta_v2.joblib"
 
 # AUDIT-01 invariant — canonical meta_v2.joblib SHA. Locked since v2.5.
-EXPECTED_CANONICAL_SHA = (
-    "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
-)
+EXPECTED_CANONICAL_SHA = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
 
 # Phase 75 D-03 LOCKED dual-substrate combined-verdict literals.
 VALID_DUAL_VERDICTS = {
@@ -177,13 +175,19 @@ def dual_verdict_dict(
     tmp_dir = tmp_path_factory.mktemp("dual_verdict")
     out_json = tmp_dir / "dual_verdict.json"
     argv = [
-        "gate", "verify",
-        "--candidate", str(CANDIDATE),
-        "--canonical", str(CANONICAL),
+        "gate",
+        "verify",
+        "--candidate",
+        str(CANDIDATE),
+        "--canonical",
+        str(CANONICAL),
         "--dual-substrate",
-        "--candidate-substrate", str(built_candidate_substrate),
-        "--canonical-substrate", str(built_canonical_substrate),
-        "--out", str(out_json),
+        "--candidate-substrate",
+        str(built_candidate_substrate),
+        "--canonical-substrate",
+        str(built_canonical_substrate),
+        "--out",
+        str(out_json),
     ]
     result = cli_runner.invoke(app, argv)
     if result.exit_code != 0:
@@ -310,25 +314,29 @@ def test_mutually_exclusive_substrate_parquet_and_dual_substrate_fails(
     a clean message instead of allowing ambiguous behavior.
     """
     argv = [
-        "gate", "verify",
-        "--candidate", str(CANDIDATE),
-        "--canonical", str(CANONICAL),
-        "--substrate-parquet", str(built_candidate_substrate),
+        "gate",
+        "verify",
+        "--candidate",
+        str(CANDIDATE),
+        "--canonical",
+        str(CANONICAL),
+        "--substrate-parquet",
+        str(built_candidate_substrate),
         "--dual-substrate",
-        "--candidate-substrate", str(built_candidate_substrate),
-        "--canonical-substrate", str(built_canonical_substrate),
-        "--out", str(tmp_path / "v.json"),
+        "--candidate-substrate",
+        str(built_candidate_substrate),
+        "--canonical-substrate",
+        str(built_canonical_substrate),
+        "--out",
+        str(tmp_path / "v.json"),
     ]
     result = cli_runner.invoke(app, argv)
     assert result.exit_code != 0, (
-        f"Expected exit != 0 for mutually-exclusive flags; got 0. "
-        f"stdout={result.stdout!r}"
+        f"Expected exit != 0 for mutually-exclusive flags; got 0. stdout={result.stdout!r}"
     )
     # ``result.output`` mixes stdout + typer's stderr-style BadParameter
     # rendering. Normalize Rich box wrapping before substring matching.
-    combined = _normalize_cli_output(
-        result.output + str(result.exception or "")
-    )
+    combined = _normalize_cli_output(result.output + str(result.exception or ""))
     assert "mutually exclusive" in combined, (
         f"Error message did not mention 'mutually exclusive'. "
         f"Output: {result.output!r}, exc={result.exception!r}"
@@ -345,21 +353,22 @@ def test_missing_both_substrate_flags_fails(
     a typer.BadParameter (exit != 0) with a helpful message.
     """
     argv = [
-        "gate", "verify",
-        "--candidate", str(CANDIDATE),
-        "--canonical", str(CANONICAL),
-        "--out", str(tmp_path / "v.json"),
+        "gate",
+        "verify",
+        "--candidate",
+        str(CANDIDATE),
+        "--canonical",
+        str(CANONICAL),
+        "--out",
+        str(tmp_path / "v.json"),
     ]
     result = cli_runner.invoke(app, argv)
     assert result.exit_code != 0, (
-        f"Expected exit != 0 when no substrate flag provided; got 0. "
-        f"stdout={result.stdout!r}"
+        f"Expected exit != 0 when no substrate flag provided; got 0. stdout={result.stdout!r}"
     )
     # ``result.output`` mixes stdout + typer's stderr-style BadParameter
     # rendering, which is where typer prints "Invalid value: …" boxes.
-    combined = _normalize_cli_output(
-        result.output + str(result.exception or "")
-    )
+    combined = _normalize_cli_output(result.output + str(result.exception or ""))
     assert "required" in combined or "substrate" in combined, (
         f"Error message did not mention 'required'/'substrate'. "
         f"Output: {result.output!r}, exc={result.exception!r}"
@@ -378,23 +387,25 @@ def test_dual_substrate_without_candidate_substrate_fails(
     is a typer.BadParameter (exit != 0).
     """
     argv = [
-        "gate", "verify",
-        "--candidate", str(CANDIDATE),
-        "--canonical", str(CANONICAL),
+        "gate",
+        "verify",
+        "--candidate",
+        str(CANDIDATE),
+        "--canonical",
+        str(CANONICAL),
         "--dual-substrate",
-        "--canonical-substrate", str(built_canonical_substrate),
-        "--out", str(tmp_path / "v.json"),
+        "--canonical-substrate",
+        str(built_canonical_substrate),
+        "--out",
+        str(tmp_path / "v.json"),
     ]
     result = cli_runner.invoke(app, argv)
     assert result.exit_code != 0, (
-        f"Expected exit != 0 when --candidate-substrate missing; got 0. "
-        f"stdout={result.stdout!r}"
+        f"Expected exit != 0 when --candidate-substrate missing; got 0. stdout={result.stdout!r}"
     )
     # ``result.output`` mixes stdout + typer's stderr-style BadParameter
     # rendering, which is where typer prints "Invalid value: …" boxes.
-    combined = _normalize_cli_output(
-        result.output + str(result.exception or "")
-    )
+    combined = _normalize_cli_output(result.output + str(result.exception or ""))
     assert "candidate-substrate" in combined or "required" in combined, (
         f"Error message did not mention 'candidate-substrate'/'required'. "
         f"Output: {result.output!r}, exc={result.exception!r}"
@@ -421,20 +432,24 @@ def test_default_out_path_uses_v27_prefix(
     """
     monkeypatch.chdir(tmp_path)
     argv = [
-        "gate", "verify",
-        "--candidate", str(CANDIDATE),
-        "--canonical", str(CANONICAL),
+        "gate",
+        "verify",
+        "--candidate",
+        str(CANDIDATE),
+        "--canonical",
+        str(CANONICAL),
         "--dual-substrate",
-        "--candidate-substrate", str(built_candidate_substrate),
-        "--canonical-substrate", str(built_canonical_substrate),
+        "--candidate-substrate",
+        str(built_candidate_substrate),
+        "--canonical-substrate",
+        str(built_canonical_substrate),
     ]
     result = cli_runner.invoke(app, argv)
     if result.exit_code != 0:
         print("STDOUT:", result.stdout)
         print("EXCEPTION:", result.exception)
     assert result.exit_code == 0, (
-        f"Default-path invocation failed: exit={result.exit_code}, "
-        f"exc={result.exception!r}"
+        f"Default-path invocation failed: exit={result.exit_code}, exc={result.exception!r}"
     )
     expected = tmp_path / "results" / f"gate_verdict_v27_{CANDIDATE.stem}.json"
     assert expected.exists(), (
@@ -460,30 +475,30 @@ def test_existing_single_substrate_path_still_works(
     """
     out_json = tmp_path / "single_verdict.json"
     argv = [
-        "gate", "verify",
-        "--candidate", str(CANDIDATE),
-        "--canonical", str(CANONICAL),
-        "--substrate-parquet", str(built_candidate_substrate),
-        "--out", str(out_json),
+        "gate",
+        "verify",
+        "--candidate",
+        str(CANDIDATE),
+        "--canonical",
+        str(CANONICAL),
+        "--substrate-parquet",
+        str(built_candidate_substrate),
+        "--out",
+        str(out_json),
     ]
     result = cli_runner.invoke(app, argv)
     if result.exit_code != 0:
         print("STDOUT:", result.stdout)
         print("EXCEPTION:", result.exception)
     assert result.exit_code == 0, (
-        f"Legacy single-substrate path failed: exit={result.exit_code}, "
-        f"exc={result.exception!r}"
+        f"Legacy single-substrate path failed: exit={result.exit_code}, exc={result.exception!r}"
     )
     parsed = json.loads(out_json.read_text())
     # v26 single-substrate JSON shape — has 'verdict', NOT 'combined_verdict'.
-    assert "verdict" in parsed, (
-        f"v26 verdict JSON missing 'verdict' field; keys={sorted(parsed)}"
-    )
+    assert "verdict" in parsed, f"v26 verdict JSON missing 'verdict' field; keys={sorted(parsed)}"
     assert "combined_verdict" not in parsed, (
-        f"v26 verdict JSON should NOT have 'combined_verdict' (that's v27). "
-        f"keys={sorted(parsed)}"
+        f"v26 verdict JSON should NOT have 'combined_verdict' (that's v27). keys={sorted(parsed)}"
     )
     assert parsed["verdict"] in VALID_SINGLE_VERDICTS, (
-        f"unexpected v26 verdict={parsed['verdict']!r}; "
-        f"valid={sorted(VALID_SINGLE_VERDICTS)}"
+        f"unexpected v26 verdict={parsed['verdict']!r}; valid={sorted(VALID_SINGLE_VERDICTS)}"
     )

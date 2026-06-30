@@ -268,7 +268,9 @@ def write_failures_csv(path: Path, failures: list[dict]) -> int:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(
-            fh, fieldnames=FAILURES_COLUMNS, lineterminator="\n",
+            fh,
+            fieldnames=FAILURES_COLUMNS,
+            lineterminator="\n",
         )
         writer.writeheader()
         for row in failures:
@@ -399,27 +401,35 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--output", type=Path,
+        "--output",
+        type=Path,
         default=Path("data/sherdog/pre_ufc_records.csv"),
         help="Output CSV path (default: data/sherdog/pre_ufc_records.csv)",
     )
     parser.add_argument(
-        "--failures-output", type=Path,
+        "--failures-output",
+        type=Path,
         default=Path("data/sherdog/pre_ufc_records_failures.csv"),
         help="Failures CSV path",
     )
     parser.add_argument(
-        "--limit", type=int, default=None,
+        "--limit",
+        type=int,
+        default=None,
         help="Process at most N debutants (for testing; default = all)",
     )
     parser.add_argument(
-        "--start-from-fighter-id", type=int, default=None,
+        "--start-from-fighter-id",
+        type=int,
+        default=None,
         help="Skip every fighter with id < this value (resumption helper)",
     )
     parser.add_argument(
-        "--delay", type=float, default=2.5,
+        "--delay",
+        type=float,
+        default=2.5,
         help="Polite rate-limit delay (seconds) between Sherdog requests "
-             "(default 2.5 — Phase 22 used 2.0; bump for v2.5 conservatism)",
+        "(default 2.5 — Phase 22 used 2.0; bump for v2.5 conservatism)",
     )
     args = parser.parse_args(argv)
 
@@ -445,8 +455,12 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("=== Plan 43-01 DEBUT-V25-01 ingestion start: %s ===", started_iso)
     logger.info("output=%s", args.output)
     logger.info("failures_output=%s", args.failures_output)
-    logger.info("delay=%.2fs limit=%s start_from_fighter_id=%s",
-                args.delay, args.limit, args.start_from_fighter_id)
+    logger.info(
+        "delay=%.2fs limit=%s start_from_fighter_id=%s",
+        args.delay,
+        args.limit,
+        args.start_from_fighter_id,
+    )
 
     session = SessionLocal()
     try:
@@ -471,12 +485,14 @@ def main(argv: list[str] | None = None) -> int:
 
     def _record_failure(fighter_id: int, sherdog_url: str | None, reason: str) -> None:
         nonlocal failures
-        failures.append({
-            "fighter_id": fighter_id,
-            "sherdog_url": sherdog_url or "",
-            "reason": reason,
-            "logged_at": datetime.now(timezone.utc).isoformat(),
-        })
+        failures.append(
+            {
+                "fighter_id": fighter_id,
+                "sherdog_url": sherdog_url or "",
+                "reason": reason,
+                "logged_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
         failure_reason_counts[reason] = failure_reason_counts.get(reason, 0) + 1
 
     try:
@@ -484,7 +500,10 @@ def main(argv: list[str] | None = None) -> int:
             if (idx % 50) == 0:
                 logger.info(
                     "progress: %d/%d (ok=%d failed=%d)",
-                    idx, len(debutants), ok_count, len(failures),
+                    idx,
+                    len(debutants),
+                    ok_count,
+                    len(failures),
                 )
 
             if not sherdog_url:
@@ -498,7 +517,9 @@ def main(argv: list[str] | None = None) -> int:
                 _record_failure(fighter_id, sherdog_url, reason)
                 logger.warning(
                     "fetch failed for fighter_id=%d url=%s reason=%s",
-                    fighter_id, sherdog_url, reason,
+                    fighter_id,
+                    sherdog_url,
+                    reason,
                 )
                 continue
 
@@ -508,7 +529,9 @@ def main(argv: list[str] | None = None) -> int:
                     "ANTI-BOT HALT — Sherdog returned status=%d / Cloudflare "
                     "signature on url=%s. Wrote %s. Exiting per Phase 40 "
                     "trust precedent.",
-                    status_code, sherdog_url, halt_path,
+                    status_code,
+                    sherdog_url,
+                    halt_path,
                 )
                 # Persist what we have so far (atomic UPSERT) before exit.
                 upsert_csv(args.output, new_rows)
@@ -536,7 +559,9 @@ def main(argv: list[str] | None = None) -> int:
                 _record_failure(fighter_id, sherdog_url, reason)
                 logger.warning(
                     "parse failed for fighter_id=%d url=%s reason=%s",
-                    fighter_id, sherdog_url, reason,
+                    fighter_id,
+                    sherdog_url,
+                    reason,
                 )
 
             # Periodic flush every 100 successful scrapes (resilience).
@@ -545,7 +570,9 @@ def main(argv: list[str] | None = None) -> int:
                 new_rows = []
                 write_failures_csv(args.failures_output, failures)
                 logger.info(
-                    "flushed checkpoint: ok=%d failed=%d", ok_count, len(failures),
+                    "flushed checkpoint: ok=%d failed=%d",
+                    ok_count,
+                    len(failures),
                 )
     finally:
         client.close()

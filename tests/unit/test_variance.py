@@ -11,6 +11,7 @@ Each test references one VALIDATION row id in its docstring; the row id
 is the test-name → contract anchor used by the executor's per-task
 verification map.
 """
+
 from __future__ import annotations
 
 import math
@@ -29,7 +30,9 @@ from ufc_prediction.ml.evaluator import PER_SLICE_KEYS
 
 
 def _synthetic_xy(
-    n: int = 200, d: int = 13, seed: int = 0,
+    n: int = 200,
+    d: int = 13,
+    seed: int = 0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Local synthetic fixture — deterministic; no DB; sub-millisecond.
 
@@ -50,10 +53,13 @@ def _synthetic_xy(
 
 
 def _synthetic_eval_set(
-    n: int = 200, d: int = 13, seed: int = 1,
+    n: int = 200,
+    d: int = 13,
+    seed: int = 1,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Eval triple (X_eval, y_eval, fight_dates_eval) for multi_seed_metrics."""
     from datetime import date, timedelta
+
     X, y = _synthetic_xy(n=n, d=d, seed=seed)
     rng = np.random.RandomState(seed + 11)
     today = date(2026, 5, 21)
@@ -100,6 +106,7 @@ def test_bootstrap_resample_seed_stable() -> None:
 def test_multi_seed_distinct() -> None:
     """VALIDATION 30-01-03 — 5 seeds → 5 distinct Brier scores per slice."""
     from sklearn.linear_model import LogisticRegression
+
     X_train, y_train = _synthetic_xy(n=200, d=13, seed=0)
     X_eval, y_eval, fight_dates = _synthetic_eval_set(n=200, d=13, seed=1)
 
@@ -108,14 +115,22 @@ def test_multi_seed_distinct() -> None:
         # for the closed-form lbfgs solver — variance comes from the
         # bootstrap-resampled (Xb, yb) pair, NOT from random_state.
         return LogisticRegression(
-            C=1.0, penalty="l2", solver="lbfgs", max_iter=1000,
+            C=1.0,
+            penalty="l2",
+            solver="lbfgs",
+            max_iter=1000,
             random_state=int(seed),
         ).fit(Xb, yb)
 
     seeds = (42, 43, 44, 45, 46)
     per_seed = multi_seed_metrics(
-        X_train, y_train, X_eval, y_eval, fight_dates,
-        seeds=seeds, fit_fn=fit_fn,
+        X_train,
+        y_train,
+        X_eval,
+        y_eval,
+        fight_dates,
+        seeds=seeds,
+        fit_fn=fit_fn,
     )
     assert set(per_seed.keys()) == set(int(s) for s in seeds), per_seed.keys()
     for slc in PER_SLICE_KEYS:
@@ -151,11 +166,13 @@ def test_aggregate_variance_max() -> None:
     from ufc_prediction.ml import variance as variance_mod
 
     def fake_bootstrap_per_slice_ci(
-        model, X_eval, y_eval, fight_dates_eval,
+        model,
+        X_eval,
+        y_eval,
+        fight_dates_eval,
     ) -> dict[str, dict[str, float]]:
         # Return finite CIs > seed_std → std_used = ci_half.
-        return {slc: {"brier_ci_half": 0.05, "acc_ci_half": 0.04}
-                for slc in PER_SLICE_KEYS}
+        return {slc: {"brier_ci_half": 0.05, "acc_ci_half": 0.04} for slc in PER_SLICE_KEYS}
 
     saved = variance_mod.bootstrap_per_slice_ci
     variance_mod.bootstrap_per_slice_ci = fake_bootstrap_per_slice_ci
@@ -163,7 +180,8 @@ def test_aggregate_variance_max() -> None:
         aggregated, warnings = aggregate_variance(
             per_seed_results,
             representative_model=object(),  # placeholder; ignored by stub
-            X_eval=np.zeros((5, 13)), y_eval=np.zeros(5, dtype=np.int64),
+            X_eval=np.zeros((5, 13)),
+            y_eval=np.zeros(5, dtype=np.int64),
             fight_dates_eval=np.array([]),
         )
     finally:
@@ -237,7 +255,10 @@ def test_pitfall_b_nan_fallback() -> None:
     from ufc_prediction.ml import variance as variance_mod
 
     def fake_nan_ci(
-        model, X_eval, y_eval, fight_dates_eval,
+        model,
+        X_eval,
+        y_eval,
+        fight_dates_eval,
     ) -> dict[str, dict[str, float]]:
         # Degenerate slice → NaN for both metrics on random_15pct only;
         # other slices have small finite CIs (less than seed_std).
@@ -256,7 +277,8 @@ def test_pitfall_b_nan_fallback() -> None:
         aggregated, warnings = aggregate_variance(
             per_seed_results,
             representative_model=object(),
-            X_eval=np.zeros((5, 13)), y_eval=np.zeros(5, dtype=np.int64),
+            X_eval=np.zeros((5, 13)),
+            y_eval=np.zeros(5, dtype=np.int64),
             fight_dates_eval=np.array([]),
         )
     finally:
@@ -278,5 +300,7 @@ def test_pitfall_b_nan_fallback() -> None:
     for slc in ("most_recent_12mo", "most_recent_24mo"):
         a = aggregated[slc]
         assert math.isclose(
-            a["std_brier_used"], a["seed_std_brier"], rel_tol=1e-9,
+            a["std_brier_used"],
+            a["seed_std_brier"],
+            rel_tol=1e-9,
         ), a

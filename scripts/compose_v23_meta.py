@@ -56,9 +56,7 @@ import numpy as np
 
 # ─────────────────────────── Phase 32 constants ──────────────────────────────
 
-EXPECTED_XGB_V2_SHA256: str = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
+EXPECTED_XGB_V2_SHA256: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 EXPECTED_CUTOFF_DATE: str = "2023-01-01"
 SEEDS_DEFAULT: tuple[int, ...] = (42, 43, 44, 45, 46)
 
@@ -80,8 +78,7 @@ PER_SLICE_KEYS: tuple[str, ...] = (
 # the values in the file at module-import time (we also validate against
 # the file at module-import for drift detection).
 META_V22_SPIKE_PATH: Path = (
-    Path(".planning/phases/26-forward-stepwise-candidate-promotion")
-    / "META_V22_SPIKE.json"
+    Path(".planning/phases/26-forward-stepwise-candidate-promotion") / "META_V22_SPIKE.json"
 )
 META_V22_BASELINE_BRIER: dict[str, float] = {
     # Phase 73 (DEBT-V261-01): reconciled with .planning/phases/26-…/META_V22_SPIKE.json::median_per_slice.
@@ -132,6 +129,7 @@ META_OOF_PARQUET_PATH: Path = PHASE26_DIR / "oof_predictions_v22.parquet"
 
 
 # ─────────────────────── Pure functions (importable by tests) ───────────────
+
 
 def per_step_brier_clears(
     candidate: dict[str, float],
@@ -184,13 +182,9 @@ def _check_gate_clearance(
             continue
         thresholds = contract.per_slice[slc]
         if brier > thresholds.brier_max:
-            failed.append(
-                f"{slc}: brier_score {brier:.4f} > {thresholds.brier_max}"
-            )
+            failed.append(f"{slc}: brier_score {brier:.4f} > {thresholds.brier_max}")
         if acc < thresholds.accuracy_min:
-            failed.append(
-                f"{slc}: accuracy {acc:.4f} < {thresholds.accuracy_min}"
-            )
+            failed.append(f"{slc}: accuracy {acc:.4f} < {thresholds.accuracy_min}")
     return (len(failed) == 0, failed)
 
 
@@ -277,9 +271,7 @@ def triple_gate_decision(
     # Path C = everything else (total failure or NaN).
     any_step_cleared = any(prior_step_clears.values())
     all_steps_cleared = all(prior_step_clears.values())
-    nan_in_brier = any(
-        math.isnan(float(final_candidate_brier[slc])) for slc in PER_SLICE_KEYS
-    )
+    nan_in_brier = any(math.isnan(float(final_candidate_brier[slc])) for slc in PER_SLICE_KEYS)
 
     if nan_in_brier:
         return ("reject", "path_c", failures)
@@ -297,9 +289,7 @@ def triple_gate_decision(
     #       didn't add value (later steps rejected). This is the "tried,
     #       META+CALIB worked, later steps didn't help" outcome — Path B.
     if any_step_cleared and not all_steps_cleared:
-        only_per_step_failed = (
-            gate_pass and margin_pass and not per_step_pass
-        )
+        only_per_step_failed = gate_pass and margin_pass and not per_step_pass
         if (not gate_pass) or only_per_step_failed:
             return ("reject", "path_b", failures)
 
@@ -310,6 +300,7 @@ def triple_gate_decision(
 
 
 # ─────────────────────────── SHA helpers (AUDIT-01) ──────────────────────────
+
 
 def _read_xgb_v2_sha() -> str:
     """Compute hashlib.sha256 of models/xgb_v2.joblib (current bytes)."""
@@ -332,6 +323,7 @@ def _write_sha_artifact(path: Path) -> str:
 
 
 # ─────────────────────────── Data loading helpers ────────────────────────────
+
 
 def _load_assembled_data_v22(
     cutoff_date_iso: str = EXPECTED_CUTOFF_DATE,
@@ -372,14 +364,20 @@ def _load_assembled_data_v22(
         session.close()
 
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
 
     config = MLConfig(cutoff_date=cutoff_date_iso)
     assembler = FeatureMatrixAssembler(config)
     X_v22, y, fight_dates = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
         feature_set="v2.2",
@@ -393,6 +391,7 @@ def _load_assembled_data_v22(
 def _build_synthetic_data_v22(n: int = 600):
     """Synthetic v2.2 90-col fixture for --dry-run."""
     import datetime as _datetime
+
     rng = np.random.default_rng(42)
     X_v22 = rng.standard_normal((n, 90))
     y = rng.integers(0, 2, size=n)
@@ -406,8 +405,9 @@ def _build_synthetic_data_v22(n: int = 600):
         elif i < 2 * n // 3:
             d = date(2024, 1 + (i % 12), 1 + (i % 28))
         else:
-            d = today.replace(day=max(1, (i % 28))) - \
-                _datetime.timedelta(days=int(rng.integers(1, 364)))
+            d = today.replace(day=max(1, (i % 28))) - _datetime.timedelta(
+                days=int(rng.integers(1, 364))
+            )
         dates.append(d)
         fight_ids.append(i)
     return X_v22, y, np.array(dates), fight_ids, base_cutoff, today
@@ -431,6 +431,7 @@ def _compute_elo_prob_for_fight(fight: dict, elo_features: dict) -> float:
 
 # ─────────────────────────── Step driver ─────────────────────────────────────
 
+
 def _eval_meta_step(
     *,
     meta_model,
@@ -453,7 +454,10 @@ def _eval_meta_step(
     for seed in seeds:
         model = fit_factory(seed, X_train, y_train)
         per_seed_results[seed] = evaluate_per_slice(
-            model, X_eval, y_eval, fight_dates_eval,
+            model,
+            X_eval,
+            y_eval,
+            fight_dates_eval,
         )
     return median_metrics(list(per_seed_results.values()))
 
@@ -472,14 +476,11 @@ def _step_payload(
     extra: dict | None = None,
 ) -> dict:
     """Build per-step payload dict matching train_meta_v22.py:878-894 shape."""
-    candidate_brier = {
-        slc: float(median_step[slc]["brier_score"]) for slc in PER_SLICE_KEYS
-    }
-    delta = {
-        slc: baseline_brier[slc] - candidate_brier[slc] for slc in PER_SLICE_KEYS
-    }
+    candidate_brier = {slc: float(median_step[slc]["brier_score"]) for slc in PER_SLICE_KEYS}
+    delta = {slc: baseline_brier[slc] - candidate_brier[slc] for slc in PER_SLICE_KEYS}
     step_clears_bool, hurdle_failures = per_step_brier_clears(
-        candidate_brier, baseline_brier,
+        candidate_brier,
+        baseline_brier,
     )
     stepwise_clears = bool(gate_pass and step_clears_bool)
     payload = {
@@ -571,9 +572,14 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
         print("[compose_v23] DRY-RUN: synthetic 90-col v2.2 fixture")
         X_v22, y, fight_dates, fight_ids, _, _ = _build_synthetic_data_v22()
         fight_records = [
-            {"fight_id": fight_ids[i],
-             "event_date": fight_dates[i].item() if hasattr(fight_dates[i], "item") else fight_dates[i],
-             "fighter_a_id": i * 2, "fighter_b_id": i * 2 + 1}
+            {
+                "fight_id": fight_ids[i],
+                "event_date": fight_dates[i].item()
+                if hasattr(fight_dates[i], "item")
+                else fight_dates[i],
+                "fighter_a_id": i * 2,
+                "fighter_b_id": i * 2 + 1,
+            }
             for i in range(len(fight_ids))
         ]
     else:
@@ -603,15 +609,15 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
 
     # OOF on 72-col view (xgb_v2 sub-matrix).
     X_oof = X_v22[meta_train_idx][:, :72]
-    assert X_oof.shape[1] == 72, (
-        f"OOF base XGB requires 72-col view; got {X_oof.shape[1]}"
-    )
+    assert X_oof.shape[1] == 72, f"OOF base XGB requires 72-col view; got {X_oof.shape[1]}"
     # Dry-run uses synthetic event dates that don't match the cached parquet's
     # date range — force a fresh OOF compute on synthetic fixtures.
     use_cache = not args.no_cache_oof and not args.dry_run
     cache_path = META_OOF_PARQUET_PATH if use_cache else None
     xgb_oof_prob, _oof_meta = generate_oof_predictions(
-        X_oof, y[meta_train_idx], fight_dates[meta_train_idx],
+        X_oof,
+        y[meta_train_idx],
+        fight_dates[meta_train_idx],
         base_trainer=None,
         cache_path=cache_path,
         force_rebuild=not use_cache,
@@ -629,19 +635,18 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     else:
         from ufc_prediction.db.session import SessionLocal
         from ufc_prediction.ml.queries import load_elo_features
+
         _session = SessionLocal()
         try:
             _elo_features = load_elo_features(_session)
         finally:
             _session.close()
-        elo_prob_train = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_train_idx
-        ])
-        elo_prob_eval = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_eval_idx
-        ])
+        elo_prob_train = np.array(
+            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_train_idx]
+        )
+        elo_prob_eval = np.array(
+            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_eval_idx]
+        )
 
     # Build meta_eval Level-1 (single transient base train, per Phase 26 pattern).
     print("[compose_v23] Building meta_eval Level-1 (1 base train + Elo lookups)...")
@@ -650,10 +655,14 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     xgb_eval_prob = base_estimator.predict_proba(X_v22[meta_eval_idx][:, :72])[:, 1]
 
     base_train_meta_v22 = build_meta_features_v22(
-        xgb_oof_aligned, elo_prob_train, X_v22[meta_train_idx],
+        xgb_oof_aligned,
+        elo_prob_train,
+        X_v22[meta_train_idx],
     )
     base_eval_meta_v22 = build_meta_features_v22(
-        xgb_eval_prob, elo_prob_eval, X_v22[meta_eval_idx],
+        xgb_eval_prob,
+        elo_prob_eval,
+        X_v22[meta_eval_idx],
     )
 
     contract = load_gate_contract(version="v2.3")
@@ -667,12 +676,16 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     print("[compose_v23] STEP 1 (META): fitting MetaLearnerLogistic on 13 cols...")
     meta_feature_cols = list(META_V22_FEATURE_COLUMNS)
     meta_train_mask = apply_nan_drop_policy(
-        base_train_meta_v22, meta_feature_cols,
-        policy=NAN_DROP_POLICY, baseline_columns=BASELINE_COLS,
+        base_train_meta_v22,
+        meta_feature_cols,
+        policy=NAN_DROP_POLICY,
+        baseline_columns=BASELINE_COLS,
     )
     meta_eval_mask = apply_nan_drop_policy(
-        base_eval_meta_v22, meta_feature_cols,
-        policy=NAN_DROP_POLICY, baseline_columns=BASELINE_COLS,
+        base_eval_meta_v22,
+        meta_feature_cols,
+        policy=NAN_DROP_POLICY,
+        baseline_columns=BASELINE_COLS,
     )
     X_meta_train_clean = base_train_meta_v22[meta_train_mask].copy()
     y_meta_train_clean = y[meta_train_idx][meta_train_mask]
@@ -685,9 +698,7 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     # train + eval matrices using the same medians). This is what makes
     # PolynomialFeatures downstream not crash on residual NaNs after the
     # per-feature drop.
-    non_baseline_idx_meta = [
-        i for i, c in enumerate(meta_feature_cols) if c not in BASELINE_COLS
-    ]
+    non_baseline_idx_meta = [i for i, c in enumerate(meta_feature_cols) if c not in BASELINE_COLS]
     nan_imputation_medians_meta: dict[str, float] = {}
     for idx in non_baseline_idx_meta:
         col_train = X_meta_train_clean[:, idx]
@@ -711,10 +722,14 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     per_seed_meta_models: dict[int, Any] = {}
     for seed in seeds:
         m = MetaLearnerLogistic(random_state=seed).fit(
-            X_meta_train_clean, y_meta_train_clean,
+            X_meta_train_clean,
+            y_meta_train_clean,
         )
         per_seed_meta[seed] = evaluate_per_slice(
-            m, X_meta_eval_clean, y_meta_eval_clean, fight_dates_meta_eval,
+            m,
+            X_meta_eval_clean,
+            y_meta_eval_clean,
+            fight_dates_meta_eval,
         )
         per_seed_meta_models[seed] = m
     median_meta = median_metrics(list(per_seed_meta.values()))
@@ -733,9 +748,7 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
         n_eval_after_nan_drop=int(meta_eval_mask.sum()),
         extra={"baseline_source": "META_V22_BASELINE_BRIER (Phase 26 spike median)"},
     )
-    meta_to_calib_baseline = {
-        slc: float(median_meta[slc]["brier_score"]) for slc in PER_SLICE_KEYS
-    }
+    meta_to_calib_baseline = {slc: float(median_meta[slc]["brier_score"]) for slc in PER_SLICE_KEYS}
     print(
         f"[compose_v23] STEP 1 (META): gate_pass={meta_gate_pass} "
         f"brier_per_slice={meta_to_calib_baseline}"
@@ -800,16 +813,29 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
 
     def _make_calib_pipeline(seed: int) -> _SkPipeline:
         """Equivalent to MetaLearnerLogistic.pipeline (clone-friendly)."""
-        return _SkPipeline([
-            ("poly", PolynomialFeatures(
-                degree=2, interaction_only=True, include_bias=False,
-            )),
-            ("scaler", StandardScaler()),
-            ("clf", LogisticRegression(
-                C=1.0, penalty="l2", solver="lbfgs", max_iter=1000,
-                random_state=seed,
-            )),
-        ])
+        return _SkPipeline(
+            [
+                (
+                    "poly",
+                    PolynomialFeatures(
+                        degree=2,
+                        interaction_only=True,
+                        include_bias=False,
+                    ),
+                ),
+                ("scaler", StandardScaler()),
+                (
+                    "clf",
+                    LogisticRegression(
+                        C=1.0,
+                        penalty="l2",
+                        solver="lbfgs",
+                        max_iter=1000,
+                        random_state=seed,
+                    ),
+                ),
+            ]
+        )
 
     print("[compose_v23] STEP 2 (CALIB): isotonic CalibratedClassifierCV wrap...")
     per_seed_calib: dict[int, dict] = {}
@@ -820,10 +846,14 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
         base_pipeline = _make_calib_pipeline(seed)
         try:
             calibrated = CalibratedClassifierCV(
-                estimator=base_pipeline, method="isotonic", cv=cv_folds,
+                estimator=base_pipeline,
+                method="isotonic",
+                cv=cv_folds,
             ).fit(X_meta_train_clean, y_meta_train_clean)
             per_seed_calib[seed] = evaluate_per_slice(
-                calibrated, X_meta_eval_clean, y_meta_eval_clean,
+                calibrated,
+                X_meta_eval_clean,
+                y_meta_eval_clean,
                 fight_dates_meta_eval,
             )
             per_seed_calib_models[seed] = calibrated
@@ -885,12 +915,16 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
 
     # Per-feature strict-baseline drop on the cumulative META + REF matrix.
     ref_train_mask = apply_nan_drop_policy(
-        X_ref_train, ref_feature_cols,
-        policy=NAN_DROP_POLICY, baseline_columns=BASELINE_COLS,
+        X_ref_train,
+        ref_feature_cols,
+        policy=NAN_DROP_POLICY,
+        baseline_columns=BASELINE_COLS,
     )
     ref_eval_mask = apply_nan_drop_policy(
-        X_ref_eval, ref_feature_cols,
-        policy=NAN_DROP_POLICY, baseline_columns=BASELINE_COLS,
+        X_ref_eval,
+        ref_feature_cols,
+        policy=NAN_DROP_POLICY,
+        baseline_columns=BASELINE_COLS,
     )
     X_ref_train_clean = X_ref_train[ref_train_mask].copy()
     y_ref_train_clean = y[meta_train_idx][ref_train_mask]
@@ -900,9 +934,7 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     ref_data_coverage_pct = float((ref_data_train != 0).any(axis=1).mean())
 
     # Impute non-baseline NaNs with train-medians (Plan 29-02 carry-forward).
-    non_baseline_idx_ref = [
-        i for i, c in enumerate(ref_feature_cols) if c not in BASELINE_COLS
-    ]
+    non_baseline_idx_ref = [i for i, c in enumerate(ref_feature_cols) if c not in BASELINE_COLS]
     for idx in non_baseline_idx_ref:
         col_train = X_ref_train_clean[:, idx]
         finite = col_train[~np.isnan(col_train)]
@@ -918,10 +950,14 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     per_seed_ref_models: dict[int, Any] = {}
     for seed in seeds:
         m = MetaLearnerLogistic(random_state=seed).fit(
-            X_ref_train_clean, y_ref_train_clean,
+            X_ref_train_clean,
+            y_ref_train_clean,
         )
         per_seed_ref[seed] = evaluate_per_slice(
-            m, X_ref_eval_clean, y_ref_eval_clean, fight_dates_ref_eval,
+            m,
+            X_ref_eval_clean,
+            y_ref_eval_clean,
+            fight_dates_ref_eval,
         )
         per_seed_ref_models[seed] = m
     median_ref = median_metrics(list(per_seed_ref.values()))
@@ -973,12 +1009,16 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     travel_feature_cols = ref_feature_cols + TRAVEL_COLS
 
     travel_train_mask = apply_nan_drop_policy(
-        X_travel_train, travel_feature_cols,
-        policy=NAN_DROP_POLICY, baseline_columns=BASELINE_COLS,
+        X_travel_train,
+        travel_feature_cols,
+        policy=NAN_DROP_POLICY,
+        baseline_columns=BASELINE_COLS,
     )
     travel_eval_mask = apply_nan_drop_policy(
-        X_travel_eval, travel_feature_cols,
-        policy=NAN_DROP_POLICY, baseline_columns=BASELINE_COLS,
+        X_travel_eval,
+        travel_feature_cols,
+        policy=NAN_DROP_POLICY,
+        baseline_columns=BASELINE_COLS,
     )
     X_travel_train_clean = X_travel_train[travel_train_mask].copy()
     y_travel_train_clean = y[meta_train_idx][travel_train_mask]
@@ -1011,10 +1051,14 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     if X_travel_train_clean.shape[0] > 0 and X_travel_eval_clean.shape[0] > 0:
         for seed in seeds:
             m = MetaLearnerLogistic(random_state=seed).fit(
-                X_travel_train_clean, y_travel_train_clean,
+                X_travel_train_clean,
+                y_travel_train_clean,
             )
             per_seed_travel[seed] = evaluate_per_slice(
-                m, X_travel_eval_clean, y_travel_eval_clean, fight_dates_travel_eval,
+                m,
+                X_travel_eval_clean,
+                y_travel_eval_clean,
+                fight_dates_travel_eval,
             )
             per_seed_travel_models[seed] = m
 
@@ -1066,8 +1110,7 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
         }
         ref_to_travel_clears = False
         median_travel_for_decision = {
-            slc: {"brier_score": float("nan"), "accuracy": float("nan")}
-            for slc in PER_SLICE_KEYS
+            slc: {"brier_score": float("nan"), "accuracy": float("nan")} for slc in PER_SLICE_KEYS
         }
         travel_degenerate = True
     print(
@@ -1089,22 +1132,23 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     if ref_to_travel_clears:
         final_label = "TRAVEL"
         final_brier = {
-            slc: float(median_travel_for_decision[slc]["brier_score"])
-            for slc in PER_SLICE_KEYS
+            slc: float(median_travel_for_decision[slc]["brier_score"]) for slc in PER_SLICE_KEYS
         }
         median_final = median_travel_for_decision
         per_seed_final_models = per_seed_travel_models
         final_feature_columns = list(META_V22_FEATURE_COLUMNS) + REF_COLS + TRAVEL_COLS
         final_train_clean = X_travel_train_clean
         final_y_train_clean = y_travel_train_clean
-        final_xgb_oof_aligned = xgb_oof_aligned[
-            np.isin(np.arange(len(xgb_oof_aligned)), np.where(travel_train_mask)[0])
-        ] if travel_train_mask.sum() > 0 else xgb_oof_aligned
+        final_xgb_oof_aligned = (
+            xgb_oof_aligned[
+                np.isin(np.arange(len(xgb_oof_aligned)), np.where(travel_train_mask)[0])
+            ]
+            if travel_train_mask.sum() > 0
+            else xgb_oof_aligned
+        )
     elif calib_to_ref_clears:
         final_label = "REF"
-        final_brier = {
-            slc: float(median_ref[slc]["brier_score"]) for slc in PER_SLICE_KEYS
-        }
+        final_brier = {slc: float(median_ref[slc]["brier_score"]) for slc in PER_SLICE_KEYS}
         median_final = median_ref
         per_seed_final_models = per_seed_ref_models
         final_feature_columns = list(META_V22_FEATURE_COLUMNS) + REF_COLS
@@ -1115,9 +1159,7 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
         ]
     elif meta_to_calib_clears:
         final_label = "CALIB"
-        final_brier = {
-            slc: float(median_calib[slc]["brier_score"]) for slc in PER_SLICE_KEYS
-        }
+        final_brier = {slc: float(median_calib[slc]["brier_score"]) for slc in PER_SLICE_KEYS}
         median_final = median_calib
         per_seed_final_models = per_seed_calib_models
         final_feature_columns = list(META_V22_FEATURE_COLUMNS)
@@ -1126,9 +1168,7 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
         final_xgb_oof_aligned = xgb_oof_aligned[meta_train_mask]
     else:
         final_label = "META"
-        final_brier = {
-            slc: float(median_meta[slc]["brier_score"]) for slc in PER_SLICE_KEYS
-        }
+        final_brier = {slc: float(median_meta[slc]["brier_score"]) for slc in PER_SLICE_KEYS}
         median_final = median_meta
         per_seed_final_models = per_seed_meta_models
         final_feature_columns = list(META_V22_FEATURE_COLUMNS)
@@ -1149,7 +1189,7 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
         f"failures={failures}"
     )
 
-    triple_gate_pass = (verdict == "promote")
+    triple_gate_pass = verdict == "promote"
     meta_v3_promoted = False
     meta_v3_sha256: str | None = None
 
@@ -1165,14 +1205,16 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
                 f"seed={chosen_seed} (final_label={final_label})"
             )
         input_hash = compute_meta_input_distribution_hash(
-            final_train_clean, final_y_train_clean,
-            final_xgb_oof_aligned[:len(final_train_clean)]
-                if len(final_xgb_oof_aligned) >= len(final_train_clean)
-                else np.full(len(final_train_clean), np.nan),
+            final_train_clean,
+            final_y_train_clean,
+            final_xgb_oof_aligned[: len(final_train_clean)]
+            if len(final_xgb_oof_aligned) >= len(final_train_clean)
+            else np.full(len(final_train_clean), np.nan),
         )
         oof_parquet_sha = (
             hashlib.sha256(META_OOF_PARQUET_PATH.read_bytes()).hexdigest()
-            if META_OOF_PARQUET_PATH.exists() else "0" * 64
+            if META_OOF_PARQUET_PATH.exists()
+            else "0" * 64
         )
 
         META_DIR.mkdir(parents=True, exist_ok=True)
@@ -1187,10 +1229,10 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
             meta_oof_parquet_sha256=oof_parquet_sha,
             meta_learner_brier_delta_vs_logistic=0.0,
             best_params={
-                "C": 1.0, "penalty": "l2", "solver": "lbfgs",
-                "PolynomialFeatures": (
-                    "degree=2 interaction_only=True include_bias=False"
-                ),
+                "C": 1.0,
+                "penalty": "l2",
+                "solver": "lbfgs",
+                "PolynomialFeatures": ("degree=2 interaction_only=True include_bias=False"),
                 "final_step": final_label,
                 "composition_chain": ["META", "CALIB", "REF", "TRAVEL"],
             },
@@ -1274,28 +1316,36 @@ def _emit_report_and_end_sha(report: dict) -> None:
 
 # ─────────────────────────── CLI entry ────────────────────────────────────────
 
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Phase 32 Plan 32-01 — Forward-stepwise composition + triple-gate",
     )
     parser.add_argument(
-        "--seeds", nargs="+", type=int, default=list(SEEDS_DEFAULT),
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(SEEDS_DEFAULT),
         help="Random seeds for MetaLearnerLogistic (default: 42 43 44 45 46)",
     )
     parser.add_argument(
-        "--bootstrap", action="store_true",
+        "--bootstrap",
+        action="store_true",
         help="Run with bootstrap variance (slower; ≥10 seeds recommended)",
     )
     parser.add_argument(
-        "--cached-fixtures-only", action="store_true",
+        "--cached-fixtures-only",
+        action="store_true",
         help="Force using cached OOF parquet (Phase 26 fixture); no live DB OOF rebuild",
     )
     parser.add_argument(
-        "--no-cache-oof", action="store_true",
+        "--no-cache-oof",
+        action="store_true",
         help="Force OOF parquet rebuild (ignores cache_path)",
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Synthetic 90-col v2.2 smoke (no DB / real xgb_v2 inference)",
     )
     return parser

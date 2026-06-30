@@ -52,9 +52,7 @@ class TestOptunaObjective:
 
         optuna.logging.set_verbosity(optuna.logging.WARNING)
         study = optuna.create_study(direction="minimize")
-        study.optimize(
-            lambda trial: trainer._objective(trial, X, y), n_trials=1
-        )
+        study.optimize(lambda trial: trainer._objective(trial, X, y), n_trials=1)
         assert isinstance(study.best_value, float)
 
     def test_objective_uses_timeseries_split(self, small_synthetic_data):
@@ -70,9 +68,7 @@ class TestOptunaObjective:
 
         optuna.logging.set_verbosity(optuna.logging.WARNING)
         study = optuna.create_study(direction="minimize")
-        study.optimize(
-            lambda trial: trainer._objective(trial, X, y), n_trials=1
-        )
+        study.optimize(lambda trial: trainer._objective(trial, X, y), n_trials=1)
         # Should succeed (objective ran) and return a valid brier score
         assert 0.0 <= study.best_value <= 1.0
 
@@ -89,9 +85,7 @@ class TestOptunaObjective:
 
         optuna.logging.set_verbosity(optuna.logging.WARNING)
         study = optuna.create_study(direction="minimize")
-        study.optimize(
-            lambda trial: trainer._objective(trial, X, y), n_trials=1
-        )
+        study.optimize(lambda trial: trainer._objective(trial, X, y), n_trials=1)
         # The best trial params should have been used with binary:logistic
         # We verify this indirectly: the objective ran without error
         assert study.best_trial is not None
@@ -284,12 +278,18 @@ class TestMedianMetrics:
         from ufc_prediction.ml.trainer import median_metrics
 
         per_seed = [
-            {"a": {"brier_score": 0.21, "accuracy": 0.65},
-             "b": {"brier_score": 0.22, "accuracy": 0.66}},
-            {"a": {"brier_score": 0.22, "accuracy": 0.66},
-             "b": {"brier_score": 0.21, "accuracy": 0.67}},
-            {"a": {"brier_score": 0.20, "accuracy": 0.68},
-             "b": {"brier_score": 0.23, "accuracy": 0.65}},
+            {
+                "a": {"brier_score": 0.21, "accuracy": 0.65},
+                "b": {"brier_score": 0.22, "accuracy": 0.66},
+            },
+            {
+                "a": {"brier_score": 0.22, "accuracy": 0.66},
+                "b": {"brier_score": 0.21, "accuracy": 0.67},
+            },
+            {
+                "a": {"brier_score": 0.20, "accuracy": 0.68},
+                "b": {"brier_score": 0.23, "accuracy": 0.65},
+            },
         ]
         result = median_metrics(per_seed)
         # Median of 3 values: middle one when sorted.
@@ -303,12 +303,24 @@ class TestMedianMetrics:
         from ufc_prediction.ml.trainer import median_metrics
 
         per_seed = [
-            {"a": {"brier_score": 0.21,
-                   "calibration_curve": {"fraction_of_positives": [0.1, 0.5, 0.8]}}},
-            {"a": {"brier_score": 0.22,
-                   "calibration_curve": {"fraction_of_positives": [0.2, 0.5, 0.7]}}},
-            {"a": {"brier_score": 0.23,
-                   "calibration_curve": {"fraction_of_positives": [0.0, 0.6, 0.9]}}},
+            {
+                "a": {
+                    "brier_score": 0.21,
+                    "calibration_curve": {"fraction_of_positives": [0.1, 0.5, 0.8]},
+                }
+            },
+            {
+                "a": {
+                    "brier_score": 0.22,
+                    "calibration_curve": {"fraction_of_positives": [0.2, 0.5, 0.7]},
+                }
+            },
+            {
+                "a": {
+                    "brier_score": 0.23,
+                    "calibration_curve": {"fraction_of_positives": [0.0, 0.6, 0.9]},
+                }
+            },
         ]
         result = median_metrics(per_seed)
         assert result["a"]["brier_score"] == 0.22

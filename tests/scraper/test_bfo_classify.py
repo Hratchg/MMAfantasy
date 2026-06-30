@@ -4,6 +4,7 @@ Migrates the classifier tests from Phase 20's
 ``tests/scripts/test_audit_bfo_reachability.py`` and adds 2 new tests
 for the Phase 21-only statuses (PRE_ARCHIVE_SKIP, DISAMBIGUATION_FAIL).
 """
+
 from __future__ import annotations
 
 import httpx
@@ -35,9 +36,16 @@ from ufc_prediction.scraper.bfo_classify import (
 def test_all_10_status_constants_present():
     """Every documented status string is exported and distinct."""
     statuses = {
-        REACHABLE, HOMEPAGE_FALLBACK, NOT_FOUND, HTTP_OTHER,
-        TIMEOUT, ERROR, CAPTCHA, EVENT_NOT_FOUND,
-        PRE_ARCHIVE_SKIP, DISAMBIGUATION_FAIL,
+        REACHABLE,
+        HOMEPAGE_FALLBACK,
+        NOT_FOUND,
+        HTTP_OTHER,
+        TIMEOUT,
+        ERROR,
+        CAPTCHA,
+        EVENT_NOT_FOUND,
+        PRE_ARCHIVE_SKIP,
+        DISAMBIGUATION_FAIL,
     }
     assert len(statuses) == 10, "10 distinct statuses required"
 

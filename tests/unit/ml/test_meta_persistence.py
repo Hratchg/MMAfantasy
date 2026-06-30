@@ -1,4 +1,5 @@
 """Phase 19 META-04 Wave-0 RED — meta_persistence.py is sibling to persistence.py."""
+
 from __future__ import annotations
 
 import json
@@ -39,10 +40,15 @@ def _save_args():
 def test_save_round_trip(tmp_path, trained_meta):
     """Round-trip: save_meta_model → load_meta_model returns equivalent estimator + metadata."""
     meta_persistence.save_meta_model(trained_meta, meta_dir=str(tmp_path), **_save_args())
-    loaded_model, loaded_meta = meta_persistence.load_meta_model(meta_dir=str(tmp_path), version="v1")
+    loaded_model, loaded_meta = meta_persistence.load_meta_model(
+        meta_dir=str(tmp_path), version="v1"
+    )
     assert loaded_meta["meta_kind"] == "logistic"
     assert loaded_meta["meta_version"] == "v1"
-    assert loaded_meta["base_model_sha256"] == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+    assert (
+        loaded_meta["base_model_sha256"]
+        == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+    )
     assert loaded_meta["meta_feature_columns"] == ["xgb_oof_prob", "elo_prob", "closing_prob_diff"]
     # Estimator equivalence: predict_proba on the same input matches
     rng = np.random.default_rng(0)

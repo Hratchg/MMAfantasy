@@ -32,11 +32,7 @@ def _make_search_html(fighter_name: str, slug: str, fid: str = "999") -> str:
     smallest shape ``find_bfo_fighter_url`` will accept (it scans
     ``a[href^='/fighters/']`` and fuzzy-matches the link text).
     """
-    return (
-        f"<html><body>"
-        f'<a href="/fighters/{slug}-{fid}">{fighter_name}</a>'
-        f"</body></html>"
-    )
+    return f'<html><body><a href="/fighters/{slug}-{fid}">{fighter_name}</a></body></html>'
 
 
 def _real_bfo_fighter_html() -> str:
@@ -46,10 +42,7 @@ def _real_bfo_fighter_html() -> str:
 
 def _captcha_html() -> str:
     """Minimal HTML containing the BFO Cloudflare CAPTCHA marker."""
-    return (
-        '<html><body><div id="hfmr8">'
-        "Please verify you are not a robot</div></body></html>"
-    )
+    return '<html><body><div id="hfmr8">Please verify you are not a robot</div></body></html>'
 
 
 # ── Test 1: happy-path live fetch ───────────────────────────────────────────
@@ -125,14 +118,16 @@ def test_fetch_matchup_odds_cache_hit_skips_http(monkeypatch):
         fetched_at=datetime.now(timezone.utc),
         source="cache",
     )
-    monkeypatch.setattr(
-        bfo_live, "_try_cache", lambda session, fa, fb, ed: cached
-    )
+    monkeypatch.setattr(bfo_live, "_try_cache", lambda session, fa, fb, ed: cached)
 
     client = MagicMock()
     session = MagicMock()
     result = bfo_live.fetch_matchup_odds(
-        "A", "B", date(2026, 6, 14), client=client, session=session,
+        "A",
+        "B",
+        date(2026, 6, 14),
+        client=client,
+        session=session,
     )
 
     assert result is not None
@@ -160,7 +155,9 @@ def test_fetch_matchup_odds_refresh_bypasses_cache(monkeypatch):
         event_date=date(2026, 6, 14),
         opponent_name="B",
         opponent_bfo_id="2",
-        opening=100, closing_range_min=110, closing_range_max=130,
+        opening=100,
+        closing_range_min=110,
+        closing_range_max=130,
     )
     page = BFOFighterPage(name="A", url="x", fights=[fight])
     monkeypatch.setattr(bfo_live, "parse_bfo_fighter_page", lambda html, url: page)
@@ -169,8 +166,12 @@ def test_fetch_matchup_odds_refresh_bypasses_cache(monkeypatch):
     client.get.side_effect = [_make_search_html("A", "A"), "<html>profile</html>"]
 
     result = bfo_live.fetch_matchup_odds(
-        "A", "B", date(2026, 6, 14),
-        client=client, session=MagicMock(), refresh=True,
+        "A",
+        "B",
+        date(2026, 6, 14),
+        client=client,
+        session=MagicMock(),
+        refresh=True,
     )
 
     assert result is not None
@@ -188,7 +189,11 @@ def test_fetch_matchup_odds_timeout_returns_none():
     client.get.side_effect = httpx.TimeoutException("read timeout")
 
     result = bfo_live.fetch_matchup_odds(
-        "A", "B", date(2026, 6, 14), client=client, session=None,
+        "A",
+        "B",
+        date(2026, 6, 14),
+        client=client,
+        session=None,
     )
 
     assert result is None
@@ -200,7 +205,11 @@ def test_fetch_matchup_odds_runtime_error_returns_none():
     client.get.side_effect = RuntimeError("Failed to fetch after 3 retries")
 
     result = bfo_live.fetch_matchup_odds(
-        "A", "B", date(2026, 6, 14), client=client, session=None,
+        "A",
+        "B",
+        date(2026, 6, 14),
+        client=client,
+        session=None,
     )
 
     assert result is None
@@ -215,7 +224,11 @@ def test_fetch_matchup_odds_captcha_returns_none():
     client.get.return_value = _captcha_html()
 
     result = bfo_live.fetch_matchup_odds(
-        "A", "B", date(2026, 6, 14), client=client, session=None,
+        "A",
+        "B",
+        date(2026, 6, 14),
+        client=client,
+        session=None,
     )
 
     assert result is None
@@ -240,7 +253,11 @@ def test_fetch_matchup_odds_parse_error_returns_none(monkeypatch):
     ]
 
     result = bfo_live.fetch_matchup_odds(
-        "A", "B", date(2026, 6, 14), client=client, session=None,
+        "A",
+        "B",
+        date(2026, 6, 14),
+        client=client,
+        session=None,
     )
 
     assert result is None
@@ -257,7 +274,11 @@ def test_fetch_matchup_odds_search_miss_returns_none(monkeypatch):
     client.get.return_value = "<html><body>no fighters</body></html>"
 
     result = bfo_live.fetch_matchup_odds(
-        "A", "B", date(2026, 6, 14), client=client, session=None,
+        "A",
+        "B",
+        date(2026, 6, 14),
+        client=client,
+        session=None,
     )
 
     assert result is None
@@ -276,7 +297,9 @@ def test_fetch_matchup_odds_no_matching_row_returns_none(monkeypatch):
         event_date=date(2025, 1, 1),  # different date
         opponent_name="Some Other Guy",
         opponent_bfo_id="1",
-        opening=100, closing_range_min=110, closing_range_max=130,
+        opening=100,
+        closing_range_min=110,
+        closing_range_max=130,
     )
     page = BFOFighterPage(name="A", url="x", fights=[fight])
     monkeypatch.setattr(bfo_live, "parse_bfo_fighter_page", lambda html, url: page)
@@ -285,7 +308,11 @@ def test_fetch_matchup_odds_no_matching_row_returns_none(monkeypatch):
     client.get.side_effect = [_make_search_html("A", "A"), "<html>profile</html>"]
 
     result = bfo_live.fetch_matchup_odds(
-        "A", "B", date(2026, 6, 14), client=client, session=None,
+        "A",
+        "B",
+        date(2026, 6, 14),
+        client=client,
+        session=None,
     )
 
     assert result is None
@@ -308,7 +335,10 @@ def test_fetch_matchup_odds_default_client_constructed(monkeypatch):
     monkeypatch.setattr(bfo_live, "ScraperClient", FakeClient)
 
     result = bfo_live.fetch_matchup_odds(
-        "A", "B", date(2026, 6, 14), session=None,
+        "A",
+        "B",
+        date(2026, 6, 14),
+        session=None,
     )
 
     assert result is None

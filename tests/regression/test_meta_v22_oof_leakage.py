@@ -31,15 +31,17 @@ def test_three_way_split_disjoint_fight_ids():
     # meta_train partition: 2023-01-01 <= event_date < (today - 365d) = 2025-05-17
     # meta_eval partition:  event_date >= 2025-05-17
     fights = [
-        {"fight_id": 1, "event_date": date(2022, 6, 1)},   # base
-        {"fight_id": 999, "event_date": date(2022, 7, 1)}, # base (duplicate fight_id)
-        {"fight_id": 999, "event_date": date(2024, 3, 1)}, # meta_train (duplicate fight_id)
+        {"fight_id": 1, "event_date": date(2022, 6, 1)},  # base
+        {"fight_id": 999, "event_date": date(2022, 7, 1)},  # base (duplicate fight_id)
+        {"fight_id": 999, "event_date": date(2024, 3, 1)},  # meta_train (duplicate fight_id)
         {"fight_id": 3, "event_date": date(2025, 12, 1)},  # meta_eval
     ]
     with pytest.raises(AssertionError, match=r"D-01\(P19\) violation"):
         make_three_way_split(
-            fights, base_cutoff=base_cutoff,
-            meta_eval_window_days=365, today=today,
+            fights,
+            base_cutoff=base_cutoff,
+            meta_eval_window_days=365,
+            today=today,
         )
 
 
@@ -57,34 +59,45 @@ def test_split_event_date_semantics():
     fights = []
     # 20 base fights spanning 2020 → 2022-12 (event_date < base_cutoff)
     for i in range(20):
-        fights.append({
-            "fight_id": 100 + i,
-            "event_date": date(2020, 1, 1) + timedelta(days=i * 50),
-        })
+        fights.append(
+            {
+                "fight_id": 100 + i,
+                "event_date": date(2020, 1, 1) + timedelta(days=i * 50),
+            }
+        )
     # 20 meta_train fights spanning 2023-01 → 2025-04 (post-cutoff; pre-eval)
     for i in range(20):
-        fights.append({
-            "fight_id": 200 + i,
-            "event_date": date(2023, 1, 5) + timedelta(days=i * 40),
-        })
+        fights.append(
+            {
+                "fight_id": 200 + i,
+                "event_date": date(2023, 1, 5) + timedelta(days=i * 40),
+            }
+        )
     # 10 meta_eval fights spanning 2025-06 → 2026-05 (>=eval_start)
     for i in range(10):
-        fights.append({
-            "fight_id": 300 + i,
-            "event_date": date(2025, 6, 1) + timedelta(days=i * 30),
-        })
+        fights.append(
+            {
+                "fight_id": 300 + i,
+                "event_date": date(2025, 6, 1) + timedelta(days=i * 30),
+            }
+        )
 
     base, meta_train, meta_eval = make_three_way_split(
-        fights, base_cutoff=base_cutoff,
-        meta_eval_window_days=365, today=today,
+        fights,
+        base_cutoff=base_cutoff,
+        meta_eval_window_days=365,
+        today=today,
     )
 
-    assert all(f["event_date"] < base_cutoff for f in base), \
+    assert all(f["event_date"] < base_cutoff for f in base), (
         "base partition contains event_date >= base_cutoff"
-    assert all(base_cutoff <= f["event_date"] < eval_start for f in meta_train), \
+    )
+    assert all(base_cutoff <= f["event_date"] < eval_start for f in meta_train), (
         "meta_train event_dates outside [base_cutoff, eval_start)"
-    assert all(f["event_date"] >= eval_start for f in meta_eval), \
+    )
+    assert all(f["event_date"] >= eval_start for f in meta_eval), (
         "meta_eval partition contains event_date < eval_start"
+    )
 
     # Disjoint sets — make_three_way_split already asserts internally; double-check.
     base_ids = {f["fight_id"] for f in base}
@@ -105,14 +118,17 @@ def test_oof_uses_72col_view_assertion():
     import importlib.util
     import sys
     from pathlib import Path
+
     spec = importlib.util.spec_from_file_location(
-        "train_meta_v22", Path("scripts/train_meta_v22.py"),
+        "train_meta_v22",
+        Path("scripts/train_meta_v22.py"),
     )
     module = importlib.util.module_from_spec(spec)
     sys.modules["train_meta_v22_test_import"] = module
     spec.loader.exec_module(module)
     enforce = module._enforce_72col_view
     import numpy as np
+
     X_90 = np.zeros((10, 90))
     with pytest.raises(AssertionError, match=r"(72-col view|n_features=72|Pitfall B)"):
         enforce(X_90)

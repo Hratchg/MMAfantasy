@@ -21,6 +21,7 @@ Plus a schema-artifact emission test that writes
 src/ufc_prediction/contracts/predictor.schema.v1.2.0.json from the live
 Pydantic model and asserts the JSON is well-formed.
 """
+
 from __future__ import annotations
 
 import json
@@ -154,8 +155,14 @@ class TestPredictorOutputV1AdditiveBlock:
         dumped = out.model_dump()
         # v1.0.0 fields
         for k in (
-            "schema_version", "win_probability", "fighter_a", "fighter_b",
-            "event_date", "base_prob", "meta_prob", "meta_learner_version",
+            "schema_version",
+            "win_probability",
+            "fighter_a",
+            "fighter_b",
+            "event_date",
+            "base_prob",
+            "meta_prob",
+            "meta_learner_version",
             "meta_skipped_reason",
         ):
             assert k in dumped, f"v1.0.0 field {k!r} missing from dump"
@@ -217,7 +224,8 @@ class TestPredictMatchupRequestV1AcceptSchemaVersion:
         (RFC 7807 error wrapper opt-in via Accept header). Phase 69
         API-V261-01 ships the v1.3.0 sibling JSON artifacts."""
         req = PredictMatchupRequestV1(
-            fighter_a="A", fighter_b="B",
+            fighter_a="A",
+            fighter_b="B",
             accept_schema_version=version,  # type: ignore[arg-type]
         )
         assert req.accept_schema_version == version
@@ -226,7 +234,8 @@ class TestPredictMatchupRequestV1AcceptSchemaVersion:
     def test_rejects_unknown_versions(self, version):
         with pytest.raises(ValidationError):
             PredictMatchupRequestV1(
-                fighter_a="A", fighter_b="B",
+                fighter_a="A",
+                fighter_b="B",
                 accept_schema_version=version,  # type: ignore[arg-type]
             )
 
@@ -336,13 +345,10 @@ class TestSchemaArtifactEmission:
         v110_props = set(v110["properties"].keys())
         live_props = set(live["properties"].keys())
         removed = v110_props - live_props
-        assert removed == set(), (
-            f"v1.2.0 REMOVED v1.1.0 fields: {removed}"
-        )
+        assert removed == set(), f"v1.2.0 REMOVED v1.1.0 fields: {removed}"
         added = live_props - v110_props
         assert added == {"prediction_metadata", "disclaimer"}, (
-            f"v1.2.0 added fields = {added}; expected "
-            f"{{prediction_metadata, disclaimer}}"
+            f"v1.2.0 added fields = {added}; expected {{prediction_metadata, disclaimer}}"
         )
         # prediction_metadata defaults to null (Phase 25/35 lock binding).
         assert live["properties"]["prediction_metadata"].get("default") is None, (
@@ -350,6 +356,7 @@ class TestSchemaArtifactEmission:
         )
         # disclaimer defaults to the DISCLAIMER_200W constant (Phase 38).
         from ufc_prediction.api.disclaimer import DISCLAIMER_200W
+
         assert live["properties"]["disclaimer"].get("default") == DISCLAIMER_200W, (
             "disclaimer must default to DISCLAIMER_200W (Phase 38 HYGIENE-V24-02)"
         )

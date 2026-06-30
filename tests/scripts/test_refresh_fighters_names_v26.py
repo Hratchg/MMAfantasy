@@ -24,7 +24,8 @@ SCRIPT_PATH = PROJECT_ROOT / "scripts" / "refresh_fighters_names_v26.py"
 def mod():
     """Import the script via importlib (it's a script, not a package)."""
     spec = importlib.util.spec_from_file_location(
-        "refresh_fighters_names_v26", SCRIPT_PATH,
+        "refresh_fighters_names_v26",
+        SCRIPT_PATH,
     )
     assert spec is not None and spec.loader is not None
     m = importlib.util.module_from_spec(spec)
@@ -124,20 +125,9 @@ def test_baseline_below_phase_28_04_floor_raises(mod, tmp_path) -> None:
 def test_extract_bfo_numeric_id(mod) -> None:
     """Numeric id extraction round-trip."""
     assert (
-        mod._extract_bfo_numeric_id(
-            "https://www.bestfightodds.com/fighters/Jon-Jones-819"
-        )
-        == "819"
+        mod._extract_bfo_numeric_id("https://www.bestfightodds.com/fighters/Jon-Jones-819") == "819"
     )
-    assert (
-        mod._extract_bfo_numeric_id(
-            "https://other.example/fighters/Jon-Jones-819"
-        )
-        is None
+    assert mod._extract_bfo_numeric_id("https://other.example/fighters/Jon-Jones-819") is None
+    assert mod._extract_bfo_numeric_id("https://www.bestfightodds.com/fighters/foo--123") is None, (
+        "trailing-dash slug must reject (WR-01 / CORPUS-V25-02 carry-forward)"
     )
-    assert (
-        mod._extract_bfo_numeric_id(
-            "https://www.bestfightodds.com/fighters/foo--123"
-        )
-        is None
-    ), "trailing-dash slug must reject (WR-01 / CORPUS-V25-02 carry-forward)"

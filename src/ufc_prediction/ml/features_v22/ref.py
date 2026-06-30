@@ -30,20 +30,24 @@ from typing import Any, Literal
 
 # ── Method-string → category map (Q2 RESOLVED) ──────────────────────────────
 
-_FINISH_METHODS: frozenset[str] = frozenset({
-    "KO/TKO",
-    "TKO",
-    "KO",
-    "Submission",
-    "SUB",
-})
+_FINISH_METHODS: frozenset[str] = frozenset(
+    {
+        "KO/TKO",
+        "TKO",
+        "KO",
+        "Submission",
+        "SUB",
+    }
+)
 
-_DECISION_METHODS: frozenset[str] = frozenset({
-    "Decision",
-    "Decision - Unanimous",
-    "Decision - Split",
-    "Decision - Majority",
-})
+_DECISION_METHODS: frozenset[str] = frozenset(
+    {
+        "Decision",
+        "Decision - Unanimous",
+        "Decision - Split",
+        "Decision - Majority",
+    }
+)
 
 # All other strings (No Contest, DQ, Disqualification, Overturned, None,
 # unknown) collapse to "no_action" — defensive default per Q2 RESOLVED.
@@ -150,12 +154,21 @@ def compute_ref_rates_shrunk(
 
     return {
         "ref_finish_rate_shrunk": beta_binomial_shrink(
-            counts["finish"], n, global_rates["finish"], k_shrink,
+            counts["finish"],
+            n,
+            global_rates["finish"],
+            k_shrink,
         ),
         "ref_decision_rate_shrunk": beta_binomial_shrink(
-            counts["decision"], n, global_rates["decision"], k_shrink,
+            counts["decision"],
+            n,
+            global_rates["decision"],
+            k_shrink,
         ),
         "ref_no_action_rate_shrunk": beta_binomial_shrink(
-            counts["no_action"], n, global_rates["no_action"], k_shrink,
+            counts["no_action"],
+            n,
+            global_rates["no_action"],
+            k_shrink,
         ),
     }

@@ -18,9 +18,7 @@ class TestAccuracyGateFailure:
 
     def test_brier_gate_fails(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as ei:
-            _enforce_accuracy_gate(
-                {"brier_score": 0.25, "accuracy": 0.70}
-            )
+            _enforce_accuracy_gate({"brier_score": 0.25, "accuracy": 0.70})
         assert ei.value.code == 1
         out = capsys.readouterr().out
         assert "FAILED" in out
@@ -28,13 +26,9 @@ class TestAccuracyGateFailure:
         # delta is +0.0298 (Phase 15.1 D-04: brier_max relaxed to 0.2202)
         assert "+0.0298" in out
 
-    def test_accuracy_gate_fails(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_accuracy_gate_fails(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as ei:
-            _enforce_accuracy_gate(
-                {"brier_score": 0.20, "accuracy": 0.60}
-            )
+            _enforce_accuracy_gate({"brier_score": 0.20, "accuracy": 0.60})
         assert ei.value.code == 1
         out = capsys.readouterr().out
         assert "FAILED" in out
@@ -42,13 +36,9 @@ class TestAccuracyGateFailure:
         # delta is -0.0391 (Phase 15.1 D-04: acc_min relaxed to 0.6391)
         assert "-0.0391" in out
 
-    def test_both_thresholds_fail_lists_both(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_both_thresholds_fail_lists_both(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit):
-            _enforce_accuracy_gate(
-                {"brier_score": 0.25, "accuracy": 0.60}
-            )
+            _enforce_accuracy_gate({"brier_score": 0.25, "accuracy": 0.60})
         out = capsys.readouterr().out
         assert "Brier" in out
         assert "Accuracy" in out
@@ -57,13 +47,9 @@ class TestAccuracyGateFailure:
 class TestAccuracyGatePass:
     """The gate prints a green PASSED message when both metrics meet target."""
 
-    def test_gate_passes_on_meeting_thresholds(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_gate_passes_on_meeting_thresholds(self, capsys: pytest.CaptureFixture[str]) -> None:
         # Should NOT raise
-        _enforce_accuracy_gate(
-            {"brier_score": 0.20, "accuracy": 0.66}
-        )
+        _enforce_accuracy_gate({"brier_score": 0.20, "accuracy": 0.66})
         out = capsys.readouterr().out
         assert "PASSED" in out
         # Both metrics included
@@ -74,9 +60,7 @@ class TestAccuracyGatePass:
 class TestAccuracyGateCustomThresholds:
     """Tighter thresholds let callers tune the gate (testability hook)."""
 
-    def test_custom_thresholds_honored(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_custom_thresholds_honored(self, capsys: pytest.CaptureFixture[str]) -> None:
         # Default-passing metrics now fail under tighter thresholds
         with pytest.raises(SystemExit):
             _enforce_accuracy_gate(

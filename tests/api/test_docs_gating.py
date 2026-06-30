@@ -29,6 +29,7 @@ def _build_client(monkeypatch, env: str) -> TestClient:
     # Patch on every module that imported settings at module load time.
     monkeypatch.setattr(app_module.settings, "env", env)
     from ufc_prediction import config as config_module
+
     monkeypatch.setattr(config_module.settings, "env", env)
     # Also patch CORS to avoid empty-origins surprises in OPTIONS calls,
     # and keep sentry_dsn=None so no init noise.
@@ -74,9 +75,7 @@ def test_dev_docs_returns_200_html(monkeypatch):
     resp = c.get("/docs")
     assert resp.status_code == 200
     # Swagger UI page; content-type starts with text/html.
-    assert resp.headers["content-type"].startswith("text/html"), (
-        resp.headers["content-type"]
-    )
+    assert resp.headers["content-type"].startswith("text/html"), resp.headers["content-type"]
 
 
 def test_dev_redoc_returns_200_html(monkeypatch):
@@ -84,9 +83,7 @@ def test_dev_redoc_returns_200_html(monkeypatch):
     c = _build_client(monkeypatch, "dev")
     resp = c.get("/redoc")
     assert resp.status_code == 200
-    assert resp.headers["content-type"].startswith("text/html"), (
-        resp.headers["content-type"]
-    )
+    assert resp.headers["content-type"].startswith("text/html"), resp.headers["content-type"]
 
 
 def test_dev_openapi_json_returns_200_valid_json(monkeypatch):
@@ -94,9 +91,7 @@ def test_dev_openapi_json_returns_200_valid_json(monkeypatch):
     c = _build_client(monkeypatch, "dev")
     resp = c.get("/openapi.json")
     assert resp.status_code == 200
-    assert resp.headers["content-type"].startswith("application/json"), (
-        resp.headers["content-type"]
-    )
+    assert resp.headers["content-type"].startswith("application/json"), resp.headers["content-type"]
     body = resp.json()
     # Sanity — must look like an OpenAPI 3.1.0 spec.
     assert body["openapi"].startswith("3.")
@@ -111,6 +106,4 @@ def test_staging_docs_returns_200(monkeypatch):
     c = _build_client(monkeypatch, "staging")
     resp = c.get("/docs")
     assert resp.status_code == 200
-    assert resp.headers["content-type"].startswith("text/html"), (
-        resp.headers["content-type"]
-    )
+    assert resp.headers["content-type"].startswith("text/html"), resp.headers["content-type"]

@@ -19,6 +19,7 @@ Usage:
     uv run python scripts/audit_referees.py \\
         --output-path .planning/phases/22-ref-travel-camp-schema-scrapers-and-migrations/REF_00_AUDIT.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -37,10 +38,10 @@ from ufc_prediction.scraper.referee_normalize import normalize_referee_name
 
 # ── Locked constants (CONTEXT D-01..D-02 + REVISION-02) ──────────────────
 
-SAMPLE_SIZE: int = 200                          # CONTEXT REVISION-02 path 3
-RANDOM_STATE: int = 42                          # v2.x convention (Phase 20 precedent)
-REF_TOP30_COVERAGE_THRESHOLD: float = 0.60      # CONTEXT D-01 binary gate
-HTTP_DELAY_SECONDS: float = 1.2                 # UFCStats polite-delay (Phase 20 precedent)
+SAMPLE_SIZE: int = 200  # CONTEXT REVISION-02 path 3
+RANDOM_STATE: int = 42  # v2.x convention (Phase 20 precedent)
+REF_TOP30_COVERAGE_THRESHOLD: float = 0.60  # CONTEXT D-01 binary gate
+HTTP_DELAY_SECONDS: float = 1.2  # UFCStats polite-delay (Phase 20 precedent)
 HTTP_TIMEOUT_SECONDS: float = 10.0
 HTTP_MAX_RETRIES: int = 2
 
@@ -49,7 +50,7 @@ OUTPUT_PATH_DEFAULT: Path = Path(
     ".planning/phases/22-ref-travel-camp-schema-scrapers-and-migrations/REF_00_AUDIT.json"
 )
 AUDIT_VERSION: str = "v22.00"
-HIGH_FAILURE_RATE_THRESHOLD: float = 0.05        # >5% fetch-failures -> risk_flag
+HIGH_FAILURE_RATE_THRESHOLD: float = 0.05  # >5% fetch-failures -> risk_flag
 
 
 logger = logging.getLogger(__name__)
@@ -103,10 +104,7 @@ def _sample_event_urls(
         return []
     rng = random.Random(random_state)
     sample = rng.sample(rows, k=min(sample_size, len(rows)))
-    return [
-        (int(r[0]), str(r[1] or ""), str(r[2] or ""), str(r[3] or ""))
-        for r in sample
-    ]
+    return [(int(r[0]), str(r[1] or ""), str(r[2] or ""), str(r[3] or "")) for r in sample]
 
 
 def _load_or_fetch_html(
@@ -251,9 +249,7 @@ def main(argv: list[str] | None = None) -> int:
     t0 = time.time()
     session = SessionLocal()
     try:
-        sample = _sample_event_urls(
-            session, sample_size=SAMPLE_SIZE, random_state=RANDOM_STATE
-        )
+        sample = _sample_event_urls(session, sample_size=SAMPLE_SIZE, random_state=RANDOM_STATE)
     finally:
         session.close()
     print(
@@ -308,9 +304,7 @@ def main(argv: list[str] | None = None) -> int:
             event_detail = parse_event_detail(event_html, source_url)
         except Exception as exc:  # noqa: BLE001 — audit driver tolerates parser drift
             if len(unparseable_examples) < 5:
-                unparseable_examples.append(
-                    f"event_id={event_id} parse_event_detail failed: {exc}"
-                )
+                unparseable_examples.append(f"event_id={event_id} parse_event_detail failed: {exc}")
             continue
         # Per-fight referee extraction
         for fight in event_detail.fights:

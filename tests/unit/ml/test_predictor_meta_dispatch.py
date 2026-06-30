@@ -3,6 +3,7 @@
 These tests focus on the predictor BOUNDARY behavior. The session is mocked
 (per OQ-5 — no live PostgreSQL) so we can validate dispatch without DB.
 """
+
 from __future__ import annotations
 
 import json
@@ -28,8 +29,9 @@ def _build_calibrated_model(n_features: int = 72):
     rng = np.random.default_rng(42)
     X = rng.standard_normal((60, n_features))
     y = rng.integers(0, 2, size=60)
-    base = XGBClassifier(n_estimators=5, max_depth=2, objective="binary:logistic",
-                         random_state=42, verbosity=0)
+    base = XGBClassifier(
+        n_estimators=5, max_depth=2, objective="binary:logistic", random_state=42, verbosity=0
+    )
     base.fit(X[:48], y[:48])
     cal = CalibratedClassifierCV(FrozenEstimator(base), method="sigmoid")
     cal.fit(X[48:], y[48:])
@@ -55,8 +57,9 @@ def _save_xgb_v2(tmp_path: Path) -> Path:
     return model_dir
 
 
-def _save_meta_v1(tmp_path: Path, base_sha: str | None = None,
-                  feature_columns: list[str] | None = None) -> Path:
+def _save_meta_v1(
+    tmp_path: Path, base_sha: str | None = None, feature_columns: list[str] | None = None
+) -> Path:
     """Persist a tiny MetaLearnerLogistic at meta_dir/meta_v1.joblib + meta_v1_meta.json."""
     rng = np.random.default_rng(42)
     Xm = rng.uniform(0.1, 0.9, size=(80, 3))
@@ -66,11 +69,16 @@ def _save_meta_v1(tmp_path: Path, base_sha: str | None = None,
     meta_dir.mkdir(parents=True)
     if base_sha is None:
         import hashlib
-        base_sha = hashlib.sha256((tmp_path / "models" / "xgb_vmeta.joblib").read_bytes()).hexdigest()
+
+        base_sha = hashlib.sha256(
+            (tmp_path / "models" / "xgb_vmeta.joblib").read_bytes()
+        ).hexdigest()
     meta_persistence.save_meta_model(
         m,
-        meta_kind="logistic", meta_version="v1",
-        base_model_version="vmeta", base_model_sha256=base_sha,
+        meta_kind="logistic",
+        meta_version="v1",
+        base_model_version="vmeta",
+        base_model_sha256=base_sha,
         meta_feature_columns=feature_columns or ["xgb_oof_prob", "elo_prob", "closing_prob_diff"],
         meta_input_distribution_hash="d" * 64,
         meta_oof_parquet_sha256="c" * 64,
@@ -88,16 +96,20 @@ def test_predict_with_meta_loaded(tmp_path):
     meta_dir = _save_meta_v1(tmp_path)
     p = predictor.ModelPredictor(model_dir=str(model_dir), version="vmeta", meta_dir=str(meta_dir))
     # Mock the inference path so we don't need a DB session
-    with patch.object(p, "model") as mock_xgb, \
-         patch.object(p, "meta_model") as mock_meta, \
-         patch("ufc_prediction.ml.predictor._resolve_fighter") as mock_resolve, \
-         patch("ufc_prediction.ml.predictor.build_inference_features") as mock_build, \
-         patch("ufc_prediction.ml.predictor.fetch_matchup_odds") as mock_odds, \
-         patch("ufc_prediction.ml.predictor._get_latest_elo") as mock_elo:
+    with (
+        patch.object(p, "model") as mock_xgb,
+        patch.object(p, "meta_model") as mock_meta,
+        patch("ufc_prediction.ml.predictor._resolve_fighter") as mock_resolve,
+        patch("ufc_prediction.ml.predictor.build_inference_features") as mock_build,
+        patch("ufc_prediction.ml.predictor.fetch_matchup_odds") as mock_odds,
+        patch("ufc_prediction.ml.predictor._get_latest_elo") as mock_elo,
+    ):
         mock_xgb.predict_proba.return_value = np.array([[0.4, 0.6]])
         mock_meta.predict_proba.return_value = np.array([[0.3, 0.7]])
-        fa = MagicMock(name="fa", id=1); fa.name = "A"
-        fb = MagicMock(name="fb", id=2); fb.name = "B"
+        fa = MagicMock(name="fa", id=1)
+        fa.name = "A"
+        fb = MagicMock(name="fb", id=2)
+        fb.name = "B"
         mock_resolve.side_effect = [fa, fb]
         # Build a 72-col feature vector with closing_prob_diff at the canonical index
         idx = FEATURE_COLUMNS_NO_NET.index("closing_prob_diff")
@@ -121,14 +133,18 @@ def test_predict_with_no_meta_artifact(tmp_path):
     model_dir = _save_xgb_v2(tmp_path)
     p = predictor.ModelPredictor(model_dir=str(model_dir), version="vmeta", meta_dir=None)
     assert p.meta_model is None
-    with patch.object(p, "model") as mock_xgb, \
-         patch("ufc_prediction.ml.predictor._resolve_fighter") as mock_resolve, \
-         patch("ufc_prediction.ml.predictor.build_inference_features") as mock_build, \
-         patch("ufc_prediction.ml.predictor.fetch_matchup_odds") as mock_odds, \
-         patch("ufc_prediction.ml.predictor._get_latest_elo") as mock_elo:
+    with (
+        patch.object(p, "model") as mock_xgb,
+        patch("ufc_prediction.ml.predictor._resolve_fighter") as mock_resolve,
+        patch("ufc_prediction.ml.predictor.build_inference_features") as mock_build,
+        patch("ufc_prediction.ml.predictor.fetch_matchup_odds") as mock_odds,
+        patch("ufc_prediction.ml.predictor._get_latest_elo") as mock_elo,
+    ):
         mock_xgb.predict_proba.return_value = np.array([[0.45, 0.55]])
-        fa = MagicMock(name="fa", id=1); fa.name = "A"
-        fb = MagicMock(name="fb", id=2); fb.name = "B"
+        fa = MagicMock(name="fa", id=1)
+        fa.name = "A"
+        fb = MagicMock(name="fb", id=2)
+        fb.name = "B"
         mock_resolve.side_effect = [fa, fb]
         mock_build.return_value = np.zeros((1, 72))
         mock_odds.return_value = None
@@ -145,14 +161,18 @@ def test_predict_with_nan_closing_prob_diff(tmp_path):
     model_dir = _save_xgb_v2(tmp_path)
     meta_dir = _save_meta_v1(tmp_path)
     p = predictor.ModelPredictor(model_dir=str(model_dir), version="vmeta", meta_dir=str(meta_dir))
-    with patch.object(p, "model") as mock_xgb, \
-         patch("ufc_prediction.ml.predictor._resolve_fighter") as mock_resolve, \
-         patch("ufc_prediction.ml.predictor.build_inference_features") as mock_build, \
-         patch("ufc_prediction.ml.predictor.fetch_matchup_odds") as mock_odds, \
-         patch("ufc_prediction.ml.predictor._get_latest_elo") as mock_elo:
+    with (
+        patch.object(p, "model") as mock_xgb,
+        patch("ufc_prediction.ml.predictor._resolve_fighter") as mock_resolve,
+        patch("ufc_prediction.ml.predictor.build_inference_features") as mock_build,
+        patch("ufc_prediction.ml.predictor.fetch_matchup_odds") as mock_odds,
+        patch("ufc_prediction.ml.predictor._get_latest_elo") as mock_elo,
+    ):
         mock_xgb.predict_proba.return_value = np.array([[0.4, 0.6]])
-        fa = MagicMock(name="fa", id=1); fa.name = "A"
-        fb = MagicMock(name="fb", id=2); fb.name = "B"
+        fa = MagicMock(name="fa", id=1)
+        fa.name = "A"
+        fb = MagicMock(name="fb", id=2)
+        fb.name = "B"
         mock_resolve.side_effect = [fa, fb]
         idx = FEATURE_COLUMNS_NO_NET.index("closing_prob_diff")
         feature_vec = np.zeros((1, 72))
@@ -173,8 +193,9 @@ def test_predict_meta_base_sha_mismatch_halts(tmp_path):
     # Save meta with a fake (mismatched) base SHA
     _save_meta_v1(tmp_path, base_sha="d" * 64)
     with pytest.raises(RuntimeError, match="base_model_sha256"):
-        predictor.ModelPredictor(model_dir=str(model_dir), version="vmeta",
-                                 meta_dir=str(tmp_path / "models" / "meta"))
+        predictor.ModelPredictor(
+            model_dir=str(model_dir), version="vmeta", meta_dir=str(tmp_path / "models" / "meta")
+        )
 
 
 def test_predict_meta_feature_columns_drift_halts(tmp_path):
@@ -182,5 +203,6 @@ def test_predict_meta_feature_columns_drift_halts(tmp_path):
     model_dir = _save_xgb_v2(tmp_path)
     _save_meta_v1(tmp_path, feature_columns=["xgb_oof_prob", "elo_prob", "OTHER_FEATURE"])
     with pytest.raises(RuntimeError, match="meta_feature_columns"):
-        predictor.ModelPredictor(model_dir=str(model_dir), version="vmeta",
-                                 meta_dir=str(tmp_path / "models" / "meta"))
+        predictor.ModelPredictor(
+            model_dir=str(model_dir), version="vmeta", meta_dir=str(tmp_path / "models" / "meta")
+        )

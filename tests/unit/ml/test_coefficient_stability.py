@@ -31,9 +31,14 @@ def per_seed_meta_synthetic():
     for seed in (42, 43, 44, 45, 46):
         meta = MetaLearnerLogistic(random_state=seed).fit(X_meta, y)
         per_seed[seed] = meta
-    feature_names = per_seed[42].pipeline.named_steps["poly"].get_feature_names_out(
-        ["a", "b", "c"],
-    ).tolist()
+    feature_names = (
+        per_seed[42]
+        .pipeline.named_steps["poly"]
+        .get_feature_names_out(
+            ["a", "b", "c"],
+        )
+        .tolist()
+    )
     return per_seed, feature_names
 
 

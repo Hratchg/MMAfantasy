@@ -7,6 +7,7 @@ Covers:
   - WR-07 input validation: feature_columns_hash hex regex + gate_contract_ref
     file existence (Phase 25 review-fix).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -80,16 +81,21 @@ class TestSaveContractJson:
         )
         contract = json.loads(path.read_text())
         expected_keys = {
-            "schema_version", "gate_contract_ref", "feature_columns_hash",
-            "min_partner_version_supported", "deprecation_policy",
-            "model_artifact_sha256", "created_at",
+            "schema_version",
+            "gate_contract_ref",
+            "feature_columns_hash",
+            "min_partner_version_supported",
+            "deprecation_policy",
+            "model_artifact_sha256",
+            "created_at",
         }
         assert set(contract.keys()) == expected_keys
 
     def test_model_artifact_sha_matches_joblib(self, tmp_path):
         model_dir, _ = _seed_synth_repo(tmp_path)
         path = save_contract_json(
-            model_dir=str(model_dir), version="v2",
+            model_dir=str(model_dir),
+            version="v2",
             gate_contract_ref=".planning/gate_contract_v2.2.json",
             feature_columns_hash="b" * 64,
         )
@@ -104,7 +110,8 @@ class TestSaveContractJson:
         (tmp_path / "models" / "xgb_v2.joblib").unlink()
         with pytest.raises(FileNotFoundError):
             save_contract_json(
-                model_dir=str(tmp_path / "models"), version="v2",
+                model_dir=str(tmp_path / "models"),
+                version="v2",
                 gate_contract_ref=".planning/gate_contract_v2.2.json",
                 feature_columns_hash="c" * 64,
             )
@@ -112,7 +119,8 @@ class TestSaveContractJson:
     def test_default_kwargs_per_research_pattern_4(self, tmp_path):
         model_dir, _ = _seed_synth_repo(tmp_path)
         path = save_contract_json(
-            model_dir=str(model_dir), version="v2",
+            model_dir=str(model_dir),
+            version="v2",
             gate_contract_ref=".planning/gate_contract_v2.2.json",
             feature_columns_hash="d" * 64,
         )
@@ -127,7 +135,8 @@ class TestSaveContractJson:
         model_dir, _ = _seed_synth_repo(tmp_path)
         with pytest.raises(ValueError, match="64-char lowercase hex"):
             save_contract_json(
-                model_dir=str(model_dir), version="v2",
+                model_dir=str(model_dir),
+                version="v2",
                 gate_contract_ref=".planning/gate_contract_v2.2.json",
                 feature_columns_hash="not-a-sha-256",
             )
@@ -136,7 +145,8 @@ class TestSaveContractJson:
         model_dir, _ = _seed_synth_repo(tmp_path)
         with pytest.raises(ValueError, match="64-char lowercase hex"):
             save_contract_json(
-                model_dir=str(model_dir), version="v2",
+                model_dir=str(model_dir),
+                version="v2",
                 gate_contract_ref=".planning/gate_contract_v2.2.json",
                 feature_columns_hash="A" * 64,  # uppercase rejected
             )
@@ -145,7 +155,8 @@ class TestSaveContractJson:
         model_dir, _ = _seed_synth_repo(tmp_path)
         with pytest.raises(ValueError, match="64-char lowercase hex"):
             save_contract_json(
-                model_dir=str(model_dir), version="v2",
+                model_dir=str(model_dir),
+                version="v2",
                 gate_contract_ref=".planning/gate_contract_v2.2.json",
                 feature_columns_hash="a" * 63,  # one char short
             )
@@ -154,7 +165,8 @@ class TestSaveContractJson:
         model_dir, _ = _seed_synth_repo(tmp_path)
         with pytest.raises(ValueError, match="64-char lowercase hex"):
             save_contract_json(
-                model_dir=str(model_dir), version="v2",
+                model_dir=str(model_dir),
+                version="v2",
                 gate_contract_ref=".planning/gate_contract_v2.2.json",
                 feature_columns_hash="",
             )
@@ -163,7 +175,8 @@ class TestSaveContractJson:
         model_dir, _ = _seed_synth_repo(tmp_path)
         with pytest.raises(ValueError, match="non-empty"):
             save_contract_json(
-                model_dir=str(model_dir), version="v2",
+                model_dir=str(model_dir),
+                version="v2",
                 gate_contract_ref="",
                 feature_columns_hash="a" * 64,
             )
@@ -172,7 +185,8 @@ class TestSaveContractJson:
         model_dir, _ = _seed_synth_repo(tmp_path)
         with pytest.raises(FileNotFoundError, match="gate_contract_ref"):
             save_contract_json(
-                model_dir=str(model_dir), version="v2",
+                model_dir=str(model_dir),
+                version="v2",
                 gate_contract_ref=".planning/does_not_exist.json",
                 feature_columns_hash="a" * 64,
             )

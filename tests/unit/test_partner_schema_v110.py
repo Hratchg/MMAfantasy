@@ -12,6 +12,7 @@ lock binding) see the response shape unchanged when they continue to
 deserialize against `predictor.schema.v1.0.0.json` (additive fields are
 silently dropped or surface as Optional None values).
 """
+
 from __future__ import annotations
 
 import json
@@ -22,8 +23,7 @@ from ufc_prediction.api.v1.models import PredictorOutputV1
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SCHEMA_V100_PATH = (
-    REPO_ROOT / "src" / "ufc_prediction" / "contracts"
-    / "predictor.schema.v1.0.0.json"
+    REPO_ROOT / "src" / "ufc_prediction" / "contracts" / "predictor.schema.v1.0.0.json"
 )
 
 # The exact v1.0.0 field set, hand-curated from Phase 25's locked schema.
@@ -92,9 +92,7 @@ def test_v110_fields_typing():
 
 def test_v110_fields_populate_correctly():
     """v1.1.0 partners can populate the additive trio + round-trip through model_dump."""
-    canonical_sha = (
-        "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-    )
+    canonical_sha = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
     candidates = [
         {"name": "xgb_v2", "sha256": canonical_sha, "phase": "16"},
         {"name": "meta_v2", "sha256": "deadbeef" * 8, "phase": "26"},

@@ -27,9 +27,7 @@ runner = CliRunner()
 def test_recalib_dry_run_exits_zero() -> None:
     """Default invocation prints the dry-run report and exits 0."""
     result = runner.invoke(app, ["gate", "recalib"])
-    assert result.exit_code == 0, (
-        f"dry-run should exit 0; got {result.exit_code}\n{result.stdout}"
-    )
+    assert result.exit_code == 0, f"dry-run should exit 0; got {result.exit_code}\n{result.stdout}"
     # Output must include the scaffold's headline so operators understand
     # this is the dry-run mode.
     combined = (result.stdout or "") + (result.stderr or "")
@@ -46,8 +44,7 @@ def test_recalib_apply_exits_two_deferred_to_v27(monkeypatch) -> None:
     """
     result = runner.invoke(app, ["gate", "recalib", "--apply"])
     assert result.exit_code == 2, (
-        f"--apply should exit 2 (deferred); got {result.exit_code}\n"
-        f"stdout={result.stdout!r}"
+        f"--apply should exit 2 (deferred); got {result.exit_code}\nstdout={result.stdout!r}"
     )
     combined = (result.stdout or "") + (result.stderr or "")
     # Phase 56 scaffold's literal "v2.6.1 follow-on" message OR Phase 72's
@@ -60,8 +57,7 @@ def test_recalib_rejects_non_v26_feature_set() -> None:
     """Pre-v2.6 feature-sets are rejected — methodology lineage gate."""
     result = runner.invoke(app, ["gate", "recalib", "--feature-set", "v2.3"])
     assert result.exit_code == 1, (
-        f"non-v2.6 feature-set should exit 1; got {result.exit_code}\n"
-        f"stdout={result.stdout!r}"
+        f"non-v2.6 feature-set should exit 1; got {result.exit_code}\nstdout={result.stdout!r}"
     )
 
 

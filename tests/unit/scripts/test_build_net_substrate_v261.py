@@ -185,9 +185,7 @@ def test_feature_column_order_matches_meta_v2_netd_meta_json() -> None:
     # vs canonical at predict time on the same meta-input shape, with only
     # col[0] (the OOF source) differing.
     canonical_meta_path = REPO_ROOT / "models" / "meta" / "meta_v2_meta.json"
-    canonical_meta: dict[str, Any] = json.loads(
-        canonical_meta_path.read_text(encoding="utf-8")
-    )
+    canonical_meta: dict[str, Any] = json.loads(canonical_meta_path.read_text(encoding="utf-8"))
     canonical_cols: list[str] = canonical_meta["meta_feature_columns"]
     assert list(NET_FEATURE_COLUMNS[1:]) == canonical_cols[1:], (
         f"NET cols[1..12] drifted from canonical META-V22 cols[1..12]:\n"
@@ -275,7 +273,8 @@ def test_builder_is_deterministic_across_reruns(tmp_path: Path) -> None:
 
 
 def test_builder_is_deterministic_across_simulated_calendar_drift(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Mirrors Phase 65 test #9 (CR-03 regression; T-66-19): builder stays
     byte-deterministic across calendar-day drift.
@@ -334,8 +333,7 @@ def test_slice_outcomes_are_int8_in_zero_one(built_parquet: Path) -> None:
     for name, sl in slices.items():
         for outcome in sl.outcomes:
             assert outcome in (0, 1), (
-                f"slice {name!r} has outcome {outcome!r} outside {{0, 1}} "
-                f"(Phase 63 R3 violation)"
+                f"slice {name!r} has outcome {outcome!r} outside {{0, 1}} (Phase 63 R3 violation)"
             )
         assert all(isinstance(o, int) for o in sl.outcomes), (
             f"slice {name!r} has non-int outcome values"
@@ -343,7 +341,8 @@ def test_slice_outcomes_are_int8_in_zero_one(built_parquet: Path) -> None:
 
 
 def test_nan_coverage_gate_fires_when_debutant_exceeds_threshold(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Phase 66 NaN-debutant gate (T-66-17): monkeypatch the OOF-load helper
     so every fight_id returns NaN; the blocking RuntimeError must fire.
@@ -380,7 +379,8 @@ def test_nan_coverage_gate_fires_when_debutant_exceeds_threshold(
 
 
 def test_nan_coverage_gate_bypass_via_allow_low_coverage(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Phase 66 NaN-debutant gate (T-66-17): ``allow_low_coverage=True``
     overrides the gate even when debutant proportion is 100%. The build
@@ -415,10 +415,14 @@ def test_anti_overwrite_guard_refuses_phase_64_substrate_path(
         f"PROTECTED_OUTPUTS missing Phase 64 path; set is: {PROTECTED_OUTPUTS}"
     )
 
-    rc = main([
-        "--source", "synthetic",
-        "--output", "data/intermediate/travel_substrate_v261.parquet",
-    ])
+    rc = main(
+        [
+            "--source",
+            "synthetic",
+            "--output",
+            "data/intermediate/travel_substrate_v261.parquet",
+        ]
+    )
     assert rc == 1, f"Expected exit code 1, got {rc}"
     captured = capsys.readouterr()
     assert "refusing to overwrite" in captured.err.lower(), (
@@ -443,10 +447,14 @@ def test_anti_overwrite_guard_refuses_phase_65_substrate_path(
         f"PROTECTED_OUTPUTS missing Phase 65 path; set is: {PROTECTED_OUTPUTS}"
     )
 
-    rc = main([
-        "--source", "synthetic",
-        "--output", "data/intermediate/ref_substrate_v261.parquet",
-    ])
+    rc = main(
+        [
+            "--source",
+            "synthetic",
+            "--output",
+            "data/intermediate/ref_substrate_v261.parquet",
+        ]
+    )
     assert rc == 1, f"Expected exit code 1, got {rc}"
     captured = capsys.readouterr()
     assert "refusing to overwrite" in captured.err.lower(), (

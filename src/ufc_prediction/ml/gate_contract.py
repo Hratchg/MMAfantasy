@@ -40,23 +40,15 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
-DEFAULT_CONTRACT_PATH = (
-    Path(__file__).resolve().parents[3] / ".planning" / "gate_contract.json"
-)
-V22_CONTRACT_PATH = (
-    Path(__file__).resolve().parents[3] / ".planning" / "gate_contract_v2.2.json"
-)
-V23_CONTRACT_PATH = (
-    Path(__file__).resolve().parents[3] / ".planning" / "gate_contract_v2.3.json"
-)
+DEFAULT_CONTRACT_PATH = Path(__file__).resolve().parents[3] / ".planning" / "gate_contract.json"
+V22_CONTRACT_PATH = Path(__file__).resolve().parents[3] / ".planning" / "gate_contract_v2.2.json"
+V23_CONTRACT_PATH = Path(__file__).resolve().parents[3] / ".planning" / "gate_contract_v2.3.json"
 # v2.6 dispatch (Phase 55 GATE-V26-04). Adds methodology fields
 # (methodology_version, substrate_alignment_strategy, gate_verifier_module,
 # confound_threshold) on top of v2.3 schema. Per_slice numbers preserved
 # verbatim from v2.3 at Phase 55 ship; Phase 56 GATE-RECALIB CLI may
 # re-derive them on a corpus-growth trigger.
-V26_CONTRACT_PATH = (
-    Path(__file__).resolve().parents[3] / ".planning" / "gate_contract_v2.6.json"
-)
+V26_CONTRACT_PATH = Path(__file__).resolve().parents[3] / ".planning" / "gate_contract_v2.6.json"
 SUPPORTED_VERSIONS: frozenset[str] = frozenset({"v2.1", "v2.2", "v2.3", "v2.6"})
 EXPECTED_SLICES: tuple[str, ...] = (
     "most_recent_12mo",
@@ -149,16 +141,10 @@ class GateContract:
         # v2.2 + v2.3 required fields (CONTEXT D-07 v2.2 / CONTEXT D-02 v2.3).
         if self.version in ("v2.2", "v2.3"):
             if not self.feature_columns_hash:
-                msg = (
-                    f"{self.version} contract missing required field: "
-                    "feature_columns_hash"
-                )
+                msg = f"{self.version} contract missing required field: feature_columns_hash"
                 raise GateContractError(msg)
             if not self.bfo_backfill_committed_at:
-                msg = (
-                    f"{self.version} contract missing required field: "
-                    "bfo_backfill_committed_at"
-                )
+                msg = f"{self.version} contract missing required field: bfo_backfill_committed_at"
                 raise GateContractError(msg)
         # v2.3-only required field (Phase 31; CONTEXT D-02 + Pitfall 7).
         if self.version == "v2.3" and not self.ingest_completed_at:
@@ -172,15 +158,11 @@ class GateContract:
                 "gate_verifier_module",
             ):
                 if not getattr(self, required_field):
-                    msg = (
-                        f"v2.6 contract missing required field: "
-                        f"{required_field}"
-                    )
+                    msg = f"v2.6 contract missing required field: {required_field}"
                     raise GateContractError(msg)
             if not 0.0 < self.confound_threshold <= 1.0:
                 msg = (
-                    f"v2.6 contract confound_threshold {self.confound_threshold} "
-                    "must be in (0, 1]"
+                    f"v2.6 contract confound_threshold {self.confound_threshold} must be in (0, 1]"
                 )
                 raise GateContractError(msg)
 

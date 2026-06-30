@@ -32,11 +32,7 @@ def upsert_fighter(
     Only overwrites existing fields with non-None new values.
     Returns the Fighter instance (flushed, has id).
     """
-    fighter = (
-        session.query(Fighter)
-        .filter(Fighter.name == name, Fighter.source == source)
-        .first()
-    )
+    fighter = session.query(Fighter).filter(Fighter.name == name, Fighter.source == source).first()
     if fighter is not None:
         for field_name, value in profile_fields.items():
             if value is not None:

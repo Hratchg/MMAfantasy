@@ -176,7 +176,8 @@ PROVISIONAL_PATH_B_VERDICT_JSON: dict[str, object] = {
 
 
 def emit_provisional_path_b(
-    md_path: Path = RESULTS_MD, json_path: Path = RESULTS_JSON,
+    md_path: Path = RESULTS_MD,
+    json_path: Path = RESULTS_JSON,
 ) -> tuple[Path, Path]:
     """Emit the Phase 58 PROVISIONAL Path B audit-trail pair (unchanged in Phase 64).
 
@@ -206,8 +207,7 @@ def emit_provisional_path_b(
     md_path.parent.mkdir(parents=True, exist_ok=True)
     md_path.write_text(PROVISIONAL_PATH_B_WRITEUP, encoding="utf-8")
     json_path.write_text(
-        json.dumps(PROVISIONAL_PATH_B_VERDICT_JSON, indent=2, sort_keys=False)
-        + "\n",
+        json.dumps(PROVISIONAL_PATH_B_VERDICT_JSON, indent=2, sort_keys=False) + "\n",
         encoding="utf-8",
     )
     return md_path, json_path
@@ -251,15 +251,18 @@ def delegate_to_ufc_gate_verify(
         "ufc",
         "gate",
         "verify",
-        "--candidate", str(candidate),
-        "--canonical", str(canonical),
-        "--substrate-parquet", str(substrate_parquet),
-        "--strategy", str(strategy),
-        "--out", str(out),
+        "--candidate",
+        str(candidate),
+        "--canonical",
+        str(canonical),
+        "--substrate-parquet",
+        str(substrate_parquet),
+        "--strategy",
+        str(strategy),
+        "--out",
+        str(out),
     ]
-    sys.stderr.write(
-        f"Delegating to: {' '.join(argv)}\n"
-    )
+    sys.stderr.write(f"Delegating to: {' '.join(argv)}\n")
     # check=False so we propagate the verifier's exit code verbatim
     # rather than raising CalledProcessError on non-zero. The Phase 63
     # CLI uses exit 1 for clean operator errors (load failures); we
@@ -350,9 +353,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         except RuntimeError as e:
             sys.stderr.write(f"ERROR: {e}\n")
             return 1
-        sys.stdout.write(
-            f"Provisional Path B writeup emitted:\n  {md}\n  {js}\n"
-        )
+        sys.stdout.write(f"Provisional Path B writeup emitted:\n  {md}\n  {js}\n")
         return 0
 
     # Phase 64 delegation path. Resolve default --out if not provided.

@@ -75,12 +75,8 @@ if str(_SCRIPTS_DIR) not in sys.path:
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 
 # AUDIT-01 anchors — locked per .planning/AUDIT-01-BASELINE-SHA.txt.
-EXPECTED_XGB_V2_SHA256: str = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
-EXPECTED_META_V2_SHA256: str = (
-    "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
-)
+EXPECTED_XGB_V2_SHA256: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+EXPECTED_META_V2_SHA256: str = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
 
 # Canonical artifacts (READ-ONLY for this script).
 CANONICAL_META_JSON: Path = PROJECT_ROOT / "models" / "meta" / "meta_v2_meta.json"
@@ -96,11 +92,13 @@ OUT_META: Path = PROJECT_ROOT / "models" / "meta" / "meta_v2_refit_v2.6_meta.jso
 # Anti-overwrite guard set — Phase 65 carry-forward. Resolves symlink/relative
 # path tricks so a typo (e.g. ``--output models/meta/meta_v2.joblib``) is
 # caught by the guard before any disk write.
-PROTECTED_OUTPUTS: frozenset[Path] = frozenset({
-    CANONICAL_META_V2_JOBLIB.resolve(),
-    CANONICAL_META_JSON.resolve(),
-    CANONICAL_XGB_V2_JOBLIB.resolve(),
-})
+PROTECTED_OUTPUTS: frozenset[Path] = frozenset(
+    {
+        CANONICAL_META_V2_JOBLIB.resolve(),
+        CANONICAL_META_JSON.resolve(),
+        CANONICAL_XGB_V2_JOBLIB.resolve(),
+    }
+)
 
 # Phase 64 CR-03 determinism — frozen reference date for synthetic mode.
 REFIT_FROZEN_DATE: date = date(2026, 6, 4)
@@ -108,7 +106,7 @@ REFIT_FROZEN_DATE: date = date(2026, 6, 4)
 # 13-col META-V22 layout — byte-equal canonical meta_v2_meta.json (D-02 §7.2
 # semantic: refit baseline is canonical column ordering on aligned substrate).
 META_V2_REFIT_FEATURE_COLUMNS: tuple[str, ...] = (
-    "xgb_oof_prob",                  # col[0] — canonical xgb_v2 OOF source
+    "xgb_oof_prob",  # col[0] — canonical xgb_v2 OOF source
     "elo_prob",
     "closing_prob_diff",
     "stance_matchup",
@@ -214,9 +212,7 @@ def assert_meta_v2_layout() -> None:
 # ── 13-col training matrix assembly ───────────────────────────────────────
 
 
-def _synthesize_13col_matrix(
-    *, seed: int = DEFAULT_SEED
-) -> tuple[Any, Any]:
+def _synthesize_13col_matrix(*, seed: int = DEFAULT_SEED) -> tuple[Any, Any]:
     """Build a deterministic synthetic 13-col matrix for ``--mode synthetic``.
 
     Uses ``compose_v25_travel._build_synthetic_v25`` (Phase 42 helper, reused
@@ -247,15 +243,11 @@ def _synthesize_13col_matrix(
     _orig_date = _cv.date
     _cv.date = _FixedDate
     try:
-        X_v25, y, _fight_dates, _fight_records = _build_synthetic_v25(
-            n=SYNTHETIC_N_FIGHTS
-        )
+        X_v25, y, _fight_dates, _fight_records = _build_synthetic_v25(n=SYNTHETIC_N_FIGHTS)
     finally:
         _cv.date = _orig_date
 
-    assert X_v25.shape[1] >= 90, (
-        f"synthetic substrate must be >=90 cols; got {X_v25.shape[1]}"
-    )
+    assert X_v25.shape[1] >= 90, f"synthetic substrate must be >=90 cols; got {X_v25.shape[1]}"
     X_v22 = X_v25[:, :90]
 
     # Synthesize col[0] (xgb_oof_prob) and col[1] (elo_prob) externally.
@@ -270,12 +262,8 @@ def _synthesize_13col_matrix(
         idx = FEATURE_COLUMNS_V22.index(name)
         internal_cols.append(X_v22[:, idx])
 
-    X_13 = np.column_stack([
-        xgb_oof_synth, elo_prob_synth, *internal_cols
-    ]).astype(np.float64)
-    assert X_13.shape[1] == 13, (
-        f"_synthesize_13col_matrix: expected 13 cols, got {X_13.shape[1]}"
-    )
+    X_13 = np.column_stack([xgb_oof_synth, elo_prob_synth, *internal_cols]).astype(np.float64)
+    assert X_13.shape[1] == 13, f"_synthesize_13col_matrix: expected 13 cols, got {X_13.shape[1]}"
     y_int = np.asarray(y, dtype=np.int64)
     return X_13, y_int
 
@@ -297,9 +285,7 @@ def _build_live_13col_matrix() -> tuple[Any, Any]:
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
 
     X_v22, y, _fight_dates, fight_records = _tm._load_assembled_data_v22()
-    assert X_v22.shape[1] == 90, (
-        f"v2.2 substrate must be 90 cols; got {X_v22.shape[1]}"
-    )
+    assert X_v22.shape[1] == 90, f"v2.2 substrate must be 90 cols; got {X_v22.shape[1]}"
 
     from ufc_prediction.db.session import SessionLocal
     from ufc_prediction.ml.queries import load_elo_features
@@ -332,9 +318,7 @@ def _build_live_13col_matrix() -> tuple[Any, Any]:
     required = {"fight_id", "oof_prob"}
     missing = required - set(oof_df.columns)
     if missing:
-        raise AssertionError(
-            f"canonical xgb_v2 OOF parquet missing required columns: {missing}"
-        )
+        raise AssertionError(f"canonical xgb_v2 OOF parquet missing required columns: {missing}")
     oof_by_fid = dict(
         zip(
             oof_df["fight_id"].astype("int64").tolist(),
@@ -344,8 +328,7 @@ def _build_live_13col_matrix() -> tuple[Any, Any]:
 
     # Per-row unique negative sentinel (Phase 65 CR-02 carry-forward).
     fight_ids: list[int] = [
-        int(rec["fight_id"]) if rec.get("fight_id") is not None
-        else -(10**9 + i)
+        int(rec["fight_id"]) if rec.get("fight_id") is not None else -(10**9 + i)
         for i, rec in enumerate(fight_records)
     ]
     keep_mask = np.array([fid in oof_by_fid for fid in fight_ids], dtype=bool)
@@ -357,18 +340,14 @@ def _build_live_13col_matrix() -> tuple[Any, Any]:
             f"{100 * n_drop / max(len(fight_ids), 1):.2f}%)",
             file=sys.stderr,
         )
-    xgb_oof_col = np.array(
-        [oof_by_fid.get(fid, np.nan) for fid in fight_ids], dtype=np.float64
-    )
+    xgb_oof_col = np.array([oof_by_fid.get(fid, np.nan) for fid in fight_ids], dtype=np.float64)
 
     internal_cols: list[Any] = []
     for name in META_V2_REFIT_FEATURE_COLUMNS[2:]:
         idx = FEATURE_COLUMNS_V22.index(name)
         internal_cols.append(X_v22[:, idx])
 
-    X_13_all = np.column_stack([
-        xgb_oof_col, elo_prob_arr, *internal_cols
-    ]).astype(np.float64)
+    X_13_all = np.column_stack([xgb_oof_col, elo_prob_arr, *internal_cols]).astype(np.float64)
     assert X_13_all.shape[1] == 13, (
         f"_build_live_13col_matrix: expected 13 cols, got {X_13_all.shape[1]}"
     )
@@ -388,9 +367,7 @@ def _build_live_13col_matrix() -> tuple[Any, Any]:
     return X_13, y_kept
 
 
-def build_13col_training_matrix(
-    *, source: str = "synthetic"
-) -> tuple[Any, Any]:
+def build_13col_training_matrix(*, source: str = "synthetic") -> tuple[Any, Any]:
     """Build the 13-col META-V22-layout training matrix.
 
     Two source modes:
@@ -533,13 +510,9 @@ def emit_outputs(
             "status": "UNCHANGED",
         },
         "synthetic_n_fights": SYNTHETIC_N_FIGHTS if mode == "synthetic" else None,
-        "synthetic_frozen_date": (
-            REFIT_FROZEN_DATE.isoformat() if mode == "synthetic" else None
-        ),
+        "synthetic_frozen_date": (REFIT_FROZEN_DATE.isoformat() if mode == "synthetic" else None),
     }
-    out_meta.write_text(
-        json.dumps(sidecar, indent=2, sort_keys=False) + "\n", encoding="utf-8"
-    )
+    out_meta.write_text(json.dumps(sidecar, indent=2, sort_keys=False) + "\n", encoding="utf-8")
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────
@@ -644,9 +617,7 @@ def main(argv: list[str] | None = None) -> int:
     except FileNotFoundError as e:
         print(f"training data load failed: {e}", file=sys.stderr)
         return 1
-    print(
-        f"[refit_meta_v22_v2.6] X_13.shape={X_13.shape}, y.shape={y.shape}"
-    )
+    print(f"[refit_meta_v22_v2.6] X_13.shape={X_13.shape}, y.shape={y.shape}")
 
     # Fit.
     meta_pipeline = fit_meta_refit(X_13, y, seed=args.seed)

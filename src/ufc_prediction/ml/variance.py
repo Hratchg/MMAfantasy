@@ -55,6 +55,7 @@ Implementation notes:
   bootstrap-resampling the OOF — no xgb_v2 retrain needed, AUDIT-01
   byte-identity preserved by construction (Pitfall 1 in 30-RESEARCH.md).
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
@@ -101,10 +102,7 @@ def bootstrap_resample(
         ValueError: when `X.shape[0] != y.shape[0]`.
     """
     if X.shape[0] != y.shape[0]:
-        raise ValueError(
-            f"bootstrap_resample: X.shape[0]={X.shape[0]} != "
-            f"y.shape[0]={y.shape[0]}"
-        )
+        raise ValueError(f"bootstrap_resample: X.shape[0]={X.shape[0]} != y.shape[0]={y.shape[0]}")
     n = int(X.shape[0])
     rng = np.random.RandomState(int(seed))
     idx = rng.choice(n, size=n, replace=True)
@@ -168,7 +166,10 @@ def multi_seed_metrics(
         X_boot, y_boot = bootstrap_resample(X_train, y_train, seed=int(seed))
         model = fit_fn(X_boot, y_boot, int(seed))
         per_seed[int(seed)] = evaluate_per_slice(
-            model, X_eval, y_eval, fight_dates_eval,
+            model,
+            X_eval,
+            y_eval,
+            fight_dates_eval,
         )
     return per_seed
 
@@ -256,7 +257,10 @@ def aggregate_variance(
     # BCa CI half-widths via existing primitive (no duplicate
     # implementation; matches `spike_noise_floor_v22.py:1106-1110`).
     bootstrap_halves = bootstrap_per_slice_ci(
-        representative_model, X_eval, y_eval, fight_dates_eval,
+        representative_model,
+        X_eval,
+        y_eval,
+        fight_dates_eval,
     )
 
     # Apply max() rule + Pitfall-B fallback (verbatim from
@@ -294,14 +298,14 @@ def aggregate_variance(
             )
 
         aggregated[slc] = {
-            "seed_std_brier":          ss_b,
-            "seed_std_acc":            ss_a,
+            "seed_std_brier": ss_b,
+            "seed_std_acc": ss_a,
             # Raw values preserved — Pitfall-B-degenerate slices keep
             # the NaN in the contract record (D-08 + WR-04 lineage).
             "bootstrap_ci_half_brier": bh_b_raw,
-            "bootstrap_ci_half_acc":   bh_a_raw,
-            "std_brier_used":          max(ss_b, bh_b_used),
-            "std_acc_used":            max(ss_a, bh_a_used),
+            "bootstrap_ci_half_acc": bh_a_raw,
+            "std_brier_used": max(ss_b, bh_b_used),
+            "std_acc_used": max(ss_a, bh_a_used),
         }
     return aggregated, warnings
 
@@ -332,9 +336,7 @@ def assert_distinct_seed_brier(per_seed_results: dict[int, dict[str, dict[str, f
     seeds = list(per_seed_results.keys())
     n_seeds = len(seeds)
     for slc in PER_SLICE_KEYS:
-        briers = {
-            per_seed_results[s][slc]["brier_score"] for s in seeds
-        }
+        briers = {per_seed_results[s][slc]["brier_score"] for s in seeds}
         if len(briers) < n_seeds:
             raise AssertionError(
                 f"Slice {slc}: only {len(briers)} distinct Brier scores "

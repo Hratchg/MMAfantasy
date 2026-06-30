@@ -10,6 +10,7 @@ Tests E1..E4 (per 26-04-PLAN <behavior>):
     E3: meta_v1 + meta_v2    -> "v2"
     E4: meta_v1 + candidate  -> "v1"  (candidate ignored)
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -68,8 +69,8 @@ def test_get_latest_meta_version_double_digit(tmp_path: Path) -> None:
 
 def test_get_latest_meta_version_ignores_non_joblib(tmp_path: Path) -> None:
     """Edge case — only files matching `meta_v{N}.joblib` count."""
-    _touch(tmp_path / "meta_v1.txt")       # wrong extension
-    _touch(tmp_path / "metaX_v1.joblib")    # wrong prefix
-    _touch(tmp_path / "meta_v.joblib")      # no digits
+    _touch(tmp_path / "meta_v1.txt")  # wrong extension
+    _touch(tmp_path / "metaX_v1.joblib")  # wrong prefix
+    _touch(tmp_path / "meta_v.joblib")  # no digits
     _touch(tmp_path / "README.md")
     assert get_latest_meta_version(str(tmp_path)) is None

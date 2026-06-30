@@ -20,6 +20,7 @@ in-memory base estimator built from ``models/xgb_v2_meta.json::best_params``;
 Tests follow the Plan 19-01 mock-style integration test pattern established
 by ``tests/integration/test_predict_matchup_meta.py``.
 """
+
 from __future__ import annotations
 
 import datetime as _dt
@@ -101,18 +102,18 @@ def _build_synthetic_real_data(
             )
         else:
             # Last 365 days
-            d = eval_start + _dt.timedelta(
-                days=int(rng.integers(0, 364))
-            )
+            d = eval_start + _dt.timedelta(days=int(rng.integers(0, 364)))
         dates.append(d)
-        fight_records.append({
-            "fight_id": 100_000 + i,
-            "event_date": d,
-            "fighter_a_id": 10_000 + (i * 2),
-            "fighter_b_id": 10_000 + (i * 2) + 1,
-            "weight_class": "lightweight",
-            "winner_id": (10_000 + (i * 2)) if y[i] == 1 else (10_000 + (i * 2) + 1),
-        })
+        fight_records.append(
+            {
+                "fight_id": 100_000 + i,
+                "event_date": d,
+                "fighter_a_id": 10_000 + (i * 2),
+                "fighter_b_id": 10_000 + (i * 2) + 1,
+                "weight_class": "lightweight",
+                "winner_id": (10_000 + (i * 2)) if y[i] == 1 else (10_000 + (i * 2) + 1),
+            }
+        )
     fight_dates = np.array(dates, dtype=object)
     return X, y, fight_dates, fight_records
 
@@ -153,14 +154,22 @@ def patched_main_environment(tmp_path, monkeypatch):
         return_value=(meta_dir / "meta_v1.joblib", meta_dir / "meta_v1_meta.json"),
     )
 
-    with patch.object(
-        train_meta_v1, "_load_assembled_data",
-        return_value=(X, y, fight_dates, fight_records),
-    ), patch.object(
-        train_meta_v1, "_compute_elo_prob_for_fight",
-        side_effect=_deterministic_elo_prob,
-    ), patch.object(
-        train_meta_v1, "save_meta_model", save_meta_mock,
+    with (
+        patch.object(
+            train_meta_v1,
+            "_load_assembled_data",
+            return_value=(X, y, fight_dates, fight_records),
+        ),
+        patch.object(
+            train_meta_v1,
+            "_compute_elo_prob_for_fight",
+            side_effect=_deterministic_elo_prob,
+        ),
+        patch.object(
+            train_meta_v1,
+            "save_meta_model",
+            save_meta_mock,
+        ),
     ):
         yield {
             "save_meta_mock": save_meta_mock,
@@ -186,14 +195,10 @@ def test_real_data_loop_runs_for_5_seeds(patched_main_environment):
     rc = train_meta_v1.main(
         ["--seeds", "42", "43", "44", "45", "46"],
     )
-    assert rc in (0, 1), (
-        f"main() should exit 0 or 1, got {rc!r}"
-    )
+    assert rc in (0, 1), f"main() should exit 0 or 1, got {rc!r}"
     # Per-seed metrics must have been collected for all 5 seeds.
     per_seed = train_meta_v1.LAST_PER_SEED_RESULTS
-    assert isinstance(per_seed, dict), (
-        f"LAST_PER_SEED_RESULTS not populated: {per_seed!r}"
-    )
+    assert isinstance(per_seed, dict), f"LAST_PER_SEED_RESULTS not populated: {per_seed!r}"
     assert set(per_seed.keys()) == {42, 43, 44, 45, 46}, (
         f"per-seed keys {sorted(per_seed.keys())} != {{42..46}}"
     )
@@ -212,17 +217,14 @@ def test_per_seed_metrics_for_all_3_slices(patched_main_environment):
     expected_slices = {"most_recent_12mo", "most_recent_24mo", "random_15pct"}
     for seed, results in per_seed.items():
         assert set(results.keys()) >= expected_slices, (
-            f"seed={seed} slices {sorted(results.keys())} missing some of "
-            f"{sorted(expected_slices)}"
+            f"seed={seed} slices {sorted(results.keys())} missing some of {sorted(expected_slices)}"
         )
         for slice_name in expected_slices:
             slice_metrics = results[slice_name]
             assert "brier_score" in slice_metrics, (
                 f"seed={seed} slice={slice_name} missing brier_score"
             )
-            assert "accuracy" in slice_metrics, (
-                f"seed={seed} slice={slice_name} missing accuracy"
-            )
+            assert "accuracy" in slice_metrics, f"seed={seed} slice={slice_name} missing accuracy"
 
 
 def test_save_meta_model_called_with_full_schema(patched_main_environment, monkeypatch):
@@ -236,7 +238,8 @@ def test_save_meta_model_called_with_full_schema(patched_main_environment, monke
 
     # Force the gate to PASS so save_meta_model is invoked.
     monkeypatch.setattr(
-        train_meta_v1, "gate_verdict",
+        train_meta_v1,
+        "gate_verdict",
         lambda median, contract=None: (True, []),
     )
 

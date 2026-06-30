@@ -4,6 +4,7 @@ Validates the committed src/ufc_prediction/contracts/openapi.v1.0.0.json
 against OpenAPI 3.1.0. Includes a negative test (Pitfall #7) to confirm
 the validator isn't silently passing on garbage.
 """
+
 from __future__ import annotations
 
 import copy
@@ -17,10 +18,7 @@ from openapi_spec_validator.validation.exceptions import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-OPENAPI_PATH = (
-    REPO_ROOT / "src" / "ufc_prediction" / "contracts"
-    / "openapi.v1.0.0.json"
-)
+OPENAPI_PATH = REPO_ROOT / "src" / "ufc_prediction" / "contracts" / "openapi.v1.0.0.json"
 
 
 class TestOpenAPIValidation:

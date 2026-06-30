@@ -10,6 +10,7 @@ These tests RED on import (Wave 0) — `FEATURE_COLUMNS_NO_NET` and
 `get_feature_columns` do not exist in `config.py` yet. Goes GREEN at
 Wave 1 Task 9.
 """
+
 from ufc_prediction.ml.config import (
     FEATURE_COLUMNS,
     FEATURE_COLUMNS_NO_NET,

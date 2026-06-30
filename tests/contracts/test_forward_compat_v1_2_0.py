@@ -26,6 +26,7 @@ Mirrors the predictor fake pattern from
 is built by the route from the predictor dict, NOT by a real
 ModelPredictor instance.
 """
+
 from __future__ import annotations
 
 import json
@@ -97,7 +98,13 @@ class _FakePredictor:
     """Stable predict() that always returns the canonical Khabib/Conor body."""
 
     def predict(
-        self, db, fighter_a_name, fighter_b_name, *, event_date=None, refresh=False,
+        self,
+        db,
+        fighter_a_name,
+        fighter_b_name,
+        *,
+        event_date=None,
+        refresh=False,
     ):
         return {
             **_FAKE_PREDICT_RESULT,
@@ -178,9 +185,7 @@ def test_v110_response_keyset_pinned_to_frozen_schema():
     body = _post("1.1.0")
 
     missing = v110_props - set(body.keys())
-    assert not missing, (
-        f"v1.1.0 response missing frozen properties: {missing}"
-    )
+    assert not missing, f"v1.1.0 response missing frozen properties: {missing}"
 
     # Phase 32 D-04 additive trio present + null on v1.1.0 routes.
     for trio_field in (
@@ -188,9 +193,7 @@ def test_v110_response_keyset_pinned_to_frozen_schema():
         "model_candidates",
         "phase_chain_audit_sha",
     ):
-        assert trio_field in body, (
-            f"v1.1.0 response missing Phase 32 D-04 field {trio_field!r}"
-        )
+        assert trio_field in body, f"v1.1.0 response missing Phase 32 D-04 field {trio_field!r}"
         assert body[trio_field] is None, (
             f"v1.1.0 field {trio_field!r} should be null; got {body[trio_field]!r}"
         )
@@ -212,9 +215,7 @@ def test_v120_response_populates_prediction_metadata():
     body = _post("1.2.0")
 
     missing = v120_props - set(body.keys())
-    assert not missing, (
-        f"v1.2.0 response missing frozen properties: {missing}"
-    )
+    assert not missing, f"v1.2.0 response missing frozen properties: {missing}"
 
     block = body["prediction_metadata"]
     assert block is not None, "v1.2.0 prediction_metadata must be populated"
@@ -254,9 +255,7 @@ def test_v100_response_bytes_match_frozen_reference():
     # Re-deserialize + re-serialize ensures determinism (same way the
     # comparison fixture is materialized).
     expected = json.dumps(json.loads(serialized), sort_keys=True)
-    assert serialized == expected, (
-        "v1.0.0 response bytes drifted under sort_keys serialization"
-    )
+    assert serialized == expected, "v1.0.0 response bytes drifted under sort_keys serialization"
 
     # Stable reference values — these MUST not change as the contract
     # is byte-frozen at Phase 25.
@@ -279,9 +278,7 @@ def test_v100_response_field_order_matches_declaration():
     # Extract the subset of response keys present in the v1.0.0 frozen
     # declaration, preserving the response's emission order.
     declaration_set = set(V100_DECLARED_ORDER)
-    response_v100_order = [
-        k for k in body_v100.keys() if k in declaration_set
-    ]
+    response_v100_order = [k for k in body_v100.keys() if k in declaration_set]
     assert response_v100_order == V100_DECLARED_ORDER, (
         f"v1.0.0 field order drifted from declaration\n"
         f"  expected: {V100_DECLARED_ORDER}\n"
@@ -358,6 +355,5 @@ def test_disclaimer_field_additive_pins_byte_shape_for_v100_v110():
     # disclaimer field is NOT in the v1.0.0 frozen property set — it's
     # additive — so the projection drops it. Sanity check.
     assert "disclaimer" not in v100_props, (
-        "disclaimer should NOT be in the v1.0.0 frozen schema (it's "
-        "Phase 38 additive)"
+        "disclaimer should NOT be in the v1.0.0 frozen schema (it's Phase 38 additive)"
     )

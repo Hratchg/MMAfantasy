@@ -10,6 +10,7 @@ test_inference_features.py:29-80 (canonical fixture).
 These tests RED on import (Wave 0) — `FEATURE_COLUMNS_NO_NET` does not yet
 exist in `config.py`. Goes GREEN at Wave 1 Tasks 9 + 10.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -55,22 +56,38 @@ def _patch_session_with_snapshots(
     cached_odds_b: dict | None = None,
 ):
     """Patch the four DB-reading helpers in inference_features."""
-    perf_a_default = {key: 1.0 for key in (
-        "sig_str_per_minute", "sig_str_per_minute_ewma",
-        "total_str_per_minute", "total_str_per_minute_ewma",
-        "td_rate", "td_rate_ewma", "td_accuracy", "td_accuracy_ewma",
-        "td_defense", "td_defense_ewma", "strike_defense", "strike_defense_ewma",
-        "ctrl_time_per_fight", "ctrl_time_per_fight_ewma",
-        "sub_att_per_fight", "sub_att_per_fight_ewma",
-        "opp_adj_sig_str", "opp_adj_td", "opp_adj_strike_def", "opp_adj_ctrl_time",
-    )}
+    perf_a_default = {
+        key: 1.0
+        for key in (
+            "sig_str_per_minute",
+            "sig_str_per_minute_ewma",
+            "total_str_per_minute",
+            "total_str_per_minute_ewma",
+            "td_rate",
+            "td_rate_ewma",
+            "td_accuracy",
+            "td_accuracy_ewma",
+            "td_defense",
+            "td_defense_ewma",
+            "strike_defense",
+            "strike_defense_ewma",
+            "ctrl_time_per_fight",
+            "ctrl_time_per_fight_ewma",
+            "sub_att_per_fight",
+            "sub_att_per_fight_ewma",
+            "opp_adj_sig_str",
+            "opp_adj_td",
+            "opp_adj_strike_def",
+            "opp_adj_ctrl_time",
+        )
+    }
     perf_b_default = {k: 0.5 for k in perf_a_default}
 
     pa = perf_a if perf_a is not None else perf_a_default
     pb = perf_b if perf_b is not None else perf_b_default
 
     def fake_get_elo(session, fighter_id, elo_type):
-        is_a = (fighter_id == 1)
+        is_a = fighter_id == 1
         if elo_type == "overall":
             return elo_a if is_a else elo_b
         if elo_type == "striking":
@@ -86,12 +103,8 @@ def _patch_session_with_snapshots(
         return cached_odds_a, cached_odds_b
 
     monkeypatch.setattr(inference_features, "_get_latest_elo", fake_get_elo)
-    monkeypatch.setattr(
-        inference_features, "_get_latest_computed_features", fake_get_perf
-    )
-    monkeypatch.setattr(
-        inference_features, "_get_cached_odds", fake_get_cached_odds
-    )
+    monkeypatch.setattr(inference_features, "_get_latest_computed_features", fake_get_perf)
+    monkeypatch.setattr(inference_features, "_get_cached_odds", fake_get_cached_odds)
     return MagicMock()
 
 
@@ -104,7 +117,11 @@ def test_build_with_include_net_false_returns_72_cols(monkeypatch):
     fa = _stub_fighter(1)
     fb = _stub_fighter(2)
     vec = inference_features.build(
-        session, fa, fb, date(2026, 6, 14), include_net=False,
+        session,
+        fa,
+        fb,
+        date(2026, 6, 14),
+        include_net=False,
     )
     assert vec.shape == (1, 72)
     assert vec.shape[1] == len(FEATURE_COLUMNS_NO_NET)

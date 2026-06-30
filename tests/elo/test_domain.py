@@ -229,7 +229,8 @@ class TestDomainEloComputer:
         assert len(result) == 0
 
     def test_domain_delta_equals_overall_delta_times_ratio(
-        self, computer: DomainEloComputer,
+        self,
+        computer: DomainEloComputer,
     ) -> None:
         """Domain delta = overall_delta * domain_ratio per D-03."""
         fight = make_fight(fight_id=1, method="KO/TKO", method_detail=None)
@@ -280,7 +281,8 @@ class TestDomainEloComputer:
             assert snap.elo_before == pytest.approx(1500.0)
 
     def test_k_factor_decay_uses_domain_fight_count(
-        self, computer: DomainEloComputer,
+        self,
+        computer: DomainEloComputer,
     ) -> None:
         """K-factor decay applies based on domain fight count (independent from overall)."""
         # Run 6 fights to push domain fight count past k_transition_fights=5
@@ -296,16 +298,26 @@ class TestDomainEloComputer:
                 method="KO/TKO",
             )
             fights.append(f)
-            overall_snaps.extend([
-                self._make_overall_snap(
-                    1, i, elo_before=1500.0, elo_after=1520.0,
-                    k_factor_used=60.0, fight_date=date(2020, 1, i),
-                ),
-                self._make_overall_snap(
-                    i + 10, i, elo_before=1500.0, elo_after=1480.0,
-                    k_factor_used=60.0, fight_date=date(2020, 1, i),
-                ),
-            ])
+            overall_snaps.extend(
+                [
+                    self._make_overall_snap(
+                        1,
+                        i,
+                        elo_before=1500.0,
+                        elo_after=1520.0,
+                        k_factor_used=60.0,
+                        fight_date=date(2020, 1, i),
+                    ),
+                    self._make_overall_snap(
+                        i + 10,
+                        i,
+                        elo_before=1500.0,
+                        elo_after=1480.0,
+                        k_factor_used=60.0,
+                        fight_date=date(2020, 1, i),
+                    ),
+                ]
+            )
             round_stats[i] = [make_round_stats(fight_id=i, fighter_id=1)]
 
         result = computer.compute_all(fights, overall_snaps, round_stats)
@@ -331,9 +343,7 @@ class TestDomainEloComputer:
         # After 1 domain fight, shrinkage_factor = 1/5 = 0.2
         # For fighter 1 striking: raw = 1500 + 20*1.0 = 1520.0 (KO ratio=1.0 since Phase 9.1)
         # shrinkage = 1500 + (1520 - 1500) * 0.2 = 1504.0
-        snap_a_str = next(
-            s for s in result if s.fighter_id == 1 and s.elo_type == "striking"
-        )
+        snap_a_str = next(s for s in result if s.fighter_id == 1 and s.elo_type == "striking")
         assert snap_a_str.elo_after_shrinkage == pytest.approx(1504.0, abs=0.1)
 
     def test_inactivity_regression_applied(self, config: EloConfig) -> None:
@@ -341,15 +351,23 @@ class TestDomainEloComputer:
         computer = DomainEloComputer(config)
         # Fight 1: establish domain rating
         fight1 = make_fight(
-            fight_id=1, event_date=date(2018, 1, 1), method="KO/TKO",
+            fight_id=1,
+            event_date=date(2018, 1, 1),
+            method="KO/TKO",
         )
         overall_snaps = [
             self._make_overall_snap(
-                1, 1, elo_before=1500.0, elo_after=1520.0,
+                1,
+                1,
+                elo_before=1500.0,
+                elo_after=1520.0,
                 fight_date=date(2018, 1, 1),
             ),
             self._make_overall_snap(
-                2, 1, elo_before=1500.0, elo_after=1480.0,
+                2,
+                1,
+                elo_before=1500.0,
+                elo_after=1480.0,
                 fight_date=date(2018, 1, 1),
             ),
         ]
@@ -359,15 +377,23 @@ class TestDomainEloComputer:
 
         # Fight 2: 2 years later (well past 270-day threshold after Phase 9.1)
         fight2 = make_fight(
-            fight_id=2, event_date=date(2020, 1, 1), method="KO/TKO",
+            fight_id=2,
+            event_date=date(2020, 1, 1),
+            method="KO/TKO",
         )
         overall_snaps2 = [
             self._make_overall_snap(
-                1, 2, elo_before=1520.0, elo_after=1540.0,
+                1,
+                2,
+                elo_before=1520.0,
+                elo_after=1540.0,
                 fight_date=date(2020, 1, 1),
             ),
             self._make_overall_snap(
-                2, 2, elo_before=1480.0, elo_after=1460.0,
+                2,
+                2,
+                elo_before=1480.0,
+                elo_after=1460.0,
                 fight_date=date(2020, 1, 1),
             ),
         ]
@@ -378,9 +404,7 @@ class TestDomainEloComputer:
         # Fighter 1's striking elo_before should be regressed toward 1500
         # Raw striking after fight 1 = 1500 + 20*1.0 = 1520.0 (KO ratio=1.0 since Phase 9.1)
         # 2-year gap exceeds regression cap -> capped regression applied
-        snap_a_str = next(
-            s for s in result if s.fighter_id == 1 and s.elo_type == "striking"
-        )
+        snap_a_str = next(s for s in result if s.fighter_id == 1 and s.elo_type == "striking")
         # The elo_before should be less than 1520.0 (raw) due to regression
         assert snap_a_str.elo_before < 1520.0
 
@@ -393,17 +417,27 @@ class TestDomainEloComputer:
         computer = DomainEloComputer(config)
         # Fight 1: establish domain rating in Lightweight
         fight1 = make_fight(
-            fight_id=1, event_date=date(2020, 1, 1),
-            weight_class="Lightweight", method="KO/TKO",
+            fight_id=1,
+            event_date=date(2020, 1, 1),
+            weight_class="Lightweight",
+            method="KO/TKO",
         )
         overall_snaps = [
             self._make_overall_snap(
-                1, 1, elo_before=1500.0, elo_after=1520.0,
-                division="Lightweight", fight_date=date(2020, 1, 1),
+                1,
+                1,
+                elo_before=1500.0,
+                elo_after=1520.0,
+                division="Lightweight",
+                fight_date=date(2020, 1, 1),
             ),
             self._make_overall_snap(
-                2, 1, elo_before=1500.0, elo_after=1480.0,
-                division="Lightweight", fight_date=date(2020, 1, 1),
+                2,
+                1,
+                elo_before=1500.0,
+                elo_after=1480.0,
+                division="Lightweight",
+                fight_date=date(2020, 1, 1),
             ),
         ]
         round_stats = {1: [make_round_stats(fight_id=1, fighter_id=1)]}
@@ -411,18 +445,29 @@ class TestDomainEloComputer:
 
         # Fight 2: fighter 1 moves to Welterweight
         fight2 = make_fight(
-            fight_id=2, event_date=date(2020, 6, 1),
-            fighter_a_id=1, fighter_b_id=3,
-            weight_class="Welterweight", method="KO/TKO",
+            fight_id=2,
+            event_date=date(2020, 6, 1),
+            fighter_a_id=1,
+            fighter_b_id=3,
+            weight_class="Welterweight",
+            method="KO/TKO",
         )
         overall_snaps2 = [
             self._make_overall_snap(
-                1, 2, elo_before=1520.0, elo_after=1540.0,
-                division="Welterweight", fight_date=date(2020, 6, 1),
+                1,
+                2,
+                elo_before=1520.0,
+                elo_after=1540.0,
+                division="Welterweight",
+                fight_date=date(2020, 6, 1),
             ),
             self._make_overall_snap(
-                3, 2, elo_before=1500.0, elo_after=1480.0,
-                division="Welterweight", fight_date=date(2020, 6, 1),
+                3,
+                2,
+                elo_before=1500.0,
+                elo_after=1480.0,
+                division="Welterweight",
+                fight_date=date(2020, 6, 1),
             ),
         ]
         round_stats2 = {2: [make_round_stats(fight_id=2, fighter_id=1)]}
@@ -432,14 +477,16 @@ class TestDomainEloComputer:
         # LW striking after fight 1 = 1500 + 20*1.0 = 1520 (KO ratio=1.0 since Phase 9.1)
         # Transfer with default pct=0.50: new_elo = 1500 + 0.50 * (1520 - 1500) = 1510
         snap_a_str = next(
-            s for s in result
+            s
+            for s in result
             if s.fighter_id == 1 and s.elo_type == "striking" and s.division == "Welterweight"
         )
         # elo_before should reflect the transferred rating
         assert snap_a_str.elo_before == pytest.approx(1510.0, abs=0.5)
 
     def test_fight_skipped_by_overall_engine_produces_no_domain_snapshots(
-        self, computer: DomainEloComputer,
+        self,
+        computer: DomainEloComputer,
     ) -> None:
         """Fight skipped by overall engine (no overall snapshot) produces no domain snapshots."""
         fight = make_fight(fight_id=1, method="KO/TKO")
@@ -450,11 +497,14 @@ class TestDomainEloComputer:
         assert len(result) == 0
 
     def test_draw_with_round_stats_uses_attribution(
-        self, computer: DomainEloComputer,
+        self,
+        computer: DomainEloComputer,
     ) -> None:
         """Draw with round stats uses same attribution logic with reduced overall delta."""
         fight = make_fight(
-            fight_id=1, winner_id=None, method="Draw",
+            fight_id=1,
+            winner_id=None,
+            method="Draw",
             method_detail=None,
         )
         # Draw: deltas are typically smaller
@@ -472,7 +522,8 @@ class TestDomainEloComputer:
         assert len(result) == 4  # still 4 domain snapshots
 
     def test_k_factor_used_equals_overall_k_times_ratio(
-        self, computer: DomainEloComputer,
+        self,
+        computer: DomainEloComputer,
     ) -> None:
         """k_factor_used = overall_snap.k_factor_used * ratio."""
         fight = make_fight(fight_id=1, method="KO/TKO", method_detail=None)
@@ -484,12 +535,8 @@ class TestDomainEloComputer:
         result = computer.compute_all([fight], overall_snaps, round_stats)
 
         # KO/TKO: striking_ratio=1.0, grappling_ratio=0.0 (validated Phase 9.1)
-        snap_str = next(
-            s for s in result if s.fighter_id == 1 and s.elo_type == "striking"
-        )
+        snap_str = next(s for s in result if s.fighter_id == 1 and s.elo_type == "striking")
         assert snap_str.k_factor_used == pytest.approx(60.0 * 1.0)
 
-        snap_grp = next(
-            s for s in result if s.fighter_id == 1 and s.elo_type == "grappling"
-        )
+        snap_grp = next(s for s in result if s.fighter_id == 1 and s.elo_type == "grappling")
         assert snap_grp.k_factor_used == pytest.approx(60.0 * 0.0)

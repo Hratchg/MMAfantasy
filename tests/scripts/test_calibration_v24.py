@@ -32,7 +32,9 @@ def doc() -> dict:
 
 def test_json_has_three_slices(doc: dict) -> None:
     assert set(doc["per_slice"].keys()) == {
-        "most_recent_12mo", "most_recent_24mo", "random_15pct",
+        "most_recent_12mo",
+        "most_recent_24mo",
+        "random_15pct",
     }
 
 

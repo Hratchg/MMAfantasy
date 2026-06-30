@@ -129,8 +129,7 @@ def test_argparse_help_exits_zero() -> None:
 def test_audit01_sha_constants_match_canonical() -> None:
     """Locked AUDIT-01 SHA constants equal the canonical hex values (D-10)."""
     assert (
-        EXPECTED_XGB_V2_SHA256
-        == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+        EXPECTED_XGB_V2_SHA256 == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
     )
     assert (
         EXPECTED_META_V2_SHA256
@@ -147,8 +146,7 @@ def test_feature_columns_layout_locked() -> None:
         f"got {len(META_V2_NETD_FEATURE_COLUMNS)}"
     )
     assert META_V2_NETD_FEATURE_COLUMNS[0] == "xgb_v2_netd_oof", (
-        f"col[0] must be the NET candidate OOF source name; "
-        f"got {META_V2_NETD_FEATURE_COLUMNS[0]!r}"
+        f"col[0] must be the NET candidate OOF source name; got {META_V2_NETD_FEATURE_COLUMNS[0]!r}"
     )
     # cols[1..12] byte-equal canonical meta_v2_meta.json::meta_feature_columns[1:]
     canonical = json.loads(CANONICAL_META_JSON.read_text(encoding="utf-8"))
@@ -193,12 +191,8 @@ def test_protected_outputs_contains_canonical_artifacts() -> None:
         f"PROTECTED_OUTPUTS missing canonical xgb joblib: {canonical_xgb_joblib}"
     )
     # Phase 65 sibling extension.
-    phase65_refv2_joblib = (
-        REPO_ROOT / "models" / "meta" / "meta_v2_refv2.joblib"
-    ).resolve()
-    phase65_refv2_meta = (
-        REPO_ROOT / "models" / "meta" / "meta_v2_refv2_meta.json"
-    ).resolve()
+    phase65_refv2_joblib = (REPO_ROOT / "models" / "meta" / "meta_v2_refv2.joblib").resolve()
+    phase65_refv2_meta = (REPO_ROOT / "models" / "meta" / "meta_v2_refv2_meta.json").resolve()
     assert phase65_refv2_joblib in PROTECTED_OUTPUTS, (
         "PROTECTED_OUTPUTS missing Phase 65 refv2 sibling joblib — "
         "cross-phase clobber prevention required."
@@ -308,7 +302,7 @@ def test_uses_unique_sentinel_for_missing_fight_id() -> None:
         "removed from _build_live_13col_matrix. The constant -1 fallback "
         "is forbidden — it could collide with a real fight_id."
     )
-    assert ', -1)' not in src, (
+    assert ", -1)" not in src, (
         "CR-02 regression: constant -1 fallback re-introduced in "
         "_build_live_13col_matrix. Use per-row negative sentinels instead."
     )
@@ -375,8 +369,7 @@ def test_dry_run_emits_13wide_pipeline(dry_run_built: Path) -> None:
         if inner is not None:
             width = getattr(inner, "n_features_in_", None)
     assert width == 13, (
-        f"meta candidate width must be 13 (Phase 64 width-guard avoidance); "
-        f"got {width}"
+        f"meta candidate width must be 13 (Phase 64 width-guard avoidance); got {width}"
     )
 
 
@@ -409,9 +402,7 @@ def test_dry_run_sidecar_schema_locked(dry_run_built: Path) -> None:
 def test_audit01_invariants_unchanged_after_dry_run(dry_run_built: Path) -> None:
     """After running ``--mode synthetic``, the canonical SHAs are byte-identical."""
     assert dry_run_built is not None
-    sha_xgb = hashlib.sha256(
-        (REPO_ROOT / "models" / "xgb_v2.joblib").read_bytes()
-    ).hexdigest()
+    sha_xgb = hashlib.sha256((REPO_ROOT / "models" / "xgb_v2.joblib").read_bytes()).hexdigest()
     sha_meta = hashlib.sha256(
         (REPO_ROOT / "models" / "meta" / "meta_v2.joblib").read_bytes()
     ).hexdigest()
@@ -434,17 +425,27 @@ def test_dry_run_is_deterministic_across_reruns(tmp_path: Path) -> None:
 
     rc1 = main(
         [
-            "--mode", "synthetic", "--seed", "42",
-            "--output", str(out1_joblib),
-            "--output-meta", str(out1_meta),
+            "--mode",
+            "synthetic",
+            "--seed",
+            "42",
+            "--output",
+            str(out1_joblib),
+            "--output-meta",
+            str(out1_meta),
         ]
     )
     assert rc1 == 0
     rc2 = main(
         [
-            "--mode", "synthetic", "--seed", "42",
-            "--output", str(out2_joblib),
-            "--output-meta", str(out2_meta),
+            "--mode",
+            "synthetic",
+            "--seed",
+            "42",
+            "--output",
+            str(out2_joblib),
+            "--output-meta",
+            str(out2_meta),
         ]
     )
     assert rc2 == 0

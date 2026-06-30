@@ -14,6 +14,7 @@ Two test layers:
     fixture (requires Docker/PostgreSQL testcontainer; will skip cleanly in
     environments without Docker).
 """
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -84,8 +85,7 @@ class TestPredictV1NoDB:
         c = _standalone_app_client()
         resp = c.post(
             "/api/v1/predict",
-            json={"fighter_a": "Khabib Nurmagomedov",
-                  "fighter_b": "khabib nurmagomedov"},
+            json={"fighter_a": "Khabib Nurmagomedov", "fighter_b": "khabib nurmagomedov"},
         )
         assert resp.status_code == 400
 
@@ -112,6 +112,7 @@ class TestPredictV1NoDB:
         the v1.predict router into the real app (not the standalone test app).
         """
         from ufc_prediction.api.app import create_app
+
         app = create_app()
         spec = app.openapi()
         assert spec["openapi"] == "3.1.0"
@@ -156,8 +157,7 @@ class TestPredictV1NoDB:
         ):
             resp = c.post(
                 "/api/v1/predict",
-                json={"fighter_a": "Nonexistent Fighter",
-                      "fighter_b": "Conor McGregor"},
+                json={"fighter_a": "Nonexistent Fighter", "fighter_b": "Conor McGregor"},
             )
         assert resp.status_code == 404
 
@@ -193,8 +193,7 @@ class TestPredictV1NoDB:
         ):
             resp = c.post(
                 "/api/v1/predict",
-                json={"fighter_a": "Khabib",
-                      "fighter_b": "Khabib Nurmagomedov"},
+                json={"fighter_a": "Khabib", "fighter_b": "Khabib Nurmagomedov"},
             )
 
         assert resp.status_code == 400, resp.text
@@ -250,8 +249,7 @@ class TestPredictV1:
         ):
             resp = client.post(
                 "/api/v1/predict",
-                json={"fighter_a": "Khabib Nurmagomedov",
-                      "fighter_b": "khabib nurmagomedov"},
+                json={"fighter_a": "Khabib Nurmagomedov", "fighter_b": "khabib nurmagomedov"},
             )
         assert resp.status_code == 400
 
@@ -263,8 +261,7 @@ class TestPredictV1:
         ):
             resp = client.post(
                 "/api/v1/predict",
-                json={"fighter_a": "Nonexistent Fighter",
-                      "fighter_b": "Conor McGregor"},
+                json={"fighter_a": "Nonexistent Fighter", "fighter_b": "Conor McGregor"},
             )
         assert resp.status_code == 404
 
@@ -280,7 +277,8 @@ class TestPredictV1:
         assert resp.status_code == 422
 
     def test_openapi_includes_predict_path_and_is_31(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ):
         """OpenAPI spec includes /api/v1/predict and emits 3.1.0."""
         resp = client.get("/openapi.json")

@@ -39,8 +39,9 @@ def test_required_keys_per_row(baselines_doc: dict) -> None:
 
 def test_market_baseline_has_n_with_market(baselines_doc: dict) -> None:
     """market_directional_implied_baseline rows must carry n_with_market."""
-    market_rows = [r for r in baselines_doc["rows"]
-                   if r["model"] == "market_directional_implied_baseline"]
+    market_rows = [
+        r for r in baselines_doc["rows"] if r["model"] == "market_directional_implied_baseline"
+    ]
     assert len(market_rows) == 3
     for r in market_rows:
         assert "n_with_market" in r, f"row {r} missing n_with_market"

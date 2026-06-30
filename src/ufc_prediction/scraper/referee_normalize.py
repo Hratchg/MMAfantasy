@@ -6,6 +6,7 @@ text-unidecode/Unidecode + a runtime dep for ~10 lines of work).
 
 Banned imports per Pitfall #1 / Finding 11: nothing under ``ufc_prediction.ml.*``.
 """
+
 from __future__ import annotations
 
 import re

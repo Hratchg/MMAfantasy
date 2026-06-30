@@ -24,6 +24,7 @@ Indexes:
 
 Banned imports per Pitfall #1 / Finding 11: nothing under ``ufc_prediction.ml.*``.
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -49,7 +50,9 @@ class ModelRun(Base):
     n_training_fights: Mapped[int | None] = mapped_column(Integer)
     n_test_fights: Mapped[int | None] = mapped_column(Integer)
     trained_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now(), nullable=False,
+        DateTime,
+        server_default=func.now(),
+        nullable=False,
     )
     model_artifact_sha256: Mapped[str | None] = mapped_column(String(64))  # SHA-256 hex
     metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)

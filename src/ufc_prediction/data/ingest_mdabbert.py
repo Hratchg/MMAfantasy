@@ -93,11 +93,7 @@ def _supplement_or_create_fighter(
         return fighter
 
     # Check mdabbert
-    fighter = (
-        session.query(Fighter)
-        .filter(Fighter.name == name, Fighter.source == SOURCE)
-        .first()
-    )
+    fighter = session.query(Fighter).filter(Fighter.name == name, Fighter.source == SOURCE).first()
     if fighter is not None:
         # Update non-null fields
         if height_inches is not None:
@@ -157,9 +153,7 @@ def _parse_int_safe(value: object) -> int | None:
         return None
 
 
-def _approximate_dob(
-    age: object, event_date: date
-) -> date | None:
+def _approximate_dob(age: object, event_date: date) -> date | None:
     """Approximate DOB from age at event date.
 
     Only used when fighter has no existing DOB.
@@ -208,9 +202,7 @@ def ingest_mdabbert(csv_path: Path, session: Session) -> IngestResult:
             raw = row.to_dict()
 
             # 1. Parse fight metadata
-            event_date = parse_fight_date(
-                str(raw["date"]) if pd.notna(raw.get("date")) else None
-            )
+            event_date = parse_fight_date(str(raw["date"]) if pd.notna(raw.get("date")) else None)
             if event_date is None:
                 # Per D-07: skip row if date is unparseable
                 result.log_rejection(idx, raw, "Unparseable date (D-07)")
@@ -219,8 +211,7 @@ def ingest_mdabbert(csv_path: Path, session: Session) -> IngestResult:
 
             weight_class_raw = raw.get("weight_class")
             weight_class = (
-                str(weight_class_raw).strip()
-                if pd.notna(weight_class_raw) else "Unknown"
+                str(weight_class_raw).strip() if pd.notna(weight_class_raw) else "Unknown"
             )
 
             is_title_fight = _parse_bool(raw.get("title_bout"))
@@ -229,16 +220,11 @@ def ingest_mdabbert(csv_path: Path, session: Session) -> IngestResult:
 
             method = _map_method(raw.get("finish"))
             method_detail_raw = raw.get("finish_details")
-            method_detail = (
-                str(method_detail_raw).strip()
-                if pd.notna(method_detail_raw) else None
-            )
+            method_detail = str(method_detail_raw).strip() if pd.notna(method_detail_raw) else None
 
             round_finished = _parse_int_safe(raw.get("finish_round"))
             time_raw = raw.get("finish_round_time")
-            time_finished = (
-                str(time_raw).strip() if pd.notna(time_raw) else None
-            )
+            time_finished = str(time_raw).strip() if pd.notna(time_raw) else None
 
             # Fighter names
             r_fighter = str(raw.get("R_fighter", "")).strip()
@@ -255,10 +241,7 @@ def ingest_mdabbert(csv_path: Path, session: Session) -> IngestResult:
 
             # Location
             location_raw = raw.get("location")
-            location = (
-                str(location_raw).strip()
-                if pd.notna(location_raw) else None
-            )
+            location = str(location_raw).strip() if pd.notna(location_raw) else None
 
             # 2. Extract fighter profiles (per D-02: DATA-02)
             # DO NOT ingest: career averages, career records,
@@ -266,19 +249,13 @@ def ingest_mdabbert(csv_path: Path, session: Session) -> IngestResult:
             r_height = _parse_cm_to_inches(raw.get("R_Height_cms"))
             r_reach = _parse_cm_to_inches(raw.get("R_Reach_cms"))
             r_stance_raw = raw.get("R_Stance")
-            r_stance = (
-                str(r_stance_raw).strip()
-                if pd.notna(r_stance_raw) else None
-            )
+            r_stance = str(r_stance_raw).strip() if pd.notna(r_stance_raw) else None
             r_dob = _approximate_dob(raw.get("R_age"), event_date)
 
             b_height = _parse_cm_to_inches(raw.get("B_Height_cms"))
             b_reach = _parse_cm_to_inches(raw.get("B_Reach_cms"))
             b_stance_raw = raw.get("B_Stance")
-            b_stance = (
-                str(b_stance_raw).strip()
-                if pd.notna(b_stance_raw) else None
-            )
+            b_stance = str(b_stance_raw).strip() if pd.notna(b_stance_raw) else None
             b_dob = _approximate_dob(raw.get("B_age"), event_date)
 
             # Validate fighter profiles through Pydantic
@@ -326,9 +303,7 @@ def ingest_mdabbert(csv_path: Path, session: Session) -> IngestResult:
             )
 
             # 4. Upsert Event
-            event = upsert_event(
-                session, event_name, event_date, location, SOURCE
-            )
+            event = upsert_event(session, event_name, event_date, location, SOURCE)
 
             # 5. Check if fight already exists from ANY source
             existing_fight = (
@@ -336,11 +311,7 @@ def ingest_mdabbert(csv_path: Path, session: Session) -> IngestResult:
                 .filter(
                     Fight.fighter_a_id == fighter_a.id,
                     Fight.fighter_b_id == fighter_b.id,
-                    Fight.event_id.in_(
-                        session.query(Event.id).filter(
-                            Event.date == event_date
-                        )
-                    ),
+                    Fight.event_id.in_(session.query(Event.id).filter(Event.date == event_date)),
                 )
                 .first()
             )
@@ -352,9 +323,7 @@ def ingest_mdabbert(csv_path: Path, session: Session) -> IngestResult:
                         Fight.fighter_a_id == fighter_b.id,
                         Fight.fighter_b_id == fighter_a.id,
                         Fight.event_id.in_(
-                            session.query(Event.id).filter(
-                                Event.date == event_date
-                            )
+                            session.query(Event.id).filter(Event.date == event_date)
                         ),
                     )
                     .first()

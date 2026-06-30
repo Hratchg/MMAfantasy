@@ -2,6 +2,7 @@
 
 D-07(P19) carry-forward of Pitfall #16: any drift in gate_contract.json's formula_hash, xgb_v2.joblib's SHA-256 (baseline 6e7641...0a99), or xgb_v2_meta.json's n_features (=72) halts Phase 19. JSON+model are read DIRECTLY (no src plumbing) so RED stays decoupled from Wave 1 GREEN modules.
 """
+
 import json
 import pathlib
 
@@ -16,13 +17,11 @@ def test_gate_contract_thresholds_are_v2_1_for_phase19():
     narrative slip in PROJECT.md D-18 row; the JSON is the binding source.
     """
     contract_path = pathlib.Path(".planning/gate_contract.json")
-    assert contract_path.exists(), \
-        "gate_contract.json missing — Phase 17 not closed; halt Phase 19"
+    assert contract_path.exists(), "gate_contract.json missing — Phase 17 not closed; halt Phase 19"
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
 
     # Sanity: top-level fields wired by Phase 17
-    assert contract["version"] == "v2.1", \
-        f"contract.version != v2.1; got {contract['version']!r}"
+    assert contract["version"] == "v2.1", f"contract.version != v2.1; got {contract['version']!r}"
     assert contract["formula_hash"] == (
         "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
     ), "Phase 17 operator-approved formula_hash drifted"
@@ -48,6 +47,7 @@ def test_gate_contract_thresholds_are_v2_1_for_phase19():
 def test_xgb_v2_sha_baseline():
     """D-07(P19) part 2: xgb_v2.joblib SHA-256 must equal baseline (AUDIT-01 setup)."""
     import hashlib
+
     expected = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
     model_path = pathlib.Path("models/xgb_v2.joblib")
     assert model_path.exists(), "models/xgb_v2.joblib missing — rollback path violated"

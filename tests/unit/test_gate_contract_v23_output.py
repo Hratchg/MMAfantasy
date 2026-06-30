@@ -67,9 +67,7 @@ def test_emit_v23_contract_shape(tmp_path):
     assert c["base_features_set"] == "FEATURE_COLUMNS_V22"
     assert c["k_value"] == 1
     assert c["cutoff_date"] == "2023-01-01"
-    assert c["formula_hash"] == (
-        "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
-    )
+    assert c["formula_hash"] == ("7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a")
     assert c["ingest_completed_at"]  # non-empty
     assert c["bfo_backfill_committed_at"]  # non-empty
     assert c["feature_columns_hash"]  # non-empty (sha256 hex)
@@ -87,9 +85,7 @@ def test_emit_v23_contract_formula_hash_is_locked_constant(tmp_path):
         contract_path=contract_path,
     )
     c = json.loads(contract_path.read_text(encoding="utf-8"))
-    assert c["formula_hash"] == (
-        "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
-    )
+    assert c["formula_hash"] == ("7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a")
 
 
 def test_emit_v23_contract_per_slice_floor_applied_when_above_floor(tmp_path):

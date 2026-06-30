@@ -52,6 +52,7 @@ SPIKE_STALE_AFTER_SECONDS = 24 * 3600  # 24h
 def _import_apply_nan_drop_policy():
     """Import helper; raises ImportError in RED phase (helper does not exist)."""
     from ufc_prediction.ml.oof import apply_nan_drop_policy
+
     return apply_nan_drop_policy
 
 
@@ -92,7 +93,9 @@ def test_apply_nan_drop_policy_per_feature_strict_baseline():
     X[cpd_nan_idx, 2] = np.nan
 
     mask = apply_nan_drop_policy(
-        X, feature_cols, policy="per_feature_strict_baseline",
+        X,
+        feature_cols,
+        policy="per_feature_strict_baseline",
     )
     surviving = int(mask.sum())
     # Should drop only the xgb_oof_prob NaN rows (~10 of 200 → ≥190 surviving).
@@ -100,8 +103,9 @@ def test_apply_nan_drop_policy_per_feature_strict_baseline():
         f"per_feature_strict_baseline must keep ≥94% (=190) rows; got {surviving}/{n}"
     )
     # Sanity: rows with xgb_oof_prob NaN must NOT survive (baseline-strict).
-    assert not mask[xgb_nan_idx].any(), \
+    assert not mask[xgb_nan_idx].any(), (
         "rows with xgb_oof_prob NaN must be dropped under baseline-strict policy"
+    )
 
 
 def test_apply_nan_drop_policy_rejects_unknown_policy():
@@ -120,7 +124,9 @@ def test_apply_nan_drop_policy_baseline_column_missing():
     cols = ["foo", "bar"]  # neither xgb_oof_prob nor elo_prob present
     with pytest.raises((KeyError, ValueError)):
         apply_nan_drop_policy(
-            X, cols, policy="per_feature_strict_baseline",
+            X,
+            cols,
+            policy="per_feature_strict_baseline",
         )
 
 
@@ -132,7 +138,9 @@ def test_apply_nan_drop_policy_baseline_strict_drops_elo_nan_too():
     X[5, 2] = np.nan  # closing_prob_diff (non-baseline) NaN
     cols = ["xgb_oof_prob", "elo_prob", "closing_prob_diff"]
     mask = apply_nan_drop_policy(
-        X, cols, policy="per_feature_strict_baseline",
+        X,
+        cols,
+        policy="per_feature_strict_baseline",
     )
     assert mask.sum() == 9, "elo_prob NaN drops, closing_prob_diff NaN survives"
     assert not mask[2], "row 2 (elo_prob NaN) must be dropped"
@@ -167,9 +175,16 @@ def _spike_data_fresh_or_run() -> dict:
 
     if needs_run:
         cmd = [
-            sys.executable, "scripts/train_meta_v22.py",
-            "--feature-set", "v2.2",
-            "--seeds", "42", "43", "44", "45", "46",
+            sys.executable,
+            "scripts/train_meta_v22.py",
+            "--feature-set",
+            "v2.2",
+            "--seeds",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46",
             "--no-cache-oof",
         ]
         env = {**os.environ, "PYTHONPATH": "src"}
@@ -194,8 +209,7 @@ def test_spike_records_nan_drop_policy():
 
 
 HALT_DECIDE_PATH = Path(
-    ".planning/phases/29-camp-re-audit-eval-set-infrastructure/"
-    "29-02-HALT-AND-DECIDE.md"
+    ".planning/phases/29-camp-re-audit-eval-set-infrastructure/29-02-HALT-AND-DECIDE.md"
 )
 
 
@@ -287,8 +301,7 @@ def test_random_15pct_does_not_overlap_with_time_slices_pathologically():
     in_12mo = r & j
     in_12_to_24 = r & (k - j)
     assert in_12mo, (
-        "random_15pct contains no rows from the 12mo window — "
-        "RNG biased away from recent fights"
+        "random_15pct contains no rows from the 12mo window — RNG biased away from recent fights"
     )
     assert in_12_to_24, (
         "random_15pct contains no rows from 12mo-to-24mo window — "

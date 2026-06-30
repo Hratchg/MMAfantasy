@@ -55,15 +55,25 @@ def stub_fighters():
     """Return two duck-typed Fighter rows that ``inference_features.build``
     can read (id, name, physicals, stance, dob)."""
     fa = MagicMock(
-        id=1, name="Khabib Nurmagomedov", source="ufcstats",
-        height_inches=70.0, reach_inches=70.0, leg_reach_inches=39.0,
-        stance="Orthodox", date_of_birth=date(1988, 9, 20),
+        id=1,
+        name="Khabib Nurmagomedov",
+        source="ufcstats",
+        height_inches=70.0,
+        reach_inches=70.0,
+        leg_reach_inches=39.0,
+        stance="Orthodox",
+        date_of_birth=date(1988, 9, 20),
     )
     fa.name = "Khabib Nurmagomedov"
     fb = MagicMock(
-        id=2, name="Conor McGregor", source="ufcstats",
-        height_inches=69.0, reach_inches=74.0, leg_reach_inches=40.0,
-        stance="Southpaw", date_of_birth=date(1988, 7, 14),
+        id=2,
+        name="Conor McGregor",
+        source="ufcstats",
+        height_inches=69.0,
+        reach_inches=74.0,
+        leg_reach_inches=40.0,
+        stance="Southpaw",
+        date_of_birth=date(1988, 7, 14),
     )
     fb.name = "Conor McGregor"
     return fa, fb
@@ -87,7 +97,7 @@ def patched_predictor(stub_fighters):
     fa, fb = stub_fighters
 
     def fake_get_elo(session, fighter_id, elo_type):
-        is_a = (fighter_id == fa.id)
+        is_a = fighter_id == fa.id
         if elo_type == "overall":
             return 1620.0 if is_a else 1480.0
         if elo_type == "striking":
@@ -113,14 +123,17 @@ def patched_predictor(stub_fighters):
     # xgb_v2's saved meta already matches FEATURE_COLUMNS, so no monkey-patch
     # is needed for the model load itself.
     predictor_instance = pred_mod.ModelPredictor(
-        model_dir="models", version="v2",
+        model_dir="models",
+        version="v2",
     )
 
     # Patch the heavy DB readers that inference_features pulls from
-    with patch.object(inf, "_get_latest_elo", fake_get_elo), \
-         patch.object(inf, "_get_latest_computed_features", fake_get_perf), \
-         patch.object(pred_mod, "_resolve_fighter", fake_resolve_fighter), \
-         patch.object(pred_mod, "_get_latest_elo", fake_get_elo):
+    with (
+        patch.object(inf, "_get_latest_elo", fake_get_elo),
+        patch.object(inf, "_get_latest_computed_features", fake_get_perf),
+        patch.object(pred_mod, "_resolve_fighter", fake_resolve_fighter),
+        patch.object(pred_mod, "_get_latest_elo", fake_get_elo),
+    ):
         yield predictor_instance, fa, fb, MagicMock()
 
 
@@ -158,7 +171,10 @@ def _capture_inference_vec(monkeypatch):
 
 
 def test_cold_cache_live_fetch_populates_closing_prob_diff(
-    patched_predictor, predict_log_path, upcoming_event_date, monkeypatch,
+    patched_predictor,
+    predict_log_path,
+    upcoming_event_date,
+    monkeypatch,
 ):
     """Cache empty + live HTTP succeeds → closing_prob_diff non-NaN
     + ``odds_source == "live"`` in the JSONL trace.
@@ -184,13 +200,17 @@ def test_cold_cache_live_fetch_populates_closing_prob_diff(
         source="live",
     )
     monkeypatch.setattr(
-        bfo_live, "_try_live", lambda *a, **kw: live_odds,
+        bfo_live,
+        "_try_live",
+        lambda *a, **kw: live_odds,
     )
 
     captured = _capture_inference_vec(monkeypatch)
 
     result = pred.predict(
-        session, fa.name, fb.name,
+        session,
+        fa.name,
+        fb.name,
         event_date=upcoming_event_date,
     )
 
@@ -219,7 +239,10 @@ def test_cold_cache_live_fetch_populates_closing_prob_diff(
 
 
 def test_warm_cache_skips_http_populates_closing_prob_diff(
-    patched_predictor, predict_log_path, upcoming_event_date, monkeypatch,
+    patched_predictor,
+    predict_log_path,
+    upcoming_event_date,
+    monkeypatch,
 ):
     """Cache hit → ``odds_source == "cache"``; closing_prob_diff still
     populated; the live HTTP path is never invoked.
@@ -255,15 +278,15 @@ def test_warm_cache_skips_http_populates_closing_prob_diff(
     captured = _capture_inference_vec(monkeypatch)
 
     result = pred.predict(
-        session, fa.name, fb.name,
+        session,
+        fa.name,
+        fb.name,
         event_date=upcoming_event_date,
     )
 
     vec = captured["vec"][0]
     cl_idx = FEATURE_COLUMNS.index("closing_prob_diff")
-    assert not np.isnan(vec[cl_idx]), (
-        "closing_prob_diff NaN on warm cache — D-09 cache path broken"
-    )
+    assert not np.isnan(vec[cl_idx]), "closing_prob_diff NaN on warm cache — D-09 cache path broken"
     assert vec[cl_idx] > 0
 
     assert result["odds_source"] == "cache"
@@ -277,7 +300,10 @@ def test_warm_cache_skips_http_populates_closing_prob_diff(
 
 
 def test_no_bfo_data_falls_back_to_nan(
-    patched_predictor, predict_log_path, upcoming_event_date, monkeypatch,
+    patched_predictor,
+    predict_log_path,
+    upcoming_event_date,
+    monkeypatch,
 ):
     """Cache miss + live timeout → ``odds_source == "nan"``; closing_prob_diff
     is NaN; predict still returns a valid result (XGBoost native NaN per D-04).
@@ -292,7 +318,9 @@ def test_no_bfo_data_falls_back_to_nan(
     captured = _capture_inference_vec(monkeypatch)
 
     result = pred.predict(
-        session, fa.name, fb.name,
+        session,
+        fa.name,
+        fb.name,
         event_date=upcoming_event_date,
     )
 

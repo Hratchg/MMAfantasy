@@ -69,11 +69,7 @@ def find_similar_fighters(
     similarities = cosine_similarity(query, embeddings)[0]
 
     # Build (index, similarity) pairs, excluding self
-    pairs = [
-        (idx, float(sim))
-        for idx, sim in enumerate(similarities)
-        if idx != fighter_index
-    ]
+    pairs = [(idx, float(sim)) for idx, sim in enumerate(similarities) if idx != fighter_index]
 
     # Sort by descending similarity
     pairs.sort(key=lambda x: x[1], reverse=True)

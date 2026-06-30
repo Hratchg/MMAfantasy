@@ -105,17 +105,20 @@ def load_round_stats_by_fight(session: Session) -> dict[int, list[dict[str, obje
         fight_id = row[0]
         if fight_id not in result:
             result[fight_id] = []
-        result[fight_id].append({
-            "fighter_id": row[1],
-            "sig_str_landed": row[2] or 0,
-            "takedowns_landed": row[3] or 0,
-            "ctrl_time_seconds": row[4] or 0,
-        })
+        result[fight_id].append(
+            {
+                "fighter_id": row[1],
+                "sig_str_landed": row[2] or 0,
+                "takedowns_landed": row[3] or 0,
+                "ctrl_time_seconds": row[4] or 0,
+            }
+        )
     return result
 
 
 def flush_domain_snapshots(
-    session: Session, snapshots: list[SnapshotRecord],
+    session: Session,
+    snapshots: list[SnapshotRecord],
 ) -> int:
     """Delete existing domain snapshots and bulk-insert new ones (idempotent).
 

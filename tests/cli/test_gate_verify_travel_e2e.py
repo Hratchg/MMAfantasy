@@ -66,9 +66,7 @@ CANONICAL = REPO_ROOT / "models/meta/meta_v2.joblib"
 # Asserting this in the test propagated-through-verifier path proves the
 # verifier read the right canonical file and the file was not tampered
 # with between this test's start and the verdict JSON emission.
-EXPECTED_CANONICAL_SHA = (
-    "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
-)
+EXPECTED_CANONICAL_SHA = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
 
 # Phase 64 Plan 64-02 locked slice names.
 EXPECTED_SLICE_NAMES = {"most_recent_12mo", "most_recent_24mo", "random_15pct"}
@@ -147,10 +145,14 @@ def verdict_dict(
     argv = [
         "gate",
         "verify",
-        "--candidate", str(CANDIDATE),
-        "--substrate-parquet", str(built_substrate),
-        "--canonical", str(CANONICAL),
-        "--out", str(out_json),
+        "--candidate",
+        str(CANDIDATE),
+        "--substrate-parquet",
+        str(built_substrate),
+        "--canonical",
+        str(CANONICAL),
+        "--out",
+        str(out_json),
     ]
     result = cli_runner.invoke(app, argv)
     if result.exit_code != 0:
@@ -159,8 +161,7 @@ def verdict_dict(
         print("STDOUT:", result.stdout)
         print("EXCEPTION:", result.exception)
     assert result.exit_code == 0, (
-        f"ufc gate verify failed: exit={result.exit_code}, "
-        f"exception={result.exception!r}"
+        f"ufc gate verify failed: exit={result.exit_code}, exception={result.exception!r}"
     )
     assert out_json.exists(), (
         f"Verdict sidecar not written at {out_json}. "
@@ -240,8 +241,7 @@ def test_gate_verify_travel_e2e_substrate_sha_propagates(
         f"Expected substrate_sha to be str, got {type(substrate_sha)}"
     )
     assert len(substrate_sha) == 64, (
-        f"Expected 64-char SHA256 hex digest, got {len(substrate_sha)} chars: "
-        f"{substrate_sha!r}"
+        f"Expected 64-char SHA256 hex digest, got {len(substrate_sha)} chars: {substrate_sha!r}"
     )
     assert all(c in "0123456789abcdef" for c in substrate_sha), (
         f"Expected lowercase hex chars only, got {substrate_sha!r}"

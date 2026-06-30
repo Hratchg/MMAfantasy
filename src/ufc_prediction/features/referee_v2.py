@@ -58,28 +58,32 @@ EVENT_COUNTRY_BUCKETS: tuple[str, ...] = (
 # distribution surfaces additional European or Asia-Pacific countries that should
 # bucket together, extend these sets — but keep the public bucket list at the
 # 6 strings above so downstream callers do not break.
-_ASIA_PACIFIC_COUNTRIES: frozenset[str] = frozenset({
-    "Japan",
-    "China",
-    "Singapore",
-    "Philippines",
-    "South Korea",
-    "Thailand",
-})
+_ASIA_PACIFIC_COUNTRIES: frozenset[str] = frozenset(
+    {
+        "Japan",
+        "China",
+        "Singapore",
+        "Philippines",
+        "South Korea",
+        "Thailand",
+    }
+)
 
-_EU_OTHER_COUNTRIES: frozenset[str] = frozenset({
-    "England",
-    "Scotland",
-    "Ireland",
-    "Germany",
-    "France",
-    "Sweden",
-    "Spain",
-    "Italy",
-    "Poland",
-    "Netherlands",
-    "Czech Republic",
-})
+_EU_OTHER_COUNTRIES: frozenset[str] = frozenset(
+    {
+        "England",
+        "Scotland",
+        "Ireland",
+        "Germany",
+        "France",
+        "Sweden",
+        "Spain",
+        "Italy",
+        "Poland",
+        "Netherlands",
+        "Czech Republic",
+    }
+)
 
 
 # ── Stratification cohort key ──────────────────────────────────────────────

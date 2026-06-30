@@ -5,6 +5,7 @@ pycairo whose wheel doesn't exist on Python 3.13 / arm64 and the source build re
 pkg-config + cairo system headers. Pandoc + Chrome headless is already installed on
 this machine and has no dependency-resolution problems.
 """
+
 import os
 import subprocess
 import sys
@@ -87,7 +88,14 @@ def generate():
         return False
 
     pandoc_html = subprocess.run(
-        ["pandoc", MD_PATH, "--to=html5", "--standalone", "--metadata", "title=UFC Fight Prediction — Technical Handoff"],
+        [
+            "pandoc",
+            MD_PATH,
+            "--to=html5",
+            "--standalone",
+            "--metadata",
+            "title=UFC Fight Prediction — Technical Handoff",
+        ],
         capture_output=True,
         text=True,
         check=True,

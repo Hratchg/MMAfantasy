@@ -10,6 +10,7 @@ Pins the operator-locked seed formula per Phase 43 CONTEXT decisions:
 
 Any drift in constants will break these tests. See docs/elo_seed_v25.md for rationale.
 """
+
 from __future__ import annotations
 
 import csv
@@ -97,18 +98,14 @@ def test_3_tier_none_low_winrate_zero_experience_equals_1400() -> None:
 
 def test_4_outer_clip_lower_bound_not_reached_by_worst_legit_case() -> None:
     """Lower clip (1300) is dormant for legitimate inputs; worst case stops at 1400."""
-    worst = derive_seed(
-        {"win_rate": 0.0, "org_tier": "none", "n_pre_ufc_fights": 0}
-    )
+    worst = derive_seed({"win_rate": 0.0, "org_tier": "none", "n_pre_ufc_fights": 0})
     assert worst == 1400.0
     assert worst > 1300.0
 
 
 def test_5_outer_clip_upper_bound_not_reached_by_best_legit_case() -> None:
     """Upper clip (1700) is dormant for legitimate inputs; best case stops at 1625."""
-    best = derive_seed(
-        {"win_rate": 1.0, "org_tier": "major", "n_pre_ufc_fights": 20}
-    )
+    best = derive_seed({"win_rate": 1.0, "org_tier": "major", "n_pre_ufc_fights": 20})
     assert best == 1625.0
     assert best < 1700.0
 

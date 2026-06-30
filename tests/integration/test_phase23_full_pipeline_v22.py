@@ -317,9 +317,7 @@ class TestPhase23FullPipelineV22:
     def test_feature_columns_v22_dedup_at_integration(self) -> None:
         """D-07 dedup: zero overlap between V22 tail (19 new cols) and NO_NET."""
         overlap = set(FEATURE_COLUMNS_V22[72:]) & set(FEATURE_COLUMNS_NO_NET)
-        assert overlap == set(), (
-            f"D-07 dedup violation — V22 tail overlaps NO_NET: {overlap}"
-        )
+        assert overlap == set(), f"D-07 dedup violation — V22 tail overlaps NO_NET: {overlap}"
 
     def test_feature_columns_v22_index_spot_checks(self) -> None:
         """Known column positions across REF / TRAVEL / META blocks.
@@ -374,7 +372,8 @@ class TestPhase23FullPipelineV22:
         """
         assembler = FeatureMatrixAssembler()
         X, y, fight_dates = assembler.assemble(
-            **tiny_v22_corpus, feature_set="v2.2",
+            **tiny_v22_corpus,
+            feature_set="v2.2",
         )
         assert X.shape == (5, 90), f"Expected (5, 90); got {X.shape}"
         assert X.shape[1] == len(FEATURE_COLUMNS_V22)
@@ -400,7 +399,8 @@ class TestPhase23FullPipelineV22:
         assert X.shape == (5, 72)
 
     def test_assemble_v22_ref_block_populated_not_nan(
-        self, tiny_v22_corpus: dict,
+        self,
+        tiny_v22_corpus: dict,
     ) -> None:
         """REF block (cols 72-74) populated from referee_id + method fields.
 
@@ -412,12 +412,12 @@ class TestPhase23FullPipelineV22:
         X, _, _ = assembler.assemble(**tiny_v22_corpus, feature_set="v2.2")
         ref_slice = X[:, 72:75]
         assert not np.any(np.isnan(ref_slice)), (
-            f"REF block must be non-NaN when referee_id+method populated; "
-            f"got {ref_slice}"
+            f"REF block must be non-NaN when referee_id+method populated; got {ref_slice}"
         )
 
     def test_assemble_v22_travel_block_populated_not_nan(
-        self, tiny_v22_corpus: dict,
+        self,
+        tiny_v22_corpus: dict,
     ) -> None:
         """TRAVEL block (cols 75-80) populated when venue_lat/lon/tz_iana present.
 
@@ -428,12 +428,12 @@ class TestPhase23FullPipelineV22:
         X, _, _ = assembler.assemble(**tiny_v22_corpus, feature_set="v2.2")
         travel_slice = X[:, 75:81]
         assert not np.any(np.isnan(travel_slice)), (
-            f"TRAVEL block must be non-NaN when venues populated; "
-            f"got {travel_slice}"
+            f"TRAVEL block must be non-NaN when venues populated; got {travel_slice}"
         )
 
     def test_assemble_v22_debut_fighter_travel_sentinel_zero(
-        self, tiny_v22_corpus: dict,
+        self,
+        tiny_v22_corpus: dict,
     ) -> None:
         """D-04: debut fighter (no prior venue) → travel + tz_shift = 0 sentinel.
 
@@ -445,8 +445,7 @@ class TestPhase23FullPipelineV22:
         X, _, _ = assembler.assemble(**tiny_v22_corpus, feature_set="v2.2")
         # fight 101 is index 0 (already chronologically first in fixture)
         idx_101 = next(
-            i for i, f in enumerate(tiny_v22_corpus["fight_records"])
-            if f["fight_id"] == 101
+            i for i, f in enumerate(tiny_v22_corpus["fight_records"]) if f["fight_id"] == 101
         )
         assert X[idx_101, 75] == 0.0, "travel_distance_miles_red debut sentinel"
         assert X[idx_101, 76] == 0.0, "travel_distance_miles_blue debut sentinel"
@@ -456,7 +455,8 @@ class TestPhase23FullPipelineV22:
         assert X[idx_101, 80] == 0.0, "tz_shift_diff_signed debut sentinel"
 
     def test_assemble_v22_age_uses_event_date_not_today(
-        self, tiny_v22_corpus: dict,
+        self,
+        tiny_v22_corpus: dict,
     ) -> None:
         """Pitfall #5 regression: age_at_fight uses event_date (training path).
 
@@ -473,8 +473,7 @@ class TestPhase23FullPipelineV22:
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(**tiny_v22_corpus, feature_set="v2.2")
         idx_101 = next(
-            i for i, f in enumerate(tiny_v22_corpus["fight_records"])
-            if f["fight_id"] == 101
+            i for i, f in enumerate(tiny_v22_corpus["fight_records"]) if f["fight_id"] == 101
         )
         age_red = X[idx_101, 83]
         age_blue = X[idx_101, 84]
@@ -494,7 +493,8 @@ class TestPhase23FullPipelineV22:
         )
 
     def test_assemble_v22_layoff_clip_at_720_days(
-        self, tiny_v22_corpus: dict,
+        self,
+        tiny_v22_corpus: dict,
     ) -> None:
         """D-06: per-fighter layoff clipped at 720 days.
 
@@ -507,17 +507,12 @@ class TestPhase23FullPipelineV22:
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(**tiny_v22_corpus, feature_set="v2.2")
         idx_103 = next(
-            i for i, f in enumerate(tiny_v22_corpus["fight_records"])
-            if f["fight_id"] == 103
+            i for i, f in enumerate(tiny_v22_corpus["fight_records"]) if f["fight_id"] == 103
         )
         layoff_red = X[idx_103, 81]
         layoff_blue = X[idx_103, 82]
-        assert layoff_red <= 720.0, (
-            f"layoff_days_red must be clipped at 720; got {layoff_red}"
-        )
-        assert layoff_blue <= 720.0, (
-            f"layoff_days_blue must be clipped at 720; got {layoff_blue}"
-        )
+        assert layoff_red <= 720.0, f"layoff_days_red must be clipped at 720; got {layoff_red}"
+        assert layoff_blue <= 720.0, f"layoff_days_blue must be clipped at 720; got {layoff_blue}"
         # And the true raw gap (1025 days) must NOT pass through unclipped
         assert layoff_red != 1025.0
         assert layoff_blue != 1025.0
@@ -547,6 +542,6 @@ class TestPhase23FullPipelineV22:
         baseline = _REPO_ROOT / ".planning" / "AUDIT-01-BASELINE-SHA.txt"
         assert baseline.exists(), "AUDIT-01-BASELINE-SHA.txt missing"
         content = baseline.read_text().strip()
-        assert content == (
-            "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-        ), f"Baseline SHA changed: {content}"
+        assert content == ("6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"), (
+            f"Baseline SHA changed: {content}"
+        )

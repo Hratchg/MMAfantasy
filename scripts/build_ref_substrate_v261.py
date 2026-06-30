@@ -100,7 +100,7 @@ from ufc_prediction.features.referee_v2 import derive_event_country_bucket  # no
 # col[0] is candidate-OOF (``xgb_v2_refv2_oof``), which IS the substrate-drift
 # signal the GATE-V26-02 ``refit_baseline`` path detects (CONTEXT line 18).
 REF_FEATURE_COLUMNS: tuple[str, ...] = (
-    "xgb_v2_refv2_oof",          # col[0] — candidate-aligned (Plan 65-02 OOF)
+    "xgb_v2_refv2_oof",  # col[0] — candidate-aligned (Plan 65-02 OOF)
     "elo_prob",
     "closing_prob_diff",
     "stance_matchup",
@@ -152,9 +152,11 @@ UNKNOWN_BUCKET_MAX_PROPORTION: float = 0.20
 # CR-01 anti-overwrite guard set: forbid pointing ``--output`` at Phase 64's
 # committed TRAVEL substrate path (would corrupt the v2.6.1 TRAVEL audit
 # trail). Stored as a set of strings so resolved-path comparison is robust.
-PROTECTED_OUTPUTS: frozenset[Path] = frozenset({
-    Path("data/intermediate/travel_substrate_v261.parquet"),
-})
+PROTECTED_OUTPUTS: frozenset[Path] = frozenset(
+    {
+        Path("data/intermediate/travel_substrate_v261.parquet"),
+    }
+)
 
 # Plan 65-02's OOF parquet (col[0] source). CR-02 FileNotFoundError fires
 # if this is missing.
@@ -177,9 +179,9 @@ _SYNTHETIC_COUNTRY_POOL: tuple[tuple[str | None, float], ...] = (
     ("Singapore", 0.01),
     ("Ireland", 0.02),
     ("Sweden", 0.02),
-    ("Mexico", 0.05),     # NOT in the bucket map → falls to UNKNOWN
-    ("Russia", 0.04),     # NOT in the bucket map → falls to UNKNOWN
-    (None, 0.05),         # NULL venue_id → UNKNOWN
+    ("Mexico", 0.05),  # NOT in the bucket map → falls to UNKNOWN
+    ("Russia", 0.04),  # NOT in the bucket map → falls to UNKNOWN
+    (None, 0.05),  # NULL venue_id → UNKNOWN
 )
 
 
@@ -266,7 +268,8 @@ def _synthesize_venue_countries(
 
 
 def build_eval_matrix(
-    *, source: str = "synthetic",
+    *,
+    source: str = "synthetic",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Build the 13-wide REF eval matrix + outcomes + event dates + venue countries.
 
@@ -346,7 +349,8 @@ def build_eval_matrix(
         # assembler. Defensive ``.get`` so a missing venue_country surfaces
         # as ``None`` → ``"UNKNOWN"`` downstream (Phase 65 D-02 spec).
         venue_countries = np.array(
-            [rec.get("venue_country") for rec in fight_records], dtype=object,
+            [rec.get("venue_country") for rec in fight_records],
+            dtype=object,
         )
     else:
         raise ValueError(

@@ -3,6 +3,7 @@
 Covers: parse_fight_detail.referee -> upsert_referee -> events.referee_id population.
 Uses the session fixture from tests/conftest.py (transactional rollback per test).
 """
+
 from __future__ import annotations
 
 from collections import Counter
@@ -112,15 +113,11 @@ class TestIngestRefereePersistence:
         session.flush()
         assert sample_event.referee_id is None
 
-    def test_event_referee_id_fk_persisted(
-        self, session: Session, sample_event: Event
-    ) -> None:
+    def test_event_referee_id_fk_persisted(self, session: Session, sample_event: Event) -> None:
         # Verify the FK actually round-trips through SQL select
         sample_event.referee_id = upsert_referee(session, raw_name="John McCarthy")
         session.flush()
-        refetched = session.execute(
-            select(Event).where(Event.id == sample_event.id)
-        ).scalar_one()
+        refetched = session.execute(select(Event).where(Event.id == sample_event.id)).scalar_one()
         assert refetched.referee_id == sample_event.referee_id
         ref = session.get(Referee, refetched.referee_id)
         assert ref.normalized_name == "john-mccarthy"
@@ -137,9 +134,7 @@ class TestIngestRefereeIdempotency:
     """
 
     @staticmethod
-    def _apply_aggregation(
-        session: Session, db_event: Event, raw_names: list[str]
-    ) -> None:
+    def _apply_aggregation(session: Session, db_event: Event, raw_names: list[str]) -> None:
         """Mirror of the fixed branch in ingest._scrape_event (CR-01)."""
         if raw_names:
             most_frequent_referee = Counter(raw_names).most_common(1)[0][0]
@@ -151,9 +146,7 @@ class TestIngestRefereeIdempotency:
         self, session: Session, sample_event: Event
     ) -> None:
         # First ingest: 3 Herb Dean -> events.referee_id = herb-dean
-        self._apply_aggregation(
-            session, sample_event, ["Herb Dean", "Herb Dean", "Herb Dean"]
-        )
+        self._apply_aggregation(session, sample_event, ["Herb Dean", "Herb Dean", "Herb Dean"])
         session.flush()
         first_ref_id = sample_event.referee_id
         assert first_ref_id is not None
@@ -227,9 +220,12 @@ class TestIngestVenueIdempotency:
         return lookup, names_raw, named
 
     @pytest.fixture
-    def venue_setup(self, session: Session) -> tuple[dict[str, int], list[tuple[int, str]], dict[str, int]]:
+    def venue_setup(
+        self, session: Session
+    ) -> tuple[dict[str, int], list[tuple[int, str]], dict[str, int]]:
         """Persist real Venue rows that match the in-memory lookup."""
         from ufc_prediction.models.venue import Venue
+
         lookup, names_raw, named = self._build_tiny_lookup()
         session.add_all(
             [

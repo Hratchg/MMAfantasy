@@ -12,6 +12,7 @@ Mocks the slim referee driver to keep tests hermetic; the venue path uses the
 real session fixture from tests/conftest.py since it has no HTTP and can
 populate Event + Venue rows in-memory.
 """
+
 from __future__ import annotations
 
 import csv
@@ -117,9 +118,7 @@ class TestScrapeRefereesDriverDryRun:
         assert "Cache hits expected: 500" in captured
         assert "ETA:" in captured
 
-    def test_dry_run_zero_events_yields_zero_eta(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_dry_run_zero_events_yields_zero_eta(self, capsys: pytest.CaptureFixture[str]) -> None:
         from scripts.scrape_referees_full import _print_dry_run_summary
 
         _print_dry_run_summary(
@@ -267,10 +266,13 @@ class TestScrapeVenuesCLIDryRun:
             result = runner.invoke(
                 app,
                 [
-                    "scrape", "venues",
+                    "scrape",
+                    "venues",
                     "--dry-run",
-                    "--venues-csv", str(venues_csv_tmp),
-                    "--unmatched-output", str(tmp_path / "unmatched.md"),
+                    "--venues-csv",
+                    str(venues_csv_tmp),
+                    "--unmatched-output",
+                    str(tmp_path / "unmatched.md"),
                 ],
             )
         assert result.exit_code == 0, result.output
@@ -296,9 +298,12 @@ class TestScrapeVenuesCLISafetyGate:
             result = runner.invoke(
                 app,
                 [
-                    "scrape", "venues",
-                    "--venues-csv", str(venues_csv_tmp),
-                    "--unmatched-output", str(tmp_path / "unmatched.md"),
+                    "scrape",
+                    "venues",
+                    "--venues-csv",
+                    str(venues_csv_tmp),
+                    "--unmatched-output",
+                    str(tmp_path / "unmatched.md"),
                 ],
             )
         assert result.exit_code == 1
@@ -324,10 +329,13 @@ class TestScrapeVenuesCLIConfirm:
             result1 = runner.invoke(
                 app,
                 [
-                    "scrape", "venues",
+                    "scrape",
+                    "venues",
                     "--confirm",
-                    "--venues-csv", str(venues_csv_tmp),
-                    "--unmatched-output", str(tmp_path / "unmatched.md"),
+                    "--venues-csv",
+                    str(venues_csv_tmp),
+                    "--unmatched-output",
+                    str(tmp_path / "unmatched.md"),
                 ],
             )
         assert result1.exit_code == 0, result1.output
@@ -337,7 +345,7 @@ class TestScrapeVenuesCLIConfirm:
         mars_ev = session.get(Event, ids["mars_event"])
         assert vegas_ev.venue_id == 9001  # exact
         assert tokyo_ev.venue_id == 9002  # fuzzy
-        assert mars_ev.venue_id is None    # unmatched
+        assert mars_ev.venue_id is None  # unmatched
 
         # Second run — should be a no-op for set FKs (CR-01 idempotency).
         # Capture pre-state.
@@ -349,10 +357,13 @@ class TestScrapeVenuesCLIConfirm:
             result2 = runner.invoke(
                 app,
                 [
-                    "scrape", "venues",
+                    "scrape",
+                    "venues",
                     "--confirm",
-                    "--venues-csv", str(venues_csv_tmp),
-                    "--unmatched-output", str(tmp_path / "unmatched.md"),
+                    "--venues-csv",
+                    str(venues_csv_tmp),
+                    "--unmatched-output",
+                    str(tmp_path / "unmatched.md"),
                 ],
             )
         assert result2.exit_code == 0, result2.output
@@ -373,15 +384,18 @@ class TestScrapeVenuesCLIConfirm:
             result = runner.invoke(
                 app,
                 [
-                    "scrape", "venues",
+                    "scrape",
+                    "venues",
                     "--confirm",
-                    "--venues-csv", str(venues_csv_tmp),
-                    "--unmatched-output", str(out_path),
+                    "--venues-csv",
+                    str(venues_csv_tmp),
+                    "--unmatched-output",
+                    str(out_path),
                 ],
             )
         assert result.exit_code == 0, result.output
         assert out_path.exists(), "unmatched-venues artifact must be emitted"
         text = out_path.read_text(encoding="utf-8")
         assert "Mars Crater" in text  # the unmatched location
-        assert "n_events" in text     # header row of the table
-        assert "Phase 28" in text     # the report title
+        assert "n_events" in text  # header row of the table
+        assert "Phase 28" in text  # the report title

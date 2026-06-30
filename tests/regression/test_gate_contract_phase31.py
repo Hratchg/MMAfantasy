@@ -53,9 +53,7 @@ V21_CONTRACT_PATH = pathlib.Path(".planning/gate_contract.json")
 XGB_V2_PATH = pathlib.Path("models/xgb_v2.joblib")
 PROJECT_MD_PATH = pathlib.Path(".planning/PROJECT.md")
 AUDIT_01_BASELINE_PATH = pathlib.Path(".planning/AUDIT-01-BASELINE-SHA.txt")
-PHASE_31_DIR = pathlib.Path(
-    ".planning/phases/31-gate-v23-re-derivation-on-populated-substrate"
-)
+PHASE_31_DIR = pathlib.Path(".planning/phases/31-gate-v23-re-derivation-on-populated-substrate")
 HALT_PATH = PHASE_31_DIR / "31-HALT-AND-DECIDE.md"
 END_SHA_PATH = PHASE_31_DIR / "31-XGB-V2-SHA-PHASE-31-END.txt"
 
@@ -105,9 +103,7 @@ def outcome_path():
         return "path_d"
     if contract_exists:
         return "path_a"
-    pytest.skip(
-        "Phase 31 spike not yet run (neither contract nor HALT artifact present)"
-    )
+    pytest.skip("Phase 31 spike not yet run (neither contract nor HALT artifact present)")
 
 
 # ── Path-INDEPENDENT tests (always run) ──────────────────────────────────
@@ -126,9 +122,7 @@ def test_xgb_v2_byte_identity_baseline_preserved():
     this environment" is the honest signal.
     """
     if not XGB_V2_PATH.exists():
-        pytest.skip(
-            f"{XGB_V2_PATH} not in checkout; AUDIT-01 byte-identity test n/a"
-        )
+        pytest.skip(f"{XGB_V2_PATH} not in checkout; AUDIT-01 byte-identity test n/a")
     sha = hashlib.sha256(XGB_V2_PATH.read_bytes()).hexdigest()
     assert sha == AUDIT_01_BASELINE_SHA, (
         f"xgb_v2.joblib SHA drift: got {sha}, expected {AUDIT_01_BASELINE_SHA}. "
@@ -208,9 +202,7 @@ def test_v23_contract_top_level_fields(outcome_path):
         f"formula_hash drift: got {c['formula_hash']}, expected {EXPECTED_FORMULA_HASH}"
     )
     assert c["n_features"] == EXPECTED_N_FEATURES, c["n_features"]
-    assert c["base_features_set"] == EXPECTED_BASE_FEATURES_SET, (
-        c["base_features_set"]
-    )
+    assert c["base_features_set"] == EXPECTED_BASE_FEATURES_SET, c["base_features_set"]
     assert c["k_value"] == EXPECTED_K_VALUE, c["k_value"]
     assert c["cutoff_date"] == EXPECTED_CUTOFF_DATE, c["cutoff_date"]
     assert c["n_seeds_observed"] == 10, c["n_seeds_observed"]
@@ -229,8 +221,7 @@ def test_v23_per_slice_floor_applied(outcome_path):
         )
         # Per-slice metadata records the Path A semantics.
         assert s["operator_floor_value"] == OPERATOR_ACCURACY_FLOOR, (
-            f"{slice_name}: operator_floor_value drift — "
-            f"got {s['operator_floor_value']}"
+            f"{slice_name}: operator_floor_value drift — got {s['operator_floor_value']}"
         )
 
 
@@ -252,12 +243,10 @@ def test_v23_ingest_completed_at_present(outcome_path):
     c = _load_v23_contract()
     ingest_ts = c.get("ingest_completed_at", "")
     bfo_ts = c.get("bfo_backfill_committed_at", "")
-    assert isinstance(ingest_ts, str) and ingest_ts, (
-        f"ingest_completed_at malformed: {ingest_ts!r}"
-    )
+    assert isinstance(ingest_ts, str) and ingest_ts, f"ingest_completed_at malformed: {ingest_ts!r}"
     # ISO-8601 sanity: contains "T" between date and time, plus timezone marker
     assert "T" in ingest_ts, ingest_ts
-    assert ("+" in ingest_ts or "-" in ingest_ts[10:] or ingest_ts.endswith("Z")), (
+    assert "+" in ingest_ts or "-" in ingest_ts[10:] or ingest_ts.endswith("Z"), (
         f"ingest_completed_at missing timezone offset: {ingest_ts!r}"
     )
     # MUST differ from bfo_backfill_committed_at — distinct phase commits (Pitfall 7).
@@ -273,9 +262,7 @@ def test_v23_feature_columns_hash_present(outcome_path):
         pytest.skip(f"Path A test; current outcome={outcome_path}")
     c = _load_v23_contract()
     fch = c.get("feature_columns_hash", "")
-    assert isinstance(fch, str) and len(fch) == 64, (
-        f"feature_columns_hash malformed: {fch!r}"
-    )
+    assert isinstance(fch, str) and len(fch) == 64, f"feature_columns_hash malformed: {fch!r}"
     int(fch, 16)  # raises ValueError if not hex
 
 
@@ -298,14 +285,12 @@ def test_v23_operator_decision_block_path_a(outcome_path):
     c = _load_v23_contract()
     od = c.get("operator_decision", {})
     assert isinstance(od, dict), f"operator_decision should be a dict; got {type(od)}"
-    assert od.get("decision") == (
-        "path_a_operator_floor_pre_committed_at_milestone_open"
-    ), f"operator_decision.decision drift: got {od.get('decision')!r}"
+    assert od.get("decision") == ("path_a_operator_floor_pre_committed_at_milestone_open"), (
+        f"operator_decision.decision drift: got {od.get('decision')!r}"
+    )
     assert od.get("decided_at"), "operator_decision.decided_at missing"
     assert od.get("rationale"), "operator_decision.rationale missing"
-    assert od.get("phase_32_implication"), (
-        "operator_decision.phase_32_implication missing"
-    )
+    assert od.get("phase_32_implication"), "operator_decision.phase_32_implication missing"
 
 
 def test_v23_supersedes_d21(outcome_path):
@@ -340,8 +325,7 @@ def test_v23_loader_returns_valid_contract(outcome_path):
     for slice_name in EXPECTED_SLICES:
         ts = contract.per_slice[slice_name]
         assert ts.accuracy_min >= OPERATOR_ACCURACY_FLOOR, (
-            f"{slice_name}: accuracy_min {ts.accuracy_min} < {OPERATOR_ACCURACY_FLOOR} "
-            "via loader"
+            f"{slice_name}: accuracy_min {ts.accuracy_min} < {OPERATOR_ACCURACY_FLOOR} via loader"
         )
 
 
@@ -350,13 +334,11 @@ def test_phase_31_end_sha_artifact_present_path_a(outcome_path):
     if outcome_path != "path_a":
         pytest.skip(f"Path A test; current outcome={outcome_path}")
     assert END_SHA_PATH.exists(), (
-        f"{END_SHA_PATH} missing — Path A should emit END SHA artifact "
-        "(WR-04 carry-forward)"
+        f"{END_SHA_PATH} missing — Path A should emit END SHA artifact (WR-04 carry-forward)"
     )
     content = END_SHA_PATH.read_text(encoding="utf-8").strip()
     assert content == AUDIT_01_BASELINE_SHA, (
-        f"END SHA artifact content drift: got {content!r}, "
-        f"expected {AUDIT_01_BASELINE_SHA!r}"
+        f"END SHA artifact content drift: got {content!r}, expected {AUDIT_01_BASELINE_SHA!r}"
     )
 
 
@@ -380,9 +362,7 @@ def test_halt_artifact_path_d_outcome_path_ids(outcome_path):
         pytest.skip(f"Path D test; current outcome={outcome_path}")
     body = HALT_PATH.read_text(encoding="utf-8")
     for outcome_id in PATH_D_OUTCOME_IDS:
-        assert outcome_id in body, (
-            f"Outcome-path ID {outcome_id!r} missing from HALT artifact"
-        )
+        assert outcome_id in body, f"Outcome-path ID {outcome_id!r} missing from HALT artifact"
 
 
 def test_halt_artifact_path_d_body_sections(outcome_path):

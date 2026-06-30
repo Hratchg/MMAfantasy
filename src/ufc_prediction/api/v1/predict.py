@@ -4,6 +4,7 @@ LIVE-03 discipline — predictor.py is NEVER modified; this route imports
 ModelPredictor and wraps its dict output in PredictorOutputV1 (D-01 +
 D-02 forward-compat).
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -76,11 +77,7 @@ def predict(
             matches_b = search_fighters(db, body.fighter_b)
         except Exception:  # noqa: BLE001 — fall through to predictor for any DB error
             matches_a = matches_b = []
-        if (
-            len(matches_a) == 1
-            and len(matches_b) == 1
-            and matches_a[0].id == matches_b[0].id
-        ):
+        if len(matches_a) == 1 and len(matches_b) == 1 and matches_a[0].id == matches_b[0].id:
             raise HTTPException(
                 status_code=400,
                 detail="fighter_a and fighter_b must be different fighters",
@@ -89,7 +86,11 @@ def predict(
     ev_date = body.event_date or date.today()
     try:
         result = predict_order_invariant(
-            _get_predictor(), db, body.fighter_a, body.fighter_b, event_date=ev_date,
+            _get_predictor(),
+            db,
+            body.fighter_a,
+            body.fighter_b,
+            event_date=ev_date,
         )
     except ValueError as exc:
         # Predictor raises ValueError on unknown fighter / no Elo / etc.
@@ -117,23 +118,24 @@ def predict(
         # Rename predictor dict → Pydantic model. The predictor's dict has
         # 7 keys (including win_probability_source); the partner-facing
         # model surfaces only the 6 CONTEXT-listed observability fields.
-        prediction_metadata_block: PredictionMetadataV12 | None = (
-            PredictionMetadataV12(
-                odds_source=pred_meta_dict.get("odds_source", "nan"),
-                odds_timestamp_iso=pred_meta_dict.get("odds_timestamp_iso"),
-                fighter_a_n_ufc_fights=pred_meta_dict.get(
-                    "fighter_a_n_ufc_fights", 0,
-                ),
-                fighter_b_n_ufc_fights=pred_meta_dict.get(
-                    "fighter_b_n_ufc_fights", 0,
-                ),
-                is_debutant_either=pred_meta_dict.get(
-                    "is_debutant_either", False,
-                ),
-                calibration_slice_brier=pred_meta_dict.get(
-                    "calibration_slice_brier",
-                ),
-            )
+        prediction_metadata_block: PredictionMetadataV12 | None = PredictionMetadataV12(
+            odds_source=pred_meta_dict.get("odds_source", "nan"),
+            odds_timestamp_iso=pred_meta_dict.get("odds_timestamp_iso"),
+            fighter_a_n_ufc_fights=pred_meta_dict.get(
+                "fighter_a_n_ufc_fights",
+                0,
+            ),
+            fighter_b_n_ufc_fights=pred_meta_dict.get(
+                "fighter_b_n_ufc_fights",
+                0,
+            ),
+            is_debutant_either=pred_meta_dict.get(
+                "is_debutant_either",
+                False,
+            ),
+            calibration_slice_brier=pred_meta_dict.get(
+                "calibration_slice_brier",
+            ),
         )
     else:
         # v1.0.0 / v1.1.0 forward-compat lock — leave the block null. Plan

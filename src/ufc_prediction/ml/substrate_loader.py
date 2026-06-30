@@ -193,9 +193,7 @@ def load_substrate_snapshot(path: Path) -> dict[str, EvalSlice]:
 
     # ── R4: empty file ────────────────────────────────────────────────
     if len(df) == 0:
-        raise ValueError(
-            f"substrate snapshot {path}: empty file (zero rows)"
-        )
+        raise ValueError(f"substrate snapshot {path}: empty file (zero rows)")
 
     # ── R8: NaN in outcome — MUST run BEFORE R3 ─────────────────────
     # ``int(NaN)`` would silently coerce to a non-{0,1} sentinel in
@@ -203,12 +201,9 @@ def load_substrate_snapshot(path: Path) -> dict[str, EvalSlice]:
     # names "NaN" explicitly instead of bottoming out in R3.
     outcome_nan_mask: pd.Series = df["outcome"].isna()
     if bool(outcome_nan_mask.any()):
-        nan_row_indices: list[int] = [
-            int(i) for i in df.index[outcome_nan_mask].tolist()
-        ]
+        nan_row_indices: list[int] = [int(i) for i in df.index[outcome_nan_mask].tolist()]
         raise ValueError(
-            f"substrate snapshot {path}: NaN in outcome column at "
-            f"row(s) {nan_row_indices}"
+            f"substrate snapshot {path}: NaN in outcome column at row(s) {nan_row_indices}"
         )
 
     # ── R3: outcome value outside {0, 1} ──────────────────────────────
@@ -220,10 +215,7 @@ def load_substrate_snapshot(path: Path) -> dict[str, EvalSlice]:
         # (e.g., numpy NaN vs pandas NA distinction). ``math.isnan``
         # raises TypeError on non-floats, so guard with isinstance.
         if isinstance(outcome_value, float) and math.isnan(outcome_value):
-            raise ValueError(
-                f"substrate snapshot {path}: NaN in outcome column at "
-                f"row {row_idx}"
-            )
+            raise ValueError(f"substrate snapshot {path}: NaN in outcome column at row {row_idx}")
         if int(outcome_value) not in (0, 1):
             slice_name_for_msg: Any = df["slice_name"].iloc[row_idx]
             raise ValueError(
@@ -269,9 +261,7 @@ def load_substrate_snapshot(path: Path) -> dict[str, EvalSlice]:
         )
 
         # Build outcomes as immutable int tuple
-        outcomes: tuple[int, ...] = tuple(
-            int(o) for o in group["outcome"]
-        )
+        outcomes: tuple[int, ...] = tuple(int(o) for o in group["outcome"])
 
         result[slice_key] = EvalSlice(
             feature_vectors=feature_vectors,

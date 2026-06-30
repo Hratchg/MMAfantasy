@@ -210,7 +210,8 @@ def test_builder_is_deterministic_across_reruns(tmp_path: Path) -> None:
 
 
 def test_builder_is_deterministic_across_simulated_calendar_drift(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """CR-03 regression: builder stays byte-deterministic across calendar days.
 

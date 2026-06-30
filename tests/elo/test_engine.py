@@ -60,20 +60,24 @@ class TestKFactorDecay:
         # Give fighter 1 four prior fights (against different opponents each time)
         fights = []
         for i in range(4):
-            fights.append(make_fight(
-                event_date=date(2020, 1, i + 1),
-                fighter_a_id=1,
-                fighter_b_id=100 + i,
-                winner_id=1,
-            ))
+            fights.append(
+                make_fight(
+                    event_date=date(2020, 1, i + 1),
+                    fighter_a_id=1,
+                    fighter_b_id=100 + i,
+                    winner_id=1,
+                )
+            )
 
         # 5th fight: fighter 1 still at K=40 (has 4 prior fights, < 5)
-        fights.append(make_fight(
-            event_date=date(2020, 2, 1),
-            fighter_a_id=1,
-            fighter_b_id=200,
-            winner_id=1,
-        ))
+        fights.append(
+            make_fight(
+                event_date=date(2020, 2, 1),
+                fighter_a_id=1,
+                fighter_b_id=200,
+                winner_id=1,
+            )
+        )
 
         snapshots = elo_engine.compute_all(fights)
 
@@ -83,12 +87,14 @@ class TestKFactorDecay:
         assert snap_a_5.k_factor_used == 40.0
 
         # 6th fight: fighter 1 now has 5 prior fights -> K=20
-        fights.append(make_fight(
-            event_date=date(2020, 3, 1),
-            fighter_a_id=1,
-            fighter_b_id=201,
-            winner_id=1,
-        ))
+        fights.append(
+            make_fight(
+                event_date=date(2020, 3, 1),
+                fighter_a_id=1,
+                fighter_b_id=201,
+                winner_id=1,
+            )
+        )
 
         # Re-create engine for clean state
         engine2 = EloEngine(EloConfig())
@@ -99,37 +105,44 @@ class TestKFactorDecay:
         assert snap_a_6.k_factor_used == 20.0
 
     def test_fight_counts_are_per_fighter_not_per_division(
-        self, elo_engine: EloEngine,
+        self,
+        elo_engine: EloEngine,
     ) -> None:
         """Fighter with 3 LW + 2 WW fights = 5 total -> K=20 (per D-04)."""
         fights = []
         # 3 Lightweight fights
         for i in range(3):
-            fights.append(make_fight(
-                event_date=date(2020, 1, i + 1),
-                fighter_a_id=1,
-                fighter_b_id=100 + i,
-                winner_id=1,
-                weight_class="Lightweight",
-            ))
+            fights.append(
+                make_fight(
+                    event_date=date(2020, 1, i + 1),
+                    fighter_a_id=1,
+                    fighter_b_id=100 + i,
+                    winner_id=1,
+                    weight_class="Lightweight",
+                )
+            )
         # 2 Welterweight fights
         for i in range(2):
-            fights.append(make_fight(
-                event_date=date(2020, 2, i + 1),
-                fighter_a_id=1,
-                fighter_b_id=200 + i,
-                winner_id=1,
-                weight_class="Welterweight",
-            ))
+            fights.append(
+                make_fight(
+                    event_date=date(2020, 2, i + 1),
+                    fighter_a_id=1,
+                    fighter_b_id=200 + i,
+                    winner_id=1,
+                    weight_class="Welterweight",
+                )
+            )
 
         # 6th fight (total fights = 5 -> K=20)
-        fights.append(make_fight(
-            event_date=date(2020, 3, 1),
-            fighter_a_id=1,
-            fighter_b_id=300,
-            winner_id=1,
-            weight_class="Welterweight",
-        ))
+        fights.append(
+            make_fight(
+                event_date=date(2020, 3, 1),
+                fighter_a_id=1,
+                fighter_b_id=300,
+                winner_id=1,
+                weight_class="Welterweight",
+            )
+        )
 
         snapshots = elo_engine.compute_all(fights)
 
@@ -293,36 +306,34 @@ class TestDivisionTransfer:
         fights = [fight1]
         # Add more fights to push rating higher
         for i in range(4):
-            fights.append(make_fight(
-                event_date=date(2020, 1, 2 + i),
-                fighter_a_id=1,
-                fighter_b_id=10 + i,
-                winner_id=1,
-                weight_class="Lightweight",
-            ))
+            fights.append(
+                make_fight(
+                    event_date=date(2020, 1, 2 + i),
+                    fighter_a_id=1,
+                    fighter_b_id=10 + i,
+                    winner_id=1,
+                    weight_class="Lightweight",
+                )
+            )
 
         # Now fight at Welterweight
-        fights.append(make_fight(
-            event_date=date(2020, 6, 1),
-            fighter_a_id=1,
-            fighter_b_id=50,
-            winner_id=1,
-            weight_class="Welterweight",
-        ))
+        fights.append(
+            make_fight(
+                event_date=date(2020, 6, 1),
+                fighter_a_id=1,
+                fighter_b_id=50,
+                winner_id=1,
+                weight_class="Welterweight",
+            )
+        )
 
         snapshots = engine.compute_all(fights)
 
         # Find the WW fight snapshot for fighter 1
-        ww_snap = next(
-            s for s in snapshots
-            if s.fighter_id == 1 and s.division == "Welterweight"
-        )
+        ww_snap = next(s for s in snapshots if s.fighter_id == 1 and s.division == "Welterweight")
 
         # Get fighter 1's LW elo after 5 fights
-        lw_snaps = [
-            s for s in snapshots
-            if s.fighter_id == 1 and s.division == "Lightweight"
-        ]
+        lw_snaps = [s for s in snapshots if s.fighter_id == 1 and s.division == "Lightweight"]
         last_lw_elo = lw_snaps[-1].elo_after
 
         # WW elo_before should be 1500 + 0.75*(last_lw_elo - 1500)
@@ -350,10 +361,7 @@ class TestDivisionTransfer:
 
         snapshots = elo_engine.compute_all([fight1, fight2])
 
-        lw_snap = next(
-            s for s in snapshots
-            if s.fighter_id == 1 and s.division == "Lightweight"
-        )
+        lw_snap = next(s for s in snapshots if s.fighter_id == 1 and s.division == "Lightweight")
         # Should start at 1500 (no transfer from Catch Weight)
         assert lw_snap.elo_before == 1500.0
 
@@ -378,10 +386,7 @@ class TestDivisionTransfer:
 
         snapshots = elo_engine.compute_all([fight1, fight2])
 
-        cw_snap = next(
-            s for s in snapshots
-            if s.fighter_id == 1 and s.division == "Catch Weight"
-        )
+        cw_snap = next(s for s in snapshots if s.fighter_id == 1 and s.division == "Catch Weight")
         # Should start at 1500 (no transfer into Catch Weight)
         assert cw_snap.elo_before == 1500.0
 
@@ -414,12 +419,14 @@ class TestBayesianShrinkage:
         engine2 = EloEngine(EloConfig())
         fights = []
         for i in range(6):
-            fights.append(make_fight(
-                event_date=date(2020, 1, i + 1),
-                fighter_a_id=1,
-                fighter_b_id=100 + i,
-                winner_id=1,
-            ))
+            fights.append(
+                make_fight(
+                    event_date=date(2020, 1, i + 1),
+                    fighter_a_id=1,
+                    fighter_b_id=100 + i,
+                    winner_id=1,
+                )
+            )
 
         snapshots2 = engine2.compute_all(fights)
         # After fight 6 (5 prior fights), fight count after = 6 -> shrinkage=1.0
@@ -553,7 +560,8 @@ class TestComputeAll:
     """Test overall compute_all behavior."""
 
     def test_compute_all_returns_chronological_snapshots(
-        self, elo_engine: EloEngine,
+        self,
+        elo_engine: EloEngine,
     ) -> None:
         """3 fights in order produce 6 snapshots (2 per fight).
 

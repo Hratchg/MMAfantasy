@@ -21,6 +21,7 @@ Schema rationale (CONTEXT D-08 + REVISION-03; RESEARCH Findings 4, 9, 12):
 
 Banned imports per Pitfall #1 / Finding 11: nothing under ``ufc_prediction.ml.*``.
 """
+
 from __future__ import annotations
 
 from datetime import datetime

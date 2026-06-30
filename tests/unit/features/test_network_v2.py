@@ -12,6 +12,7 @@ queries. `TestNoParentMutation` enforces this structurally.
 These tests RED on import (Wave 0) — `ufc_prediction.features.network_v2` does
 not exist yet. Goes GREEN at Wave 1 Task 8.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -31,14 +32,26 @@ from ufc_prediction.features.network_v2 import (
 def _fights() -> list[dict]:
     """Two fights, 100 days apart."""
     return [
-        {"fight_id": 1, "event_date": date(2020, 1, 1),
-         "fighter_a_id": 1, "fighter_b_id": 2,
-         "winner_id": 1, "loser_id": 2, "method": "U-DEC",
-         "weight_class": "Lightweight"},
-        {"fight_id": 2, "event_date": date(2020, 4, 10),  # 100 days later
-         "fighter_a_id": 1, "fighter_b_id": 3,
-         "winner_id": 1, "loser_id": 3, "method": "KO/TKO",
-         "weight_class": "Lightweight"},
+        {
+            "fight_id": 1,
+            "event_date": date(2020, 1, 1),
+            "fighter_a_id": 1,
+            "fighter_b_id": 2,
+            "winner_id": 1,
+            "loser_id": 2,
+            "method": "U-DEC",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 2,
+            "event_date": date(2020, 4, 10),  # 100 days later
+            "fighter_a_id": 1,
+            "fighter_b_id": 3,
+            "winner_id": 1,
+            "loser_id": 3,
+            "method": "KO/TKO",
+            "weight_class": "Lightweight",
+        },
     ]
 
 
@@ -58,7 +71,7 @@ class TestEdgeWeightDecay:
         g = build_fight_graph_v2(_fights())
         sub = _decay_subgraph(g, date(2020, 4, 10))
         # 100 days, U-DEC mov=1.0
-        expected_w = 1.0 * (DECAY_BASE ** 100)  # ~0.1326
+        expected_w = 1.0 * (DECAY_BASE**100)  # ~0.1326
         assert pytest.approx(sub.edges[2, 1]["weight"], abs=1e-9) == expected_w
 
     def test_decay_filters_future_edges(self):

@@ -26,6 +26,7 @@ will trigger this test.
 The reference is also asserted to be schema-valid against
 PredictorOutputV1 (the partner-facing envelope).
 """
+
 from __future__ import annotations
 
 import ast
@@ -34,9 +35,7 @@ from pathlib import Path
 from ufc_prediction.api.v1.models import PredictorOutputV1
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-PREDICT_ROUTE_PATH = (
-    REPO_ROOT / "src" / "ufc_prediction" / "api" / "v1" / "predict.py"
-)
+PREDICT_ROUTE_PATH = REPO_ROOT / "src" / "ufc_prediction" / "api" / "v1" / "predict.py"
 
 
 # Reference output for ModelPredictor.predict() under the xgb_v2-only
@@ -182,9 +181,7 @@ class TestPredictorOutputDrift:
         }
         # Validates or raises ValidationError → test fails loudly.
         obj = PredictorOutputV1.model_validate(projected)
-        assert obj.win_probability == _PREDICTOR_OUTPUT_REFERENCE[
-            "win_probability"
-        ]
+        assert obj.win_probability == _PREDICTOR_OUTPUT_REFERENCE["win_probability"]
         assert obj.fighter_a == _PREDICTOR_OUTPUT_REFERENCE["fighter_a"]
 
     def test_reference_keys_match_real_predictor_return_signature(self):
@@ -192,9 +189,7 @@ class TestPredictorOutputDrift:
         actual return-dict key set, statically extracted from predictor.py's
         return statement. Catches the case where predictor.py adds OR
         removes a key without updating the reference here."""
-        predictor_path = (
-            REPO_ROOT / "src" / "ufc_prediction" / "ml" / "predictor.py"
-        )
+        predictor_path = REPO_ROOT / "src" / "ufc_prediction" / "ml" / "predictor.py"
         tree = ast.parse(predictor_path.read_text(encoding="utf-8"))
 
         # Locate ModelPredictor.predict() and extract the (last) Return's
@@ -202,15 +197,9 @@ class TestPredictorOutputDrift:
         # of its happy path (verified at lock time).
         predict_func = None
         for node in ast.walk(tree):
-            if (
-                isinstance(node, ast.ClassDef)
-                and node.name == "ModelPredictor"
-            ):
+            if isinstance(node, ast.ClassDef) and node.name == "ModelPredictor":
                 for child in node.body:
-                    if (
-                        isinstance(child, ast.FunctionDef)
-                        and child.name == "predict"
-                    ):
+                    if isinstance(child, ast.FunctionDef) and child.name == "predict":
                         predict_func = child
                         break
                 break
@@ -222,10 +211,7 @@ class TestPredictorOutputDrift:
 
         return_dict: ast.Dict | None = None
         for stmt in ast.walk(predict_func):
-            if (
-                isinstance(stmt, ast.Return)
-                and isinstance(stmt.value, ast.Dict)
-            ):
+            if isinstance(stmt, ast.Return) and isinstance(stmt.value, ast.Dict):
                 return_dict = stmt.value  # last Return wins; happy path is last
         assert return_dict is not None, (
             "ModelPredictor.predict has no literal-dict Return — refactor "
@@ -235,7 +221,8 @@ class TestPredictorOutputDrift:
         actual_keys: set[str] = set()
         for key_node in return_dict.keys:
             if isinstance(key_node, ast.Constant) and isinstance(
-                key_node.value, str,
+                key_node.value,
+                str,
             ):
                 actual_keys.add(key_node.value)
 

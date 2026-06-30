@@ -162,9 +162,7 @@ def test_feature_compute_stores_features(session):
     # Verify fighter A has feature rows (at least for fights 2 and 3)
     fighter_a_id = data["fighters"][0].id
     a_features = (
-        session.query(ComputedFeature)
-        .filter(ComputedFeature.fighter_id == fighter_a_id)
-        .all()
+        session.query(ComputedFeature).filter(ComputedFeature.fighter_id == fighter_a_id).all()
     )
     # Fighter A has 3 fights: first fight skipped, so 2 feature rows
     assert len(a_features) == 2

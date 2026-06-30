@@ -31,26 +31,25 @@ from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
 # indices — APPEND-ONLY discipline tolerates index drift, but a name rename
 # fails fast).
 META_V22_FEATURE_COLUMNS: list[str] = [
-    "xgb_oof_prob",                # external — supplied by oof.generate_oof_predictions
-    "elo_prob",                    # external — EloEngine.expected_win_probability
-    "closing_prob_diff",           # FEATURE_COLUMNS_NO_NET (BFO-backfilled post Phase 21)
-    "stance_matchup",              # FEATURE_COLUMNS_NO_NET
-    "height_diff",                 # FEATURE_COLUMNS_NO_NET
-    "reach_diff",                  # FEATURE_COLUMNS_NO_NET (raw — NOT reach_diff_normalized)
+    "xgb_oof_prob",  # external — supplied by oof.generate_oof_predictions
+    "elo_prob",  # external — EloEngine.expected_win_probability
+    "closing_prob_diff",  # FEATURE_COLUMNS_NO_NET (BFO-backfilled post Phase 21)
+    "stance_matchup",  # FEATURE_COLUMNS_NO_NET
+    "height_diff",  # FEATURE_COLUMNS_NO_NET
+    "reach_diff",  # FEATURE_COLUMNS_NO_NET (raw — NOT reach_diff_normalized)
     "days_since_last_fight_diff",  # FEATURE_COLUMNS_NO_NET
-    "age_diff",                    # FEATURE_COLUMNS_NO_NET (DEDUP: NOT age_at_fight_*)
-    "elo_overall_diff",            # FEATURE_COLUMNS_NO_NET
-    "elo_striking_diff",           # FEATURE_COLUMNS_NO_NET
-    "elo_grappling_diff",          # FEATURE_COLUMNS_NO_NET
-    "division_finish_rate_shrunk", # FEATURE_COLUMNS_V22 (Phase 23 META rich addition)
-    "sharp_money_signal",          # FEATURE_COLUMNS_NO_NET (BFO-backfilled)
+    "age_diff",  # FEATURE_COLUMNS_NO_NET (DEDUP: NOT age_at_fight_*)
+    "elo_overall_diff",  # FEATURE_COLUMNS_NO_NET
+    "elo_striking_diff",  # FEATURE_COLUMNS_NO_NET
+    "elo_grappling_diff",  # FEATURE_COLUMNS_NO_NET
+    "division_finish_rate_shrunk",  # FEATURE_COLUMNS_V22 (Phase 23 META rich addition)
+    "sharp_money_signal",  # FEATURE_COLUMNS_NO_NET (BFO-backfilled)
 ]
 
 
 # Module-import-time invariants (Pitfall #1 fail-fast):
 assert len(META_V22_FEATURE_COLUMNS) == 13, (
-    f"META_V22_FEATURE_COLUMNS must have exactly 13 cols "
-    f"(got {len(META_V22_FEATURE_COLUMNS)})"
+    f"META_V22_FEATURE_COLUMNS must have exactly 13 cols (got {len(META_V22_FEATURE_COLUMNS)})"
 )
 # Resolve all 11 internal cols once at import time so a rename fails immediately.
 for _name in META_V22_FEATURE_COLUMNS[2:]:
@@ -58,9 +57,9 @@ for _name in META_V22_FEATURE_COLUMNS[2:]:
 
 
 def build_meta_features_v22(
-    xgb_oof_prob: np.ndarray,        # shape (n,) — base xgb_v2 OOF positive-class probabilities
-    elo_prob: np.ndarray,            # shape (n,) — as-of fight-date Elo P(A wins)
-    X_v22: np.ndarray,               # shape (n, 90) — FEATURE_COLUMNS_V22 matrix
+    xgb_oof_prob: np.ndarray,  # shape (n,) — base xgb_v2 OOF positive-class probabilities
+    elo_prob: np.ndarray,  # shape (n,) — as-of fight-date Elo P(A wins)
+    X_v22: np.ndarray,  # shape (n, 90) — FEATURE_COLUMNS_V22 matrix
 ) -> np.ndarray:
     """Stack the 13 META-V22 Level-1 features. NaN-preserving.
 

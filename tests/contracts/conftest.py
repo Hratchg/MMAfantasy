@@ -1,4 +1,5 @@
 """Shared fixtures for Phase 25 contract tests."""
+
 from __future__ import annotations
 
 import json
@@ -8,10 +9,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-SCHEMA_PATH = (
-    REPO_ROOT / "src" / "ufc_prediction" / "contracts"
-    / "predictor.schema.v1.0.0.json"
-)
+SCHEMA_PATH = REPO_ROOT / "src" / "ufc_prediction" / "contracts" / "predictor.schema.v1.0.0.json"
 
 
 @pytest.fixture(scope="module")

@@ -200,12 +200,8 @@ class EloEngine:
         self._ratings[key_b] = new_rating_b
 
         # Increment fight counts AFTER using count for K-factor lookup
-        self._fight_counts[fight.fighter_a_id] = (
-            self._fight_counts.get(fight.fighter_a_id, 0) + 1
-        )
-        self._fight_counts[fight.fighter_b_id] = (
-            self._fight_counts.get(fight.fighter_b_id, 0) + 1
-        )
+        self._fight_counts[fight.fighter_a_id] = self._fight_counts.get(fight.fighter_a_id, 0) + 1
+        self._fight_counts[fight.fighter_b_id] = self._fight_counts.get(fight.fighter_b_id, 0) + 1
 
         count_a_after = self._fight_counts[fight.fighter_a_id]
         count_b_after = self._fight_counts[fight.fighter_b_id]
@@ -290,7 +286,9 @@ class EloEngine:
         return self.config.mov_unanimous
 
     def _apply_inactivity_regression(
-        self, fighter_id: int, current_date: date,
+        self,
+        fighter_id: int,
+        current_date: date,
     ) -> None:
         """Regress rating toward initial_rating if fighter inactive >12 months (per D-08).
 

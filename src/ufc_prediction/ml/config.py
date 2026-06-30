@@ -30,9 +30,7 @@ class MLConfig:
 
 # 20 numeric features from CANONICAL_FEATURE_ORDER (excluding style_tag).
 # Used internally to extract features from ComputedFeature JSON.
-PERFORMANCE_FEATURE_KEYS: list[str] = [
-    f for f in CANONICAL_FEATURE_ORDER if f != "style_tag"
-]
+PERFORMANCE_FEATURE_KEYS: list[str] = [f for f in CANONICAL_FEATURE_ORDER if f != "style_tag"]
 
 # Feature columns in deterministic order.
 # 3 Elo + 20 performance + 4 physical + 1 stance + 16 career
@@ -197,7 +195,7 @@ FEATURE_COLUMNS_V22: list[str] = FEATURE_COLUMNS_NO_NET + [
 # Final count: 90 + 2 = 92 cols.
 FEATURE_COLUMNS_V25_TRAVEL: list[str] = FEATURE_COLUMNS_V22 + [
     "travel_distance_km",  # Haversine km, fighter_red - fighter_blue differential
-    "tz_shift_hours",      # ±12 clipped hours, fighter_red - fighter_blue differential
+    "tz_shift_hours",  # ±12 clipped hours, fighter_red - fighter_blue differential
 ]
 
 

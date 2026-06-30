@@ -65,9 +65,9 @@ def generate_mov_grid() -> list[EloConfig]:
     Total: 7 * 7 * 6 = 294 configs.
     """
     base = EloConfig()
-    ko_range = [x / 10 for x in range(12, 19)]   # 1.2–1.8
+    ko_range = [x / 10 for x in range(12, 19)]  # 1.2–1.8
     sub_range = [x / 10 for x in range(11, 18)]  # 1.1–1.7
-    sd_range = [x / 10 for x in range(5, 11)]    # 0.5–1.0
+    sd_range = [x / 10 for x in range(5, 11)]  # 0.5–1.0
     return [
         replace(base, mov_ko_tko=ko, mov_submission=sub, mov_split=sd)
         for ko, sub, sd in itertools.product(ko_range, sub_range, sd_range)
@@ -159,11 +159,13 @@ def run_backtest(
 
         score = evaluate_brier_score(predictions, outcomes) if predictions else float("inf")
 
-        results.append({
-            "config": config,
-            "brier_score": score,
-            "n_test_fights": len(predictions),
-        })
+        results.append(
+            {
+                "config": config,
+                "brier_score": score,
+                "n_test_fights": len(predictions),
+            }
+        )
 
     results.sort(key=lambda r: r["brier_score"])
     return results
@@ -204,12 +206,14 @@ def generate_domain_attribution_grid() -> list[dict]:
     configs = []
     for ko_striking in [round(x / 10, 1) for x in range(6, 11)]:
         for sub_grappling in [round(x / 10, 1) for x in range(6, 11)]:
-            configs.append({
-                "ko_striking": ko_striking,
-                "ko_grappling": round(1.0 - ko_striking, 1),
-                "sub_striking": round(1.0 - sub_grappling, 1),
-                "sub_grappling": sub_grappling,
-            })
+            configs.append(
+                {
+                    "ko_striking": ko_striking,
+                    "ko_grappling": round(1.0 - ko_striking, 1),
+                    "sub_striking": round(1.0 - sub_grappling, 1),
+                    "sub_grappling": sub_grappling,
+                }
+            )
     return configs
 
 
@@ -309,7 +313,9 @@ def evaluate_ewma_brier(
     computer = FeatureComputer(config)
     # FeatureComputer.compute_all expects list[dict]; convert FightRecord dataclasses if needed
     fights_as_dicts = [
-        f if isinstance(f, dict) else {
+        f
+        if isinstance(f, dict)
+        else {
             "fight_id": f.fight_id,
             "event_date": f.event_date,
             "fighter_a_id": f.fighter_a_id,
@@ -433,7 +439,9 @@ def evaluate_domain_brier(
 
         domain_computer = DomainEloComputer(config)
         domain_snaps = domain_computer.compute_all(
-            fights, overall_snapshots, round_stats_by_fight,
+            fights,
+            overall_snapshots,
+            round_stats_by_fight,
         )
     finally:
         # Restore original ratios
@@ -521,15 +529,17 @@ def run_joint_optimization(
             tc = t["config"]
             for i in inactivity_top:
                 ic = i["config"]
-                joint_configs.append(replace(
-                    EloConfig(),
-                    mov_ko_tko=mc.mov_ko_tko,
-                    mov_submission=mc.mov_submission,
-                    mov_split=mc.mov_split,
-                    division_transfer_pct=tc.division_transfer_pct,
-                    inactivity_threshold_days=ic.inactivity_threshold_days,
-                    inactivity_regression_rate=ic.inactivity_regression_rate,
-                    inactivity_regression_cap=ic.inactivity_regression_cap,
-                ))
+                joint_configs.append(
+                    replace(
+                        EloConfig(),
+                        mov_ko_tko=mc.mov_ko_tko,
+                        mov_submission=mc.mov_submission,
+                        mov_split=mc.mov_split,
+                        division_transfer_pct=tc.division_transfer_pct,
+                        inactivity_threshold_days=ic.inactivity_threshold_days,
+                        inactivity_regression_rate=ic.inactivity_regression_rate,
+                        inactivity_regression_cap=ic.inactivity_regression_cap,
+                    )
+                )
 
     return run_backtest(fights, joint_configs, cutoff_date)

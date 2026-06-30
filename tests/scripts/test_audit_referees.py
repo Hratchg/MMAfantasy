@@ -4,6 +4,7 @@ Pattern: importorskip lazy-import (mirrors tests/scripts/test_audit_camp_v22.py:
 so this file lands GREEN at Task 2 (referee_normalize tests pass) and remains GREEN
 at Task 3 (audit script tests turn ON when scripts/audit_referees.py lands).
 """
+
 from __future__ import annotations
 
 import pytest
@@ -96,14 +97,17 @@ class TestDeriveScopeRecommendation:
 class TestComputeTop30Coverage:
     def test_empty_counter_returns_zero(self, audit) -> None:
         from collections import Counter
+
         assert audit._compute_top30_coverage(Counter()) == 0.0
 
     def test_single_referee_returns_one(self, audit) -> None:
         from collections import Counter
+
         assert audit._compute_top30_coverage(Counter({"herb-dean": 100})) == 1.0
 
     def test_top30_concentration(self, audit) -> None:
         from collections import Counter
+
         # 30 refs × 10 fights = 300; plus 70 long-tail × 1 = 70; total=370; top30/total=300/370≈0.811
         c = Counter({f"ref-{i}": 10 for i in range(30)})
         c.update({f"tail-{i}": 1 for i in range(70)})

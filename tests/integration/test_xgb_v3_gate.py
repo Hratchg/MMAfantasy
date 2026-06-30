@@ -89,7 +89,7 @@ def synthetic_slices():
     """
     today = date(2026, 5, 3)
     dates: list[date] = []
-    dates.extend([today - timedelta(days=30 + i) for i in range(30)])      # 12mo
+    dates.extend([today - timedelta(days=30 + i) for i in range(30)])  # 12mo
     dates.extend([today - timedelta(days=400 + i * 5) for i in range(30)])  # 24mo only
     dates.extend([today - timedelta(days=900 + i * 5) for i in range(40)])  # older
     n = len(dates)
@@ -192,10 +192,7 @@ class TestEvaluatePerSlice:
         result_b = evaluate_per_slice(model_b, X, y, dates, today=today, random_seed=42)
 
         # Brier scores on random_15pct slice must match exactly.
-        assert (
-            result_a["random_15pct"]["brier_score"]
-            == result_b["random_15pct"]["brier_score"]
-        )
+        assert result_a["random_15pct"]["brier_score"] == result_b["random_15pct"]["brier_score"]
 
     def test_evaluate_model_unchanged(self):
         """Back-compat: evaluate_model signature and behavior are preserved (Gotcha 8)."""
@@ -277,7 +274,7 @@ class TestGateVerdict:
         median = {
             "most_recent_12mo": {"brier_score": 0.21, "accuracy": 0.68},
             "most_recent_24mo": {"brier_score": 0.20, "accuracy": 0.69},
-            "random_15pct":     {"brier_score": 0.215, "accuracy": 0.67},
+            "random_15pct": {"brier_score": 0.215, "accuracy": 0.67},
         }
         passed, failed = gate_verdict(median, contract=fixed_v20_compatible_contract)
         assert passed is True
@@ -289,7 +286,7 @@ class TestGateVerdict:
         median = {
             "most_recent_12mo": {"brier_score": 0.22, "accuracy": 0.68},
             "most_recent_24mo": {"brier_score": 0.20, "accuracy": 0.69},
-            "random_15pct":     {"brier_score": 0.21, "accuracy": 0.68},
+            "random_15pct": {"brier_score": 0.21, "accuracy": 0.68},
         }
         passed, failed = gate_verdict(median, contract=fixed_v20_compatible_contract)
         assert passed is False
@@ -303,7 +300,7 @@ class TestGateVerdict:
         median = {
             "most_recent_12mo": {"brier_score": 0.21, "accuracy": 0.68},
             "most_recent_24mo": {"brier_score": 0.20, "accuracy": 0.66},  # below 0.67
-            "random_15pct":     {"brier_score": 0.21, "accuracy": 0.68},
+            "random_15pct": {"brier_score": 0.21, "accuracy": 0.68},
         }
         passed, failed = gate_verdict(median, contract=fixed_v20_compatible_contract)
         assert passed is False

@@ -28,6 +28,7 @@ Usage:
     uv run python scripts/scrape_referees_full.py --dry-run
     uv run python scripts/scrape_referees_full.py --confirm
 """
+
 from __future__ import annotations
 
 import argparse
@@ -65,7 +66,9 @@ def _read_cached_html(cache_dir: Path, cache_key: str) -> str | None:
     Path-traversal guard: ``re.fullmatch(r"[A-Za-z0-9_-]+", cache_key)``.
     """
     if not _CACHE_KEY_RE.fullmatch(cache_key):
-        logger.warning("[scrape-referees] cache_key rejected (key=%r); skipping cache read.", cache_key)
+        logger.warning(
+            "[scrape-referees] cache_key rejected (key=%r); skipping cache read.", cache_key
+        )
         return None
     cache_path = cache_dir / f"{cache_key}.html"
     if cache_path.exists():
@@ -142,12 +145,16 @@ def _events_needing_referee(session) -> Iterable:
 
     from ufc_prediction.models.event import Event  # noqa: PLC0415
 
-    return session.execute(
-        select(Event)
-        .where(Event.referee_id.is_(None))
-        .where(Event.source_url.isnot(None))
-        .order_by(Event.id)
-    ).scalars().all()
+    return (
+        session.execute(
+            select(Event)
+            .where(Event.referee_id.is_(None))
+            .where(Event.source_url.isnot(None))
+            .order_by(Event.id)
+        )
+        .scalars()
+        .all()
+    )
 
 
 def _resolve_event_referee(
@@ -215,7 +222,7 @@ def _print_dry_run_summary(
         eta_minutes_float = 0.0
     else:
         throughput = max(1, workers) / max(0.01, delay)  # req/s
-        event_fetches = cache_misses                      # event-detail pages
+        event_fetches = cache_misses  # event-detail pages
         fight_fetches = events_to_process * avg_fights_per_event  # all fights, conservative
         # Subtract anything already cached (fight-detail cache hits are ~free).
         fight_misses_estimate = fight_fetches  # upper bound; the cache helps in practice
@@ -327,7 +334,9 @@ def _run_confirmed_scrape(
     consecutive_failures = 0
     abort_threshold = 3
 
-    print(f"[scrape-referees] Begin scrape ({len(events)} events @ {delay}s rate-limit, workers={workers})...")
+    print(
+        f"[scrape-referees] Begin scrape ({len(events)} events @ {delay}s rate-limit, workers={workers})..."
+    )
     for i, ev in enumerate(events, start=1):
         if i % 10 == 0:
             print(
@@ -355,7 +364,9 @@ def _run_confirmed_scrape(
         try:
             event_detail = parse_event_detail(event_html, ev.source_url)
         except Exception as exc:  # noqa: BLE001 — slim driver tolerates parser drift
-            logger.warning("[scrape-referees] parse_event_detail failed for event_id=%s: %s", ev.id, exc)
+            logger.warning(
+                "[scrape-referees] parse_event_detail failed for event_id=%s: %s", ev.id, exc
+            )
             unresolved += 1
             continue
         # Per-fight referee extraction.
@@ -397,7 +408,9 @@ def _run_confirmed_scrape(
             except Exception as exc:  # noqa: BLE001 — slim driver tolerates HTTP layer faults
                 logger.warning(
                     "[scrape-referees] map_get failed for event_id=%s (%d urls): %s",
-                    ev.id, len(missing_urls), exc,
+                    ev.id,
+                    len(missing_urls),
+                    exc,
                 )
                 fetched = [None] * len(missing_urls)
             for j_local, html in zip(missing_idx, fetched, strict=True):
@@ -405,13 +418,18 @@ def _run_confirmed_scrape(
                 if html is not None:
                     fight_slug = fight_jobs[j_local][0]
                     _write_cached_html(
-                        FIGHT_CACHE_DIR, fight_slug, html, cache_write_failures,
+                        FIGHT_CACHE_DIR,
+                        fight_slug,
+                        html,
+                        cache_write_failures,
                     )
 
         # Pass 3: parse + collect referee names.
         raw_names: list[str] = []
         cardinality_failures_this_event = 0
-        for j, ((fight_slug, _fight_url), fight_html) in enumerate(zip(fight_jobs, fight_htmls, strict=True)):
+        for j, ((fight_slug, _fight_url), fight_html) in enumerate(
+            zip(fight_jobs, fight_htmls, strict=True)
+        ):
             if fight_html is None:
                 continue
             try:
@@ -420,7 +438,9 @@ def _run_confirmed_scrape(
                 msg = str(exc)
                 logger.warning(
                     "[scrape-referees] parse_fight_detail failed event_id=%s slug=%s: %s",
-                    ev.id, fight_slug, msg,
+                    ev.id,
+                    fight_slug,
+                    msg,
                 )
                 # Short-circuit upcoming/future events: their fight-detail
                 # pages return "expected >=1 data sections, got 0". After
@@ -432,7 +452,8 @@ def _run_confirmed_scrape(
                         logger.info(
                             "[scrape-referees] event_id=%s appears to be a "
                             "future/incomplete event; skipping remaining %d fights",
-                            ev.id, len(fight_jobs) - j - 1,
+                            ev.id,
+                            len(fight_jobs) - j - 1,
                         )
                         break
                 continue

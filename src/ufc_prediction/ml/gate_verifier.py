@@ -167,7 +167,8 @@ def _sha256_hex(path: Path) -> str:
 
 
 def _predict_proba_with_pipeline(
-    pipeline: Any, feature_vectors: tuple[tuple[float, ...], ...],
+    pipeline: Any,
+    feature_vectors: tuple[tuple[float, ...], ...],
 ) -> list[float]:
     """Run an sklearn-style Pipeline's predict_proba and return P(class=1)."""
     import numpy as np
@@ -300,7 +301,8 @@ def verify_candidate_vs_canonical(
     # Width-matched cases fall through to the unchanged Phase 55 logic.
     substrate_sha = _aggregate_substrate_sha(eval_slices)
     width_mismatch = _detect_pipeline_width_mismatch(
-        canonical_pipeline, eval_slices,
+        canonical_pipeline,
+        eval_slices,
     )
     if width_mismatch is not None:
         canonical_width, expected_width = width_mismatch
@@ -331,7 +333,8 @@ def verify_candidate_vs_canonical(
     # verdict carrying ``width_mismatch`` in confound_evidence so the Plan
     # 75-02 dual-substrate combinator routes it to ``width_mismatch_dual``.
     candidate_width_mismatch = _detect_pipeline_width_mismatch(
-        candidate_pipeline, eval_slices,
+        candidate_pipeline,
+        eval_slices,
     )
     if candidate_width_mismatch is not None:
         cand_width, expected_width = candidate_width_mismatch
@@ -390,21 +393,25 @@ def verify_candidate_vs_canonical(
     for slice_name, sl in eval_slices.items():
         # Raw canonical baseline
         raw_canon_preds = _predict_proba_with_pipeline(
-            canonical_pipeline, sl.feature_vectors,
+            canonical_pipeline,
+            sl.feature_vectors,
         )
         raw_baseline_brier[slice_name] = _brier_score(raw_canon_preds, list(sl.outcomes))
 
         # Aligned baseline (refit)
         aligned_baseline_preds = _predict_proba_with_pipeline(
-            refit_baseline, sl.feature_vectors,
+            refit_baseline,
+            sl.feature_vectors,
         )
         aligned_baseline_brier[slice_name] = _brier_score(
-            aligned_baseline_preds, list(sl.outcomes),
+            aligned_baseline_preds,
+            list(sl.outcomes),
         )
 
         # Candidate (always end-to-end on its own substrate)
         candidate_preds = _predict_proba_with_pipeline(
-            candidate_pipeline, sl.feature_vectors,
+            candidate_pipeline,
+            sl.feature_vectors,
         )
         cand_brier = _brier_score(candidate_preds, list(sl.outcomes))
         aligned_candidate_brier[slice_name] = cand_brier
@@ -418,9 +425,7 @@ def verify_candidate_vs_canonical(
         candidate_outcomes_full.extend(sl.outcomes)
 
     # Meta-gate stage: confound detection
-    max_delta_disagreement = max(
-        abs(raw_delta[s] - aligned_delta[s]) for s in eval_slices
-    )
+    max_delta_disagreement = max(abs(raw_delta[s] - aligned_delta[s]) for s in eval_slices)
     confound_detected = max_delta_disagreement > confound_threshold
     if confound_detected:
         confound_evidence = (
@@ -442,6 +447,7 @@ def verify_candidate_vs_canonical(
     # Formula-gate stage (applied to ALIGNED numbers)
     if contract is None:
         from ufc_prediction.ml.gate_contract import load_gate_contract
+
         contract = load_gate_contract(version="v2.6")
 
     floor_clears: dict[str, bool] = {}
@@ -638,20 +644,21 @@ def _build_width_mismatch_verdict(
         raw_delta[slice_name] = None  # type: ignore[assignment]
 
         aligned_baseline_preds = _predict_proba_with_pipeline(
-            refit_baseline, sl.feature_vectors,
+            refit_baseline,
+            sl.feature_vectors,
         )
         aligned_baseline_brier[slice_name] = _brier_score(
-            aligned_baseline_preds, list(sl.outcomes),
+            aligned_baseline_preds,
+            list(sl.outcomes),
         )
 
         candidate_preds = _predict_proba_with_pipeline(
-            candidate_pipeline, sl.feature_vectors,
+            candidate_pipeline,
+            sl.feature_vectors,
         )
         cand_brier = _brier_score(candidate_preds, list(sl.outcomes))
         aligned_candidate_brier[slice_name] = cand_brier
-        aligned_delta[slice_name] = (
-            aligned_baseline_brier[slice_name] - cand_brier
-        )
+        aligned_delta[slice_name] = aligned_baseline_brier[slice_name] - cand_brier
         # Width-mismatch confound -> no slice clears its floor (verdict
         # is forced to confound_block regardless, so this is cosmetic
         # for the formula-gate fields the dataclass requires).
@@ -771,10 +778,12 @@ def _build_candidate_width_mismatch_verdict(
         raw_delta[slice_name] = None  # type: ignore[assignment]
 
         aligned_baseline_preds = _predict_proba_with_pipeline(
-            refit_baseline, sl.feature_vectors,
+            refit_baseline,
+            sl.feature_vectors,
         )
         aligned_baseline_brier[slice_name] = _brier_score(
-            aligned_baseline_preds, list(sl.outcomes),
+            aligned_baseline_preds,
+            list(sl.outcomes),
         )
 
         # Candidate predict is SKIPPED — sentinel None per width-guard
@@ -973,12 +982,10 @@ def _combine_verdicts(
     # sets ``confound_evidence`` to a string containing
     # ``"width_mismatch_drift"`` (see ``_build_width_mismatch_verdict``).
     t1_is_width_mismatch = (
-        test_1.verdict == "confound_block"
-        and "width_mismatch" in test_1.confound_evidence
+        test_1.verdict == "confound_block" and "width_mismatch" in test_1.confound_evidence
     )
     t2_is_width_mismatch = (
-        test_2.verdict == "confound_block"
-        and "width_mismatch" in test_2.confound_evidence
+        test_2.verdict == "confound_block" and "width_mismatch" in test_2.confound_evidence
     )
     if t1_is_width_mismatch or t2_is_width_mismatch:
         which: list[str] = []

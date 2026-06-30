@@ -110,8 +110,7 @@ def test_argparse_help_exits_zero() -> None:
 def test_audit01_sha_constants_match_canonical() -> None:
     """Locked AUDIT-01 SHA constants equal the canonical hex values (D-10)."""
     assert (
-        EXPECTED_XGB_V2_SHA256
-        == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+        EXPECTED_XGB_V2_SHA256 == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
     )
     assert (
         EXPECTED_META_V2_SHA256
@@ -128,8 +127,7 @@ def test_feature_columns_layout_locked() -> None:
         f"got {len(META_V2_REFV2_FEATURE_COLUMNS)}"
     )
     assert META_V2_REFV2_FEATURE_COLUMNS[0] == "xgb_v2_refv2_oof", (
-        f"col[0] must be the candidate OOF source name; "
-        f"got {META_V2_REFV2_FEATURE_COLUMNS[0]!r}"
+        f"col[0] must be the candidate OOF source name; got {META_V2_REFV2_FEATURE_COLUMNS[0]!r}"
     )
     # cols[1..12] byte-equal canonical meta_v2_meta.json::meta_feature_columns[1:]
     canonical = json.loads(CANONICAL_META_JSON.read_text(encoding="utf-8"))
@@ -260,6 +258,7 @@ def test_build_live_13col_matrix_nan_guard_fires_when_col0_has_nan() -> None:
             x = np.zeros((2, 90), dtype=np.float64)
             y = np.array([0, 1], dtype=np.int64)
             from datetime import date as _date
+
             return (
                 x,
                 y,
@@ -284,12 +283,15 @@ def test_build_live_13col_matrix_nan_guard_fires_when_col0_has_nan() -> None:
     _sys.modules["ufc_prediction.ml.queries"] = fake_queries
 
     fake_session = types.ModuleType("ufc_prediction.db.session")
+
     class _FakeSessionLocal:
         def __call__(self):
             class _S:
                 def close(self):
                     pass
+
             return _S()
+
     fake_session.SessionLocal = _FakeSessionLocal()  # type: ignore[attr-defined]
     _sys.modules["ufc_prediction.db.session"] = fake_session
 
@@ -305,11 +307,13 @@ def test_build_live_13col_matrix_nan_guard_fires_when_col0_has_nan() -> None:
     # patch _build_live_13col_matrix's `keep_mask = np.array(...)` line.
     # Since editing inside the function isn't possible, we patch np.array
     # to override the keep_mask construction by detecting its signature.
-    oof_df = pd.DataFrame({
-        "fight_id": pd.array([1001], dtype="int64"),
-        "oof_prob": pd.array([0.42], dtype="float64"),
-        "event_date": pd.array(["2024-01-01"], dtype="object"),
-    })
+    oof_df = pd.DataFrame(
+        {
+            "fight_id": pd.array([1001], dtype="int64"),
+            "oof_prob": pd.array([0.42], dtype="float64"),
+            "event_date": pd.array(["2024-01-01"], dtype="object"),
+        }
+    )
 
     # Patch keep_mask via a stand-in: replace np.array within the module's
     # namespace just for the duration of the call.
@@ -327,6 +331,7 @@ def test_build_live_13col_matrix_nan_guard_fires_when_col0_has_nan() -> None:
     try:
         # Monkeypatch np.array within the function-import scope.
         import numpy
+
         numpy.array = _patched_array  # type: ignore[assignment]
         try:
             with pytest.raises(RuntimeError, match="NaN values in col"):
@@ -369,7 +374,7 @@ def test_build_live_13col_matrix_uses_unique_sentinel_for_missing_fight_id() -> 
         "is forbidden — it could collide with a real fight_id."
     )
     # And the constant -1 fallback in the rec.get pattern is gone.
-    assert ', -1)' not in src, (
+    assert ", -1)" not in src, (
         "CR-02 regression: constant -1 fallback re-introduced in "
         "_build_live_13col_matrix. Use per-row negative sentinels instead."
     )
@@ -436,8 +441,7 @@ def test_dry_run_emits_13wide_pipeline(dry_run_built: Path) -> None:
         if inner is not None:
             width = getattr(inner, "n_features_in_", None)
     assert width == 13, (
-        f"meta candidate width must be 13 (Phase 64 width-guard avoidance); "
-        f"got {width}"
+        f"meta candidate width must be 13 (Phase 64 width-guard avoidance); got {width}"
     )
 
 
@@ -461,9 +465,7 @@ def test_dry_run_sidecar_schema_locked(dry_run_built: Path) -> None:
 def test_audit01_invariants_unchanged_after_dry_run(dry_run_built: Path) -> None:
     """After running ``--mode synthetic``, the canonical SHAs are byte-identical."""
     assert dry_run_built is not None
-    sha_xgb = hashlib.sha256(
-        (REPO_ROOT / "models" / "xgb_v2.joblib").read_bytes()
-    ).hexdigest()
+    sha_xgb = hashlib.sha256((REPO_ROOT / "models" / "xgb_v2.joblib").read_bytes()).hexdigest()
     sha_meta = hashlib.sha256(
         (REPO_ROOT / "models" / "meta" / "meta_v2.joblib").read_bytes()
     ).hexdigest()
@@ -486,17 +488,27 @@ def test_dry_run_is_deterministic_across_reruns(tmp_path: Path) -> None:
 
     rc1 = main(
         [
-            "--mode", "synthetic", "--seed", "42",
-            "--output", str(out1_joblib),
-            "--output-meta", str(out1_meta),
+            "--mode",
+            "synthetic",
+            "--seed",
+            "42",
+            "--output",
+            str(out1_joblib),
+            "--output-meta",
+            str(out1_meta),
         ]
     )
     assert rc1 == 0
     rc2 = main(
         [
-            "--mode", "synthetic", "--seed", "42",
-            "--output", str(out2_joblib),
-            "--output-meta", str(out2_meta),
+            "--mode",
+            "synthetic",
+            "--seed",
+            "42",
+            "--output",
+            str(out2_joblib),
+            "--output-meta",
+            str(out2_meta),
         ]
     )
     assert rc2 == 0

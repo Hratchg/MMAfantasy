@@ -23,11 +23,11 @@ def rajeevw_fighters_csv(tmp_path: Path) -> Path:
     csv_content = (
         "fighter_name,Height,Weight,Reach,Stance,DOB,"
         "SLpM,Str_Acc,SApM,Str_Def,TD_Avg,TD_Acc,TD_Def,Sub_Avg\n"
-        "Jon Jones,6' 4\",205 lbs.,84.5\",Orthodox,"
+        'Jon Jones,6\' 4",205 lbs.,84.5",Orthodox,'
         '"Jul 19, 1987",4.29,57%,2.17,64%,1.83,44%,97%,0.44\n'
-        "Amanda Nunes,5' 8\",135 lbs.,69\",Orthodox,"
+        'Amanda Nunes,5\' 8",135 lbs.,69",Orthodox,'
         '"May 30, 1988",4.71,50%,4.12,54%,2.71,76%,85%,0.49\n'
-        'Test Fighter,--,--,--,,,,,,,,,,'
+        "Test Fighter,--,--,--,,,,,,,,,,"
     )
     csv_path = tmp_path / "raw_fighter_details.csv"
     csv_path.write_text(csv_content, encoding="utf-8")

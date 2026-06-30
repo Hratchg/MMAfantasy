@@ -16,9 +16,7 @@ from ufc_prediction.api.middleware.request_id import (
     request_id_ctxvar,
 )
 
-UUID4_RE = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-)
+UUID4_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
 @pytest.fixture()
@@ -98,6 +96,7 @@ def app_with_access_log():
     async def slow():
         # Tiny delay to keep duration > 0 reliably on fast machines.
         import asyncio
+
         await asyncio.sleep(0.005)
         return {"slow": True}
 
@@ -111,7 +110,8 @@ def access_log_client(app_with_access_log):
 
 
 def test_access_log_emits_single_record_with_required_keys(
-    access_log_client, caplog,
+    access_log_client,
+    caplog,
 ):
     """Test 1: After dispatch, exactly one record on ufc_prediction.access
     with extra fields containing path/method/status_code/duration_ms."""
@@ -119,12 +119,9 @@ def test_access_log_emits_single_record_with_required_keys(
     resp = access_log_client.get("/ok")
     assert resp.status_code == 200
 
-    access_records = [
-        r for r in caplog.records if r.name == "ufc_prediction.access"
-    ]
+    access_records = [r for r in caplog.records if r.name == "ufc_prediction.access"]
     assert len(access_records) == 1, (
-        f"expected 1 access log record, got {len(access_records)}: "
-        f"{access_records}"
+        f"expected 1 access log record, got {len(access_records)}: {access_records}"
     )
     rec = access_records[0]
     # path/method/status_code/duration_ms are injected via `extra` and
@@ -136,29 +133,27 @@ def test_access_log_emits_single_record_with_required_keys(
 
 
 def test_access_log_duration_is_positive_milliseconds_float(
-    access_log_client, caplog,
+    access_log_client,
+    caplog,
 ):
     """Test 2: duration_ms is a float, > 0, in millisecond units."""
     caplog.set_level(logging.INFO, logger="ufc_prediction.access")
     resp = access_log_client.get("/slow")
     assert resp.status_code == 200
 
-    access_records = [
-        r for r in caplog.records if r.name == "ufc_prediction.access"
-    ]
+    access_records = [r for r in caplog.records if r.name == "ufc_prediction.access"]
     assert len(access_records) == 1
     rec = access_records[0]
     assert isinstance(rec.duration_ms, float)
     assert rec.duration_ms > 0.0
     # Slow handler sleeps 5ms; duration should be at least ~1ms to confirm
     # millisecond units (a seconds-unit float would be 0.005).
-    assert rec.duration_ms >= 1.0, (
-        f"duration_ms={rec.duration_ms} looks like seconds not ms"
-    )
+    assert rec.duration_ms >= 1.0, f"duration_ms={rec.duration_ms} looks like seconds not ms"
 
 
 def test_access_log_logs_500_on_downstream_exception(
-    access_log_client, caplog,
+    access_log_client,
+    caplog,
 ):
     """Test 3: when handler raises, middleware still logs (status_code=500)
     and the exception bubbles up."""
@@ -167,9 +162,7 @@ def test_access_log_logs_500_on_downstream_exception(
     resp = access_log_client.get("/boom")
     assert resp.status_code == 500
 
-    access_records = [
-        r for r in caplog.records if r.name == "ufc_prediction.access"
-    ]
+    access_records = [r for r in caplog.records if r.name == "ufc_prediction.access"]
     assert len(access_records) == 1
     rec = access_records[0]
     assert rec.path == "/boom"
@@ -177,7 +170,8 @@ def test_access_log_logs_500_on_downstream_exception(
 
 
 def test_access_log_record_includes_request_id_via_contextvar(
-    access_log_client, caplog,
+    access_log_client,
+    caplog,
 ):
     """Test 4: With RequestIDMiddleware mounted, the access-log record
     can be correlated with the x-request-id (the contextvar is bound while
@@ -197,9 +191,7 @@ def test_access_log_record_includes_request_id_via_contextvar(
     rid = resp.headers["X-Request-ID"]
     assert UUID4_RE.match(rid), f"expected uuid4-shaped request id, got {rid!r}"
 
-    access_records = [
-        r for r in caplog.records if r.name == "ufc_prediction.access"
-    ]
+    access_records = [r for r in caplog.records if r.name == "ufc_prediction.access"]
     assert len(access_records) == 1
     # After the request completes, the contextvar resets (per
     # RequestIDMiddleware ``finally``) — verify symmetry.

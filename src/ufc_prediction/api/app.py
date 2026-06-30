@@ -50,7 +50,8 @@ PROBLEM_JSON_CONTENT_TYPE = "application/problem+json"
 
 
 def _problem_details_exception_handler(
-    request: Request, exc: Exception,
+    request: Request,
+    exc: Exception,
 ) -> JSONResponse:
     """Render HTTPExceptions as RFC 7807 problem+json when partner opts in.
 
@@ -67,7 +68,8 @@ def _problem_details_exception_handler(
         # Safety: never reached given the registration site below, but
         # keeps the function total in case the handler is reused.
         return JSONResponse(
-            status_code=500, content={"detail": "Internal Server Error"},
+            status_code=500,
+            content={"detail": "Internal Server Error"},
         )
     accept = request.headers.get("accept", "")
     status_code = exc.status_code
@@ -124,10 +126,12 @@ def create_app() -> FastAPI:
     # request; otherwise preserves FastAPI's default `{"detail": ...}` shape
     # (forward-compat lock for v1.0.0 / v1.1.0 / v1.2.0 partners).
     app.add_exception_handler(
-        HTTPException, _problem_details_exception_handler,
+        HTTPException,
+        _problem_details_exception_handler,
     )
     app.add_exception_handler(
-        StarletteHTTPException, _problem_details_exception_handler,
+        StarletteHTTPException,
+        _problem_details_exception_handler,
     )
 
     # 4. Middleware stack — Starlette ``add_middleware`` is LIFO, so the
@@ -152,19 +156,29 @@ def create_app() -> FastAPI:
     # 6. Mount /api/v1/* routers WITH require_api_key dependency.
     api_v1_deps = [Depends(require_api_key)]
     app.include_router(
-        fighters.router, prefix="/api/v1", dependencies=api_v1_deps,
+        fighters.router,
+        prefix="/api/v1",
+        dependencies=api_v1_deps,
     )
     app.include_router(
-        rankings.router, prefix="/api/v1", dependencies=api_v1_deps,
+        rankings.router,
+        prefix="/api/v1",
+        dependencies=api_v1_deps,
     )
     app.include_router(
-        matchup.router, prefix="/api/v1", dependencies=api_v1_deps,
+        matchup.router,
+        prefix="/api/v1",
+        dependencies=api_v1_deps,
     )
     app.include_router(
-        history.router, prefix="/api/v1", dependencies=api_v1_deps,
+        history.router,
+        prefix="/api/v1",
+        dependencies=api_v1_deps,
     )
     app.include_router(
-        v1_predict.router, prefix="/api/v1", dependencies=api_v1_deps,
+        v1_predict.router,
+        prefix="/api/v1",
+        dependencies=api_v1_deps,
     )
 
     # 7. Register /health + /ready as rate-limit-exempt (after their

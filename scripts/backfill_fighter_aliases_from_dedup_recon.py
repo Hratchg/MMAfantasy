@@ -75,6 +75,7 @@ per Path C extension closing the CHECKPOINT 1 52-row no-match gap):
                  (NOT ``"n/a"`` — distinguishes residual from same-card-
                  ambiguous which uses confidence=``"low"``). Path C update.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -98,8 +99,7 @@ from ufc_prediction.db.session import SessionLocal
 
 # Output CSV path (operator-reviewed before --apply)
 DEFAULT_OUT_CSV = Path(
-    ".planning/phases/28-referee-venue-ingestion-pipeline/"
-    "28-04-PROPOSED-ALIASES.csv"
+    ".planning/phases/28-referee-venue-ingestion-pipeline/28-04-PROPOSED-ALIASES.csv"
 )
 
 # Hardcoded tier-3 nickname registry. Diacritic-stripped canonical
@@ -248,15 +248,13 @@ CSV_HEADER = [
 # Name normalization helpers
 # ─────────────────────────────────────────────────────────────────────
 
+
 def _strip_diacritics(s: str) -> str:
     """NFKD decomposition + drop combining marks (handles "Filipović" →
     "Filipovic"). Matches the diacritic-stripped form used in
     NICKNAME_REGISTRY values.
     """
-    return "".join(
-        c for c in unicodedata.normalize("NFKD", s)
-        if not unicodedata.combining(c)
-    )
+    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
 
 
 def _norm(s: str) -> str:
@@ -296,9 +294,8 @@ def _first_tokens(name: str) -> set[str]:
 # Three-tier matcher (pure-Python; no DB)
 # ─────────────────────────────────────────────────────────────────────
 
-def _lookup_registry(
-    kaggle_name: str, registry: dict[str, str]
-) -> str | None:
+
+def _lookup_registry(kaggle_name: str, registry: dict[str, str]) -> str | None:
     """Case-insensitive normalized lookup against any registry dict.
     Returns the canonical ufcstats name string or None."""
     norm_key = _norm(kaggle_name)
@@ -441,17 +438,17 @@ def match_kaggle_to_ufcstats(
     if len(tier1_hits) == 1:
         cname, cid = tier1_hits[0]
         same_card = card_lastname_index.get(kaggle_last, [])
-        if (len(same_card) > 1
-                and cid in same_card
-                and kaggle_has_initial_first):
+        if len(same_card) > 1 and cid in same_card and kaggle_has_initial_first:
             # Kaggle first-name is an initial AND same-card collision:
             # genuine ambiguity → fall through to lower tiers / gate.
             pass
         else:
-            return cid, 1, (
-                f"tier1: exact last={kaggle_last!r} + first-token overlap "
-                f"→ {cname!r} (id={cid})"
-            ), "high"
+            return (
+                cid,
+                1,
+                (f"tier1: exact last={kaggle_last!r} + first-token overlap → {cname!r} (id={cid})"),
+                "high",
+            )
     elif len(tier1_hits) > 1:
         # Multiple tier-1 hits → ambiguous; fall through to gate
         pass
@@ -468,10 +465,15 @@ def match_kaggle_to_ufcstats(
                 (None, None),
             )
             if cid is not None:
-                return cid, 2, (
-                    f"tier2: exact last={kaggle_last!r}; same-card "
-                    f"uniqueness gate passed → {cname!r} (id={cid})"
-                ), "med"
+                return (
+                    cid,
+                    2,
+                    (
+                        f"tier2: exact last={kaggle_last!r}; same-card "
+                        f"uniqueness gate passed → {cname!r} (id={cid})"
+                    ),
+                    "med",
+                )
         # If gate would have promoted a tier-2 candidate but there are >1
         # last-name collisions on the card, that's the ambiguous case —
         # fall through to tier 3 and then to the explicit ambiguous
@@ -481,82 +483,137 @@ def match_kaggle_to_ufcstats(
     registry_canonical = _lookup_registry(kaggle_name, nickname_registry)
     if registry_canonical is not None:
         mid, where = _resolve_registry_canonical(
-            registry_canonical, ufcstats_candidates, global_ufcstats_name_index,
+            registry_canonical,
+            ufcstats_candidates,
+            global_ufcstats_name_index,
         )
         if mid is not None and where == "same-card":
-            return mid, 3, (
-                f"tier3: nickname registry {kaggle_name!r} → "
-                f"{registry_canonical!r} (id={mid})"
-            ), "med"
+            return (
+                mid,
+                3,
+                (f"tier3: nickname registry {kaggle_name!r} → {registry_canonical!r} (id={mid})"),
+                "med",
+            )
         if mid is not None and where == "global":
-            return mid, 3, (
+            return (
+                mid,
+                3,
+                (
+                    f"tier3: nickname registry {kaggle_name!r} → "
+                    f"{registry_canonical!r} (id={mid}; global ufcstats "
+                    f"lookup — canonical NOT on event-date roster)"
+                ),
+                "low",
+            )
+        return (
+            None,
+            3,
+            (
                 f"tier3: nickname registry {kaggle_name!r} → "
-                f"{registry_canonical!r} (id={mid}; global ufcstats "
-                f"lookup — canonical NOT on event-date roster)"
-            ), "low"
-        return None, 3, (
-            f"tier3: nickname registry {kaggle_name!r} → "
-            f"{registry_canonical!r} (NOT in same-card candidate pool — "
-            f"operator must look up canonical id manually)"
-        ), "low"
+                f"{registry_canonical!r} (NOT in same-card candidate pool — "
+                f"operator must look up canonical id manually)"
+            ),
+            "low",
+        )
 
     # ── Tier 4: women's MMA married-name registry ─────────────────────
     wmma_canonical = _lookup_registry(kaggle_name, WOMENS_MARRIED_NAME_REGISTRY)
     if wmma_canonical is not None:
         mid, where = _resolve_registry_canonical(
-            wmma_canonical, ufcstats_candidates, global_ufcstats_name_index,
+            wmma_canonical,
+            ufcstats_candidates,
+            global_ufcstats_name_index,
         )
         if mid is not None and where == "same-card":
-            return mid, 4, (
-                f"tier4: women's married-name registry lookup "
-                f"{kaggle_name!r} → {wmma_canonical!r} (id={mid})"
-            ), "med"
+            return (
+                mid,
+                4,
+                (
+                    f"tier4: women's married-name registry lookup "
+                    f"{kaggle_name!r} → {wmma_canonical!r} (id={mid})"
+                ),
+                "med",
+            )
         if mid is not None and where == "global":
-            return mid, 4, (
-                f"tier4: women's married-name registry {kaggle_name!r} "
-                f"→ {wmma_canonical!r} (id={mid}; global ufcstats lookup)"
-            ), "low"
-        return None, 4, (
-            f"tier4: women's married-name registry {kaggle_name!r} → "
-            f"{wmma_canonical!r} (NOT in same-card pool AND not in "
-            f"global ufcstats index)"
-        ), "low"
+            return (
+                mid,
+                4,
+                (
+                    f"tier4: women's married-name registry {kaggle_name!r} "
+                    f"→ {wmma_canonical!r} (id={mid}; global ufcstats lookup)"
+                ),
+                "low",
+            )
+        return (
+            None,
+            4,
+            (
+                f"tier4: women's married-name registry {kaggle_name!r} → "
+                f"{wmma_canonical!r} (NOT in same-card pool AND not in "
+                f"global ufcstats index)"
+            ),
+            "low",
+        )
 
     # ── Tier 5: Brazilian fight-nickname / suffix / typo / concat ────
     brazilian_canonical = _lookup_registry(
-        kaggle_name, BRAZILIAN_NICKNAME_REGISTRY,
+        kaggle_name,
+        BRAZILIAN_NICKNAME_REGISTRY,
     )
     if brazilian_canonical is not None:
         mid, where = _resolve_registry_canonical(
-            brazilian_canonical, ufcstats_candidates, global_ufcstats_name_index,
+            brazilian_canonical,
+            ufcstats_candidates,
+            global_ufcstats_name_index,
         )
         if mid is not None and where == "same-card":
-            return mid, 5, (
-                f"tier5: Brazilian-nickname/suffix registry "
-                f"{kaggle_name!r} → {brazilian_canonical!r} (id={mid})"
-            ), "med"
+            return (
+                mid,
+                5,
+                (
+                    f"tier5: Brazilian-nickname/suffix registry "
+                    f"{kaggle_name!r} → {brazilian_canonical!r} (id={mid})"
+                ),
+                "med",
+            )
         if mid is not None and where == "global":
-            return mid, 5, (
-                f"tier5: Brazilian-nickname/suffix registry "
-                f"{kaggle_name!r} → {brazilian_canonical!r} (id={mid}; "
-                f"global ufcstats lookup — canonical NOT on event-date roster)"
-            ), "low"
-        return None, 5, (
-            f"tier5: Brazilian-nickname/suffix registry {kaggle_name!r} "
-            f"→ {brazilian_canonical!r} (NOT in same-card pool AND not "
-            f"in global ufcstats index)"
-        ), "low"
+            return (
+                mid,
+                5,
+                (
+                    f"tier5: Brazilian-nickname/suffix registry "
+                    f"{kaggle_name!r} → {brazilian_canonical!r} (id={mid}; "
+                    f"global ufcstats lookup — canonical NOT on event-date roster)"
+                ),
+                "low",
+            )
+        return (
+            None,
+            5,
+            (
+                f"tier5: Brazilian-nickname/suffix registry {kaggle_name!r} "
+                f"→ {brazilian_canonical!r} (NOT in same-card pool AND not "
+                f"in global ufcstats index)"
+            ),
+            "low",
+        )
 
     # ── Tier 6: Asian name-order token-set permutation ────────────────
     tier6_id, tier6_name = _tier6_token_set_permutation_match(
-        kaggle_name, ufcstats_candidates,
+        kaggle_name,
+        ufcstats_candidates,
     )
     if tier6_id is not None:
-        return tier6_id, 6, (
-            f"tier6: name-token-set permutation match "
-            f"{_norm(kaggle_name)!r} ↔ {_norm(tier6_name)!r} "
-            f"(id={tier6_id})"
-        ), "med"
+        return (
+            tier6_id,
+            6,
+            (
+                f"tier6: name-token-set permutation match "
+                f"{_norm(kaggle_name)!r} ↔ {_norm(tier6_name)!r} "
+                f"(id={tier6_id})"
+            ),
+            "med",
+        )
 
     # ── Ambiguous-same-card-lastname sentinel ─────────────────────────
     # If we get here AND there are >1 ufcstats fighters with this last
@@ -564,22 +621,32 @@ def match_kaggle_to_ufcstats(
     # ambiguous sentinel (confidence='low' — distinguishes from
     # genuine residual which uses 'requires-manual-review').
     if len(card_lastname_index.get(kaggle_last, [])) > 1:
-        return None, "ambiguous-same-card-lastname", (
-            f"same-card uniqueness gate fired: {len(card_lastname_index[kaggle_last])} "
-            f"ufcstats fighters surnamed {kaggle_last!r} on {event_date}; "
-            f"operator must disambiguate via opponent context"
-        ), "low"
+        return (
+            None,
+            "ambiguous-same-card-lastname",
+            (
+                f"same-card uniqueness gate fired: {len(card_lastname_index[kaggle_last])} "
+                f"ufcstats fighters surnamed {kaggle_last!r} on {event_date}; "
+                f"operator must disambiguate via opponent context"
+            ),
+            "low",
+        )
 
     # ── No match (residual) ──────────────────────────────────────────
     # Path C update: residual confidence is 'requires-manual-review'
     # (NOT 'n/a') so operator review can distinguish residual classes.
     # Evidence records what was tried.
     n_card_candidates = len(ufcstats_candidates)
-    return None, "no-match", (
-        f"no-match: tried tiers 1-6 against {n_card_candidates} ufcstats "
-        f"fighters on {event_date}; not in any registry; no name-token "
-        f"permutation match"
-    ), "requires-manual-review"
+    return (
+        None,
+        "no-match",
+        (
+            f"no-match: tried tiers 1-6 against {n_card_candidates} ufcstats "
+            f"fighters on {event_date}; not in any registry; no name-token "
+            f"permutation match"
+        ),
+        "requires-manual-review",
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -635,9 +702,7 @@ def _build_same_card_lastname_index(
     session: Any,
 ) -> dict[date_type, dict[str, list[int]]]:
     """Build the same-card last-name index for the uniqueness gate."""
-    idx: dict[date_type, dict[str, list[int]]] = defaultdict(
-        lambda: defaultdict(list)
-    )
+    idx: dict[date_type, dict[str, list[int]]] = defaultdict(lambda: defaultdict(list))
     seen: set[tuple[date_type, int]] = set()
     for d, fid, fname in session.execute(text(_SAME_CARD_INDEX_SQL)).all():
         if (d, fid) in seen:
@@ -675,13 +740,16 @@ def _build_global_ufcstats_name_index(session: Any) -> dict[str, int]:
 def _candidates_for_date(session: Any, event_date: date_type) -> list[tuple[str, int]]:
     """Return all ufcstats fighters appearing on event_date as
     (name, fighter_id) tuples."""
-    rows = session.execute(text("""
+    rows = session.execute(
+        text("""
         SELECT DISTINCT f.name, f.id
         FROM events e
         JOIN fights ft ON ft.event_id = e.id
         JOIN fighters f ON f.id = ft.fighter_a_id OR f.id = ft.fighter_b_id
         WHERE e.source = 'ufcstats' AND f.source = 'ufcstats' AND e.date = :d
-    """), {"d": event_date}).all()
+    """),
+        {"d": event_date},
+    ).all()
     return [(r[0], r[1]) for r in rows]
 
 
@@ -729,9 +797,9 @@ def discover(out_csv_path: Path = DEFAULT_OUT_CSV) -> dict[str, int]:
                     if not proposed_name:
                         # Match returned an id NOT in same-card pool
                         # (registry global-fallback) — look up globally.
-                        gn = session.execute(text(
-                            "SELECT name FROM fighters WHERE id = :id"
-                        ), {"id": matched_id}).scalar()
+                        gn = session.execute(
+                            text("SELECT name FROM fighters WHERE id = :id"), {"id": matched_id}
+                        ).scalar()
                         proposed_name = gn or ""
                 per_fighter[key] = {
                     "kaggle_fighter_id": fid,
@@ -792,6 +860,7 @@ def discover(out_csv_path: Path = DEFAULT_OUT_CSV) -> dict[str, int]:
 # Apply — reads operator-reviewed CSV, inserts into fighter_aliases
 # ─────────────────────────────────────────────────────────────────────
 
+
 def apply_csv(csv_path: Path = DEFAULT_OUT_CSV) -> dict[str, int]:
     """Apply pass. Reads operator-reviewed CSV; inserts each row with
     ``confidence != "skip"`` AND match_tier != ambiguous into
@@ -808,19 +877,20 @@ def apply_csv(csv_path: Path = DEFAULT_OUT_CSV) -> dict[str, int]:
     with open(csv_path, encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for r in reader:
-            if (r["confidence"] == "skip"
-                    or r["confidence"] == "requires-manual-review"
-                    or r["match_tier"] == "ambiguous-same-card-lastname"
-                    or r["proposed_ufcstats_fighter_id"] == "UNRESOLVED"
-                    or not r["proposed_ufcstats_fighter_id"]):
+            if (
+                r["confidence"] == "skip"
+                or r["confidence"] == "requires-manual-review"
+                or r["match_tier"] == "ambiguous-same-card-lastname"
+                or r["proposed_ufcstats_fighter_id"] == "UNRESOLVED"
+                or not r["proposed_ufcstats_fighter_id"]
+            ):
                 skipped += 1
                 continue
             rows_to_apply.append(r)
 
     print(f"Loaded {len(rows_to_apply) + skipped} rows from {csv_path}")
     print(f"  to apply: {len(rows_to_apply)}")
-    print(f"  skipped (confidence=skip/requires-manual-review / "
-          f"ambiguous / unresolved): {skipped}")
+    print(f"  skipped (confidence=skip/requires-manual-review / ambiguous / unresolved): {skipped}")
 
     # Determine the kaggle source label per (kaggle_fighter_id) lookup —
     # the fighter_aliases.source column must be the kaggle source
@@ -829,9 +899,9 @@ def apply_csv(csv_path: Path = DEFAULT_OUT_CSV) -> dict[str, int]:
         # Pre-fetch sources for all kaggle fighter_ids
         kaggle_ids = [int(r["kaggle_fighter_id"]) for r in rows_to_apply]
         if kaggle_ids:
-            src_rows = session.execute(text(
-                "SELECT id, source FROM fighters WHERE id = ANY(:ids)"
-            ), {"ids": kaggle_ids}).all()
+            src_rows = session.execute(
+                text("SELECT id, source FROM fighters WHERE id = ANY(:ids)"), {"ids": kaggle_ids}
+            ).all()
             kaggle_id_to_source = {r[0]: r[1] for r in src_rows}
         else:
             kaggle_id_to_source = {}
@@ -839,10 +909,12 @@ def apply_csv(csv_path: Path = DEFAULT_OUT_CSV) -> dict[str, int]:
         # Dry-run preview
         print("\nDry-run preview (first 5):")
         for r in rows_to_apply[:5]:
-            print(f"  alias_name={r['kaggle_fighter_name']!r} "
-                  f"source={kaggle_id_to_source.get(int(r['kaggle_fighter_id']), '???')!r} "
-                  f"→ fighter_id={r['proposed_ufcstats_fighter_id']} "
-                  f"({r['proposed_ufcstats_fighter_name']})")
+            print(
+                f"  alias_name={r['kaggle_fighter_name']!r} "
+                f"source={kaggle_id_to_source.get(int(r['kaggle_fighter_id']), '???')!r} "
+                f"→ fighter_id={r['proposed_ufcstats_fighter_id']} "
+                f"({r['proposed_ufcstats_fighter_name']})"
+            )
 
         # Interactive gate
         ans = input("\nconfirm? [y/N]: ").strip().lower()
@@ -865,11 +937,14 @@ def apply_csv(csv_path: Path = DEFAULT_OUT_CSV) -> dict[str, int]:
             try:
                 # ON CONFLICT DO NOTHING via raw SQL (SQLAlchemy ORM
                 # IntegrityError-on-flush would abort the transaction).
-                result = session.execute(text("""
+                result = session.execute(
+                    text("""
                     INSERT INTO fighter_aliases (fighter_id, alias_name, source)
                     VALUES (:fid, :alias, :src)
                     ON CONFLICT (alias_name, source) DO NOTHING
-                """), {"fid": ufc_id, "alias": alias_name, "src": kaggle_source})
+                """),
+                    {"fid": ufc_id, "alias": alias_name, "src": kaggle_source},
+                )
                 if result.rowcount == 1:
                     inserted += 1
                 else:
@@ -880,8 +955,7 @@ def apply_csv(csv_path: Path = DEFAULT_OUT_CSV) -> dict[str, int]:
                 session.rollback()
 
         session.commit()
-        print(f"\nDone. inserted={inserted} on-conflict-skipped={conflicts} "
-              f"errors={errors}")
+        print(f"\nDone. inserted={inserted} on-conflict-skipped={conflicts} errors={errors}")
         return {
             "inserted": inserted,
             "skipped": skipped,
@@ -894,19 +968,25 @@ def apply_csv(csv_path: Path = DEFAULT_OUT_CSV) -> dict[str, int]:
 # CLI entrypoint
 # ─────────────────────────────────────────────────────────────────────
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description=("Discover (default) or --apply operator-reviewed "
-                     "fighter alias mappings from the Plan 28-03 "
-                     "no-pair-match recon residual."),
+        description=(
+            "Discover (default) or --apply operator-reviewed "
+            "fighter alias mappings from the Plan 28-03 "
+            "no-pair-match recon residual."
+        ),
     )
     parser.add_argument(
-        "--apply", action="store_true",
+        "--apply",
+        action="store_true",
         help="Read the operator-reviewed CSV and INSERT into fighter_aliases "
-             "(with confirm prompt). Default: discovery only — no DB writes.",
+        "(with confirm prompt). Default: discovery only — no DB writes.",
     )
     parser.add_argument(
-        "--csv", type=Path, default=DEFAULT_OUT_CSV,
+        "--csv",
+        type=Path,
+        default=DEFAULT_OUT_CSV,
         help=f"Path to CSV (default: {DEFAULT_OUT_CSV}).",
     )
     args = parser.parse_args()

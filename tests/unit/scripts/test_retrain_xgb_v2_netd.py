@@ -135,8 +135,7 @@ def test_argparse_help_exits_zero() -> None:
 def test_expected_xgb_v2_sha256_matches_audit01() -> None:
     """The locked AUDIT-01 SHA constant matches the canonical hex (D-10)."""
     assert (
-        EXPECTED_XGB_V2_SHA256
-        == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+        EXPECTED_XGB_V2_SHA256 == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
     )
 
 
@@ -360,12 +359,8 @@ def test_compute_net_v2_columns_returns_pair_aligned_with_rows() -> None:
     assert len(pagerank_col) == 3
     assert len(sos_col) == 3
     # Row 0: debutant at as_of=2020-01-01 (graph empty for that as_of_date).
-    assert math.isnan(pagerank_col[0]), (
-        f"row 0 should be debutant (NaN); got {pagerank_col[0]!r}"
-    )
-    assert math.isnan(sos_col[0]), (
-        f"row 0 sos should be NaN (debutant); got {sos_col[0]!r}"
-    )
+    assert math.isnan(pagerank_col[0]), f"row 0 should be debutant (NaN); got {pagerank_col[0]!r}"
+    assert math.isnan(sos_col[0]), f"row 0 sos should be NaN (debutant); got {sos_col[0]!r}"
 
 
 # ── Heavy tier (GATED by RUN_HEAVY_TESTS=1) ───────────────────────────────
@@ -466,9 +461,7 @@ def test_dry_run_oof_parquet_schema(dry_run_built: Path) -> None:
 def test_audit01_invariants_unchanged_after_dry_run(dry_run_built: Path) -> None:
     """After running ``--dry-run``, the canonical SHAs are byte-identical."""
     assert dry_run_built is not None
-    sha_xgb = hashlib.sha256(
-        (REPO_ROOT / "models" / "xgb_v2.joblib").read_bytes()
-    ).hexdigest()
+    sha_xgb = hashlib.sha256((REPO_ROOT / "models" / "xgb_v2.joblib").read_bytes()).hexdigest()
     sha_meta = hashlib.sha256(
         (REPO_ROOT / "models" / "meta" / "meta_v2.joblib").read_bytes()
     ).hexdigest()

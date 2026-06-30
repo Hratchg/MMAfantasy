@@ -30,9 +30,7 @@ def _load_script_module():
 
     Pure import to keep tests independent of sys.path tweaks.
     """
-    spec = importlib.util.spec_from_file_location(
-        "verify_travel_oof_v25", SCRIPT_PATH
-    )
+    spec = importlib.util.spec_from_file_location("verify_travel_oof_v25", SCRIPT_PATH)
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot load spec for {SCRIPT_PATH}")
     module = importlib.util.module_from_spec(spec)
@@ -58,6 +56,7 @@ def _gate_stub(
 # ─────────────────────────────────────────────────────────────────────────────
 # Behavior 1: artifact verdict — re-measurement evaporates the phase-42 delta
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_classify_artifact_when_re_measurement_evaporates_delta():
     """|re_measured| < 0.05 on >=2/3 slices AND phase_42 > 0.20 -> artifact."""
@@ -90,6 +89,7 @@ def test_classify_artifact_when_re_measurement_evaporates_delta():
 # Behavior 2: real verdict — re-measurement survives, floor clears
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_classify_real_when_re_measurement_survives_and_floor_clears():
     """All slices clear floor AND >=2/3 slices have delta >= 0.003 -> real."""
     mod = _load_script_module()
@@ -120,6 +120,7 @@ def test_classify_real_when_re_measurement_survives_and_floor_clears():
 # ─────────────────────────────────────────────────────────────────────────────
 # Behavior 3: real_but_floor_misses — delta survives but floor breaks on a slice
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_classify_real_but_floor_misses_when_floor_breaks_on_any_slice():
     """Delta >= 0.003 on majority but floor fails on any slice -> no promote."""
@@ -152,6 +153,7 @@ def test_classify_real_but_floor_misses_when_floor_breaks_on_any_slice():
 # Behavior 4: artifact_explanation quotes BOTH source deltas side-by-side
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_oof_source_divergence_explanation_quotes_both_deltas():
     """artifact_explanation() string contains both phase_42 (+0.249) and
     re-measurement delta numbers so the audit trail is reproducible."""
@@ -181,6 +183,7 @@ def test_oof_source_divergence_explanation_quotes_both_deltas():
 # Behavior 5: artifact verdict -> conservative path locked downstream
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_downstream_implication_artifact_locks_conservative_path():
     """verdict == 'artifact' -> downstream_implication reads 'conservative
     path locked: TRAVEL cols 75-80 ONLY in Wave 2 meta_v3 input space'."""
@@ -194,6 +197,7 @@ def test_downstream_implication_artifact_locks_conservative_path():
 # ─────────────────────────────────────────────────────────────────────────────
 # Behavior 6: real verdict -> v2.6 backlog entry + conservative path stays
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_downstream_implication_real_flags_v26_backlog_but_keeps_conservative():
     """verdict == 'real' -> downstream_implication mentions v2.6 META-V24 backlog
@@ -211,6 +215,7 @@ def test_downstream_implication_real_flags_v26_backlog_but_keeps_conservative():
 # ─────────────────────────────────────────────────────────────────────────────
 # Extra: real_but_floor_misses also documents same conservative path
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_downstream_implication_real_but_floor_misses_keeps_conservative():
     mod = _load_script_module()

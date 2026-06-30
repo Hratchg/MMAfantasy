@@ -67,6 +67,7 @@ HALT.md` if emitted), verifies `30-XGB-V2-SHA-PHASE-30-END.txt` matches the
 baseline SHA, and commits the artifacts manually (Pitfall D — spike does
 NOT call git).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -84,9 +85,7 @@ import numpy as np
 # AUDIT-01 binding: models/xgb_v2.joblib SHA-256. Preserved end-to-end via
 # MID + END SHA assertions (Phase 30 MID artifact was emitted by Plan 30-01;
 # this script emits the END artifact at completion).
-EXPECTED_XGB_V2_SHA: str = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
+EXPECTED_XGB_V2_SHA: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 
 # D-08 formula hash binding — preserved verbatim from v2.2 spike. The reduction
 # `std_used = max(seed_std, bootstrap_ci_half)` lives in
@@ -97,9 +96,7 @@ FORMULA_SOURCE: str = (
     "gate_accuracy_min = round(median_acc + 1 * max(seed_std_acc, "
     "bootstrap_ci_half_acc), 4)"
 )
-EXPECTED_FORMULA_HASH: str = (
-    "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
-)
+EXPECTED_FORMULA_HASH: str = "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
 
 # D-04: 10-seed default (extends v2.2's 5-seed set 42..46 by appending 47..51).
 SEEDS_DEFAULT: tuple[int, ...] = (42, 43, 44, 45, 46, 47, 48, 49, 50, 51)
@@ -112,13 +109,13 @@ PLAN_29_03_TOLERANCE: float = 0.0001
 
 # Per-slice keys (mirrors evaluator.PER_SLICE_KEYS).
 PER_SLICE_KEYS: tuple[str, str, str] = (
-    "most_recent_12mo", "most_recent_24mo", "random_15pct",
+    "most_recent_12mo",
+    "most_recent_24mo",
+    "random_15pct",
 )
 
 # Artifact output paths.
-PHASE30_DIR: Path = Path(
-    ".planning/phases/30-multi-seed-variance-harness"
-)
+PHASE30_DIR: Path = Path(".planning/phases/30-multi-seed-variance-harness")
 VARIANCE_REPORT_PATH: Path = PHASE30_DIR / "30-VARIANCE-REPORT.md"
 VARIANCE_HALT_PATH: Path = PHASE30_DIR / "30-VARIANCE-HALT.md"
 SHA_END_PATH: Path = PHASE30_DIR / "30-XGB-V2-SHA-PHASE-30-END.txt"
@@ -137,8 +134,7 @@ def _assert_xgb_v2_sha(label: str) -> str:
     sha = hashlib.sha256(joblib_bytes).hexdigest()
     if sha != EXPECTED_XGB_V2_SHA:
         raise SystemExit(
-            f"[spike-v23] AUDIT-01 violation at {label}: got {sha}, "
-            f"expected {EXPECTED_XGB_V2_SHA}"
+            f"[spike-v23] AUDIT-01 violation at {label}: got {sha}, expected {EXPECTED_XGB_V2_SHA}"
         )
     print(f"[spike-v23] AUDIT-01 {label} SHA OK: {sha[:16]}...")
     return sha
@@ -157,10 +153,7 @@ def _assert_formula_hash() -> str:
             f"{EXPECTED_FORMULA_HASH}. Operator must re-approve formula "
             "before spike can emit variance report."
         )
-    print(
-        f"[spike-v23] FORMULA_HASH OK: {computed[:16]}... "
-        "(D-08 / v2.2 lineage preserved)"
-    )
+    print(f"[spike-v23] FORMULA_HASH OK: {computed[:16]}... (D-08 / v2.2 lineage preserved)")
     return computed
 
 
@@ -175,6 +168,7 @@ def _meta_fit_fn(X_train: np.ndarray, y_train: np.ndarray, seed: int):
     # Import inside the closure so module-level import time stays cheap and
     # the dry-path tests don't pay the sklearn cost twice.
     from ufc_prediction.ml.meta_learner import MetaLearnerLogistic
+
     return MetaLearnerLogistic(random_state=int(seed)).fit(X_train, y_train)
 
 
@@ -203,6 +197,7 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
         generate_oof_predictions,
         make_three_way_split,
     )
+
     # Re-use train_meta_v22 helpers verbatim so the data path is
     # bit-identical (Plan 29-03 canonical lineage binding).
     # NOTE: scripts/ is not on sys.path by default; add it lazily.
@@ -220,15 +215,12 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
     )
 
     if dry_run:
-        X_v22, y, fight_dates, fight_ids, _base_cutoff, _today = (
-            _build_synthetic_data_v22()
-        )
+        X_v22, y, fight_dates, fight_ids, _base_cutoff, _today = _build_synthetic_data_v22()
         fight_records = [
             {
                 "fight_id": fight_ids[i],
                 "event_date": (
-                    fight_dates[i].item()
-                    if hasattr(fight_dates[i], "item") else fight_dates[i]
+                    fight_dates[i].item() if hasattr(fight_dates[i], "item") else fight_dates[i]
                 ),
                 "fighter_a_id": i * 2,
                 "fighter_b_id": i * 2 + 1,
@@ -239,28 +231,22 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
         X_v22, y, fight_dates, fight_records = _load_assembled_data_v22()
 
     META_EVAL_WINDOW_DAYS = 730
-    base_train_fights, meta_train_fights, meta_eval_fights = (
-        make_three_way_split(
-            fight_records,
-            base_cutoff=_date.fromisoformat(EXPECTED_CUTOFF_DATE),
-            meta_eval_window_days=META_EVAL_WINDOW_DAYS,
-            today=_date.today(),
-        )
+    base_train_fights, meta_train_fights, meta_eval_fights = make_three_way_split(
+        fight_records,
+        base_cutoff=_date.fromisoformat(EXPECTED_CUTOFF_DATE),
+        meta_eval_window_days=META_EVAL_WINDOW_DAYS,
+        today=_date.today(),
     )
     if len(meta_train_fights) == 0 or len(meta_eval_fights) == 0:
-        raise SystemExit(
-            "[spike-v23] FATAL: empty meta_train or meta_eval partition."
-        )
+        raise SystemExit("[spike-v23] FATAL: empty meta_train or meta_eval partition.")
 
     meta_train_ids = {f["fight_id"] for f in meta_train_fights}
     meta_eval_ids = {f["fight_id"] for f in meta_eval_fights}
     meta_train_idx = np.array(
-        [i for i, f in enumerate(fight_records)
-         if f["fight_id"] in meta_train_ids]
+        [i for i, f in enumerate(fight_records) if f["fight_id"] in meta_train_ids]
     )
     meta_eval_idx = np.array(
-        [i for i, f in enumerate(fight_records)
-         if f["fight_id"] in meta_eval_ids]
+        [i for i, f in enumerate(fight_records) if f["fight_id"] in meta_eval_ids]
     )
 
     # OOF base predictions on the 72-col view (Pitfall #2 guard active).
@@ -268,7 +254,9 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
     _enforce_72col_view(X_oof)
 
     xgb_oof_prob, _oof_meta = generate_oof_predictions(
-        X_oof, y[meta_train_idx], fight_dates[meta_train_idx],
+        X_oof,
+        y[meta_train_idx],
+        fight_dates[meta_train_idx],
         base_trainer=None,
         cache_path=META_OOF_PARQUET_PATH,
         force_rebuild=False,
@@ -287,22 +275,23 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
     else:
         from ufc_prediction.db.session import SessionLocal
         from ufc_prediction.ml.queries import load_elo_features
+
         _session = SessionLocal()
         try:
             _elo_features = load_elo_features(_session)
         finally:
             _session.close()
-        elo_prob_train = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_train_idx
-        ])
-        elo_prob_eval = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_eval_idx
-        ])
+        elo_prob_train = np.array(
+            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_train_idx]
+        )
+        elo_prob_eval = np.array(
+            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_eval_idx]
+        )
 
     X_meta_train = build_meta_features_v22(
-        xgb_oof_aligned, elo_prob_train, X_v22[meta_train_idx],
+        xgb_oof_aligned,
+        elo_prob_train,
+        X_v22[meta_train_idx],
     )
     y_meta_train = y[meta_train_idx]
 
@@ -311,11 +300,14 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
     base_estimator = _make_oof_estimator(seed=42)
     xgb_eval_prob = _build_meta_eval_xgb_probs(
         base_estimator,
-        X_v22[meta_train_idx][:, :72], y[meta_train_idx],
+        X_v22[meta_train_idx][:, :72],
+        y[meta_train_idx],
         X_v22[meta_eval_idx][:, :72],
     )
     X_meta_eval = build_meta_features_v22(
-        xgb_eval_prob, elo_prob_eval, X_v22[meta_eval_idx],
+        xgb_eval_prob,
+        elo_prob_eval,
+        X_v22[meta_eval_idx],
     )
     y_meta_eval = y[meta_eval_idx]
     fight_dates_eval = fight_dates[meta_eval_idx]
@@ -324,20 +316,21 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
     # from train_meta_v22.py:444-529).
     NAN_DROP_POLICY = "per_feature_strict_baseline"
     BASELINE_COLS = ("xgb_oof_prob", "elo_prob")
-    NON_BASELINE_IDX = [
-        i for i, c in enumerate(META_V22_FEATURE_COLUMNS)
-        if c not in BASELINE_COLS
-    ]
+    NON_BASELINE_IDX = [i for i, c in enumerate(META_V22_FEATURE_COLUMNS) if c not in BASELINE_COLS]
 
     eval_mask = apply_nan_drop_policy(
-        X_meta_eval, META_V22_FEATURE_COLUMNS, policy=NAN_DROP_POLICY,
+        X_meta_eval,
+        META_V22_FEATURE_COLUMNS,
+        policy=NAN_DROP_POLICY,
     )
     X_meta_eval = X_meta_eval[eval_mask]
     y_meta_eval = y_meta_eval[eval_mask]
     fight_dates_eval = fight_dates_eval[eval_mask]
 
     train_mask = apply_nan_drop_policy(
-        X_meta_train, META_V22_FEATURE_COLUMNS, policy=NAN_DROP_POLICY,
+        X_meta_train,
+        META_V22_FEATURE_COLUMNS,
+        policy=NAN_DROP_POLICY,
     )
     X_meta_train_clean = X_meta_train[train_mask]
     y_meta_train_clean = y_meta_train[train_mask]
@@ -356,14 +349,19 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
             X_meta_eval[eval_nan, idx] = median_val
 
     return (
-        X_meta_train_clean, y_meta_train_clean,
-        X_meta_eval, y_meta_eval, fight_dates_eval,
+        X_meta_train_clean,
+        y_meta_train_clean,
+        X_meta_eval,
+        y_meta_eval,
+        fight_dates_eval,
     )
 
 
 def _no_bootstrap_metrics(
-    X_train: np.ndarray, y_train: np.ndarray,
-    X_eval: np.ndarray, y_eval: np.ndarray,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_eval: np.ndarray,
+    y_eval: np.ndarray,
     fight_dates_eval: np.ndarray,
     seeds: list[int],
 ) -> dict[int, dict]:
@@ -392,11 +390,15 @@ def _no_bootstrap_metrics(
     if not seeds:
         raise ValueError("_no_bootstrap_metrics: seeds must be non-empty")
     from ufc_prediction.ml.evaluator import evaluate_per_slice
+
     per_seed: dict[int, dict] = {}
     for seed in seeds:
         model = _meta_fit_fn(X_train, y_train, int(seed))
         per_seed[int(seed)] = evaluate_per_slice(
-            model, X_eval, y_eval, fight_dates_eval,
+            model,
+            X_eval,
+            y_eval,
+            fight_dates_eval,
         )
     return per_seed
 
@@ -420,74 +422,76 @@ def _render_variance_halt(
         "phase: 30-multi-seed-variance-harness",
         "artifact: VARIANCE-HALT",
         f"triggered_at: {triggered_at}",
-        ('trigger_condition: "seed_std_brier == 0 OR seed_std_acc == 0 '
-         'on at least one slice"'),
+        ('trigger_condition: "seed_std_brier == 0 OR seed_std_acc == 0 on at least one slice"'),
         "operator_decision_required: true",
         "outcome_paths:",
         "  - id: bootstrap_no_op_investigate",
-        ('    description: "Diagnose why bootstrap collapsed; fix '
-         'variance.py or fit_fn closure; re-run spike"'),
+        (
+            '    description: "Diagnose why bootstrap collapsed; fix '
+            'variance.py or fit_fn closure; re-run spike"'
+        ),
         "  - id: accept_collapse_and_proceed",
-        ('    description: "(Discouraged) accept zero-variance for this '
-         'slice; Phase 31 will gate on seed_std=0 -- gate formula '
-         'effectively degenerates"'),
+        (
+            '    description: "(Discouraged) accept zero-variance for this '
+            "slice; Phase 31 will gate on seed_std=0 -- gate formula "
+            'effectively degenerates"'
+        ),
         "---",
         "",
         "# Phase 30 VARIANCE-HALT",
         "",
-        ("**One or more slices produced `seed_std_brier == 0` or "
-         "`seed_std_acc == 0`.**"),
+        ("**One or more slices produced `seed_std_brier == 0` or `seed_std_acc == 0`.**"),
         "",
-        ("**This is the v2.2 collapsed-variance regression D-06 was added "
-         "to catch.** The v2.2 5-seed META spike at `train_meta_v22.py:"
-         "531-543` shipped 5 bit-identical metric tuples because "
-         "`MetaLearnerLogistic(random_state=seed)` is a no-op for the "
-         "closed-form LR solver. Phase 30 injects bootstrap resamples "
-         "on the meta-train rows to produce real variance -- if THIS "
-         "spike still collapses, the bootstrap itself has no-op'd."),
+        (
+            "**This is the v2.2 collapsed-variance regression D-06 was added "
+            "to catch.** The v2.2 5-seed META spike at `train_meta_v22.py:"
+            "531-543` shipped 5 bit-identical metric tuples because "
+            "`MetaLearnerLogistic(random_state=seed)` is a no-op for the "
+            "closed-form LR solver. Phase 30 injects bootstrap resamples "
+            "on the meta-train rows to produce real variance -- if THIS "
+            "spike still collapses, the bootstrap itself has no-op'd."
+        ),
         "",
         "## Affected Slices",
         "",
-        ("| Slice | seed_std_brier | seed_std_acc | distinct Brier count "
-         f"(n={len(per_seed)}) |"),
-        ("|-------|---------------|--------------|----------------------"
-         "----------|"),
+        (f"| Slice | seed_std_brier | seed_std_acc | distinct Brier count (n={len(per_seed)}) |"),
+        ("|-------|---------------|--------------|--------------------------------|"),
     ]
     for slc in zero_variance_slices:
-        n_distinct = len({
-            per_seed[s][slc]["brier_score"] for s in per_seed
-        })
+        n_distinct = len({per_seed[s][slc]["brier_score"] for s in per_seed})
         lines.append(
             f"| {slc} | "
             f"{aggregated[slc]['seed_std_brier']:.6f} | "
             f"{aggregated[slc]['seed_std_acc']:.6f} | "
             f"{n_distinct} |"
         )
-    lines.extend([
-        "",
-        "## Per-Seed Brier (all slices, all seeds)",
-        "",
-        ("| Seed | 12mo Brier | 24mo Brier | random_15pct Brier |"),
-        ("|------|-----------|-----------|---------------------|"),
-    ])
+    lines.extend(
+        [
+            "",
+            "## Per-Seed Brier (all slices, all seeds)",
+            "",
+            ("| Seed | 12mo Brier | 24mo Brier | random_15pct Brier |"),
+            ("|------|-----------|-----------|---------------------|"),
+        ]
+    )
     for seed in per_seed:
         ps = per_seed[seed]
         b12 = ps["most_recent_12mo"]["brier_score"]
         b24 = ps["most_recent_24mo"]["brier_score"]
         br = ps["random_15pct"]["brier_score"]
-        lines.append(
-            f"| {seed} | {b12:.6f} | {b24:.6f} | {br:.6f} |"
-        )
-    lines.extend([
-        "",
-        "## Operator Action Required",
-        "",
-        "Set `actual_outcome` in `30-SUMMARY.md` frontmatter to one of:",
-        "- `bootstrap_no_op_investigate`",
-        "- `accept_collapse_and_proceed`",
-        "",
-        "Then run `/gsd-execute-phase 30` resumption.",
-    ])
+        lines.append(f"| {seed} | {b12:.6f} | {b24:.6f} | {br:.6f} |")
+    lines.extend(
+        [
+            "",
+            "## Operator Action Required",
+            "",
+            "Set `actual_outcome` in `30-SUMMARY.md` frontmatter to one of:",
+            "- `bootstrap_no_op_investigate`",
+            "- `accept_collapse_and_proceed`",
+            "",
+            "Then run `/gsd-execute-phase 30` resumption.",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -531,81 +535,98 @@ def _render_variance_report(
         f"xgb_v2_sha256: {xgb_v2_sha}",
         "outcome_paths:",
         "  - id: path_a_non_zero_variance",
-        ('    description: "All 3 slices produced non-zero seed_std -- '
-         'advance to Phase 31 gate spike with empirically-honest variance"'),
+        (
+            '    description: "All 3 slices produced non-zero seed_std -- '
+            'advance to Phase 31 gate spike with empirically-honest variance"'
+        ),
         "  - id: path_b_collapse_halted",
-        ('    description: "One or more slices collapsed to seed_std == 0 '
-         '-- 30-VARIANCE-HALT.md emitted; operator decision required"'),
+        (
+            '    description: "One or more slices collapsed to seed_std == 0 '
+            '-- 30-VARIANCE-HALT.md emitted; operator decision required"'
+        ),
         f"actual_outcome: {outcome_path}",
     ]
     if canonical_lineage_brier is not None:
-        lines.extend([
-            f"canonical_lineage_brier_random_15pct: {canonical_lineage_brier:.6f}",
-            f"canonical_lineage_target: {PLAN_29_03_RANDOM_15PCT_BRIER:.4f}",
-            f"canonical_lineage_tolerance: {PLAN_29_03_TOLERANCE:.4f}",
-            ("canonical_lineage_match: " + str(
-                abs(canonical_lineage_brier - PLAN_29_03_RANDOM_15PCT_BRIER)
-                < PLAN_29_03_TOLERANCE
-            )),
-        ])
-    lines.extend([
-        "---",
-        "",
-        "# Phase 30 -- Multi-Seed Variance Report (v2.3)",
-        "",
-        f"**Spike started:** {spike_started.isoformat()}  ",
-        f"**Spike finished:** {spike_finished.isoformat()}  ",
-        f"**Spike duration:** {duration_min:.2f} min",
-        "",
-        f"**Seeds:** {list(seeds)} (n={len(seeds)})  ",
-        f"**Bootstrap enabled:** {bootstrap_enabled}  ",
-        f"**Meta-train rows (clean):** {n_meta_train}  ",
-        f"**Meta-eval rows (clean):** {n_meta_eval}  ",
-        f"**Formula hash:** `{EXPECTED_FORMULA_HASH}`  ",
-        f"**xgb_v2.joblib SHA-256:** `{xgb_v2_sha}` (AUDIT-01 byte-identity)  ",
-        "",
-        "**Formula:** "
-        "`gate_brier_max = round(median_brier - 1 * max(seed_std_brier, "
-        "bootstrap_ci_half_brier), 4)`; "
-        "`gate_accuracy_min = round(median_acc + 1 * max(seed_std_acc, "
-        "bootstrap_ci_half_acc), 4)` "
-        "(D-08; preserved verbatim from v2.2 spike via "
-        "`variance.aggregate_variance`).",
-        "",
-        "---",
-        "",
-        "## Outcome",
-        "",
-        f"**Actual outcome:** `{outcome_path}`",
-        "",
-        "**Pre-templated outcome paths (D-09 carry-forward):**",
-        "- `path_a_non_zero_variance`: All 3 slices produced non-zero "
-        "seed_std -- advance to Phase 31 gate spike with empirically-honest "
-        "variance.",
-        "- `path_b_collapse_halted`: One or more slices collapsed to "
-        "seed_std == 0 -- `30-VARIANCE-HALT.md` emitted; operator decision "
-        "required before Phase 31 can run.",
-        "",
-        "---",
-        "",
-        "## Per-Slice Variance (D-08 + Pitfall-B carry-forward)",
-        "",
-        ("| Slice | seed_std_brier | seed_std_acc | bootstrap_ci_half_brier"
-         " | bootstrap_ci_half_acc | std_brier_used | std_acc_used |"),
-        ("|-------|---------------|--------------|------------------------"
-         "-|----------------------|----------------|---------------|"),
-    ])
+        lines.extend(
+            [
+                f"canonical_lineage_brier_random_15pct: {canonical_lineage_brier:.6f}",
+                f"canonical_lineage_target: {PLAN_29_03_RANDOM_15PCT_BRIER:.4f}",
+                f"canonical_lineage_tolerance: {PLAN_29_03_TOLERANCE:.4f}",
+                (
+                    "canonical_lineage_match: "
+                    + str(
+                        abs(canonical_lineage_brier - PLAN_29_03_RANDOM_15PCT_BRIER)
+                        < PLAN_29_03_TOLERANCE
+                    )
+                ),
+            ]
+        )
+    lines.extend(
+        [
+            "---",
+            "",
+            "# Phase 30 -- Multi-Seed Variance Report (v2.3)",
+            "",
+            f"**Spike started:** {spike_started.isoformat()}  ",
+            f"**Spike finished:** {spike_finished.isoformat()}  ",
+            f"**Spike duration:** {duration_min:.2f} min",
+            "",
+            f"**Seeds:** {list(seeds)} (n={len(seeds)})  ",
+            f"**Bootstrap enabled:** {bootstrap_enabled}  ",
+            f"**Meta-train rows (clean):** {n_meta_train}  ",
+            f"**Meta-eval rows (clean):** {n_meta_eval}  ",
+            f"**Formula hash:** `{EXPECTED_FORMULA_HASH}`  ",
+            f"**xgb_v2.joblib SHA-256:** `{xgb_v2_sha}` (AUDIT-01 byte-identity)  ",
+            "",
+            "**Formula:** "
+            "`gate_brier_max = round(median_brier - 1 * max(seed_std_brier, "
+            "bootstrap_ci_half_brier), 4)`; "
+            "`gate_accuracy_min = round(median_acc + 1 * max(seed_std_acc, "
+            "bootstrap_ci_half_acc), 4)` "
+            "(D-08; preserved verbatim from v2.2 spike via "
+            "`variance.aggregate_variance`).",
+            "",
+            "---",
+            "",
+            "## Outcome",
+            "",
+            f"**Actual outcome:** `{outcome_path}`",
+            "",
+            "**Pre-templated outcome paths (D-09 carry-forward):**",
+            "- `path_a_non_zero_variance`: All 3 slices produced non-zero "
+            "seed_std -- advance to Phase 31 gate spike with empirically-honest "
+            "variance.",
+            "- `path_b_collapse_halted`: One or more slices collapsed to "
+            "seed_std == 0 -- `30-VARIANCE-HALT.md` emitted; operator decision "
+            "required before Phase 31 can run.",
+            "",
+            "---",
+            "",
+            "## Per-Slice Variance (D-08 + Pitfall-B carry-forward)",
+            "",
+            (
+                "| Slice | seed_std_brier | seed_std_acc | bootstrap_ci_half_brier"
+                " | bootstrap_ci_half_acc | std_brier_used | std_acc_used |"
+            ),
+            (
+                "|-------|---------------|--------------|------------------------"
+                "-|----------------------|----------------|---------------|"
+            ),
+        ]
+    )
     for slc in PER_SLICE_KEYS:
         a = aggregated[slc]
         # Raw NaN preserved in the bootstrap_ci_half_* columns even when
         # std_used uses the 0.0 fallback (Pitfall-B carry-forward).
         bh_b = (
             f"{a['bootstrap_ci_half_brier']:.6f}"
-            if np.isfinite(a["bootstrap_ci_half_brier"]) else "NaN"
+            if np.isfinite(a["bootstrap_ci_half_brier"])
+            else "NaN"
         )
         bh_a = (
             f"{a['bootstrap_ci_half_acc']:.6f}"
-            if np.isfinite(a["bootstrap_ci_half_acc"]) else "NaN"
+            if np.isfinite(a["bootstrap_ci_half_acc"])
+            else "NaN"
         )
         lines.append(
             f"| `{slc}` | "
@@ -614,17 +635,23 @@ def _render_variance_report(
             f"{a['std_brier_used']:.6f} | {a['std_acc_used']:.6f} |"
         )
 
-    lines.extend([
-        "",
-        "---",
-        "",
-        "## Per-Seed Sub-Rows (audit reproducibility)",
-        "",
-        ("| Seed | 12mo Brier | 12mo Acc | 24mo Brier | 24mo Acc | "
-         "random_15pct Brier | random_15pct Acc |"),
-        ("|------|-----------|----------|-----------|----------|"
-         "---------------------|--------------------|"),
-    ])
+    lines.extend(
+        [
+            "",
+            "---",
+            "",
+            "## Per-Seed Sub-Rows (audit reproducibility)",
+            "",
+            (
+                "| Seed | 12mo Brier | 12mo Acc | 24mo Brier | 24mo Acc | "
+                "random_15pct Brier | random_15pct Acc |"
+            ),
+            (
+                "|------|-----------|----------|-----------|----------|"
+                "---------------------|--------------------|"
+            ),
+        ]
+    )
     for seed in per_seed:
         ps = per_seed[seed]
         b12 = ps["most_recent_12mo"]["brier_score"]
@@ -634,18 +661,18 @@ def _render_variance_report(
         br = ps["random_15pct"]["brier_score"]
         ar = ps["random_15pct"]["accuracy"]
         lines.append(
-            f"| {seed} | {b12:.6f} | {a12:.6f} | "
-            f"{b24:.6f} | {a24:.6f} | "
-            f"{br:.6f} | {ar:.6f} |"
+            f"| {seed} | {b12:.6f} | {a12:.6f} | {b24:.6f} | {a24:.6f} | {br:.6f} | {ar:.6f} |"
         )
 
-    lines.extend([
-        "",
-        "---",
-        "",
-        "## Warnings (Pitfall-B carry-forward)",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "---",
+            "",
+            "## Warnings (Pitfall-B carry-forward)",
+            "",
+        ]
+    )
     if warnings:
         for w in warnings:
             lines.append(f"- {w}")
@@ -663,53 +690,60 @@ def _render_variance_report(
         lines.append("(none -- all 3 slices produced finite bootstrap CIs)")
 
     if canonical_lineage_brier is not None:
-        match = abs(
-            canonical_lineage_brier - PLAN_29_03_RANDOM_15PCT_BRIER
-        ) < PLAN_29_03_TOLERANCE
-        lines.extend([
+        match = abs(canonical_lineage_brier - PLAN_29_03_RANDOM_15PCT_BRIER) < PLAN_29_03_TOLERANCE
+        lines.extend(
+            [
+                "",
+                "---",
+                "",
+                "## Canonical-Lineage Anchor (ResearchQ10)",
+                "",
+                f"**seed=42, --no-bootstrap path:** "
+                f"random_15pct Brier = {canonical_lineage_brier:.6f}",
+                f"**Plan 29-03 META-V22 target:** "
+                f"{PLAN_29_03_RANDOM_15PCT_BRIER:.4f} (+/- {PLAN_29_03_TOLERANCE})",
+                f"**Match within tolerance:** {match}",
+                "",
+                (
+                    "Per ResearchQ10 binding, the deterministic seed=42 path on "
+                    "the canonical META-V22 data path MUST reproduce Plan 29-03's "
+                    "random_15pct Brier to 4-decimal precision. This is the byte-"
+                    "identity anchor against Phase 29 closure."
+                ),
+            ]
+        )
+
+    lines.extend(
+        [
             "",
             "---",
             "",
-            "## Canonical-Lineage Anchor (ResearchQ10)",
+            "## Reproducibility",
             "",
-            f"**seed=42, --no-bootstrap path:** "
-            f"random_15pct Brier = {canonical_lineage_brier:.6f}",
-            f"**Plan 29-03 META-V22 target:** "
-            f"{PLAN_29_03_RANDOM_15PCT_BRIER:.4f} (+/- {PLAN_29_03_TOLERANCE})",
-            f"**Match within tolerance:** {match}",
-            "",
-            ("Per ResearchQ10 binding, the deterministic seed=42 path on "
-             "the canonical META-V22 data path MUST reproduce Plan 29-03's "
-             "random_15pct Brier to 4-decimal precision. This is the byte-"
-             "identity anchor against Phase 29 closure."),
-        ])
-
-    lines.extend([
-        "",
-        "---",
-        "",
-        "## Reproducibility",
-        "",
-    ])
+        ]
+    )
     try:
         import scipy
+
         scipy_version = scipy.__version__
     except ImportError:
         scipy_version = "(import failed)"
     try:
         import sklearn
+
         sk_version = sklearn.__version__
     except ImportError:
         sk_version = "(import failed)"
-    lines.extend([
-        f"- scipy version: {scipy_version}",
-        f"- sklearn version: {sk_version}",
-        f"- Python: {sys.version_info.major}.{sys.version_info.minor}."
-        f"{sys.version_info.micro}",
-        f"- AUDIT-01 baseline SHA: `{EXPECTED_XGB_V2_SHA}`",
-        f"- Formula hash: `{EXPECTED_FORMULA_HASH}`",
-        f"- Seeds default (D-04): `{SEEDS_DEFAULT}`",
-    ])
+    lines.extend(
+        [
+            f"- scipy version: {scipy_version}",
+            f"- sklearn version: {sk_version}",
+            f"- Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            f"- AUDIT-01 baseline SHA: `{EXPECTED_XGB_V2_SHA}`",
+            f"- Formula hash: `{EXPECTED_FORMULA_HASH}`",
+            f"- Seeds default (D-04): `{SEEDS_DEFAULT}`",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -722,7 +756,9 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--seeds", nargs="+", type=int,
+        "--seeds",
+        nargs="+",
+        type=int,
         default=list(SEEDS_DEFAULT),
         help=(
             "Random seeds for the bootstrap variance harness "
@@ -730,7 +766,8 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--no-bootstrap", action="store_true",
+        "--no-bootstrap",
+        action="store_true",
         help=(
             "Deterministic path: skip bootstrap_resample and fit on the raw "
             "(X_meta_train, y_meta_train) rows. Used by the canonical-"
@@ -739,22 +776,26 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help=(
             "Use synthetic v2.2 90-col data instead of live DB load "
             "(integration-test path; mirrors train_meta_v22.py --dry-run)."
         ),
     )
     parser.add_argument(
-        "--report-path", default=str(VARIANCE_REPORT_PATH),
+        "--report-path",
+        default=str(VARIANCE_REPORT_PATH),
         help="Output path for 30-VARIANCE-REPORT.md.",
     )
     parser.add_argument(
-        "--halt-path", default=str(VARIANCE_HALT_PATH),
+        "--halt-path",
+        default=str(VARIANCE_HALT_PATH),
         help="Output path for 30-VARIANCE-HALT.md (conditional).",
     )
     parser.add_argument(
-        "--sha-end-path", default=str(SHA_END_PATH),
+        "--sha-end-path",
+        default=str(SHA_END_PATH),
         help="Output path for 30-XGB-V2-SHA-PHASE-30-END.txt.",
     )
     args = parser.parse_args(argv)
@@ -772,8 +813,11 @@ def main(argv: list[str] | None = None) -> int:
     print("[spike-v23] Loading meta-train + meta-eval matrices...")
     t0 = time.time()
     (
-        X_meta_train, y_meta_train,
-        X_meta_eval, y_meta_eval, fight_dates_eval,
+        X_meta_train,
+        y_meta_train,
+        X_meta_eval,
+        y_meta_eval,
+        fight_dates_eval,
     ) = _load_meta_train_eval_matrices(dry_run=args.dry_run)
     print(
         f"[spike-v23]   X_meta_train.shape={X_meta_train.shape}, "
@@ -791,8 +835,11 @@ def main(argv: list[str] | None = None) -> int:
             "IDENTICAL tuples (canonical-lineage anchor)."
         )
         per_seed = _no_bootstrap_metrics(
-            X_meta_train, y_meta_train,
-            X_meta_eval, y_meta_eval, fight_dates_eval,
+            X_meta_train,
+            y_meta_train,
+            X_meta_eval,
+            y_meta_eval,
+            fight_dates_eval,
             seeds=seeds_list,
         )
     else:
@@ -804,10 +851,15 @@ def main(argv: list[str] | None = None) -> int:
             assert_distinct_seed_brier,
             multi_seed_metrics,
         )
+
         per_seed = multi_seed_metrics(
-            X_meta_train, y_meta_train,
-            X_meta_eval, y_meta_eval, fight_dates_eval,
-            seeds=seeds_list, fit_fn=_meta_fit_fn,
+            X_meta_train,
+            y_meta_train,
+            X_meta_eval,
+            y_meta_eval,
+            fight_dates_eval,
+            seeds=seeds_list,
+            fit_fn=_meta_fit_fn,
         )
         # D-05 runtime check -- complements the unit-test guard.
         assert_distinct_seed_brier(per_seed)
@@ -838,21 +890,28 @@ def main(argv: list[str] | None = None) -> int:
     # path's. Downstream consumers must read `bootstrap_enabled` in the
     # report frontmatter before comparing CI half-widths across runs.
     from ufc_prediction.ml.variance import (
-        aggregate_variance, bootstrap_resample,
+        aggregate_variance,
+        bootstrap_resample,
     )
+
     if args.no_bootstrap:
         representative_model = _meta_fit_fn(
-            X_meta_train, y_meta_train, seeds_list[0],
+            X_meta_train,
+            y_meta_train,
+            seeds_list[0],
         )
     else:
         Xb, yb = bootstrap_resample(
-            X_meta_train, y_meta_train, seed=seeds_list[0],
+            X_meta_train,
+            y_meta_train,
+            seed=seeds_list[0],
         )
         representative_model = _meta_fit_fn(Xb, yb, seeds_list[0])
     aggregated, warnings = aggregate_variance(
         per_seed,
         representative_model=representative_model,
-        X_eval=X_meta_eval, y_eval=y_meta_eval,
+        X_eval=X_meta_eval,
+        y_eval=y_meta_eval,
         fight_dates_eval=fight_dates_eval,
     )
 
@@ -876,19 +935,16 @@ def main(argv: list[str] | None = None) -> int:
         zero_variance_slices: list[str] = []
     else:
         zero_variance_slices = [
-            slc for slc, v in aggregated.items()
+            slc
+            for slc, v in aggregated.items()
             if v["seed_std_brier"] == 0.0 or v["seed_std_acc"] == 0.0
         ]
 
     # Capture canonical-lineage Brier for report frontmatter.
     canonical_lineage_brier: float | None = None
     if args.no_bootstrap and 42 in per_seed:
-        canonical_lineage_brier = float(
-            per_seed[42]["random_15pct"]["brier_score"]
-        )
-        delta = abs(
-            canonical_lineage_brier - PLAN_29_03_RANDOM_15PCT_BRIER
-        )
+        canonical_lineage_brier = float(per_seed[42]["random_15pct"]["brier_score"])
+        delta = abs(canonical_lineage_brier - PLAN_29_03_RANDOM_15PCT_BRIER)
         match = delta < PLAN_29_03_TOLERANCE
         print(
             f"[spike-v23] Canonical-lineage check (seed=42 no-bootstrap): "
@@ -903,7 +959,9 @@ def main(argv: list[str] | None = None) -> int:
         # Path B: emit HALT artifact + exit 3.
         outcome_path = "path_b_collapse_halted"
         halt_body = _render_variance_halt(
-            zero_variance_slices, aggregated, per_seed,
+            zero_variance_slices,
+            aggregated,
+            per_seed,
             triggered_at=spike_finished.isoformat(),
         )
         halt_path = Path(args.halt_path)
@@ -915,10 +973,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     else:
         outcome_path = "path_a_non_zero_variance"
-        print(
-            "[spike-v23] No zero-variance slices detected -- Path A "
-            "(advance to Phase 31)."
-        )
+        print("[spike-v23] No zero-variance slices detected -- Path A (advance to Phase 31).")
 
     # ── Emit VARIANCE-REPORT.md (always -- Path A or B materialized) ──
     report_body = _render_variance_report(

@@ -158,8 +158,7 @@ def _temporal_subgraph(graph: nx.DiGraph, as_of_date: date) -> nx.DiGraph:
     ``tests/unit/features/test_network.py::TestTwoHopSoS``).
     """
     return graph.edge_subgraph(
-        (u, v) for u, v, d in graph.edges(data=True)
-        if d["earliest_date"] < as_of_date
+        (u, v) for u, v, d in graph.edges(data=True) if d["earliest_date"] < as_of_date
     )
 
 
@@ -313,8 +312,7 @@ def apply_network_features(
     # against draws / NC; the spike used only "decisive" fights for the same
     # reason).
     decisive = [
-        f for f in fights
-        if f.get("winner_id") is not None and f.get("loser_id") is not None
+        f for f in fights if f.get("winner_id") is not None and f.get("loser_id") is not None
     ]
     graph = build_fight_graph(decisive, scope=scope, weight_mode=weight_mode)
 

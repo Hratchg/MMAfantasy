@@ -53,9 +53,7 @@ def _seed_basic_fighters(session: Session) -> dict[str, Fighter]:
     return fighters
 
 
-def _seed_events_and_fights(
-    session: Session, fighters: dict[str, Fighter]
-) -> dict[str, Fight]:
+def _seed_events_and_fights(session: Session, fighters: dict[str, Fighter]) -> dict[str, Fight]:
     """Create events + fights linking the seeded fighters.
 
     Fight 1: Jones vs Gustafsson (UFC 165, 2013)
@@ -155,9 +153,7 @@ class TestFightOddsModel:
         assert row.source == "bestfightodds"
         assert isinstance(row.scraped_at, datetime)
 
-    def test_fight_odds_composite_pk_prevents_duplicate(
-        self, session: Session
-    ) -> None:
+    def test_fight_odds_composite_pk_prevents_duplicate(self, session: Session) -> None:
         fighters = _seed_basic_fighters(session)
         fights = _seed_events_and_fights(session, fighters)
 
@@ -200,9 +196,7 @@ class TestFightOddsModel:
 
         row = (
             session.query(FightOdds)
-            .filter_by(
-                fight_id=fights["aw"].id, fighter_id=fighters["adesanya"].id
-            )
+            .filter_by(fight_id=fights["aw"].id, fighter_id=fighters["adesanya"].id)
             .one()
         )
         assert row.opening_ml is None
@@ -217,18 +211,12 @@ class TestFightOddsModel:
 
         # Do NOT specify scraped_at — let the server default fill it.
         session.execute(
-            text(
-                "INSERT INTO fight_odds (fight_id, fighter_id) "
-                "VALUES (:fid, :figid)"
-            ),
+            text("INSERT INTO fight_odds (fight_id, fighter_id) VALUES (:fid, :figid)"),
             {"fid": fights["jg"].id, "figid": fighters["jones"].id},
         )
         session.flush()
         row = session.execute(
-            text(
-                "SELECT scraped_at FROM fight_odds WHERE fight_id = :fid "
-                "AND fighter_id = :figid"
-            ),
+            text("SELECT scraped_at FROM fight_odds WHERE fight_id = :fid AND fighter_id = :figid"),
             {"fid": fights["jg"].id, "figid": fighters["jones"].id},
         ).first()
         assert row is not None
@@ -239,26 +227,18 @@ class TestFightOddsModel:
         delta = abs(row[0] - now_utc)
         assert delta < timedelta(seconds=60)
 
-    def test_fight_odds_source_defaults_to_bestfightodds(
-        self, session: Session
-    ) -> None:
+    def test_fight_odds_source_defaults_to_bestfightodds(self, session: Session) -> None:
         fighters = _seed_basic_fighters(session)
         fights = _seed_events_and_fights(session, fighters)
 
         # Use raw SQL so SQLAlchemy doesn't send its Python-side default.
         session.execute(
-            text(
-                "INSERT INTO fight_odds (fight_id, fighter_id) "
-                "VALUES (:fid, :figid)"
-            ),
+            text("INSERT INTO fight_odds (fight_id, fighter_id) VALUES (:fid, :figid)"),
             {"fid": fights["jg"].id, "figid": fighters["jones"].id},
         )
         session.flush()
         row = session.execute(
-            text(
-                "SELECT source FROM fight_odds WHERE fight_id = :fid "
-                "AND fighter_id = :figid"
-            ),
+            text("SELECT source FROM fight_odds WHERE fight_id = :fid AND fighter_id = :figid"),
             {"fid": fights["jg"].id, "figid": fighters["jones"].id},
         ).first()
         assert row is not None
@@ -288,16 +268,12 @@ class TestFightOddsMigration:
             command.upgrade(cfg, "head")
             engine = create_engine(url)
             with engine.connect() as conn:
-                result = conn.execute(
-                    text("SELECT to_regclass('fight_odds')")
-                ).scalar()
+                result = conn.execute(text("SELECT to_regclass('fight_odds')")).scalar()
             assert result == "fight_odds"
 
             command.downgrade(cfg, "-1")
             with engine.connect() as conn:
-                result = conn.execute(
-                    text("SELECT to_regclass('fight_odds')")
-                ).scalar()
+                result = conn.execute(text("SELECT to_regclass('fight_odds')")).scalar()
             assert result is None
 
             # Upgrade back to head for cleanliness.
@@ -330,11 +306,7 @@ class TestBFOOddsIngester:
         assert summary.rows_upserted == 6  # 3 fights * 2 fighters
 
         # Spot-check the Jones row.
-        jones_row = (
-            session.query(FightOdds)
-            .filter_by(fighter_id=fighters["jones"].id)
-            .one()
-        )
+        jones_row = session.query(FightOdds).filter_by(fighter_id=fighters["jones"].id).one()
         assert jones_row.opening_ml == -200
         assert jones_row.opening_implied_prob == pytest.approx(0.6429, abs=1e-3)
 
@@ -347,16 +319,8 @@ class TestBFOOddsIngester:
 
         BFOOddsIngester(session, FIXTURES_DIR).ingest_all()
 
-        jones = (
-            session.query(FightOdds)
-            .filter_by(fighter_id=fighters["jones"].id)
-            .one()
-        )
-        gus = (
-            session.query(FightOdds)
-            .filter_by(fighter_id=fighters["gus"].id)
-            .one()
-        )
+        jones = session.query(FightOdds).filter_by(fighter_id=fighters["jones"].id).one()
+        gus = session.query(FightOdds).filter_by(fighter_id=fighters["gus"].id).one()
         # D-02 normalization: the two opening probs must sum to exactly 1.0.
         assert jones.opening_implied_prob is not None
         assert gus.opening_implied_prob is not None
@@ -372,16 +336,8 @@ class TestBFOOddsIngester:
 
         BFOOddsIngester(session, FIXTURES_DIR).ingest_all()
 
-        jones = (
-            session.query(FightOdds)
-            .filter_by(fighter_id=fighters["jones"].id)
-            .one()
-        )
-        gus = (
-            session.query(FightOdds)
-            .filter_by(fighter_id=fighters["gus"].id)
-            .one()
-        )
+        jones = session.query(FightOdds).filter_by(fighter_id=fighters["jones"].id).one()
+        gus = session.query(FightOdds).filter_by(fighter_id=fighters["gus"].id).one()
         assert jones.closing_implied_prob is not None
         assert gus.closing_implied_prob is not None
         total = jones.closing_implied_prob + gus.closing_implied_prob
@@ -396,11 +352,7 @@ class TestBFOOddsIngester:
 
         BFOOddsIngester(session, FIXTURES_DIR).ingest_all()
 
-        jones = (
-            session.query(FightOdds)
-            .filter_by(fighter_id=fighters["jones"].id)
-            .one()
-        )
+        jones = session.query(FightOdds).filter_by(fighter_id=fighters["jones"].id).one()
         # D-03: the raw American moneylines must be stored as-is.
         assert jones.opening_ml == -200
         assert jones.closing_range_min_ml == -205
@@ -415,16 +367,8 @@ class TestBFOOddsIngester:
 
         BFOOddsIngester(session, FIXTURES_DIR).ingest_all()
 
-        adesanya = (
-            session.query(FightOdds)
-            .filter_by(fighter_id=fighters["adesanya"].id)
-            .one()
-        )
-        whittaker = (
-            session.query(FightOdds)
-            .filter_by(fighter_id=fighters["whittaker"].id)
-            .one()
-        )
+        adesanya = session.query(FightOdds).filter_by(fighter_id=fighters["adesanya"].id).one()
+        whittaker = session.query(FightOdds).filter_by(fighter_id=fighters["whittaker"].id).one()
         # D-07: missing odds flow through as SQL NULL — never 0 / NaN.
         for row in (adesanya, whittaker):
             assert row.opening_ml is None
@@ -450,9 +394,7 @@ class TestBFOOddsIngester:
         assert count_after_first == count_after_second
         assert first.rows_upserted == second.rows_upserted
 
-    def test_ingester_reports_unmatched_fighters(
-        self, session: Session
-    ) -> None:
+    def test_ingester_reports_unmatched_fighters(self, session: Session) -> None:
         from ufc_prediction.scraper.bfo_ingest import BFOOddsIngester
 
         # Seed only the Jones/Gus pair; others in the fixture have no DB
@@ -484,9 +426,7 @@ class TestBFOOddsIngester:
         total_rows = session.query(FightOdds).count()
         assert total_rows == 2
 
-    def test_ingester_uses_latest_fight_for_fighter_pair(
-        self, session: Session
-    ) -> None:
+    def test_ingester_uses_latest_fight_for_fighter_pair(self, session: Session) -> None:
         """Pitfall 1 disambiguation: when multiple DB fights share a pair,
         prefer the most recent. The fixture has no date-window data so we
         verify the deterministic ORDER BY Event.date DESC fallback."""
@@ -517,11 +457,7 @@ class TestBFOOddsIngester:
         BFOOddsIngester(session, FIXTURES_DIR).ingest_all()
 
         # Khabib's odds row must be attached to the LATER fight.
-        khabib_row = (
-            session.query(FightOdds)
-            .filter_by(fighter_id=fighters["khabib"].id)
-            .one()
-        )
+        khabib_row = session.query(FightOdds).filter_by(fighter_id=fighters["khabib"].id).one()
         later_fight = (
             session.query(Fight)
             .join(Event, Fight.event_id == Event.id)
@@ -556,9 +492,7 @@ class TestBFOOddsIngester:
 
     # ── 999.4: closest-date matching in _resolve_fight ────────────────────
 
-    def test_resolve_fight_uses_event_date_to_disambiguate_rematch(
-        self, session: Session
-    ) -> None:
+    def test_resolve_fight_uses_event_date_to_disambiguate_rematch(self, session: Session) -> None:
         """Per backlog 999.4, _resolve_fight must use the BFO event_date
         to pick between candidate rematches — not always the most recent.
 
@@ -596,22 +530,14 @@ class TestBFOOddsIngester:
         session.add_all([fight_i, fight_ii])
         session.flush()
 
-        ingester = BFOOddsIngester(
-            session, FIXTURES_DIR, date_window_days=14
-        )
+        ingester = BFOOddsIngester(session, FIXTURES_DIR, date_window_days=14)
 
         # The 2015 BFO event_date must resolve to fight_i, NOT the
         # always-most-recent fight_ii (which was the H1 bug).
-        assert ingester._resolve_fight(
-            fa.id, fb.id, date(2015, 1, 3)
-        ) == fight_i.id
-        assert ingester._resolve_fight(
-            fa.id, fb.id, date(2017, 7, 29)
-        ) == fight_ii.id
+        assert ingester._resolve_fight(fa.id, fb.id, date(2015, 1, 3)) == fight_i.id
+        assert ingester._resolve_fight(fa.id, fb.id, date(2017, 7, 29)) == fight_ii.id
 
-    def test_resolve_fight_within_date_window(
-        self, session: Session
-    ) -> None:
+    def test_resolve_fight_within_date_window(self, session: Session) -> None:
         """A BFO event_date within ``date_window_days`` of the DB Event.date
         still resolves to that fight. Boundary: 14 days off.
         """
@@ -636,18 +562,12 @@ class TestBFOOddsIngester:
         session.add(fight)
         session.flush()
 
-        ingester = BFOOddsIngester(
-            session, FIXTURES_DIR, date_window_days=14
-        )
+        ingester = BFOOddsIngester(session, FIXTURES_DIR, date_window_days=14)
 
         # 14 days earlier — at the boundary — must still match.
-        assert ingester._resolve_fight(
-            fa.id, fb.id, date(2017, 7, 15)
-        ) == fight.id
+        assert ingester._resolve_fight(fa.id, fb.id, date(2017, 7, 15)) == fight.id
 
-    def test_resolve_fight_outside_date_window_returns_none(
-        self, session: Session
-    ) -> None:
+    def test_resolve_fight_outside_date_window_returns_none(self, session: Session) -> None:
         """A BFO event_date outside ``date_window_days`` returns None —
         we refuse to attach odds to a fight that's not actually the right
         one (better to drop than mis-attribute, per the bug we're fixing).
@@ -673,11 +593,7 @@ class TestBFOOddsIngester:
         session.add(fight)
         session.flush()
 
-        ingester = BFOOddsIngester(
-            session, FIXTURES_DIR, date_window_days=14
-        )
+        ingester = BFOOddsIngester(session, FIXTURES_DIR, date_window_days=14)
 
         # ~58 days off — well outside the 14-day window.
-        assert (
-            ingester._resolve_fight(fa.id, fb.id, date(2017, 6, 1)) is None
-        )
+        assert ingester._resolve_fight(fa.id, fb.id, date(2017, 6, 1)) is None

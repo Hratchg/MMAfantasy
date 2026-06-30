@@ -172,8 +172,7 @@ def test_since_year_applies_filter_to_fighter_query(
 
     # The Fighter query must have had .filter(...) called on it exactly once.
     assert len(session_filtered.filter_calls) == 1, (  # type: ignore[attr-defined]
-        f"expected 1 filter call with since_year, "
-        f"got {len(session_filtered.filter_calls)}"  # type: ignore[attr-defined]
+        f"expected 1 filter call with since_year, got {len(session_filtered.filter_calls)}"  # type: ignore[attr-defined]
     )
     # Only Fighter B's search URL was attempted.
     attempted_searches = [u for u in client.get_calls if "SearchTxt" in u]
@@ -203,8 +202,7 @@ def test_since_year_none_skips_filter(monkeypatch: pytest.MonkeyPatch) -> None:
 
     # No filter was applied on the Fighter query when since_year is None.
     assert session.filter_calls == [], (  # type: ignore[attr-defined]
-        f"expected 0 filter calls without since_year, "
-        f"got {session.filter_calls}"  # type: ignore[attr-defined]
+        f"expected 0 filter calls without since_year, got {session.filter_calls}"  # type: ignore[attr-defined]
     )
 
 
@@ -234,9 +232,7 @@ def test_incremental_commit_fires_every_batch(
         fighter = fighters[idx] if idx < len(fighters) else fighters[-1]
         return [(fighter.name, f"https://www.sherdog.com/fighter/fake-{fighter.id}")]
 
-    monkeypatch.setattr(
-        sherdog_module, "parse_sherdog_search_results", fake_parse_search
-    )
+    monkeypatch.setattr(sherdog_module, "parse_sherdog_search_results", fake_parse_search)
 
     # Use dry_run=True so we skip profile-fetch path entirely but still
     # go through the matched + _maybe_commit code.
@@ -246,8 +242,7 @@ def test_incremental_commit_fires_every_batch(
     # 7 matches with commit_batch_size=3 → expect >= 2 commits total
     # (at least one intermediate fire + final flush).
     assert session.commit.call_count >= 2, (
-        f"expected >= 2 commits with 7 fighters/batch=3, "
-        f"got {session.commit.call_count}"
+        f"expected >= 2 commits with 7 fighters/batch=3, got {session.commit.call_count}"
     )
     assert result["matched"] == 7
 
@@ -283,12 +278,8 @@ def test_workers_gt_1_uses_client_map(
         # Always match the first candidate — we're testing dispatch, not fuzz logic.
         return candidates[0] if candidates else None
 
-    monkeypatch.setattr(
-        sherdog_module, "parse_sherdog_search_results", fake_parse_search
-    )
-    monkeypatch.setattr(
-        sherdog_module, "parse_sherdog_fighter_page", fake_parse_profile
-    )
+    monkeypatch.setattr(sherdog_module, "parse_sherdog_search_results", fake_parse_search)
+    monkeypatch.setattr(sherdog_module, "parse_sherdog_fighter_page", fake_parse_profile)
     monkeypatch.setattr(sherdog_module, "match_fighter_name", fake_match)
 
     scraper = SherdogScraper(client, session, workers=2)
@@ -297,14 +288,11 @@ def test_workers_gt_1_uses_client_map(
     # At least one .map() call was made (probably multiple: search stage
     # + profile stage per chunk).
     assert len(client.map_calls) >= 2, (
-        f"expected at least 2 .map() calls (search + profile), "
-        f"got {len(client.map_calls)}"
+        f"expected at least 2 .map() calls (search + profile), got {len(client.map_calls)}"
     )
     # Every recorded URL batch has len <= workers (2).
     for batch in client.map_calls:
-        assert len(batch) <= 2, (
-            f"batch exceeded workers=2 chunk size: {batch}"
-        )
+        assert len(batch) <= 2, f"batch exceeded workers=2 chunk size: {batch}"
 
 
 # ── Test 4: workers=1 preserves legacy serial behavior ────────────────────
@@ -333,25 +321,18 @@ def test_workers_1_uses_serial_get_no_map(
     ) -> tuple[str, str] | None:
         return candidates[0] if candidates else None
 
-    monkeypatch.setattr(
-        sherdog_module, "parse_sherdog_search_results", fake_parse_search
-    )
-    monkeypatch.setattr(
-        sherdog_module, "parse_sherdog_fighter_page", fake_parse_profile
-    )
+    monkeypatch.setattr(sherdog_module, "parse_sherdog_search_results", fake_parse_search)
+    monkeypatch.setattr(sherdog_module, "parse_sherdog_fighter_page", fake_parse_profile)
     monkeypatch.setattr(sherdog_module, "match_fighter_name", fake_match)
 
     scraper = SherdogScraper(client, session, workers=1)
     result = scraper.scrape_all_fighters()
 
     # No map() calls on the workers=1 path.
-    assert client.map_calls == [], (
-        f"workers=1 path should not call .map(), got {client.map_calls}"
-    )
+    assert client.map_calls == [], f"workers=1 path should not call .map(), got {client.map_calls}"
     # 2 .get() calls per matched fighter (search + profile).
     assert len(client.get_calls) == 6, (
-        f"expected 2 get calls per fighter x 3 fighters = 6, "
-        f"got {len(client.get_calls)}"
+        f"expected 2 get calls per fighter x 3 fighters = 6, got {len(client.get_calls)}"
     )
     # Outcome counts look sane.
     assert result["matched"] == 3
@@ -390,12 +371,8 @@ def test_workers_gt_1_isolates_per_url_fetch_failure(
     ) -> tuple[str, str] | None:
         return candidates[0] if candidates else None
 
-    monkeypatch.setattr(
-        sherdog_module, "parse_sherdog_search_results", fake_parse_search
-    )
-    monkeypatch.setattr(
-        sherdog_module, "parse_sherdog_fighter_page", fake_parse_profile
-    )
+    monkeypatch.setattr(sherdog_module, "parse_sherdog_search_results", fake_parse_search)
+    monkeypatch.setattr(sherdog_module, "parse_sherdog_fighter_page", fake_parse_profile)
     monkeypatch.setattr(sherdog_module, "match_fighter_name", fake_match)
 
     scraper = SherdogScraper(client, session, workers=2)

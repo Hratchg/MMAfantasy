@@ -42,9 +42,7 @@ V22_CONTRACT_PATH = pathlib.Path(".planning/gate_contract_v2.2.json")
 V21_CONTRACT_PATH = pathlib.Path(".planning/gate_contract.json")
 XGB_V2_PATH = pathlib.Path("models/xgb_v2.joblib")
 
-EXPECTED_FORMULA_HASH = (
-    "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
-)
+EXPECTED_FORMULA_HASH = "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
 EXPECTED_N_FEATURES = 90
 EXPECTED_BASE_FEATURES_SET = "FEATURE_COLUMNS_V22"
 EXPECTED_CUTOFF_DATE = "2023-01-01"
@@ -57,14 +55,12 @@ OPERATOR_ACCURACY_FLOOR = 0.70
 EXPECTED_PER_SLICE = {
     "most_recent_12mo": {"brier_max": 0.2132, "accuracy_min": 0.6798},
     "most_recent_24mo": {"brier_max": 0.2164, "accuracy_min": 0.6587},
-    "random_15pct":     {"brier_max": 0.2172, "accuracy_min": 0.6648},
+    "random_15pct": {"brier_max": 0.2172, "accuracy_min": 0.6648},
 }
 
 EXPECTED_OPERATOR_DECISION = "v2.2_gate_breaks_floor_accept_truth"
 
-AUDIT_01_BASELINE_SHA = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
+AUDIT_01_BASELINE_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 
 
 def _load_v22_contract() -> dict:
@@ -153,9 +149,7 @@ def test_v22_feature_columns_hash_is_hex_64():
     """feature_columns_hash is a 64-char lowercase hex string (sha256 output)."""
     c = _load_v22_contract()
     fch = c.get("feature_columns_hash", "")
-    assert isinstance(fch, str) and len(fch) == 64, (
-        f"feature_columns_hash malformed: {fch!r}"
-    )
+    assert isinstance(fch, str) and len(fch) == 64, f"feature_columns_hash malformed: {fch!r}"
     int(fch, 16)  # raises ValueError if not hex
 
 
@@ -163,9 +157,7 @@ def test_v22_bfo_backfill_committed_at_present():
     """bfo_backfill_committed_at is a non-empty ISO timestamp."""
     c = _load_v22_contract()
     ts = c.get("bfo_backfill_committed_at", "")
-    assert isinstance(ts, str) and ts, (
-        f"bfo_backfill_committed_at malformed: {ts!r}"
-    )
+    assert isinstance(ts, str) and ts, f"bfo_backfill_committed_at malformed: {ts!r}"
     # ISO-8601 sanity: contains "T" between date and time
     assert "T" in ts, ts
 
@@ -215,9 +207,7 @@ def test_v22_contract_loads_via_loader():
     # Top-level
     assert contract.version == "v2.2", contract.version
     assert contract.n_features == EXPECTED_N_FEATURES, contract.n_features
-    assert contract.base_features_set == EXPECTED_BASE_FEATURES_SET, (
-        contract.base_features_set
-    )
+    assert contract.base_features_set == EXPECTED_BASE_FEATURES_SET, contract.base_features_set
     assert contract.formula_hash == EXPECTED_FORMULA_HASH, contract.formula_hash
     assert contract.k_value == EXPECTED_K_VALUE, contract.k_value
 
@@ -226,8 +216,7 @@ def test_v22_contract_loads_via_loader():
         ts = contract.per_slice[slice_name]
         expected = EXPECTED_PER_SLICE[slice_name]
         assert ts.brier_max == expected["brier_max"], (
-            f"{slice_name}: brier_max via loader = {ts.brier_max}, "
-            f"expected {expected['brier_max']}"
+            f"{slice_name}: brier_max via loader = {ts.brier_max}, expected {expected['brier_max']}"
         )
         assert ts.accuracy_min == expected["accuracy_min"], (
             f"{slice_name}: accuracy_min via loader = {ts.accuracy_min}, "

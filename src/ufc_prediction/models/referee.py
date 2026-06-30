@@ -8,6 +8,7 @@ raw-name variations seen in scraped HTML (e.g., ``["Herb Dean", "Herbert Dean"]`
 
 Banned imports per Pitfall #1 / Finding 11: nothing under ``ufc_prediction.ml.*``.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -37,6 +38,4 @@ class Referee(Base):
     alias_list: Mapped[list[str] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(default=func.now())
 
-    __table_args__ = (
-        UniqueConstraint("normalized_name", name="uq_referees_normalized_name"),
-    )
+    __table_args__ = (UniqueConstraint("normalized_name", name="uq_referees_normalized_name"),)

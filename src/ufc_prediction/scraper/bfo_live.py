@@ -77,15 +77,13 @@ def _resolve_fighter_id(session: Session, name: str) -> int | None:
     Returns ``None`` when no exact-match row exists; the caller falls
     through to the live HTTP path.
     """
-    rows = list(
-        session.execute(
-            select(Fighter).where(Fighter.name == name)
-        ).scalars().all()
-    )
+    rows = list(session.execute(select(Fighter).where(Fighter.name == name)).scalars().all())
     if not rows:
         return None
     canonical = prefer_canonical(
-        rows, source_key=lambda f: f.source, tiebreak_key=lambda f: f.id,
+        rows,
+        source_key=lambda f: f.source,
+        tiebreak_key=lambda f: f.id,
     )
     return canonical.id
 
@@ -115,14 +113,8 @@ def _try_cache(
             select(Fight.id)
             .join(Event, Fight.event_id == Event.id)
             .where(
-                (
-                    (Fight.fighter_a_id == fa_id)
-                    & (Fight.fighter_b_id == fb_id)
-                )
-                | (
-                    (Fight.fighter_a_id == fb_id)
-                    & (Fight.fighter_b_id == fa_id)
-                )
+                ((Fight.fighter_a_id == fa_id) & (Fight.fighter_b_id == fb_id))
+                | ((Fight.fighter_a_id == fb_id) & (Fight.fighter_b_id == fa_id))
             )
             .where(Event.date == event_date)
         )
@@ -132,9 +124,7 @@ def _try_cache(
 
         # Pull both sides of the odds.
         odds_rows = list(
-            session.execute(
-                select(FightOdds).where(FightOdds.fight_id == fight_id)
-            ).scalars().all()
+            session.execute(select(FightOdds).where(FightOdds.fight_id == fight_id)).scalars().all()
         )
         if not odds_rows:
             return None
@@ -217,7 +207,9 @@ def _try_live(
             _check_captcha(soup)
         except BFOParseError as exc:
             logger.warning(
-                "bfo_live: CAPTCHA gate on search for %s: %s", fa_name, exc,
+                "bfo_live: CAPTCHA gate on search for %s: %s",
+                fa_name,
+                exc,
             )
             return None
 
@@ -254,18 +246,26 @@ def _try_live(
         )
     except BFOParseError as exc:
         logger.warning(
-            "bfo_live: %s vs %s parse failed: %s", fa_name, fb_name, exc,
+            "bfo_live: %s vs %s parse failed: %s",
+            fa_name,
+            fb_name,
+            exc,
         )
         return None
     except (RuntimeError, OSError, TimeoutError) as exc:
         logger.warning(
-            "bfo_live: %s vs %s transport failed: %s", fa_name, fb_name, exc,
+            "bfo_live: %s vs %s transport failed: %s",
+            fa_name,
+            fb_name,
+            exc,
         )
         return None
     except Exception as exc:  # noqa: BLE001 — never raise; predict path can't abort
         logger.warning(
             "bfo_live: %s vs %s unexpected failure: %s",
-            fa_name, fb_name, exc,
+            fa_name,
+            fb_name,
+            exc,
         )
         return None
 

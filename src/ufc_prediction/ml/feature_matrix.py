@@ -136,9 +136,7 @@ def split_temporal(
         - Test fold size is invariant to train_lower (Pitfall 5).
     """
     if train_lower is not None:
-        train_mask = np.array(
-            [train_lower <= d < cutoff_date for d in fight_dates]
-        )
+        train_mask = np.array([train_lower <= d < cutoff_date for d in fight_dates])
     else:
         train_mask = np.array([d < cutoff_date for d in fight_dates])
     # IMPORTANT (Pitfall 2): compute test_mask EXPLICITLY, NOT ~train_mask.
@@ -329,20 +327,14 @@ def _build_fighter_birth_dates(
     Reads from the existing ``fighter_physicals`` lookup the caller already
     provides — no new DB query.
     """
-    return {
-        fid: phys.get("date_of_birth")
-        for fid, phys in fighter_physicals.items()
-    }
+    return {fid: phys.get("date_of_birth") for fid, phys in fighter_physicals.items()}
 
 
 def _build_fighter_reaches(
     fighter_physicals: dict[int, dict],
 ) -> dict[int, float | None]:
     """fighter_id → reach_inches (nullable per Fighter ORM column)."""
-    return {
-        fid: phys.get("reach_inches")
-        for fid, phys in fighter_physicals.items()
-    }
+    return {fid: phys.get("reach_inches") for fid, phys in fighter_physicals.items()}
 
 
 def _build_elo_histories(
@@ -366,12 +358,14 @@ def _build_elo_histories(
         for fid_key in ("fighter_a_id", "fighter_b_id"):
             fid = f[fid_key]
             elo_dict = elo_features.get((fid, f["fight_id"]), default)
-            result.setdefault(fid, []).append({
-                "event_date": f["event_date"],
-                "elo_overall": elo_dict.get("elo_overall", 1500.0),
-                "elo_striking": elo_dict.get("elo_striking", 1500.0),
-                "elo_grappling": elo_dict.get("elo_grappling", 1500.0),
-            })
+            result.setdefault(fid, []).append(
+                {
+                    "event_date": f["event_date"],
+                    "elo_overall": elo_dict.get("elo_overall", 1500.0),
+                    "elo_striking": elo_dict.get("elo_striking", 1500.0),
+                    "elo_grappling": elo_dict.get("elo_grappling", 1500.0),
+                }
+            )
     return result
 
 
@@ -418,10 +412,12 @@ def _build_division_history(
     for f in sorted_records:
         wc = f.get("weight_class")
         if wc is not None:
-            div_hist.setdefault(wc, []).append({
-                "event_date": f["event_date"],
-                "method": f.get("method"),
-            })
+            div_hist.setdefault(wc, []).append(
+                {
+                    "event_date": f["event_date"],
+                    "method": f.get("method"),
+                }
+            )
         total += 1
         if classify_outcome(f.get("method")) == "finish":
             total_finishes += 1
@@ -450,10 +446,7 @@ def _build_division_mean_reaches(
 
     result: dict[str, float] = {}
     for wc, fids in division_fighters.items():
-        reaches = [
-            fighter_physicals.get(fid, {}).get("reach_inches")
-            for fid in fids
-        ]
+        reaches = [fighter_physicals.get(fid, {}).get("reach_inches") for fid in fids]
         valid = [r for r in reaches if r is not None]
         if valid:
             result[wc] = sum(valid) / len(valid)
@@ -494,14 +487,25 @@ class FeatureMatrixAssembler:
         def _get_or_init(fid: int) -> dict:
             if fid not in fighter_state:
                 fighter_state[fid] = {
-                    "wins": 0, "losses": 0, "win_streak": 0, "loss_streak": 0,
-                    "ko_wins": 0, "sub_wins": 0, "ko_losses": 0, "sub_losses": 0,
-                    "last_fight_date": None, "first_fight_date": None,
-                    "total_cage_seconds": 0.0, "division_fights": {},
-                    "opponent_elos": [], "recent_elos": [],
+                    "wins": 0,
+                    "losses": 0,
+                    "win_streak": 0,
+                    "loss_streak": 0,
+                    "ko_wins": 0,
+                    "sub_wins": 0,
+                    "ko_losses": 0,
+                    "sub_losses": 0,
+                    "last_fight_date": None,
+                    "first_fight_date": None,
+                    "total_cage_seconds": 0.0,
+                    "division_fights": {},
+                    "opponent_elos": [],
+                    "recent_elos": [],
                     # Rolling window buffers
-                    "recent_sig_str": [], "recent_td_rate": [],
-                    "recent_strike_def": [], "recent_ctrl_time": [],
+                    "recent_sig_str": [],
+                    "recent_td_rate": [],
+                    "recent_strike_def": [],
+                    "recent_ctrl_time": [],
                 }
             return fighter_state[fid]
 
@@ -535,12 +539,14 @@ class FeatureMatrixAssembler:
                 total = st["wins"] + st["losses"]
                 days_since = (
                     (event_date - st["last_fight_date"]).days
-                    if st["last_fight_date"] else float("nan")
+                    if st["last_fight_date"]
+                    else float("nan")
                 )
                 # Career span in years for fights-per-year
                 career_years = (
                     (event_date - st["first_fight_date"]).days / 365.25
-                    if st["first_fight_date"] else 0.0
+                    if st["first_fight_date"]
+                    else 0.0
                 )
                 div_fights = st["division_fights"].get(weight_class, 0)
 
@@ -552,7 +558,8 @@ class FeatureMatrixAssembler:
                 # Average opponent Elo
                 avg_opp_elo = (
                     sum(st["opponent_elos"]) / len(st["opponent_elos"])
-                    if st["opponent_elos"] else 1500.0
+                    if st["opponent_elos"]
+                    else 1500.0
                 )
 
                 # Rolling window averages
@@ -563,6 +570,7 @@ class FeatureMatrixAssembler:
 
                 # Non-linear layoff
                 import math
+
                 log_days = math.log1p(days_since) if days_since == days_since else float("nan")
                 is_short = 1.0 if (days_since == days_since and days_since < 60) else 0.0
                 is_comeback = 1.0 if (days_since == days_since and days_since > 365) else 0.0
@@ -615,10 +623,14 @@ class FeatureMatrixAssembler:
             pair_key = (min(a_id, b_id), max(a_id, b_id))
             if pair_key not in fight_pairs:
                 fight_pairs[pair_key] = []
-            fight_pairs[pair_key].append({
-                "fight_id": fight_id, "winner_id": winner_id,
-                "a_id": a_id, "b_id": b_id,
-            })
+            fight_pairs[pair_key].append(
+                {
+                    "fight_id": fight_id,
+                    "winner_id": winner_id,
+                    "a_id": a_id,
+                    "b_id": b_id,
+                }
+            )
 
             for fid, opp_elo in ((a_id, opp_elo_a), (b_id, opp_elo_b)):
                 st = _get_or_init(fid)
@@ -670,8 +682,12 @@ class FeatureMatrixAssembler:
                         if v is not None:
                             st["recent_ctrl_time"].append(v)
                     # Keep buffers bounded to last 8 fights
-                    for buf_key in ("recent_sig_str", "recent_td_rate",
-                                    "recent_strike_def", "recent_ctrl_time"):
+                    for buf_key in (
+                        "recent_sig_str",
+                        "recent_td_rate",
+                        "recent_strike_def",
+                        "recent_ctrl_time",
+                    ):
                         if len(st[buf_key]) > 8:
                             st[buf_key] = st[buf_key][-8:]
 
@@ -743,7 +759,8 @@ class FeatureMatrixAssembler:
         # history dicts are chronological.
         if feature_set in ("v2.2", "v2.5-travel"):
             sorted_records = sorted(
-                fight_records, key=lambda f: f["event_date"],
+                fight_records,
+                key=lambda f: f["event_date"],
             )
             if ref_global_rates is None:
                 ref_global_rates = _compute_ref_global_rates(sorted_records)
@@ -761,7 +778,8 @@ class FeatureMatrixAssembler:
                 event_venues = _build_event_venue_lookup(sorted_records)
             if fighter_prior_venues is None:
                 fighter_prior_venues = _build_fighter_prior_venues(
-                    sorted_records, event_venues,
+                    sorted_records,
+                    event_venues,
                 )
             # Plan 23-03 META pre-pass — derived from existing tables only
             # (no new scrapers / migrations per D-06).
@@ -773,7 +791,8 @@ class FeatureMatrixAssembler:
                 fighter_reaches = _build_fighter_reaches(fighter_physicals)
             if elo_histories is None:
                 elo_histories = _build_elo_histories(
-                    sorted_records, elo_features,
+                    sorted_records,
+                    elo_features,
                 )
             if fighter_prior_fight_dates is None:
                 fighter_prior_fight_dates = _build_fighter_prior_fight_dates(
@@ -789,12 +808,15 @@ class FeatureMatrixAssembler:
                     global_finish_rate = _global_rate_built
             if division_mean_reaches is None:
                 division_mean_reaches = _build_division_mean_reaches(
-                    fighter_physicals, fight_records,
+                    fighter_physicals,
+                    fight_records,
                 )
 
         # Pre-compute career stats and rematch pairs from chronological fight list
         career_snapshots, fight_pairs = self._build_career_stats(
-            fight_records, elo_features, computed_features,
+            fight_records,
+            elo_features,
+            computed_features,
         )
 
         # Build pace decay stats per fighter from round stats
@@ -886,13 +908,21 @@ class FeatureMatrixAssembler:
             career_b = career_snapshots.get((b_id, fight_id), {})
 
             for key in (
-                "win_streak", "loss_streak", "career_win_pct",
-                "fight_count", "days_since_last_fight",
-                "ko_finish_rate", "sub_finish_rate",
-                "ko_loss_rate", "sub_loss_rate",
-                "total_cage_minutes", "avg_fight_duration",
-                "division_fight_count", "is_debut",
-                "fights_per_year", "avg_opponent_elo",
+                "win_streak",
+                "loss_streak",
+                "career_win_pct",
+                "fight_count",
+                "days_since_last_fight",
+                "ko_finish_rate",
+                "sub_finish_rate",
+                "ko_loss_rate",
+                "sub_loss_rate",
+                "total_cage_minutes",
+                "avg_fight_duration",
+                "division_fight_count",
+                "is_debut",
+                "fights_per_year",
+                "avg_opponent_elo",
                 "elo_momentum",
             ):
                 va = career_a.get(key, float("nan"))
@@ -915,19 +945,31 @@ class FeatureMatrixAssembler:
             row.append(1.0 if fight.get("is_title_fight") else 0.0)
             row.append(float(fight.get("num_rounds", 3)))
             wc_order = {
-                "Strawweight": 1, "Flyweight": 2, "Bantamweight": 3,
-                "Featherweight": 4, "Lightweight": 5, "Welterweight": 6,
-                "Middleweight": 7, "Light Heavyweight": 8, "Heavyweight": 9,
-                "Women's Strawweight": 1, "Women's Flyweight": 2,
-                "Women's Bantamweight": 3, "Women's Featherweight": 4,
+                "Strawweight": 1,
+                "Flyweight": 2,
+                "Bantamweight": 3,
+                "Featherweight": 4,
+                "Lightweight": 5,
+                "Welterweight": 6,
+                "Middleweight": 7,
+                "Light Heavyweight": 8,
+                "Heavyweight": 9,
+                "Women's Strawweight": 1,
+                "Women's Flyweight": 2,
+                "Women's Bantamweight": 3,
+                "Women's Featherweight": 4,
             }
             row.append(float(wc_order.get(weight_class, 5)))
 
             # ── 8. Pace decay differentials (4 features) ───────────────
             pace_a = pace_stats.get((a_id, fight_id), {})
             pace_b = pace_stats.get((b_id, fight_id), {})
-            for key in ("pace_decay_strikes", "pace_decay_td",
-                        "pace_output_variance", "avg_r1_sig_str"):
+            for key in (
+                "pace_decay_strikes",
+                "pace_decay_td",
+                "pace_output_variance",
+                "avg_r1_sig_str",
+            ):
                 va = pace_a.get(key, float("nan"))
                 vb = pace_b.get(key, float("nan"))
                 if va != va or vb != vb:
@@ -945,10 +987,16 @@ class FeatureMatrixAssembler:
                     row.append(va - vb)
 
             # ── 10. Rolling window differentials (8 features) ──────────
-            for key in ("sig_str_per_min_last3", "td_rate_last3",
-                        "strike_defense_last3", "ctrl_time_last3",
-                        "sig_str_per_min_last5", "td_rate_last5",
-                        "strike_defense_last5", "ctrl_time_last5"):
+            for key in (
+                "sig_str_per_min_last3",
+                "td_rate_last3",
+                "strike_defense_last3",
+                "ctrl_time_last3",
+                "sig_str_per_min_last5",
+                "td_rate_last5",
+                "strike_defense_last5",
+                "ctrl_time_last5",
+            ):
                 va = career_a.get(key, float("nan"))
                 vb = career_b.get(key, float("nan"))
                 if va != va or vb != vb:
@@ -1013,10 +1061,7 @@ class FeatureMatrixAssembler:
                 # line_movement_diff = (closing - opening) for A minus the
                 # same for B per D-05. Requires ALL FOUR values to be
                 # present; otherwise NaN.
-                if (
-                    op_a is not None and op_b is not None
-                    and cl_a is not None and cl_b is not None
-                ):
+                if op_a is not None and op_b is not None and cl_a is not None and cl_b is not None:
                     line_move_diff = (cl_a - op_a) - (cl_b - op_b)
                     row.append(line_move_diff)
                     # sharp_money_signal = |line_movement_diff|. Captures
@@ -1036,10 +1081,7 @@ class FeatureMatrixAssembler:
                 # negative means the market is bearish on A vs Elo. Tells
                 # the model where market and our Elo disagree — D-05.
                 if cl_a is not None:
-                    elo_diff = (
-                        elo_a.get("elo_overall", 1500.0)
-                        - elo_b.get("elo_overall", 1500.0)
-                    )
+                    elo_diff = elo_a.get("elo_overall", 1500.0) - elo_b.get("elo_overall", 1500.0)
                     elo_prob_a = 1.0 / (1.0 + 10.0 ** (-elo_diff / 400.0))
                     row.append(cl_a - elo_prob_a)
                 else:
@@ -1066,14 +1108,16 @@ class FeatureMatrixAssembler:
                     "pagerank": (feats_a or {}).get("pagerank", float("nan")),
                     "sos_2hop": (feats_a or {}).get("sos_2hop", float("nan")),
                     "is_debutant_in_graph": (feats_a or {}).get(
-                        "is_debutant_in_graph", float("nan"),
+                        "is_debutant_in_graph",
+                        float("nan"),
                     ),
                 }
                 net_b = {
                     "pagerank": (feats_b or {}).get("pagerank", float("nan")),
                     "sos_2hop": (feats_b or {}).get("sos_2hop", float("nan")),
                     "is_debutant_in_graph": (feats_b or {}).get(
-                        "is_debutant_in_graph", float("nan"),
+                        "is_debutant_in_graph",
+                        float("nan"),
                     ),
                 }
                 net_diffs = compute_network_diff_features(net_a, net_b)
@@ -1108,8 +1152,7 @@ class FeatureMatrixAssembler:
                     ref_id,
                     fight["event_date"],
                     ref_history or {},
-                    ref_global_rates
-                    or {"finish": 0.0, "decision": 0.0, "no_action": 0.0},
+                    ref_global_rates or {"finish": 0.0, "decision": 0.0, "no_action": 0.0},
                 )
                 row.append(ref_rates["ref_finish_rate_shrunk"])
                 row.append(ref_rates["ref_decision_rate_shrunk"])
@@ -1134,33 +1177,29 @@ class FeatureMatrixAssembler:
                     row.extend([float("nan")] * 6)
                 else:
                     prior_a = (
-                        fighter_prior_venues.get((a_id, fight_id))
-                        if fighter_prior_venues
-                        else None
+                        fighter_prior_venues.get((a_id, fight_id)) if fighter_prior_venues else None
                     )
                     prior_b = (
-                        fighter_prior_venues.get((b_id, fight_id))
-                        if fighter_prior_venues
-                        else None
+                        fighter_prior_venues.get((b_id, fight_id)) if fighter_prior_venues else None
                     )
                     travel_red = compute_travel_features(
-                        prior_a, curr_venue, fight["event_date"],
+                        prior_a,
+                        curr_venue,
+                        fight["event_date"],
                     )
                     travel_blue = compute_travel_features(
-                        prior_b, curr_venue, fight["event_date"],
+                        prior_b,
+                        curr_venue,
+                        fight["event_date"],
                     )
                     row.append(travel_red["travel_distance_miles"])
                     row.append(travel_blue["travel_distance_miles"])
                     row.append(
-                        travel_red["travel_distance_miles"]
-                        - travel_blue["travel_distance_miles"]
+                        travel_red["travel_distance_miles"] - travel_blue["travel_distance_miles"]
                     )
                     row.append(travel_red["tz_shift_signed"])
                     row.append(travel_blue["tz_shift_signed"])
-                    row.append(
-                        travel_red["tz_shift_signed"]
-                        - travel_blue["tz_shift_signed"]
-                    )
+                    row.append(travel_red["tz_shift_signed"] - travel_blue["tz_shift_signed"])
 
                 # ── Plan 23-03 META cols (indices 81-89; 9 cols) ────────
                 # Per CONTEXT D-10: shared helpers with inference_features.py
@@ -1173,43 +1212,39 @@ class FeatureMatrixAssembler:
                 # Layoff (indices 81-82) — per-fighter clip at 720 (Pitfall #8).
                 prior_a = (
                     fighter_prior_fight_dates.get((a_id, fight_id))
-                    if fighter_prior_fight_dates else None
+                    if fighter_prior_fight_dates
+                    else None
                 )
                 prior_b = (
                     fighter_prior_fight_dates.get((b_id, fight_id))
-                    if fighter_prior_fight_dates else None
+                    if fighter_prior_fight_dates
+                    else None
                 )
                 row.append(layoff_days(event_date, prior_a))
                 row.append(layoff_days(event_date, prior_b))
 
                 # Age (indices 83-84) — uses event_date, NOT today (Pitfall #5).
-                dob_a = (
-                    fighter_birth_dates.get(a_id) if fighter_birth_dates else None
-                )
-                dob_b = (
-                    fighter_birth_dates.get(b_id) if fighter_birth_dates else None
-                )
+                dob_a = fighter_birth_dates.get(a_id) if fighter_birth_dates else None
+                dob_b = fighter_birth_dates.get(b_id) if fighter_birth_dates else None
                 row.append(age_at_fight(dob_a, event_date))
                 row.append(age_at_fight(dob_b, event_date))
 
                 # Elo velocity (indices 85-87) — diff of red velocity minus
                 # blue velocity. Strict pre-fight slice: history entries with
                 # event_date < this fight's event_date.
-                eh_a = (elo_histories.get(a_id, []) if elo_histories else [])
-                eh_b = (elo_histories.get(b_id, []) if elo_histories else [])
-                prior_elo_a = [
-                    s for s in eh_a if s["event_date"] < event_date
-                ]
-                prior_elo_b = [
-                    s for s in eh_b if s["event_date"] < event_date
-                ]
+                eh_a = elo_histories.get(a_id, []) if elo_histories else []
+                eh_b = elo_histories.get(b_id, []) if elo_histories else []
+                prior_elo_a = [s for s in eh_a if s["event_date"] < event_date]
+                prior_elo_b = [s for s in eh_b if s["event_date"] < event_date]
 
                 def _vel_diff(key: str) -> float:
                     va = elo_velocity(
-                        [s[key] for s in prior_elo_a], window=5,
+                        [s[key] for s in prior_elo_a],
+                        window=5,
                     )
                     vb = elo_velocity(
-                        [s[key] for s in prior_elo_b], window=5,
+                        [s[key] for s in prior_elo_b],
+                        window=5,
                     )
                     # NaN propagates if either side has insufficient history.
                     if va != va or vb != vb:
@@ -1222,24 +1257,20 @@ class FeatureMatrixAssembler:
 
                 # Division finish rate (index 88) — 1 col per division
                 # (NOT per-fighter-differential per D-06).
-                row.append(division_finish_rate_shrunk(
-                    weight_class,
-                    event_date,
-                    division_history or {},
-                    global_finish_rate or 0.0,
-                    k_shrink=50.0,
-                ))
+                row.append(
+                    division_finish_rate_shrunk(
+                        weight_class,
+                        event_date,
+                        division_history or {},
+                        global_finish_rate or 0.0,
+                        k_shrink=50.0,
+                    )
+                )
 
                 # Reach normalized (index 89).
-                reach_a = (
-                    fighter_reaches.get(a_id) if fighter_reaches else None
-                )
-                reach_b = (
-                    fighter_reaches.get(b_id) if fighter_reaches else None
-                )
-                mean_reach = (
-                    (division_mean_reaches or {}).get(weight_class, 0.0)
-                )
+                reach_a = fighter_reaches.get(a_id) if fighter_reaches else None
+                reach_b = fighter_reaches.get(b_id) if fighter_reaches else None
+                mean_reach = (division_mean_reaches or {}).get(weight_class, 0.0)
                 row.append(reach_diff_normalized(reach_a, reach_b, mean_reach))
 
                 # Phase 23 D-10 dynamic guard: at this point we MUST have the
@@ -1290,10 +1321,14 @@ class FeatureMatrixAssembler:
                             else None
                         )
                         travel_red_v25 = compute_travel_v25_features(
-                            prior_a_v25, curr_venue_v25, fight["event_date"],
+                            prior_a_v25,
+                            curr_venue_v25,
+                            fight["event_date"],
                         )
                         travel_blue_v25 = compute_travel_v25_features(
-                            prior_b_v25, curr_venue_v25, fight["event_date"],
+                            prior_b_v25,
+                            curr_venue_v25,
+                            fight["event_date"],
                         )
                         # Differential: red - blue. NaN semantics flow
                         # correctly via Python float arithmetic (no special
@@ -1302,10 +1337,7 @@ class FeatureMatrixAssembler:
                             travel_red_v25["travel_distance_km"]
                             - travel_blue_v25["travel_distance_km"]
                         )
-                        d_hrs = (
-                            travel_red_v25["tz_shift_hours"]
-                            - travel_blue_v25["tz_shift_hours"]
-                        )
+                        d_hrs = travel_red_v25["tz_shift_hours"] - travel_blue_v25["tz_shift_hours"]
                         row.append(d_km)
                         row.append(d_hrs)
 
@@ -1353,24 +1385,18 @@ class FeatureMatrixAssembler:
             for fid in (a_id, b_id):
                 if fid not in fighter_pace:
                     fighter_pace[fid] = {
-                        "decay_strikes": [], "decay_td": [],
-                        "output_vars": [], "r1_sig_strs": [],
+                        "decay_strikes": [],
+                        "decay_td": [],
+                        "output_vars": [],
+                        "r1_sig_strs": [],
                     }
                 st = fighter_pace[fid]
                 n = len(st["decay_strikes"])
                 snapshots[(fid, fight_id)] = {
-                    "pace_decay_strikes": (
-                        sum(st["decay_strikes"]) / n if n > 0 else float("nan")
-                    ),
-                    "pace_decay_td": (
-                        sum(st["decay_td"]) / n if n > 0 else float("nan")
-                    ),
-                    "pace_output_variance": (
-                        sum(st["output_vars"]) / n if n > 0 else float("nan")
-                    ),
-                    "avg_r1_sig_str": (
-                        sum(st["r1_sig_strs"]) / n if n > 0 else float("nan")
-                    ),
+                    "pace_decay_strikes": (sum(st["decay_strikes"]) / n if n > 0 else float("nan")),
+                    "pace_decay_td": (sum(st["decay_td"]) / n if n > 0 else float("nan")),
+                    "pace_output_variance": (sum(st["output_vars"]) / n if n > 0 else float("nan")),
+                    "avg_r1_sig_str": (sum(st["r1_sig_strs"]) / n if n > 0 else float("nan")),
                 }
 
             # Update accumulators AFTER snapshotting
@@ -1405,8 +1431,12 @@ class FeatureMatrixAssembler:
                 st["r1_sig_strs"].append(float(r1_str))
 
                 # Keep bounded
-                for buf in (st["decay_strikes"], st["decay_td"],
-                            st["output_vars"], st["r1_sig_strs"]):
+                for buf in (
+                    st["decay_strikes"],
+                    st["decay_td"],
+                    st["output_vars"],
+                    st["r1_sig_strs"],
+                ):
                     if len(buf) > 10:
                         buf[:] = buf[-10:]
 

@@ -17,6 +17,7 @@ Per Plan 45-02 Task 1 <behavior>:
 Loads test target via importlib (matches Phase 45-01 verify_travel_oof_v25
 pattern) so the script doesn't need to be a packaged module.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -43,6 +44,7 @@ def _load_module():
 
 
 # ─── Test 1: load_xgb_v2_training_config ──────────────────────────────────
+
 
 def test_load_xgb_v2_training_config_returns_cutoff_features_params():
     """load_xgb_v2_training_config() returns dict with cutoff_date,
@@ -72,6 +74,7 @@ def test_load_xgb_v2_training_config_returns_cutoff_features_params():
 
 
 # ─── Test 2: assert_apples_to_apples ──────────────────────────────────────
+
 
 def test_assert_apples_to_apples_accepts_valid_config():
     """assert_apples_to_apples(config) returns None for a valid config."""
@@ -115,6 +118,7 @@ def test_assert_apples_to_apples_raises_on_best_params_keyset_drift():
 
 # ─── Test 3: build_seed_list ──────────────────────────────────────────────
 
+
 def test_build_seed_list_returns_42_43_44_45_46():
     """build_seed_list() returns [42, 43, 44, 45, 46] exactly (matches
     xgb_v2 5-seed harness per D-CONTEXT)."""
@@ -124,6 +128,7 @@ def test_build_seed_list_returns_42_43_44_45_46():
 
 
 # ─── Test 4: debutant_elo_is_seeded ───────────────────────────────────────
+
 
 def test_debutant_with_default_1500_elo_is_not_seeded():
     """For a debutant fighter (n_ufc_fights=0), if elo_overall_pre == 1500.0,

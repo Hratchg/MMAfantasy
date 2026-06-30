@@ -29,6 +29,7 @@ AUDIT-01 invariants:
 Usage:
     PYTHONPATH=src python scripts/rerun_v22_meta_spike_on_deduplicated_corpus.py
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -47,9 +48,7 @@ META_V2_CANDIDATE_PATH = Path("models/meta/meta_v2_candidate.joblib")
 META_V2_DEDUP_PATH = Path("models/meta/meta_v2_dedup.joblib")
 META_V2_DEDUP_META_PATH = Path("models/meta/meta_v2_dedup_meta.json")
 
-REPORT_PATH = Path(
-    ".planning/phases/28-referee-venue-ingestion-pipeline/28-04-METRIC-INTEGRITY.md"
-)
+REPORT_PATH = Path(".planning/phases/28-referee-venue-ingestion-pipeline/28-04-METRIC-INTEGRITY.md")
 
 # v2.2 Phase 26 reference numbers (inflated corpus baseline)
 V22_REF_META_BRIER = 0.1867
@@ -122,16 +121,24 @@ def assert_post_flight(xgb_pre: str, meta_pre: str) -> None:
 def run_spike() -> subprocess.CompletedProcess[str]:
     """Run train_meta_v22.py default spike on the (now-deduplicated) corpus."""
     cmd = [
-        sys.executable, "scripts/train_meta_v22.py",
-        "--feature-set", "v2.2",
-        "--seeds", *SPIKE_SEEDS_INLINE.split(),
+        sys.executable,
+        "scripts/train_meta_v22.py",
+        "--feature-set",
+        "v2.2",
+        "--seeds",
+        *SPIKE_SEEDS_INLINE.split(),
         "--no-cache-oof",  # corpus changed via Task 1 dedup filter — stale cache invariant fires
     ]
     print(f"Running: {' '.join(cmd)}", flush=True)
-    proc = subprocess.run(cmd, capture_output=True, text=True, env={
-        **__import__("os").environ,
-        "PYTHONPATH": "src",
-    })
+    proc = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        env={
+            **__import__("os").environ,
+            "PYTHONPATH": "src",
+        },
+    )
     return proc
 
 
@@ -423,7 +430,7 @@ def main():
     #    copy a stale Phase 26 candidate and pretend it's the dedup retrain.
     dedup_sha = None
     candidate_meta = Path(str(META_V2_CANDIDATE_PATH).replace(".joblib", "_meta.json"))
-    spike_succeeded = (proc.returncode == 0)
+    spike_succeeded = proc.returncode == 0
     if spike_succeeded and META_V2_CANDIDATE_PATH.exists():
         shutil.copy2(META_V2_CANDIDATE_PATH, META_V2_DEDUP_PATH)
         if candidate_meta.exists():
@@ -446,10 +453,12 @@ def main():
         metrics = parse_spike_metrics(proc.stdout, candidate_meta)
         print(f"Parsed metrics keys: {list(metrics.keys())}")
     else:
-        metrics = {"error": (
-            f"spike returncode {proc.returncode}; refusing to parse stale "
-            f"Phase 26 candidate_meta.json (mtime predates this run)"
-        )}
+        metrics = {
+            "error": (
+                f"spike returncode {proc.returncode}; refusing to parse stale "
+                f"Phase 26 candidate_meta.json (mtime predates this run)"
+            )
+        }
         print(f"Spike failed — verdict will be DEFERRED-PENDING-PHASE-29")
     print()
 
@@ -464,7 +473,9 @@ def main():
         r15 = per_slice.get("random_15pct", {})
         if isinstance(r15, dict):
             new_meta_brier = r15.get("brier_score")
-        spike_json_path = Path(".planning/phases/26-forward-stepwise-candidate-promotion/META_V22_SPIKE.json")
+        spike_json_path = Path(
+            ".planning/phases/26-forward-stepwise-candidate-promotion/META_V22_SPIKE.json"
+        )
         if spike_json_path.exists():
             spike_doc = json.loads(spike_json_path.read_text())
             xgb_base = spike_doc.get("xgb_v2_baseline_brier", {}) or {}
@@ -472,8 +483,10 @@ def main():
         if new_meta_brier is not None and new_xgb_brier is not None:
             new_margin = round(new_xgb_brier - new_meta_brier, 4)
             verdict = compute_verdict(new_margin)
-            print(f"random_15pct: META-V22 Brier={new_meta_brier:.4f} "
-                  f"xgb_v2 (contract baseline) Brier={new_xgb_brier:.4f} margin={new_margin:+.4f}")
+            print(
+                f"random_15pct: META-V22 Brier={new_meta_brier:.4f} "
+                f"xgb_v2 (contract baseline) Brier={new_xgb_brier:.4f} margin={new_margin:+.4f}"
+            )
             print(f"VERDICT: {verdict}")
     else:
         verdict = "DEFERRED_PENDING_PHASE_29"

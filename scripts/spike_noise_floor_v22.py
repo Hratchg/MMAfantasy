@@ -89,6 +89,7 @@ After completion, operator reviews 24-NOISE-FLOOR-REPORT.md (+ 24-HALT-AND-
 DECIDE.md if emitted), verifies the emitted formula_hash matches the
 operator-recorded hash (7d221b4a...), and commits the artifacts manually.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -146,9 +147,7 @@ FORMULA_SOURCE: str = (
     "gate_accuracy_min = round(median_acc + 1 * max(seed_std_acc, "
     "bootstrap_ci_half_acc), 4)"
 )
-EXPECTED_FORMULA_HASH: str = (
-    "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
-)
+EXPECTED_FORMULA_HASH: str = "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
 
 # AF-1 enforcement: best_params snapshot from models/xgb_v2_meta.json. The
 # 10-key dict is asserted verbatim at startup; any drift halts the spike.
@@ -211,7 +210,10 @@ EXPECTED_FEATURE_COLUMNS_V22_LEN: int = 90
 
 
 def _train_with_fixed_params(
-    X_train: np.ndarray, y_train: np.ndarray, best_params: dict, seed: int,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    best_params: dict,
+    seed: int,
 ) -> CalibratedClassifierCV:
     """Single-seed train using xgb_v2 best_params (skips Optuna).
 
@@ -243,7 +245,9 @@ def _train_with_fixed_params(
 
 
 def _expected_calibration_error(
-    probs: np.ndarray, y: np.ndarray, n_bins: int = 10,
+    probs: np.ndarray,
+    y: np.ndarray,
+    n_bins: int = 10,
 ) -> float:
     """Equal-width-bin ECE per Niculescu-Mizil & Caruana 2005.
 
@@ -508,26 +512,28 @@ def _render_halt_and_decide(
             f"{d['post_floor_accuracy_min']:.4f} | {d['gap']:.4f} | "
             f"{'YES' if d['breach'] else 'no'} |"
         )
-    lines.extend([
-        "",
-        "## Pre-Templated Outcome Paths (CONTEXT D-09)",
-        "",
-        "- **v2.2_gate_breaks_floor_accept_truth:** Operator accepts the empirical",
-        "  truth — the looser thresholds become the v2.2 contract; the operator floor",
-        "  is moved to v2.3+ as a tighter empirical commitment. Phase 26 proceeds.",
-        "",
-        "- **v2.2_gate_breaks_floor_close_partial:** Operator declines to accept the",
-        "  looser thresholds; v2.2 closes partial (v2.0 precedent); META/CALIB/REF/",
-        "  TRAVEL deferred to v2.3+. Phase 26 + Phase 27 collapse.",
-        "",
-        "## Operator Action Required",
-        "",
-        "Set `actual_outcome` in `24-SUMMARY.md` frontmatter to one of:",
-        "- `v2.2_gate_breaks_floor_accept_truth`",
-        "- `v2.2_gate_breaks_floor_close_partial`",
-        "",
-        "Then run `/gsd-execute-phase 24` resumption.",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Pre-Templated Outcome Paths (CONTEXT D-09)",
+            "",
+            "- **v2.2_gate_breaks_floor_accept_truth:** Operator accepts the empirical",
+            "  truth — the looser thresholds become the v2.2 contract; the operator floor",
+            "  is moved to v2.3+ as a tighter empirical commitment. Phase 26 proceeds.",
+            "",
+            "- **v2.2_gate_breaks_floor_close_partial:** Operator declines to accept the",
+            "  looser thresholds; v2.2 closes partial (v2.0 precedent); META/CALIB/REF/",
+            "  TRAVEL deferred to v2.3+. Phase 26 + Phase 27 collapse.",
+            "",
+            "## Operator Action Required",
+            "",
+            "Set `actual_outcome` in `24-SUMMARY.md` frontmatter to one of:",
+            "- `v2.2_gate_breaks_floor_accept_truth`",
+            "- `v2.2_gate_breaks_floor_close_partial`",
+            "",
+            "Then run `/gsd-execute-phase 24` resumption.",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -559,22 +565,16 @@ def _emit_report(
         f"**Spike duration:** "
         f"{(spike_finished - spike_started).total_seconds() / 60.0:.1f} min"
     )
-    lines.append(
-        f"**Spike seeds:** {seeds[0]}..{seeds[-1]} ({len(seeds)} seeds)  "
-    )
+    lines.append(f"**Spike seeds:** {seeds[0]}..{seeds[-1]} ({len(seeds)} seeds)  ")
     lines.append(
         "**Base feature set:** `FEATURE_COLUMNS_V22` (90 cols; 72 NO_NET "
         "+ 3 REF + 6 TRAVEL + 9 META appended per Phase 23 D-09; NET-* "
         "absent; CONTEXT D-03 binding)  "
     )
+    lines.append(f"**Cutoff date:** `{cutoff_str}` (verbatim from `xgb_v2_meta.json`)  ")
+    lines.append(f"**Train fights:** {n_training_fights} / Test fights: {n_test_fights}  ")
     lines.append(
-        f"**Cutoff date:** `{cutoff_str}` (verbatim from `xgb_v2_meta.json`)  "
-    )
-    lines.append(
-        f"**Train fights:** {n_training_fights} / Test fights: {n_test_fights}  "
-    )
-    lines.append(
-        "**Hparams:** verbatim from `xgb_v2_meta.json[\"best_params\"]` "
+        '**Hparams:** verbatim from `xgb_v2_meta.json["best_params"]` '
         "(AF-1 enforced via EXPECTED_XGB_V2_BEST_PARAMS)  "
     )
     lines.append(
@@ -597,10 +597,7 @@ def _emit_report(
     )
     for slice_name in PER_SLICE_KEYS:
         ts = per_slice[slice_name]
-        lines.append(
-            f"- `{slice_name}`: brier <= {ts.brier_max:.4f}, "
-            f"acc >= {ts.accuracy_min:.4f}"
-        )
+        lines.append(f"- `{slice_name}`: brier <= {ts.brier_max:.4f}, acc >= {ts.accuracy_min:.4f}")
     lines.append("\n---\n")
 
     lines.append("## Per-Slice Tables\n")
@@ -635,12 +632,10 @@ def _emit_report(
     lines.append("---\n")
     lines.append("## Secondary Metrics (Observed; NOT Gated)\n")
     lines.append(
-        "| Slice              | AUC (median across 10 seeds) | "
-        "ECE (median across 10 seeds) |"
+        "| Slice              | AUC (median across 10 seeds) | ECE (median across 10 seeds) |"
     )
     lines.append(
-        "|--------------------|------------------------------|"
-        "-------------------------------|"
+        "|--------------------|------------------------------|-------------------------------|"
     )
     for slice_name in PER_SLICE_KEYS:
         auc_med = secondary_per_slice_median[slice_name]["auc"]
@@ -681,7 +676,7 @@ def _emit_report(
 
     lines.append("## Sanity Checks\n")
     lines.append(
-        "- AF-1 (no hparam retuning): `xgb_v2_meta.json[\"best_params\"]` "
+        '- AF-1 (no hparam retuning): `xgb_v2_meta.json["best_params"]` '
         "matched `EXPECTED_XGB_V2_BEST_PARAMS` verbatim (10 keys)."
     )
     lines.append(
@@ -715,16 +710,19 @@ def _emit_report(
     lines.append("## Reproducibility\n")
     try:
         import scipy
+
         scipy_version = scipy.__version__
     except ImportError:
         scipy_version = "(import failed)"
     try:
         import xgboost
+
         xgb_version = xgboost.__version__
     except ImportError:
         xgb_version = "(import failed)"
     try:
         import sklearn
+
         sk_version = sklearn.__version__
     except ImportError:
         sk_version = "(import failed)"
@@ -732,8 +730,7 @@ def _emit_report(
     lines.append(f"- xgboost version: {xgb_version}")
     lines.append(f"- sklearn version: {sk_version}")
     lines.append(
-        f"- Python: {sys.version_info.major}.{sys.version_info.minor}."
-        f"{sys.version_info.micro}"
+        f"- Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     )
 
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -747,28 +744,30 @@ def main() -> int:
         ),
     )
     parser.add_argument(
-        "--meta-v2-path", default="models/xgb_v2_meta.json",
+        "--meta-v2-path",
+        default="models/xgb_v2_meta.json",
         help="Path to xgb_v2 meta JSON (cutoff_date + best_params source).",
     )
     parser.add_argument(
-        "--seeds", nargs="+", type=int,
+        "--seeds",
+        nargs="+",
+        type=int,
         default=list(range(42, 52)),
         help="Random seeds for the 10-seed spike (default: 42..51).",
     )
     parser.add_argument(
-        "--contract-path", default=".planning/gate_contract_v2.2.json",
+        "--contract-path",
+        default=".planning/gate_contract_v2.2.json",
         help="Output path for the v2.2 gate contract JSON.",
     )
     parser.add_argument(
         "--report-path",
-        default=(
-            ".planning/phases/24-gate-v22-recalibration-spike/"
-            "24-NOISE-FLOOR-REPORT.md"
-        ),
+        default=(".planning/phases/24-gate-v22-recalibration-spike/24-NOISE-FLOOR-REPORT.md"),
         help="Output path for NOISE-FLOOR-REPORT.md.",
     )
     parser.add_argument(
-        "--quick", action="store_true",
+        "--quick",
+        action="store_true",
         help=(
             "Quick mode: only 1 seed (debugging only). Refuses to write "
             "gate_contract_v2.2.json or NOISE-FLOOR-REPORT.md when "
@@ -808,10 +807,7 @@ def main() -> int:
     # Dispatch-parity guard: get_feature_columns must agree with the constant
     dispatched = get_feature_columns(feature_set="v2.2")
     if list(dispatched) != list(FEATURE_COLUMNS_V22):
-        msg = (
-            "get_feature_columns(feature_set='v2.2') drifted from "
-            "FEATURE_COLUMNS_V22 constant."
-        )
+        msg = "get_feature_columns(feature_set='v2.2') drifted from FEATURE_COLUMNS_V22 constant."
         print(f"[spike-v22] FATAL: {msg}", file=sys.stderr)
         return 2
     print(
@@ -884,7 +880,9 @@ def main() -> int:
 
     print("[spike] Computing division medians (training-set only)...")
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
 
     print(
@@ -895,8 +893,12 @@ def main() -> int:
     config = MLConfig(cutoff_date=cutoff_str)
     assembler = FeatureMatrixAssembler(config)
     X, y, fight_dates_full = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
         feature_set="v2.2",
@@ -914,13 +916,14 @@ def main() -> int:
 
     print("[spike-v22] Temporal split at cutoff_date...")
     X_train, X_test, y_train, y_test = split_temporal(
-        X, y, fight_dates_full, cutoff_date_obj,
+        X,
+        y,
+        fight_dates_full,
+        cutoff_date_obj,
     )
     test_mask = np.array([d >= cutoff_date_obj for d in fight_dates_full])
     fight_dates_test = np.array(fight_dates_full)[test_mask]
-    print(
-        f"  Train: {X_train.shape[0]} fights, Test: {X_test.shape[0]} fights"
-    )
+    print(f"  Train: {X_train.shape[0]} fights, Test: {X_test.shape[0]} fights")
 
     # Pitfall E corpus-drift shape sanity (v2.2 relaxation):
     # The v2.1 spike halted on n_training_fights drift vs xgb_v2_meta. v2.2
@@ -985,7 +988,10 @@ def main() -> int:
     X_train_no_net_prefix = X_train_v22[:, :72]
     X_test_no_net_prefix = X_test_v22[:, :72]
     repro_model = _train_with_fixed_params(
-        X_train_no_net_prefix, y_train, best_params, 42,
+        X_train_no_net_prefix,
+        y_train,
+        best_params,
+        42,
     )
     repro_probs = repro_model.predict_proba(X_test_no_net_prefix)[:, 1]
     seed42_repro_brier = float(np.mean((repro_probs - y_test) ** 2))
@@ -1038,22 +1044,32 @@ def main() -> int:
             "on full 90-col v2.2 matrix..."
         )
         model = _train_with_fixed_params(
-            X_train_v22, y_train, best_params, seed,
+            X_train_v22,
+            y_train,
+            best_params,
+            seed,
         )
         print(f"  seed={seed} trained in {time.time() - t_seed:.1f}s")
         candidate_models.append(model)
         per_slice_seed = evaluate_per_slice(
-            model, X_test_v22, y_test, fight_dates_test,
-            today=date.today(), random_seed=42,
+            model,
+            X_test_v22,
+            y_test,
+            fight_dates_test,
+            today=date.today(),
+            random_seed=42,
         )
         candidate_per_slice.append(per_slice_seed)
         secondary_seed = _per_seed_secondary_metrics(
-            model, X_test_v22, y_test, fight_dates_test, date.today(),
+            model,
+            X_test_v22,
+            y_test,
+            fight_dates_test,
+            date.today(),
         )
         candidate_secondary.append(secondary_seed)
         slice_summary = ", ".join(
-            f"{slice_name}: brier={metrics['brier_score']:.4f} "
-            f"acc={metrics['accuracy']:.4f}"
+            f"{slice_name}: brier={metrics['brier_score']:.4f} acc={metrics['accuracy']:.4f}"
             for slice_name, metrics in per_slice_seed.items()
         )
         print(f"  seed={seed} slices: {slice_summary}")
@@ -1074,22 +1090,15 @@ def main() -> int:
     # DO NOT change to ddof=1 inside a v2.x recalibration.
     seed_stds: dict[str, dict[str, float]] = {}
     for slice_name in PER_SLICE_KEYS:
-        brier_arr = np.array(
-            [psm[slice_name]["brier_score"] for psm in candidate_per_slice]
-        )
-        acc_arr = np.array(
-            [psm[slice_name]["accuracy"] for psm in candidate_per_slice]
-        )
+        brier_arr = np.array([psm[slice_name]["brier_score"] for psm in candidate_per_slice])
+        acc_arr = np.array([psm[slice_name]["accuracy"] for psm in candidate_per_slice])
         seed_stds[slice_name] = {
             "brier_score": float(np.std(brier_arr)),  # ddof=0 locked (WR-03)
-            "accuracy": float(np.std(acc_arr)),       # ddof=0 locked (WR-03)
+            "accuracy": float(np.std(acc_arr)),  # ddof=0 locked (WR-03)
         }
 
     # ── Bootstrap CI half-widths (D-06(P17); Pitfall B NaN-aware) ─────
-    print(
-        "[spike] Computing BCa 68% bootstrap CI half-widths on the "
-        "median-Brier seed's model..."
-    )
+    print("[spike] Computing BCa 68% bootstrap CI half-widths on the median-Brier seed's model...")
     median_seed_brier_12mo = median["most_recent_12mo"]["brier_score"]
     distances = [
         abs(psm["most_recent_12mo"]["brier_score"] - median_seed_brier_12mo)
@@ -1098,29 +1107,33 @@ def main() -> int:
     median_seed_idx = int(np.argmin(distances))
     median_seed = seeds[median_seed_idx]
     median_seed_model = candidate_models[median_seed_idx]
-    print(
-        f"  median-12mo-Brier seed = {median_seed} "
-        f"(idx {median_seed_idx}); bootstrapping..."
-    )
+    print(f"  median-12mo-Brier seed = {median_seed} (idx {median_seed_idx}); bootstrapping...")
     t_boot = time.time()
     bootstrap_halves = bootstrap_per_slice_ci(
-        median_seed_model, X_test_v22, y_test, fight_dates_test,
-        today=date.today(), confidence_level=0.68,
-        n_resamples=9999, rng_seed=42,
+        median_seed_model,
+        X_test_v22,
+        y_test,
+        fight_dates_test,
+        today=date.today(),
+        confidence_level=0.68,
+        n_resamples=9999,
+        rng_seed=42,
     )
     print(f"  bootstrap done in {time.time() - t_boot:.1f}s")
 
     # ── Mechanical formula application + warnings collection ──────────
     warnings_list: list[str] = []
     per_slice_thresholds_raw = _build_per_slice_thresholds(
-        median, seed_stds, bootstrap_halves, warnings_list,
+        median,
+        seed_stds,
+        bootstrap_halves,
+        warnings_list,
     )
 
     # ── Apply operator empirical floor (CONTEXT D-05) + detect breach (D-06)
-    per_slice_thresholds, floor_breach_diagnostic = (
-        _apply_operator_floor_and_detect_breach(
-            per_slice_thresholds_raw, floor=OPERATOR_ACCURACY_FLOOR,
-        )
+    per_slice_thresholds, floor_breach_diagnostic = _apply_operator_floor_and_detect_breach(
+        per_slice_thresholds_raw,
+        floor=OPERATOR_ACCURACY_FLOOR,
     )
     for slice_name in PER_SLICE_KEYS:
         d = floor_breach_diagnostic[slice_name]
@@ -1135,12 +1148,8 @@ def main() -> int:
     # ── Secondary metrics: per-slice median AUC + ECE across seeds ────
     secondary_per_slice_median: dict[str, dict[str, float]] = {}
     for slice_name in PER_SLICE_KEYS:
-        auc_seed_vals = [
-            psm[slice_name]["auc_roc"] for psm in candidate_per_slice
-        ]
-        ece_seed_vals = [
-            sec[slice_name]["ece"] for sec in candidate_secondary
-        ]
+        auc_seed_vals = [psm[slice_name]["auc_roc"] for psm in candidate_per_slice]
+        ece_seed_vals = [sec[slice_name]["ece"] for sec in candidate_secondary]
         secondary_per_slice_median[slice_name] = {
             "auc": float(np.median(auc_seed_vals)),
             "ece": float(np.median(ece_seed_vals)),
@@ -1177,13 +1186,20 @@ def main() -> int:
     # permission error) produces a clean fatal message instead of an
     # unhelpful traceback after the ~90-minute training run.
     import subprocess
+
     try:
         bfo_ts_raw = subprocess.run(
             [
-                "git", "log", "--format=%aI", "-1", "--",
+                "git",
+                "log",
+                "--format=%aI",
+                "-1",
+                "--",
                 ".planning/phases/21-bfo-coverage-backfill/",
             ],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout.strip()
     except (FileNotFoundError, subprocess.CalledProcessError) as exc:
         msg = (
@@ -1218,14 +1234,12 @@ def main() -> int:
         secondary_metrics_observed={
             "auc": {
                 "per_slice_median": {
-                    s: secondary_per_slice_median[s]["auc"]
-                    for s in PER_SLICE_KEYS
+                    s: secondary_per_slice_median[s]["auc"] for s in PER_SLICE_KEYS
                 },
             },
             "ece": {
                 "per_slice_median": {
-                    s: secondary_per_slice_median[s]["ece"]
-                    for s in PER_SLICE_KEYS
+                    s: secondary_per_slice_median[s]["ece"] for s in PER_SLICE_KEYS
                 },
             },
         },
@@ -1248,7 +1262,8 @@ def main() -> int:
     contract_path = Path(args.contract_path)
     contract_path.parent.mkdir(parents=True, exist_ok=True)
     contract_path.write_text(
-        json.dumps(asdict(contract), indent=2) + "\n", encoding="utf-8",
+        json.dumps(asdict(contract), indent=2) + "\n",
+        encoding="utf-8",
     )
     print(f"[spike-v22] Wrote gate contract: {contract_path}")
 
@@ -1277,14 +1292,9 @@ def main() -> int:
     print(f"[spike-v22] Wrote noise-floor report: {report_path}")
 
     # ── HALT-AND-DECIDE artifact (CONTEXT D-06; CONDITIONAL emit) ─────
-    halt_required = any(
-        d["breach"] for d in floor_breach_diagnostic.values()
-    )
+    halt_required = any(d["breach"] for d in floor_breach_diagnostic.values())
     if halt_required:
-        halt_path = Path(
-            ".planning/phases/24-gate-v22-recalibration-spike/"
-            "24-HALT-AND-DECIDE.md"
-        )
+        halt_path = Path(".planning/phases/24-gate-v22-recalibration-spike/24-HALT-AND-DECIDE.md")
         halt_path.parent.mkdir(parents=True, exist_ok=True)
         halt_path.write_text(
             _render_halt_and_decide(
@@ -1307,9 +1317,7 @@ def main() -> int:
             f"[spike-v22] FORMULA_HASH = {formula_hash}"
         )
         return 3  # halt-needed exit code (CONTEXT D-06)
-    print(
-        "[spike-v22] No floor breach detected; no HALT-AND-DECIDE emitted."
-    )
+    print("[spike-v22] No floor breach detected; no HALT-AND-DECIDE emitted.")
 
     # ── Final stdout (Pitfall D: do NOT call git) ─────────────────────
     print(

@@ -76,18 +76,14 @@ def _build_synthetic_snapshot(
         )
         for i in range(n_predictions):
             slice_names_col.append(slice_name)
-            feature_vectors_col.append(
-                [float(i * 0.1 + j) for j in range(n_features)]
-            )
+            feature_vectors_col.append([float(i * 0.1 + j) for j in range(n_features)])
             outcomes_col.append(i % 2)
             substrate_shas_col.append(sha_value)
 
     table = pa.table(
         {
             "slice_name": pa.array(slice_names_col, type=pa.string()),
-            "feature_vector": pa.array(
-                feature_vectors_col, type=pa.list_(pa.float64())
-            ),
+            "feature_vector": pa.array(feature_vectors_col, type=pa.list_(pa.float64())),
             "outcome": pa.array(outcomes_col, type=pa.int8()),
             "substrate_sha": pa.array(substrate_shas_col, type=pa.string()),
         }
@@ -127,9 +123,7 @@ def test_round_trip_happy_path(tmp_path: Path) -> None:
     assert most_recent.substrate_sha == "sha-most_recent_12mo"
 
     # Frozen-dataclass field-by-field equality against the expected build.
-    expected_fv = tuple(
-        tuple(float(i * 0.1 + j) for j in range(3)) for i in range(5)
-    )
+    expected_fv = tuple(tuple(float(i * 0.1 + j) for j in range(3)) for i in range(5))
     expected = EvalSlice(
         feature_vectors=expected_fv,
         outcomes=(0, 1, 0, 1, 0),
@@ -201,9 +195,7 @@ def test_outcome_values_are_python_ints_not_numpy_scalars(tmp_path: Path) -> Non
 # ── Task 2: R1-R8 rejection + A1-A2 acceptance ────────────────────────────
 
 
-def _write_table(
-    table: pa.Table, tmp_path: Path, name: str = "mutated.parquet"
-) -> Path:
+def _write_table(table: pa.Table, tmp_path: Path, name: str = "mutated.parquet") -> Path:
     """Helper: write a raw pyarrow Table to ``tmp_path`` and return the path.
 
     Used by reject-rule tests that need to bypass the locked schema in
@@ -221,9 +213,7 @@ def test_r1_missing_required_column_raises(tmp_path: Path) -> None:
     table = pa.table(
         {
             "slice_name": pa.array(["slice_a", "slice_a"], type=pa.string()),
-            "feature_vector": pa.array(
-                [[1.0, 2.0], [3.0, 4.0]], type=pa.list_(pa.float64())
-            ),
+            "feature_vector": pa.array([[1.0, 2.0], [3.0, 4.0]], type=pa.list_(pa.float64())),
             # outcome column intentionally omitted
             "substrate_sha": pa.array(["sha-a", "sha-a"], type=pa.string()),
         }
@@ -245,9 +235,7 @@ def test_r2_wrong_dtype_on_outcome_raises(tmp_path: Path) -> None:
     table = pa.table(
         {
             "slice_name": pa.array(["slice_a", "slice_a"], type=pa.string()),
-            "feature_vector": pa.array(
-                [[1.0, 2.0], [3.0, 4.0]], type=pa.list_(pa.float64())
-            ),
+            "feature_vector": pa.array([[1.0, 2.0], [3.0, 4.0]], type=pa.list_(pa.float64())),
             "outcome": pa.array(["0", "1"], type=pa.string()),  # wrong dtype
             "substrate_sha": pa.array(["sha-a", "sha-a"], type=pa.string()),
         }
@@ -269,9 +257,7 @@ def test_r2_wrong_dtype_on_feature_vector_raises(tmp_path: Path) -> None:
     table = pa.table(
         {
             "slice_name": pa.array(["slice_a", "slice_a"], type=pa.string()),
-            "feature_vector": pa.array(
-                [[1, 2], [3, 4]], type=pa.list_(pa.int32())
-            ),
+            "feature_vector": pa.array([[1, 2], [3, 4]], type=pa.list_(pa.int32())),
             "outcome": pa.array([0, 1], type=pa.int8()),
             "substrate_sha": pa.array(["sha-a", "sha-a"], type=pa.string()),
         }
@@ -291,12 +277,8 @@ def test_r3_outcome_outside_zero_one_raises(tmp_path: Path) -> None:
     """
     table = pa.table(
         {
-            "slice_name": pa.array(
-                ["slice_a", "slice_a", "slice_a", "slice_a"], type=pa.string()
-            ),
-            "feature_vector": pa.array(
-                [[1.0], [2.0], [3.0], [4.0]], type=pa.list_(pa.float64())
-            ),
+            "slice_name": pa.array(["slice_a", "slice_a", "slice_a", "slice_a"], type=pa.string()),
+            "feature_vector": pa.array([[1.0], [2.0], [3.0], [4.0]], type=pa.list_(pa.float64())),
             # Row 2 has outcome=2 (outside {0, 1})
             "outcome": pa.array([0, 1, 2, 0], type=pa.int8()),
             "substrate_sha": pa.array(["sha-a"] * 4, type=pa.string()),
@@ -344,17 +326,11 @@ def test_r6_conflicting_sha_within_slice_raises(tmp_path: Path) -> None:
     """
     table = pa.table(
         {
-            "slice_name": pa.array(
-                ["most_recent_12mo"] * 3, type=pa.string()
-            ),
-            "feature_vector": pa.array(
-                [[1.0], [2.0], [3.0]], type=pa.list_(pa.float64())
-            ),
+            "slice_name": pa.array(["most_recent_12mo"] * 3, type=pa.string()),
+            "feature_vector": pa.array([[1.0], [2.0], [3.0]], type=pa.list_(pa.float64())),
             "outcome": pa.array([0, 1, 0], type=pa.int8()),
             # Rows 0-1 use sha-A; row 2 uses sha-B (R6 violation)
-            "substrate_sha": pa.array(
-                ["sha-A", "sha-A", "sha-B"], type=pa.string()
-            ),
+            "substrate_sha": pa.array(["sha-A", "sha-A", "sha-B"], type=pa.string()),
         }
     )
     path = _write_table(table, tmp_path, "conflicting_sha.parquet")
@@ -399,16 +375,10 @@ def test_r8_nan_in_outcome_raises(tmp_path: Path) -> None:
     """
     table = pa.table(
         {
-            "slice_name": pa.array(
-                ["slice_a", "slice_a", "slice_a"], type=pa.string()
-            ),
-            "feature_vector": pa.array(
-                [[1.0], [2.0], [3.0]], type=pa.list_(pa.float64())
-            ),
+            "slice_name": pa.array(["slice_a", "slice_a", "slice_a"], type=pa.string()),
+            "feature_vector": pa.array([[1.0], [2.0], [3.0]], type=pa.list_(pa.float64())),
             # float64 outcome lets us store NaN; R2 will likely fire first.
-            "outcome": pa.array(
-                [0.0, float("nan"), 1.0], type=pa.float64()
-            ),
+            "outcome": pa.array([0.0, float("nan"), 1.0], type=pa.float64()),
             "substrate_sha": pa.array(["sha-a"] * 3, type=pa.string()),
         }
     )

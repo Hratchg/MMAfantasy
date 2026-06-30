@@ -25,6 +25,7 @@ PATTERNS §model_runs ("ix_model_runs_model_name_model_version",
 
 Banned imports per Pitfall #1 / Finding 11: nothing under ``ufc_prediction.ml.*``.
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -33,8 +34,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'e09bc46ad044'
-down_revision: Union[str, Sequence[str], None] = '59981c08e056'
+revision: str = "e09bc46ad044"
+down_revision: Union[str, Sequence[str], None] = "59981c08e056"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

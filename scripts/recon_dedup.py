@@ -29,6 +29,7 @@ recon doc):
 Usage:
     PYTHONPATH=src python scripts/recon_dedup.py > /tmp/recon_output.md
 """
+
 from __future__ import annotations
 
 import sys
@@ -46,6 +47,7 @@ from ufc_prediction.db.session import SessionLocal
 # Section 1 — Per-source fight counts
 # ─────────────────────────────────────────────────────────────────
 
+
 def section_1_per_source_counts(session: Session) -> dict[str, Any]:
     """Total fights grouped by events.source, with and without the
     `winner_id IS NOT NULL` filter that `load_fight_records()` applies today.
@@ -53,7 +55,8 @@ def section_1_per_source_counts(session: Session) -> dict[str, Any]:
     Also reports the count of rows where `fights.source != events.source`
     (anomaly callout per plan).
     """
-    rows = session.execute(text("""
+    rows = session.execute(
+        text("""
         SELECT e.source,
                COUNT(*) AS total,
                COUNT(*) FILTER (WHERE f.winner_id IS NOT NULL) AS with_winner
@@ -61,18 +64,22 @@ def section_1_per_source_counts(session: Session) -> dict[str, Any]:
         JOIN events e ON f.event_id = e.id
         GROUP BY e.source
         ORDER BY e.source
-    """)).all()
+    """)
+    ).all()
     per_source = [(r[0], r[1], r[2]) for r in rows]
 
-    mismatch_count = session.execute(text("""
+    mismatch_count = session.execute(
+        text("""
         SELECT COUNT(*) FROM fights f
         JOIN events e ON f.event_id = e.id
         WHERE f.source != e.source
-    """)).scalar_one()
+    """)
+    ).scalar_one()
 
     # Distinct fights by (date, normalized-name-pair-canonical-order) —
     # the proxy for "true unique fight count" after cross-source dedup.
-    distinct_unfiltered = session.execute(text("""
+    distinct_unfiltered = session.execute(
+        text("""
         SELECT COUNT(DISTINCT (
             e.date,
             LEAST(LOWER(TRIM(fa.name)), LOWER(TRIM(fb.name))),
@@ -82,8 +89,10 @@ def section_1_per_source_counts(session: Session) -> dict[str, Any]:
         JOIN events e ON f.event_id = e.id
         JOIN fighters fa ON f.fighter_a_id = fa.id
         JOIN fighters fb ON f.fighter_b_id = fb.id
-    """)).scalar_one()
-    distinct_with_winner = session.execute(text("""
+    """)
+    ).scalar_one()
+    distinct_with_winner = session.execute(
+        text("""
         SELECT COUNT(DISTINCT (
             e.date,
             LEAST(LOWER(TRIM(fa.name)), LOWER(TRIM(fb.name))),
@@ -94,7 +103,8 @@ def section_1_per_source_counts(session: Session) -> dict[str, Any]:
         JOIN fighters fa ON f.fighter_a_id = fa.id
         JOIN fighters fb ON f.fighter_b_id = fb.id
         WHERE f.winner_id IS NOT NULL
-    """)).scalar_one()
+    """)
+    ).scalar_one()
 
     total_unfiltered = sum(r[1] for r in per_source)
     total_with_winner = sum(r[2] for r in per_source)
@@ -113,6 +123,7 @@ def section_1_per_source_counts(session: Session) -> dict[str, Any]:
 # Section 2 — Per-Kaggle-event match status (date-based; fuzzy is no-op)
 # ─────────────────────────────────────────────────────────────────
 
+
 def section_2_event_match_buckets(session: Session) -> dict[str, Any]:
     """For each Kaggle event, bucket by whether a same-date ufcstats event
     exists.
@@ -127,7 +138,8 @@ def section_2_event_match_buckets(session: Session) -> dict[str, Any]:
     Returns matched_pairs for downstream Sections 3 + 5.
     """
     # Exact-date matches: (kaggle_event_id, ufcstats_event_id) pairs.
-    matched_rows = session.execute(text("""
+    matched_rows = session.execute(
+        text("""
         SELECT ke.id AS k_eid, ke.name AS k_name, ke.source AS k_src,
                ke.date AS d,
                ue.id AS u_eid, ue.name AS u_name
@@ -135,24 +147,29 @@ def section_2_event_match_buckets(session: Session) -> dict[str, Any]:
         JOIN events ue ON ue.date = ke.date AND ue.source = 'ufcstats'
         WHERE ke.source LIKE 'kaggle%'
         ORDER BY ke.date, ke.source, ke.id, ue.id
-    """)).all()
+    """)
+    ).all()
 
-    no_match_rows = session.execute(text("""
+    no_match_rows = session.execute(
+        text("""
         SELECT id, name, source, date FROM events ke
         WHERE ke.source LIKE 'kaggle%'
           AND NOT EXISTS (
               SELECT 1 FROM events ue WHERE ue.source = 'ufcstats' AND ue.date = ke.date
           )
         ORDER BY ke.date
-    """)).all()
+    """)
+    ).all()
 
     # Bucket counts by Kaggle source.
     matched_kaggle_event_ids: set[int] = {r[0] for r in matched_rows}
     matched_pairs: list[tuple[int, int]] = [(r[0], r[4]) for r in matched_rows]
     # All Kaggle events grouped by source for bucket-count denominator.
-    all_kaggle = session.execute(text("""
+    all_kaggle = session.execute(
+        text("""
         SELECT id, source FROM events WHERE source LIKE 'kaggle%'
-    """)).all()
+    """)
+    ).all()
     by_src_total: Counter = Counter(r[1] for r in all_kaggle)
     by_src_matched: Counter = Counter()
     for keid in matched_kaggle_event_ids:
@@ -164,7 +181,8 @@ def section_2_event_match_buckets(session: Session) -> dict[str, Any]:
 
     # Multi-ufcstats-per-date sanity: how many Kaggle events have >1 ufcstats
     # counterpart on the same date (drives Section 3 fan-out)?
-    multi_match_dates = session.execute(text("""
+    multi_match_dates = session.execute(
+        text("""
         SELECT ke.date, COUNT(DISTINCT ue.id) AS n_u
         FROM events ke
         JOIN events ue ON ue.date = ke.date AND ue.source = 'ufcstats'
@@ -172,7 +190,8 @@ def section_2_event_match_buckets(session: Session) -> dict[str, Any]:
         GROUP BY ke.date
         HAVING COUNT(DISTINCT ue.id) > 1
         ORDER BY ke.date
-    """)).all()
+    """)
+    ).all()
 
     # Sample 10 of each bucket (matched + no-match) for the recon doc.
     matched_sample = matched_rows[:10]
@@ -198,7 +217,10 @@ def section_2_event_match_buckets(session: Session) -> dict[str, Any]:
 # Section 3 — Per-fight pair matching
 # ─────────────────────────────────────────────────────────────────
 
-def section_3_fight_pair_match(session: Session, *, matched_pairs: list[tuple[int, int]]) -> dict[str, Any]:
+
+def section_3_fight_pair_match(
+    session: Session, *, matched_pairs: list[tuple[int, int]]
+) -> dict[str, Any]:
     """For Kaggle fights on dates that have a ufcstats counterpart, match
     individual fights by normalized fighter NAME pair (swap-tolerant).
 
@@ -208,7 +230,8 @@ def section_3_fight_pair_match(session: Session, *, matched_pairs: list[tuple[in
     """
     # Bucket counts using a single SQL pass over Kaggle fights joined to
     # ufcstats fights on (same date, normalized name-pair, swap-tolerant).
-    rows = session.execute(text("""
+    rows = session.execute(
+        text("""
         WITH kf AS (
           SELECT f.id AS fid, e.source AS src, e.date AS d,
                  LOWER(TRIM(fa.name)) AS a, LOWER(TRIM(fb.name)) AS b,
@@ -238,23 +261,27 @@ def section_3_fight_pair_match(session: Session, *, matched_pairs: list[tuple[in
         )
         GROUP BY kf.src
         ORDER BY kf.src
-    """)).all()
+    """)
+    ).all()
 
     bucket_counts = []
     for src, total, exact, swapped in rows:
         no_match = total - exact - swapped
-        bucket_counts.append({
-            "kaggle_source": src,
-            "total": total,
-            "exact_pair": exact,
-            "swapped_pair": swapped,
-            "no_pair_match": no_match,
-        })
+        bucket_counts.append(
+            {
+                "kaggle_source": src,
+                "total": total,
+                "exact_pair": exact,
+                "swapped_pair": swapped,
+                "no_pair_match": no_match,
+            }
+        )
 
     # 10-row sample of no-pair-match Kaggle fights (these are the alias-
     # mismatch cases — same fight exists in ufcstats but under a different
     # canonical fighter name).
-    no_match_sample = session.execute(text("""
+    no_match_sample = session.execute(
+        text("""
         WITH kf AS (
           SELECT f.id AS fid, e.source AS src, e.date AS d,
                  LOWER(TRIM(fa.name)) AS a, LOWER(TRIM(fb.name)) AS b,
@@ -282,7 +309,8 @@ def section_3_fight_pair_match(session: Session, *, matched_pairs: list[tuple[in
         WHERE uf.fid IS NULL
         ORDER BY kf.d
         LIMIT 10
-    """)).all()
+    """)
+    ).all()
 
     return {
         "bucket_counts": bucket_counts,
@@ -299,7 +327,10 @@ def section_3_fight_pair_match(session: Session, *, matched_pairs: list[tuple[in
 # Section 4 — Kaggle-only fights (Path-B risk set)
 # ─────────────────────────────────────────────────────────────────
 
-def section_4_kaggle_only_fights(session: Session, *, kaggle_only_event_ids: list[int]) -> dict[str, Any]:
+
+def section_4_kaggle_only_fights(
+    session: Session, *, kaggle_only_event_ids: list[int]
+) -> dict[str, Any]:
     """Fights from Kaggle events with NO same-date ufcstats counterpart.
     These are the fights that would be DROPPED if Path B (filter at load,
     `Event.source == 'ufcstats'`) is taken.
@@ -321,7 +352,8 @@ def section_4_kaggle_only_fights(session: Session, *, kaggle_only_event_ids: lis
             ),
         }
 
-    rows = session.execute(text("""
+    rows = session.execute(
+        text("""
         SELECT f.id, e.date, e.source, fa.name, fb.name
         FROM fights f
         JOIN events e ON f.event_id = e.id
@@ -329,7 +361,9 @@ def section_4_kaggle_only_fights(session: Session, *, kaggle_only_event_ids: lis
         JOIN fighters fb ON f.fighter_b_id = fb.id
         WHERE f.event_id = ANY(:ids)
         ORDER BY e.date
-    """), {"ids": kaggle_only_event_ids}).all()
+    """),
+        {"ids": kaggle_only_event_ids},
+    ).all()
 
     year_hist: Counter = Counter()
     for _fid, d, _src, _a, _b in rows:
@@ -348,6 +382,7 @@ def section_4_kaggle_only_fights(session: Session, *, kaggle_only_event_ids: lis
 # Section 5 — Fuzzy-match audit (N/A — name-fuzzy is structurally no-op)
 # ─────────────────────────────────────────────────────────────────
 
+
 def section_5_fuzzy_audit_sample(session: Session, *, fuzzy_pairs: list) -> dict[str, Any]:
     """Inspect fuzzy-matched event pairs.
 
@@ -361,14 +396,17 @@ def section_5_fuzzy_audit_sample(session: Session, *, fuzzy_pairs: list) -> dict
     little signal the name field carries.
     """
     import re
-    sample_rows = session.execute(text("""
+
+    sample_rows = session.execute(
+        text("""
         SELECT ke.date, ke.source, ke.name AS kaggle_name, ue.name AS ufcstats_name
         FROM events ke
         JOIN events ue ON ue.date = ke.date AND ue.source = 'ufcstats'
         WHERE ke.source LIKE 'kaggle%'
         ORDER BY ke.date DESC
         LIMIT 20
-    """)).all()
+    """)
+    ).all()
 
     def _tokens(s: str) -> set[str]:
         s = s.lower().replace("ufc ", "").replace("fight night", "")
@@ -386,15 +424,17 @@ def section_5_fuzzy_audit_sample(session: Session, *, fuzzy_pairs: list) -> dict
             "Kaggle name is placeholder format `UFC Event - YYYY-MM-DD`; "
             "matched purely by date. Token overlap is structurally near-zero."
         )
-        audit.append({
-            "date": d,
-            "kaggle_source": src,
-            "kaggle_name": kname,
-            "ufcstats_name": uname,
-            "jaccard": round(jaccard, 3),
-            "label": label,
-            "reasoning": reasoning,
-        })
+        audit.append(
+            {
+                "date": d,
+                "kaggle_source": src,
+                "kaggle_name": kname,
+                "ufcstats_name": uname,
+                "jaccard": round(jaccard, 3),
+                "label": label,
+                "reasoning": reasoning,
+            }
+        )
 
     # Confidence distribution summary
     label_counts = Counter(row["label"] for row in audit)
@@ -414,6 +454,7 @@ def section_5_fuzzy_audit_sample(session: Session, *, fuzzy_pairs: list) -> dict
 # Markdown emission
 # ─────────────────────────────────────────────────────────────────
 
+
 def emit_markdown(r1: dict, r2: dict, r3: dict, r4: dict, r5: dict) -> str:
     out: list[str] = []
     out.append("# Section 1 — Per-Source Fight Counts\n")
@@ -422,15 +463,25 @@ def emit_markdown(r1: dict, r2: dict, r3: dict, r4: dict, r5: dict) -> str:
     out.append("| --- | ---: | ---: |")
     for src, total, with_w in r1["per_source"]:
         out.append(f"| {src} | {total:,} | {with_w:,} |")
-    out.append(f"| **TOTAL** | **{r1['total_unfiltered']:,}** | **{r1['total_with_winner']:,}** |\n")
+    out.append(
+        f"| **TOTAL** | **{r1['total_unfiltered']:,}** | **{r1['total_with_winner']:,}** |\n"
+    )
 
     out.append("**Distinct fights by `(date, lowercased-name-pair-canonical-order)`:**")
     out.append(f"- Unfiltered: **{r1['distinct_unfiltered']:,}**")
     out.append(f"- With winner_id: **{r1['distinct_with_winner']:,}**")
-    factor = (r1["total_with_winner"] / r1["distinct_with_winner"]) if r1["distinct_with_winner"] else 0.0
-    out.append(f"- Inflation factor (with winner): {r1['total_with_winner']:,} / {r1['distinct_with_winner']:,} = **{factor:.2f}×**\n")
+    factor = (
+        (r1["total_with_winner"] / r1["distinct_with_winner"])
+        if r1["distinct_with_winner"]
+        else 0.0
+    )
+    out.append(
+        f"- Inflation factor (with winner): {r1['total_with_winner']:,} / {r1['distinct_with_winner']:,} = **{factor:.2f}×**\n"
+    )
 
-    out.append(f"**Anomaly check:** rows where `fights.source != events.source`: **{r1['mismatch_count']}**\n")
+    out.append(
+        f"**Anomaly check:** rows where `fights.source != events.source`: **{r1['mismatch_count']}**\n"
+    )
 
     out.append("# Section 2 — Per-Kaggle-Event Match Status\n")
     out.append("Match keys: same `date`. Name-fuzzy is a structural no-op (Section 5).\n")
@@ -441,7 +492,9 @@ def emit_markdown(r1: dict, r2: dict, r3: dict, r4: dict, r5: dict) -> str:
         nm = r2["by_src_no_match"].get(src, 0)
         out.append(f"| {src} | {total:,} | {m:,} | {nm:,} |")
     out.append("")
-    out.append(f"Multi-ufcstats-per-date dates (Kaggle event has >1 ufcstats counterpart): **{len(r2['multi_match_dates'])}**")
+    out.append(
+        f"Multi-ufcstats-per-date dates (Kaggle event has >1 ufcstats counterpart): **{len(r2['multi_match_dates'])}**"
+    )
     for d, n in r2["multi_match_dates"]:
         out.append(f"  - {d.isoformat()}: {n} ufcstats events")
     out.append("")
@@ -460,12 +513,18 @@ def emit_markdown(r1: dict, r2: dict, r3: dict, r4: dict, r5: dict) -> str:
             out.append(f"| {d.isoformat()} | {src} | {name} |")
         out.append("")
     else:
-        out.append("**No-date-match bucket: empty.** Every Kaggle event has at least one ufcstats event on its date.\n")
+        out.append(
+            "**No-date-match bucket: empty.** Every Kaggle event has at least one ufcstats event on its date.\n"
+        )
 
     out.append("# Section 3 — Per-Fight Pair Matching For Matched Events\n")
-    out.append("Match key: `(LOWER(TRIM(fighter_a.name)), LOWER(TRIM(fighter_b.name)))` pair, swap-tolerant, on same date.\n")
+    out.append(
+        "Match key: `(LOWER(TRIM(fighter_a.name)), LOWER(TRIM(fighter_b.name)))` pair, swap-tolerant, on same date.\n"
+    )
     out.append(f"**Caveat:** {r3['caveat']}\n")
-    out.append("| kaggle_source | total_kaggle_fights | exact pair | swapped pair | no_pair_match |")
+    out.append(
+        "| kaggle_source | total_kaggle_fights | exact pair | swapped pair | no_pair_match |"
+    )
     out.append("| --- | ---: | ---: | ---: | ---: |")
     grand_total = 0
     grand_matched = 0
@@ -475,7 +534,7 @@ def emit_markdown(r1: dict, r2: dict, r3: dict, r4: dict, r5: dict) -> str:
         pct_matched = (100.0 * matched / b["total"]) if b["total"] else 0.0
         out.append(
             f"| {b['kaggle_source']} | {b['total']:,} | {b['exact_pair']:,} | "
-            f"{b['swapped_pair']:,} | {b['no_pair_match']:,} ({100-pct_matched:.1f}%) |"
+            f"{b['swapped_pair']:,} | {b['no_pair_match']:,} ({100 - pct_matched:.1f}%) |"
         )
         grand_total += b["total"]
         grand_matched += matched
@@ -487,10 +546,14 @@ def emit_markdown(r1: dict, r2: dict, r3: dict, r4: dict, r5: dict) -> str:
         f"**{grand_no_match:,}** |"
     )
     overall_match_pct = (100.0 * grand_matched / grand_total) if grand_total else 0.0
-    out.append(f"\n**Match rate (exact + swapped):** {grand_matched:,} / {grand_total:,} = **{overall_match_pct:.1f}%**\n")
+    out.append(
+        f"\n**Match rate (exact + swapped):** {grand_matched:,} / {grand_total:,} = **{overall_match_pct:.1f}%**\n"
+    )
 
     if r3["no_match_sample"]:
-        out.append("**10-row sample of no-pair-match Kaggle fights (alias-mismatch candidates):**\n")
+        out.append(
+            "**10-row sample of no-pair-match Kaggle fights (alias-mismatch candidates):**\n"
+        )
         out.append("| date | kaggle_source | kaggle_a_name | kaggle_b_name |")
         out.append("| --- | --- | --- | --- |")
         for d, src, aname, bname in r3["no_match_sample"]:
@@ -498,7 +561,9 @@ def emit_markdown(r1: dict, r2: dict, r3: dict, r4: dict, r5: dict) -> str:
         out.append("")
 
     out.append("# Section 4 — Kaggle-Only Fights (Path-B Risk Set)\n")
-    out.append("Fights from Kaggle events whose date has NO ufcstats counterpart. These are the fights that Path B (filter `Event.source == 'ufcstats'`) would drop.\n")
+    out.append(
+        "Fights from Kaggle events whose date has NO ufcstats counterpart. These are the fights that Path B (filter `Event.source == 'ufcstats'`) would drop.\n"
+    )
     out.append(f"**Count:** {r4['count']:,}\n")
     if r4["note"]:
         out.append(f"_{r4['note']}_\n")
@@ -519,7 +584,9 @@ def emit_markdown(r1: dict, r2: dict, r3: dict, r4: dict, r5: dict) -> str:
 
     out.append("# Section 5 — Fuzzy-Match Audit (20-row Sample)\n")
     out.append(f"_{r5['note']}_\n")
-    out.append("| date | kaggle_source | kaggle_name | ufcstats_name | token_jaccard | label | reasoning |")
+    out.append(
+        "| date | kaggle_source | kaggle_name | ufcstats_name | token_jaccard | label | reasoning |"
+    )
     out.append("| --- | --- | --- | --- | ---: | --- | --- |")
     for row in r5["audit"]:
         out.append(
@@ -541,7 +608,9 @@ def main() -> int:
             r1 = section_1_per_source_counts(session)
             r2 = section_2_event_match_buckets(session)
             r3 = section_3_fight_pair_match(session, matched_pairs=r2["matched_pairs"])
-            r4 = section_4_kaggle_only_fights(session, kaggle_only_event_ids=r2["kaggle_only_event_ids"])
+            r4 = section_4_kaggle_only_fights(
+                session, kaggle_only_event_ids=r2["kaggle_only_event_ids"]
+            )
             r5 = section_5_fuzzy_audit_sample(session, fuzzy_pairs=r2["fuzzy_pairs"])
             sys.stdout.write(emit_markdown(r1, r2, r3, r4, r5))
             sys.stdout.write("\n")

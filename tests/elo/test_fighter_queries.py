@@ -27,9 +27,7 @@ def seed_fighters(session):
     session.flush()
 
     # Create alias for Khabib
-    alias = FighterAlias(
-        fighter_id=khabib.id, alias_name="The Eagle", source="test"
-    )
+    alias = FighterAlias(fighter_id=khabib.id, alias_name="The Eagle", source="test")
     session.add(alias)
     session.flush()
 

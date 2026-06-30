@@ -19,6 +19,7 @@ venue string; reruns only re-fetch failures.
 
 Banned imports per Pitfall #1 / Finding 11: nothing under ``ufc_prediction.ml.*``.
 """
+
 from __future__ import annotations
 
 import csv
@@ -35,7 +36,9 @@ NOMINATIM_USER_AGENT: str = "ufc-fight-prediction-v22-venues-backfill"
 NOMINATIM_DELAY_S: float = 1.2
 NOMINATIM_MAX_RETRIES: int = 2
 NOMINATIM_ERROR_WAIT_S: float = 10.0
-NOMINATIM_HTTP_TIMEOUT_S: float = 20.0  # geopy adapter default is 1s — too tight; many Nominatim queries take 3-5s
+NOMINATIM_HTTP_TIMEOUT_S: float = (
+    20.0  # geopy adapter default is 1s — too tight; many Nominatim queries take 3-5s
+)
 NOMINATIM_THROTTLE_COOLDOWN_S: float = 120.0  # cool-down when consecutive 429s detected
 NOMINATIM_CONSECUTIVE_FAILS_TRIGGER: int = 3  # back-off after this many in a row
 
@@ -44,12 +47,21 @@ GEOCODE_CACHE: Path = Path("data/venues_geocode_cache.json")
 
 # 10-col CSV header per CONTEXT D-08 + REVISION-03
 CSV_HEADER: list[str] = [
-    "venue_id", "name", "city", "state", "country",
-    "lat", "lon", "timezone_iana", "n_events", "geocode_source",
+    "venue_id",
+    "name",
+    "city",
+    "state",
+    "country",
+    "lat",
+    "lon",
+    "timezone_iana",
+    "n_events",
+    "geocode_source",
 ]
 
 
 # ─── Pure helpers (no network; tested in isolation) ──────────────────────────
+
 
 def _load_cache(cache_path: Path) -> dict[str, dict | None]:
     """Load the geocode cache JSON (empty dict if file missing).
@@ -117,9 +129,7 @@ def _count_existing_csv_rows(output_path: Path) -> int:
         return 0
 
 
-def _emit_csv(
-    rows: list[dict], output_path: Path, *, allow_shrink: bool = False
-) -> bool:
+def _emit_csv(rows: list[dict], output_path: Path, *, allow_shrink: bool = False) -> bool:
     """Write the 10-col CSV; rows pre-sorted by n_events DESC for operator review.
 
     WR-04 atomic write: writes to ``<output_path>.tmp`` then ``os.replace`` to
@@ -162,6 +172,7 @@ def _emit_csv(
 
 
 # ─── Geocode helpers (lazy-import geopy; cache-first) ────────────────────────
+
 
 def _make_geolocator():
     """Factory seam (WR-06): single point to construct the Nominatim client.
@@ -243,17 +254,20 @@ def _load_or_geocode(venue_name: str, cache: dict[str, dict | None]) -> dict | N
 def _derive_iana_tz(lat: float, lon: float) -> str | None:
     """TimezoneFinder() lookup — Finding 6 (NOT TimezoneFinderL; coastline accuracy)."""
     from timezonefinder import TimezoneFinder  # noqa: PLC0415
+
     tf = TimezoneFinder()
     return tf.timezone_at(lat=lat, lng=lon)
 
 
 # ─── DB query for distinct venues (lazy DB import) ───────────────────────────
 
+
 def _query_distinct_venues(session: Any) -> list[tuple[str, int]]:
     """SELECT location, COUNT(*) FROM events GROUP BY location ORDER BY 2 DESC."""
     from sqlalchemy import func as sa_func, select  # noqa: PLC0415
 
     from ufc_prediction.models import Event  # noqa: PLC0415
+
     rows = session.execute(
         select(Event.location, sa_func.count(Event.id).label("n"))
         .where(Event.location.isnot(None))
@@ -264,6 +278,7 @@ def _query_distinct_venues(session: Any) -> list[tuple[str, int]]:
 
 
 # ─── Main ────────────────────────────────────────────────────────────────────
+
 
 def main(argv: list[str] | None = None) -> int:
     """Run the backfill.
@@ -314,8 +329,7 @@ def main(argv: list[str] | None = None) -> int:
     with next(get_session()) as session:
         distinct = _query_distinct_venues(session)
     print(
-        f"[backfill-venues] {len(distinct)} distinct location strings; "
-        "~150 expected post-dedup",
+        f"[backfill-venues] {len(distinct)} distinct location strings; ~150 expected post-dedup",
     )
 
     # Incremental save every N venues so a mid-run crash doesn't lose progress
@@ -351,8 +365,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         if record is None:
             print(
-                f"[backfill-venues] WARN: no geocode for {raw_location!r}; "
-                "manual review needed",
+                f"[backfill-venues] WARN: no geocode for {raw_location!r}; manual review needed",
                 file=sys.stderr,
             )
             continue
@@ -364,18 +377,20 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             continue
-        rows.append({
-            "venue_id": venue_id,
-            "name": addr.get("amenity") or addr.get("building") or raw_location,
-            "city": addr.get("city") or addr.get("town") or addr.get("village"),
-            "state": addr.get("state"),
-            "country": addr.get("country", ""),
-            "lat": record["lat"],
-            "lon": record["lon"],
-            "timezone_iana": tz,
-            "n_events": n_events,
-            "geocode_source": record["geocode_source"],
-        })
+        rows.append(
+            {
+                "venue_id": venue_id,
+                "name": addr.get("amenity") or addr.get("building") or raw_location,
+                "city": addr.get("city") or addr.get("town") or addr.get("village"),
+                "state": addr.get("state"),
+                "country": addr.get("country", ""),
+                "lat": record["lat"],
+                "lon": record["lon"],
+                "timezone_iana": tz,
+                "n_events": n_events,
+                "geocode_source": record["geocode_source"],
+            }
+        )
 
     _save_cache(cache, GEOCODE_CACHE)
     if not _emit_csv(rows, OUTPUT_CSV, allow_shrink=args.allow_shrink):

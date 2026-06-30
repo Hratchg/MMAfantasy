@@ -29,6 +29,7 @@ This module deliberately does NO HTTP work — pass it parsed HTML + an
 exception (or None) and it returns a status string. Phase 20 audit script
 + Phase 21 backfill driver own the HTTP + timing layers.
 """
+
 from __future__ import annotations
 
 import httpx
@@ -44,20 +45,37 @@ TIMEOUT: str = "timeout"
 ERROR: str = "error"
 CAPTCHA: str = "captcha"
 EVENT_NOT_FOUND: str = "event_not_found"
-PRE_ARCHIVE_SKIP: str = "pre_archive_skip"            # NEW Phase 21
-DISAMBIGUATION_FAIL: str = "disambiguation_fail"      # NEW Phase 21
+PRE_ARCHIVE_SKIP: str = "pre_archive_skip"  # NEW Phase 21
+DISAMBIGUATION_FAIL: str = "disambiguation_fail"  # NEW Phase 21
 
 # REACHABLE is the SOLE numerator status; everything else is denominator-only.
-ALL_STATUSES: frozenset[str] = frozenset({
-    REACHABLE, HOMEPAGE_FALLBACK, NOT_FOUND, HTTP_OTHER,
-    TIMEOUT, ERROR, CAPTCHA, EVENT_NOT_FOUND,
-    PRE_ARCHIVE_SKIP, DISAMBIGUATION_FAIL,
-})
-NON_REACHABLE_STATUSES: frozenset[str] = frozenset({
-    HOMEPAGE_FALLBACK, NOT_FOUND, HTTP_OTHER, TIMEOUT,
-    ERROR, CAPTCHA, EVENT_NOT_FOUND,
-    PRE_ARCHIVE_SKIP, DISAMBIGUATION_FAIL,
-})
+ALL_STATUSES: frozenset[str] = frozenset(
+    {
+        REACHABLE,
+        HOMEPAGE_FALLBACK,
+        NOT_FOUND,
+        HTTP_OTHER,
+        TIMEOUT,
+        ERROR,
+        CAPTCHA,
+        EVENT_NOT_FOUND,
+        PRE_ARCHIVE_SKIP,
+        DISAMBIGUATION_FAIL,
+    }
+)
+NON_REACHABLE_STATUSES: frozenset[str] = frozenset(
+    {
+        HOMEPAGE_FALLBACK,
+        NOT_FOUND,
+        HTTP_OTHER,
+        TIMEOUT,
+        ERROR,
+        CAPTCHA,
+        EVENT_NOT_FOUND,
+        PRE_ARCHIVE_SKIP,
+        DISAMBIGUATION_FAIL,
+    }
+)
 
 # Sentinel for operator-marked unfindable rows (Phase 20 CSV-curation pattern).
 EVENT_NOT_FOUND_SENTINEL: str = "EVENT_NOT_FOUND"
@@ -164,9 +182,7 @@ def classify(
     if http_exception is not None:
         if isinstance(http_exception, httpx.HTTPStatusError):
             status_code = (
-                http_exception.response.status_code
-                if http_exception.response is not None
-                else None
+                http_exception.response.status_code if http_exception.response is not None else None
             )
             return (NOT_FOUND if status_code == 404 else HTTP_OTHER), None
         if isinstance(http_exception, httpx.TimeoutException):

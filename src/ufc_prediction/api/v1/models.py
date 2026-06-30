@@ -15,6 +15,7 @@ Forward-compat fields per D-05(P19): base_prob / meta_prob /
 meta_learner_version / meta_skipped_reason all Optional so xgb_v2-only
 AND META-V22-active responses both validate (Pitfall #5 prevention).
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -152,7 +153,9 @@ class PredictorOutputV1(BaseModel):
         description="Envelope minor version (per D-03; URL is major).",
     )
     win_probability: float = Field(
-        ..., ge=0.0, le=1.0,
+        ...,
+        ge=0.0,
+        le=1.0,
         description="Canonical user-facing probability fighter_a wins (D-05(P19)).",
     )
     fighter_a: str = Field(..., min_length=1, max_length=200)
@@ -161,11 +164,15 @@ class PredictorOutputV1(BaseModel):
 
     # D-05(P19) observability fields — Optional for forward-compat with META-V22
     base_prob: float | None = Field(
-        None, ge=0.0, le=1.0,
+        None,
+        ge=0.0,
+        le=1.0,
         description="Raw XGBoost probability before meta-learner wrapping.",
     )
     meta_prob: float | None = Field(
-        None, ge=0.0, le=1.0,
+        None,
+        ge=0.0,
+        le=1.0,
         description="Meta-learner output probability; None when meta is skipped.",
     )
     meta_learner_version: str | None = Field(
@@ -201,8 +208,7 @@ class PredictorOutputV1(BaseModel):
     phase_chain_audit_sha: str | None = Field(
         default=None,
         description=(
-            "AUDIT-01 chain leaf SHA (xgb_v2.joblib byte-identity). "
-            "Phase 32 D-04 (PARTNER-V23-01)."
+            "AUDIT-01 chain leaf SHA (xgb_v2.joblib byte-identity). Phase 32 D-04 (PARTNER-V23-01)."
         ),
     )
 

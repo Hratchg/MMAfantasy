@@ -15,6 +15,7 @@ BFO_V22_GAP.json emit + --resume flag stub). The actual live scrape +
 ingest + coverage delta are Plan 21-02. The operator-action checkpoint
 (Task 5) gates Plan 21-02 entry.
 """
+
 from __future__ import annotations
 
 import json
@@ -64,7 +65,9 @@ class TestAfStartupAsserts:
     """Module-import-time AF asserts fail fast on constant drift."""
 
     def test_af_startup_asserts_fire_on_drift(
-        self, driver, monkeypatch,
+        self,
+        driver,
+        monkeypatch,
     ) -> None:
         """Tampering with BFO_ARCHIVE_START_DATE then re-running asserts trips.
 
@@ -77,13 +80,17 @@ class TestAfStartupAsserts:
         driver._run_af_startup_asserts()
 
         monkeypatch.setattr(
-            driver, "BFO_ARCHIVE_START_DATE", date(2010, 1, 1),
+            driver,
+            "BFO_ARCHIVE_START_DATE",
+            date(2010, 1, 1),
         )
         with pytest.raises(AssertionError):
             driver._run_af_startup_asserts()
 
     def test_af_startup_asserts_fire_on_target_rate_drift(
-        self, driver, monkeypatch,
+        self,
+        driver,
+        monkeypatch,
     ) -> None:
         """TARGET_RATE_THRESHOLD drift halts before any live HTTP work."""
         monkeypatch.setattr(driver, "TARGET_RATE_THRESHOLD", 0.85)
@@ -91,11 +98,15 @@ class TestAfStartupAsserts:
             driver._run_af_startup_asserts()
 
     def test_af_startup_asserts_fire_on_disambiguation_disabled(
-        self, driver, monkeypatch,
+        self,
+        driver,
+        monkeypatch,
     ) -> None:
         """Disabling the D-01a UFC-slug guard halts before live HTTP."""
         monkeypatch.setattr(
-            driver, "DISAMBIGUATION_REQUIRE_UFC_PREFIX", False,
+            driver,
+            "DISAMBIGUATION_REQUIRE_UFC_PREFIX",
+            False,
         )
         with pytest.raises(AssertionError):
             driver._run_af_startup_asserts()
@@ -119,7 +130,7 @@ class TestQueryGapEvents:
         synthetic = [
             _EventRow(id=1, name="UFC 64", date=date(2006, 10, 14)),  # pre
             _EventRow(id=2, name="UFC 77", date=date(2007, 10, 20)),  # post
-            _EventRow(id=3, name="UFC 200", date=date(2016, 7, 9)),   # post
+            _EventRow(id=3, name="UFC 200", date=date(2016, 7, 9)),  # post
         ]
         session = MagicMock()
         exec_result = MagicMock()
@@ -132,13 +143,14 @@ class TestQueryGapEvents:
         session.execute.return_value = exec_result
 
         events = driver._query_gap_events(session)
-        assert all(
-            e.date >= driver.BFO_ARCHIVE_START_DATE for e in events
-        ), "_query_gap_events must filter to post-cutoff only"
+        assert all(e.date >= driver.BFO_ARCHIVE_START_DATE for e in events), (
+            "_query_gap_events must filter to post-cutoff only"
+        )
         assert len(events) == 2
 
     def test_query_gap_events_query_includes_cutoff_filter(
-        self, driver,
+        self,
+        driver,
     ) -> None:
         """The SQL statement built by ``_query_gap_events`` references the
         cutoff date — proves the WHERE clause exists at all.
@@ -199,14 +211,10 @@ class TestEnumerateBfoUrl:
         """
         client = MagicMock()
         client.get.return_value = (
-            '<html><body>'
-            '<a href="/events/bellator-272-2310">Bellator 272</a>'
-            '</body></html>'
+            '<html><body><a href="/events/bellator-272-2310">Bellator 272</a></body></html>'
         )
         url, status = driver._enumerate_bfo_url(client, "UFC 272")
-        assert url is None, (
-            "D-01a: non-ufc-prefixed slug must be rejected as disambiguation_fail"
-        )
+        assert url is None, "D-01a: non-ufc-prefixed slug must be rejected as disambiguation_fail"
         assert status == "DISAMBIGUATION_FAIL"
 
     def test_enumerate_bfo_url_handles_fetch_failure(self, driver) -> None:
@@ -236,10 +244,10 @@ class TestEnumerateBfoUrl:
         # Malformed href appears FIRST; well-formed href second. The
         # tightened regex must skip the malformed one and pick the valid one.
         client.get.return_value = (
-            '<html><body>'
+            "<html><body>"
             '<a href="/events/foo--123">Bogus</a>'
             '<a href="/events/ufc-200-1700">UFC 200</a>'
-            '</body></html>'
+            "</body></html>"
         )
         url, status = driver._enumerate_bfo_url(client, "UFC 200")
         assert status == "OK", (
@@ -249,7 +257,8 @@ class TestEnumerateBfoUrl:
         assert url is not None and "ufc-200-1700" in url
 
     def test_enumerate_bfo_url_rejects_only_trailing_dash_slug(
-        self, driver,
+        self,
+        driver,
     ) -> None:
         """WR-01 regression: when ONLY a malformed href exists, return NOT_FOUND.
 
@@ -257,15 +266,9 @@ class TestEnumerateBfoUrl:
         ambiguous slug as a partial match.
         """
         client = MagicMock()
-        client.get.return_value = (
-            '<html><body>'
-            '<a href="/events/foo--123">Bogus</a>'
-            '</body></html>'
-        )
+        client.get.return_value = '<html><body><a href="/events/foo--123">Bogus</a></body></html>'
         url, status = driver._enumerate_bfo_url(client, "Foo")
-        assert url is None, (
-            "WR-01: malformed slug must not silently match as a partial slug"
-        )
+        assert url is None, "WR-01: malformed slug must not silently match as a partial slug"
         assert status == "EVENT_NOT_FOUND"
 
 
@@ -327,7 +330,9 @@ class TestEmitGapJson:
         assert payload["batch_id"] == "20260513-203500"
 
     def test_emit_gap_json_includes_url_acquired_list(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """Plan 21-02 forward-compat: per-event URL list persisted.
 
@@ -422,9 +427,7 @@ class TestResumeFlagStub:
         """argparse parser exposes --resume so Plan 21-02 can flesh out logic."""
         parser = driver._build_arg_parser()
         actions = {a.dest for a in parser._actions}
-        assert "resume" in actions, (
-            "--resume flag must be exposed by Plan 21-01 argparser stub"
-        )
+        assert "resume" in actions, "--resume flag must be exposed by Plan 21-01 argparser stub"
         assert "dry_run" in actions, (
             "--dry-run flag must be exposed (Task 5 operator-action checkpoint)"
         )
@@ -487,46 +490,52 @@ class TestScrapeMode:
         it with ``sys.exit``), so we assert on the return value here.
         """
         rc = driver.main(["--scrape"])
-        assert rc != 0, (
-            "--scrape without --batch-id must exit non-zero (got 0)"
-        )
+        assert rc != 0, "--scrape without --batch-id must exit non-zero (got 0)"
         # And the operator gets a clear stderr message.
         captured = capsys.readouterr()
         assert "--batch-id" in captured.err
 
     def test_scrape_rejects_mismatched_batch_id(
-        self, driver, tmp_path: Path, capsys,
+        self,
+        driver,
+        tmp_path: Path,
+        capsys,
     ) -> None:
         """--scrape --batch-id wrongid against GAP_JSON with batch_id=rightid exits 1."""
         gap_json = tmp_path / "BFO_V22_GAP.json"
         self._write_synthetic_gap_json(
             gap_json,
             batch_id="rightid",
-            urls=[(1, "UFC 200", "2016-07-09",
-                   "https://www.bestfightodds.com/events/ufc-200-1700")],
+            urls=[
+                (1, "UFC 200", "2016-07-09", "https://www.bestfightodds.com/events/ufc-200-1700")
+            ],
         )
-        rc = driver.main([
-            "--scrape",
-            "--batch-id", "wrongid",
-            "--gap-json-path", str(gap_json),
-        ])
+        rc = driver.main(
+            [
+                "--scrape",
+                "--batch-id",
+                "wrongid",
+                "--gap-json-path",
+                str(gap_json),
+            ]
+        )
         assert rc == 1
         captured = capsys.readouterr()
         assert "mismatch" in captured.err.lower()
 
     def test_scrape_calls_bfo_scraper_with_url_list(
-        self, driver, tmp_path: Path, monkeypatch,
+        self,
+        driver,
+        tmp_path: Path,
+        monkeypatch,
     ) -> None:
         """--scrape invokes BFOScraper.scrape_event_urls with the URL list + output_path."""
         batch_id = "20260514-164300"
         gap_json = tmp_path / "BFO_V22_GAP.json"
         synthetic_urls = [
-            (1, "UFC 200", "2016-07-09",
-             "https://www.bestfightodds.com/events/ufc-200-1700"),
-            (2, "UFC 285", "2023-03-04",
-             "https://www.bestfightodds.com/events/ufc-285-2400"),
-            (3, "UFC 290", "2023-07-08",
-             "https://www.bestfightodds.com/events/ufc-290-2500"),
+            (1, "UFC 200", "2016-07-09", "https://www.bestfightodds.com/events/ufc-200-1700"),
+            (2, "UFC 285", "2023-03-04", "https://www.bestfightodds.com/events/ufc-285-2400"),
+            (3, "UFC 290", "2023-07-08", "https://www.bestfightodds.com/events/ufc-290-2500"),
         ]
         self._write_synthetic_gap_json(gap_json, batch_id, synthetic_urls)
 
@@ -534,7 +543,8 @@ class TestScrapeMode:
         # pollute real data/ or the planning-dir SHA file.
         monkeypatch.setattr(driver, "SCRAPE_BATCH_DIR", str(tmp_path / "v22-backfill"))
         monkeypatch.setattr(
-            driver, "AUDIT_01_SHA_MID_PATH",
+            driver,
+            "AUDIT_01_SHA_MID_PATH",
             str(tmp_path / "21-XGB-V2-SHA-MID.txt"),
         )
 
@@ -549,7 +559,9 @@ class TestScrapeMode:
                 scraper_instances.append(self)
 
             def scrape_event_urls(
-                self, event_urls: list[str], output_path: Path,
+                self,
+                event_urls: list[str],
+                output_path: Path,
             ) -> Path:
                 self.calls.append((list(event_urls), Path(output_path)))
                 # Simulate emitting an empty CSV (header-only).
@@ -576,17 +588,19 @@ class TestScrapeMode:
         fake_scraper_mod.BFOScraper = FakeBFOScraper
         fake_client_mod = types.ModuleType("ufc_prediction.scraper.client")
         fake_client_mod.ScraperClient = FakeScraperClient
-        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.bfo_scraper",
-                            fake_scraper_mod)
-        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.client",
-                            fake_client_mod)
+        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.bfo_scraper", fake_scraper_mod)
+        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.client", fake_client_mod)
 
         # Run --scrape.
-        rc = driver.main([
-            "--scrape",
-            "--batch-id", batch_id,
-            "--gap-json-path", str(gap_json),
-        ])
+        rc = driver.main(
+            [
+                "--scrape",
+                "--batch-id",
+                batch_id,
+                "--gap-json-path",
+                str(gap_json),
+            ]
+        )
         assert rc == 0
 
         # BFOScraper instantiated exactly once and called exactly once.
@@ -602,20 +616,23 @@ class TestScrapeMode:
         assert output_path_passed.parent.name == batch_id
 
     def test_scrape_writes_manifest_with_required_fields(
-        self, driver, tmp_path: Path, monkeypatch,
+        self,
+        driver,
+        tmp_path: Path,
+        monkeypatch,
     ) -> None:
         """--scrape writes MANIFEST.json with all 8 required fields."""
         batch_id = "20260514-164300"
         gap_json = tmp_path / "BFO_V22_GAP.json"
         synthetic_urls = [
-            (1, "UFC 200", "2016-07-09",
-             "https://www.bestfightodds.com/events/ufc-200-1700"),
+            (1, "UFC 200", "2016-07-09", "https://www.bestfightodds.com/events/ufc-200-1700"),
         ]
         self._write_synthetic_gap_json(gap_json, batch_id, synthetic_urls)
 
         monkeypatch.setattr(driver, "SCRAPE_BATCH_DIR", str(tmp_path / "v22-backfill"))
         monkeypatch.setattr(
-            driver, "AUDIT_01_SHA_MID_PATH",
+            driver,
+            "AUDIT_01_SHA_MID_PATH",
             str(tmp_path / "21-XGB-V2-SHA-MID.txt"),
         )
 
@@ -646,21 +663,21 @@ class TestScrapeMode:
         fake_scraper_mod.BFOScraper = FakeBFOScraper
         fake_client_mod = types.ModuleType("ufc_prediction.scraper.client")
         fake_client_mod.ScraperClient = FakeScraperClient
-        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.bfo_scraper",
-                            fake_scraper_mod)
-        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.client",
-                            fake_client_mod)
+        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.bfo_scraper", fake_scraper_mod)
+        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.client", fake_client_mod)
 
-        rc = driver.main([
-            "--scrape",
-            "--batch-id", batch_id,
-            "--gap-json-path", str(gap_json),
-        ])
+        rc = driver.main(
+            [
+                "--scrape",
+                "--batch-id",
+                batch_id,
+                "--gap-json-path",
+                str(gap_json),
+            ]
+        )
         assert rc == 0
 
-        manifest_path = (
-            Path(driver.SCRAPE_BATCH_DIR) / batch_id / "MANIFEST.json"
-        )
+        manifest_path = Path(driver.SCRAPE_BATCH_DIR) / batch_id / "MANIFEST.json"
         assert manifest_path.exists()
         manifest = json.loads(manifest_path.read_text())
         required_keys = {
@@ -681,22 +698,29 @@ class TestScrapeMode:
         assert manifest["n_rows"] == 2  # 2 data rows in the synthetic CSV
         # ISO-8601 timestamp parses.
         from datetime import datetime as _dt
+
         _dt.fromisoformat(manifest["scraped_at"].replace("Z", "+00:00"))
 
     def test_scrape_writes_fighters_names_csv(
-        self, driver, tmp_path: Path, monkeypatch,
+        self,
+        driver,
+        tmp_path: Path,
+        monkeypatch,
     ) -> None:
         """--scrape writes a fighters_names.csv (header present; rows optional)."""
         batch_id = "20260514-164300"
         gap_json = tmp_path / "BFO_V22_GAP.json"
         self._write_synthetic_gap_json(
-            gap_json, batch_id,
-            urls=[(1, "UFC 200", "2016-07-09",
-                   "https://www.bestfightodds.com/events/ufc-200-1700")],
+            gap_json,
+            batch_id,
+            urls=[
+                (1, "UFC 200", "2016-07-09", "https://www.bestfightodds.com/events/ufc-200-1700")
+            ],
         )
         monkeypatch.setattr(driver, "SCRAPE_BATCH_DIR", str(tmp_path / "v22-backfill"))
         monkeypatch.setattr(
-            driver, "AUDIT_01_SHA_MID_PATH",
+            driver,
+            "AUDIT_01_SHA_MID_PATH",
             str(tmp_path / "21-XGB-V2-SHA-MID.txt"),
         )
 
@@ -724,21 +748,21 @@ class TestScrapeMode:
         fake_scraper_mod.BFOScraper = FakeBFOScraper
         fake_client_mod = types.ModuleType("ufc_prediction.scraper.client")
         fake_client_mod.ScraperClient = FakeScraperClient
-        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.bfo_scraper",
-                            fake_scraper_mod)
-        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.client",
-                            fake_client_mod)
+        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.bfo_scraper", fake_scraper_mod)
+        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.client", fake_client_mod)
 
-        rc = driver.main([
-            "--scrape",
-            "--batch-id", batch_id,
-            "--gap-json-path", str(gap_json),
-        ])
+        rc = driver.main(
+            [
+                "--scrape",
+                "--batch-id",
+                batch_id,
+                "--gap-json-path",
+                str(gap_json),
+            ]
+        )
         assert rc == 0
 
-        names_csv = (
-            Path(driver.SCRAPE_BATCH_DIR) / batch_id / "fighters_names.csv"
-        )
+        names_csv = Path(driver.SCRAPE_BATCH_DIR) / batch_id / "fighters_names.csv"
         assert names_csv.exists(), (
             "Plan 21-02 Task 1 step 4 expects fighters_names.csv in batch dir"
         )
@@ -748,15 +772,20 @@ class TestScrapeMode:
         assert content.strip(), "fighters_names.csv must not be empty"
 
     def test_scrape_emits_audit_01_mid_sha_file(
-        self, driver, tmp_path: Path, monkeypatch,
+        self,
+        driver,
+        tmp_path: Path,
+        monkeypatch,
     ) -> None:
         """--scrape writes 21-XGB-V2-SHA-MID.txt with the current xgb_v2 SHA."""
         batch_id = "20260514-164300"
         gap_json = tmp_path / "BFO_V22_GAP.json"
         self._write_synthetic_gap_json(
-            gap_json, batch_id,
-            urls=[(1, "UFC 200", "2016-07-09",
-                   "https://www.bestfightodds.com/events/ufc-200-1700")],
+            gap_json,
+            batch_id,
+            urls=[
+                (1, "UFC 200", "2016-07-09", "https://www.bestfightodds.com/events/ufc-200-1700")
+            ],
         )
         monkeypatch.setattr(driver, "SCRAPE_BATCH_DIR", str(tmp_path / "v22-backfill"))
 
@@ -788,16 +817,18 @@ class TestScrapeMode:
         fake_scraper_mod.BFOScraper = FakeBFOScraper
         fake_client_mod = types.ModuleType("ufc_prediction.scraper.client")
         fake_client_mod.ScraperClient = FakeScraperClient
-        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.bfo_scraper",
-                            fake_scraper_mod)
-        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.client",
-                            fake_client_mod)
+        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.bfo_scraper", fake_scraper_mod)
+        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.client", fake_client_mod)
 
-        rc = driver.main([
-            "--scrape",
-            "--batch-id", batch_id,
-            "--gap-json-path", str(gap_json),
-        ])
+        rc = driver.main(
+            [
+                "--scrape",
+                "--batch-id",
+                batch_id,
+                "--gap-json-path",
+                str(gap_json),
+            ]
+        )
         assert rc == 0
 
         assert sha_mid_path.exists(), (
@@ -815,7 +846,10 @@ class TestScrapeMode:
         )
 
     def test_scrape_dedups_duplicate_urls_in_url_acquired_list(
-        self, driver, tmp_path: Path, monkeypatch,
+        self,
+        driver,
+        tmp_path: Path,
+        monkeypatch,
     ) -> None:
         """--scrape de-dups duplicate URLs in url_acquired_list (regression for 2026-05-15 bug).
 
@@ -835,18 +869,31 @@ class TestScrapeMode:
         # Two distinct event_ids both resolve to the SAME URL — exactly
         # the 2026-05-15 production case.
         synthetic_urls = [
-            (461, "UFC Event - 2007-06-12", "2007-06-12",
-             "https://www.bestfightodds.com/events/ufc-fight-night-stout-vs-fisher-206"),
-            (1264, "UFC Fight Night: Stout vs Fisher", "2007-06-12",
-             "https://www.bestfightodds.com/events/ufc-fight-night-stout-vs-fisher-206"),
-            (1265, "UFC 72: Victory", "2007-06-16",
-             "https://www.bestfightodds.com/events/ufc-72-victory-2"),
+            (
+                461,
+                "UFC Event - 2007-06-12",
+                "2007-06-12",
+                "https://www.bestfightodds.com/events/ufc-fight-night-stout-vs-fisher-206",
+            ),
+            (
+                1264,
+                "UFC Fight Night: Stout vs Fisher",
+                "2007-06-12",
+                "https://www.bestfightodds.com/events/ufc-fight-night-stout-vs-fisher-206",
+            ),
+            (
+                1265,
+                "UFC 72: Victory",
+                "2007-06-16",
+                "https://www.bestfightodds.com/events/ufc-72-victory-2",
+            ),
         ]
         self._write_synthetic_gap_json(gap_json, batch_id, synthetic_urls)
 
         monkeypatch.setattr(driver, "SCRAPE_BATCH_DIR", str(tmp_path / "v22-backfill"))
         monkeypatch.setattr(
-            driver, "AUDIT_01_SHA_MID_PATH",
+            driver,
+            "AUDIT_01_SHA_MID_PATH",
             str(tmp_path / "21-XGB-V2-SHA-MID.txt"),
         )
 
@@ -878,16 +925,18 @@ class TestScrapeMode:
         fake_scraper_mod.BFOScraper = FakeBFOScraper
         fake_client_mod = types.ModuleType("ufc_prediction.scraper.client")
         fake_client_mod.ScraperClient = FakeScraperClient
-        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.bfo_scraper",
-                            fake_scraper_mod)
-        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.client",
-                            fake_client_mod)
+        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.bfo_scraper", fake_scraper_mod)
+        monkeypatch.setitem(sys.modules, "ufc_prediction.scraper.client", fake_client_mod)
 
-        rc = driver.main([
-            "--scrape",
-            "--batch-id", batch_id,
-            "--gap-json-path", str(gap_json),
-        ])
+        rc = driver.main(
+            [
+                "--scrape",
+                "--batch-id",
+                batch_id,
+                "--gap-json-path",
+                str(gap_json),
+            ]
+        )
         assert rc == 0
 
         # BFOScraper.scrape_event_urls received DEDUPED URLs.
@@ -906,7 +955,9 @@ class TestScrapeMode:
         ]
 
     def test_load_gap_json_rejects_entries_with_null_url(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """WR-07 regression: entries with null/empty 'url' field raise RuntimeError.
 
@@ -932,21 +983,26 @@ class TestScrapeMode:
                 "n_events_with_partial_odds": 0,
             },
             "url_resolution": {
-                "url_acquired": 3, "event_not_found": 0,
+                "url_acquired": 3,
+                "event_not_found": 0,
                 "disambiguation_fail": 0,
             },
             "estimated_scrape_wall_clock_min": 1,
             "per_year_breakdown": {},
             "url_acquired_list": [
-                {"event_id": 1, "event_name": "OK 1",
-                 "event_date": "2016-07-09",
-                 "url": "https://www.bestfightodds.com/events/ok-1-100"},
-                {"event_id": 2, "event_name": "Null URL",
-                 "event_date": "2016-07-10",
-                 "url": None},
-                {"event_id": 3, "event_name": "OK 2",
-                 "event_date": "2016-07-11",
-                 "url": "https://www.bestfightodds.com/events/ok-2-200"},
+                {
+                    "event_id": 1,
+                    "event_name": "OK 1",
+                    "event_date": "2016-07-09",
+                    "url": "https://www.bestfightodds.com/events/ok-1-100",
+                },
+                {"event_id": 2, "event_name": "Null URL", "event_date": "2016-07-10", "url": None},
+                {
+                    "event_id": 3,
+                    "event_name": "OK 2",
+                    "event_date": "2016-07-11",
+                    "url": "https://www.bestfightodds.com/events/ok-2-200",
+                },
             ],
             "next_step": "test fixture",
         }
@@ -959,7 +1015,9 @@ class TestScrapeMode:
         assert "url" in str(excinfo.value).lower()
 
     def test_load_gap_json_rejects_all_null_url_entries(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """WR-07: payload with every url null raises RuntimeError on first one.
 
@@ -977,7 +1035,8 @@ class TestScrapeMode:
                 "n_events_with_partial_odds": 0,
             },
             "url_resolution": {
-                "url_acquired": 0, "event_not_found": 2,
+                "url_acquired": 0,
+                "event_not_found": 2,
                 "disambiguation_fail": 0,
             },
             "estimated_scrape_wall_clock_min": 1,
@@ -994,7 +1053,9 @@ class TestScrapeMode:
             driver._load_gap_json_for_scrape(gap_json, batch_id)
 
     def test_count_unique_events_rejects_malformed_date_prefix(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """WR-04 regression: _count_unique_events skips non-ISO-date prefixes.
 
@@ -1023,7 +1084,9 @@ class TestScrapeMode:
         )
 
     def test_count_unique_events_accepts_multiple_iso_dates(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """WR-04: well-formed CSV with N distinct ISO dates → n_events == N."""
         csv_path = tmp_path / "BestFightOdds_odds.csv"
@@ -1038,7 +1101,10 @@ class TestScrapeMode:
         assert driver._count_unique_events(csv_path) == 2
 
     def test_scrape_stats_handler_classifies_captcha_vs_error(
-        self, driver, tmp_path: Path, monkeypatch,
+        self,
+        driver,
+        tmp_path: Path,
+        monkeypatch,
     ) -> None:
         """WR-05 regression: _StatsHandler keyword classification end-to-end.
 
@@ -1059,16 +1125,18 @@ class TestScrapeMode:
         batch_id = "20260514-160000"
         gap_json = tmp_path / "BFO_V22_GAP.json"
         synthetic_urls = [
-            (1, "Event A", "2016-07-09",
-             "https://www.bestfightodds.com/events/event-a-1700"),
+            (1, "Event A", "2016-07-09", "https://www.bestfightodds.com/events/event-a-1700"),
         ]
         self._write_synthetic_gap_json(gap_json, batch_id, synthetic_urls)
 
         monkeypatch.setattr(
-            driver, "SCRAPE_BATCH_DIR", str(tmp_path / "v22-backfill"),
+            driver,
+            "SCRAPE_BATCH_DIR",
+            str(tmp_path / "v22-backfill"),
         )
         monkeypatch.setattr(
-            driver, "AUDIT_01_SHA_MID_PATH",
+            driver,
+            "AUDIT_01_SHA_MID_PATH",
             str(tmp_path / "21-XGB-V2-SHA-MID.txt"),
         )
 
@@ -1091,7 +1159,8 @@ class TestScrapeMode:
                 # 1 ambiguous — contains both "captcha" and "fetch failed"
                 # → classified as captcha per the elif precedence (intentional).
                 bfo_logger.warning(
-                    "fetch failed for %s: CAPTCHA gate intercepted", "u5",
+                    "fetch failed for %s: CAPTCHA gate intercepted",
+                    "u5",
                 )
                 # 1 "returned none" (additional error keyword).
                 bfo_logger.warning("returned none for %s", "u6")
@@ -1126,17 +1195,19 @@ class TestScrapeMode:
             fake_client_mod,
         )
 
-        rc = driver.main([
-            "--scrape",
-            "--batch-id", batch_id,
-            "--gap-json-path", str(gap_json),
-        ])
+        rc = driver.main(
+            [
+                "--scrape",
+                "--batch-id",
+                batch_id,
+                "--gap-json-path",
+                str(gap_json),
+            ]
+        )
         assert rc == 0
 
         # Read MANIFEST.json and verify the counter values.
-        manifest_path = (
-            Path(driver.SCRAPE_BATCH_DIR) / batch_id / "MANIFEST.json"
-        )
+        manifest_path = Path(driver.SCRAPE_BATCH_DIR) / batch_id / "MANIFEST.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         # 2 pure captcha + 1 ambiguous (captcha takes precedence) = 3.
         assert manifest["captcha_hit_count"] == 3, (
@@ -1169,9 +1240,7 @@ class TestIntegrityCheck:
     """
 
     # Header used by every synthetic CSV — matches BFOOddsRow's columns.
-    _HEADER = (
-        "fight_id,fighter_id,opening,closing_range_min,closing_range_max\n"
-    )
+    _HEADER = "fight_id,fighter_id,opening,closing_range_min,closing_range_max\n"
 
     @classmethod
     def _write_csv(cls, path: Path, rows: list[str]) -> Path:
@@ -1183,7 +1252,9 @@ class TestIntegrityCheck:
     # ── 8a. Pure-function tests on _run_integrity_check ────────────────
 
     def test_integrity_check_passes_on_distinct_dates_rematch(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """Same pair, two DIFFERENT event dates → clean (legitimate rematch).
 
@@ -1208,7 +1279,9 @@ class TestIntegrityCheck:
         assert summary["n_rows"] == 4
 
     def test_integrity_check_passes_on_single_fight_pairs(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """3 pairs, each with one fight (no rematches) → clean summary."""
         csv = self._write_csv(
@@ -1229,7 +1302,9 @@ class TestIntegrityCheck:
         assert summary["n_rows"] == 6
 
     def test_integrity_check_fails_on_identical_dates_rematch(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """Same pair, same event_date, DIFFERENT fight_ids → BFOIntegrityError.
 
@@ -1261,7 +1336,9 @@ class TestIntegrityCheck:
         assert "jones" in str(violation).lower()
 
     def test_integrity_check_handles_empty_csv(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """Header-only CSV → clean summary with all-zero counts."""
         csv = self._write_csv(tmp_path / "empty.csv", [])
@@ -1272,7 +1349,9 @@ class TestIntegrityCheck:
         assert summary["n_rows"] == 0
 
     def test_integrity_check_raises_FileNotFoundError_for_missing_csv(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """Non-existent CSV path → FileNotFoundError with clear message."""
         missing = tmp_path / "nope" / "BestFightOdds_odds.csv"
@@ -1284,18 +1363,20 @@ class TestIntegrityCheck:
     # ── 8b. main() routing tests ─────────────────────────────────────────
 
     def test_main_integrity_check_requires_batch_id(
-        self, driver, capsys,
+        self,
+        driver,
+        capsys,
     ) -> None:
         """--integrity-check without --batch-id exits non-zero with stderr msg."""
         rc = driver.main(["--integrity-check"])
-        assert rc != 0, (
-            "--integrity-check without --batch-id must exit non-zero"
-        )
+        assert rc != 0, "--integrity-check without --batch-id must exit non-zero"
         captured = capsys.readouterr()
         assert "--batch-id" in captured.err
 
     def test_main_integrity_check_invokes_function_with_correct_path(
-        self, driver, monkeypatch,
+        self,
+        driver,
+        monkeypatch,
     ) -> None:
         """main(--integrity-check --batch-id X) calls _run_integrity_check
         with ``Path(SCRAPE_BATCH_DIR) / X / BestFightOdds_odds.csv``.
@@ -1305,26 +1386,31 @@ class TestIntegrityCheck:
         def fake_run_integrity_check(csv_path: Path) -> dict:
             called_with.append(csv_path)
             return {
-                "n_pairs": 0, "n_rematches": 0, "n_rows": 0, "violations": [],
+                "n_pairs": 0,
+                "n_rematches": 0,
+                "n_rows": 0,
+                "violations": [],
             }
 
         monkeypatch.setattr(
-            driver, "_run_integrity_check", fake_run_integrity_check,
+            driver,
+            "_run_integrity_check",
+            fake_run_integrity_check,
         )
         rc = driver.main(["--integrity-check", "--batch-id", "20260514-231731"])
         assert rc == 0
         assert len(called_with) == 1
-        expected = (
-            Path(driver.SCRAPE_BATCH_DIR)
-            / "20260514-231731"
-            / "BestFightOdds_odds.csv"
-        )
+        expected = Path(driver.SCRAPE_BATCH_DIR) / "20260514-231731" / "BestFightOdds_odds.csv"
         assert called_with[0] == expected
 
     def test_main_integrity_check_clean_exits_0(
-        self, driver, monkeypatch, capsys,
+        self,
+        driver,
+        monkeypatch,
+        capsys,
     ) -> None:
         """Clean integrity summary → main returns 0 + prints summary line."""
+
         def fake_run(csv_path: Path) -> dict:
             return {
                 "n_pairs": 50,
@@ -1332,6 +1418,7 @@ class TestIntegrityCheck:
                 "n_rows": 200,
                 "violations": [],
             }
+
         monkeypatch.setattr(driver, "_run_integrity_check", fake_run)
         rc = driver.main(["--integrity-check", "--batch-id", "fakebatch"])
         assert rc == 0
@@ -1341,9 +1428,13 @@ class TestIntegrityCheck:
         assert "7" in out and "50" in out and "200" in out
 
     def test_main_integrity_check_violation_exits_1(
-        self, driver, monkeypatch, capsys,
+        self,
+        driver,
+        monkeypatch,
+        capsys,
     ) -> None:
         """BFOIntegrityError raised → main returns 1; stderr lists violations."""
+
         def fake_run(csv_path: Path) -> dict:
             raise driver.BFOIntegrityError(
                 violations=[
@@ -1357,6 +1448,7 @@ class TestIntegrityCheck:
                     },
                 ],
             )
+
         monkeypatch.setattr(driver, "_run_integrity_check", fake_run)
         rc = driver.main(["--integrity-check", "--batch-id", "fakebatch"])
         assert rc == 1
@@ -1409,8 +1501,12 @@ class TestEmitCoverage:
             },
             "estimated_scrape_wall_clock_min": 22,
             "per_year_breakdown": {
-                "2007": {"n_events": 24, "url_acquired": 24,
-                         "event_not_found": 0, "disambiguation_fail": 0},
+                "2007": {
+                    "n_events": 24,
+                    "url_acquired": 24,
+                    "event_not_found": 0,
+                    "disambiguation_fail": 0,
+                },
             },
             "url_acquired_list": [],
             "next_step": "test fixture",
@@ -1493,7 +1589,9 @@ class TestEmitCoverage:
     # ── 9a. Pure-function tests on _emit_coverage_json ────────────────────
 
     def test_emit_coverage_writes_all_required_keys(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """Output JSON has all 11 top-level keys per Task 4 spec."""
         gap_json = tmp_path / "BFO_V22_GAP.json"
@@ -1504,14 +1602,17 @@ class TestEmitCoverage:
         driver._emit_coverage_json(
             batch_id="testbatch",
             ingest_summary={
-                "bfo_fights_scanned": 100, "fights_matched": 95,
+                "bfo_fights_scanned": 100,
+                "fights_matched": 95,
                 "rows_upserted": 190,
             },
             gap_json_path=gap_json,
             coverage_json_path=out,
             session=session,
-            n_train_pre=4500, n_train_post=4500,
-            n_test_pre=900, n_test_post=900,
+            n_train_pre=4500,
+            n_train_post=4500,
+            n_test_pre=900,
+            n_test_post=900,
         )
         assert out.exists()
         payload = json.loads(out.read_text())
@@ -1539,7 +1640,9 @@ class TestEmitCoverage:
         assert payload["target_rate_threshold"] == driver.TARGET_RATE_THRESHOLD
 
     def test_make_session_mock_supports_repeat_invocations(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """WR-06 regression: _make_session_mock survives reuse.
 
@@ -1565,27 +1668,33 @@ class TestEmitCoverage:
         driver._emit_coverage_json(
             batch_id="testbatch",
             ingest_summary={
-                "bfo_fights_scanned": 100, "fights_matched": 90,
+                "bfo_fights_scanned": 100,
+                "fights_matched": 90,
                 "rows_upserted": 180,
             },
             gap_json_path=gap_json,
             coverage_json_path=out_a,
             session=session,
-            n_train_pre=4500, n_train_post=4500,
-            n_test_pre=900, n_test_post=900,
+            n_train_pre=4500,
+            n_train_post=4500,
+            n_test_pre=900,
+            n_test_post=900,
         )
         # Second invocation (same session mock).
         driver._emit_coverage_json(
             batch_id="testbatch",
             ingest_summary={
-                "bfo_fights_scanned": 100, "fights_matched": 90,
+                "bfo_fights_scanned": 100,
+                "fights_matched": 90,
                 "rows_upserted": 180,
             },
             gap_json_path=gap_json,
             coverage_json_path=out_b,
             session=session,
-            n_train_pre=4500, n_train_post=4500,
-            n_test_pre=900, n_test_post=900,
+            n_train_pre=4500,
+            n_train_post=4500,
+            n_test_pre=900,
+            n_test_post=900,
         )
         payload_a = json.loads(out_a.read_text())
         payload_b = json.loads(out_b.read_text())
@@ -1605,7 +1714,9 @@ class TestEmitCoverage:
         )
 
     def test_emit_coverage_target_rate_achieved_true_when_above_threshold(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """coverage_after >= 0.96 → target_rate_achieved == True."""
         gap_json = tmp_path / "BFO_V22_GAP.json"
@@ -1619,14 +1730,18 @@ class TestEmitCoverage:
             gap_json_path=gap_json,
             coverage_json_path=out,
             session=session,
-            n_train_pre=100, n_train_post=100,
-            n_test_pre=20, n_test_post=20,
+            n_train_pre=100,
+            n_train_post=100,
+            n_test_pre=20,
+            n_test_post=20,
         )
         assert result["target_rate_achieved"] is True
         assert result["coverage_after"] >= 0.96
 
     def test_emit_coverage_target_rate_achieved_false_when_below_threshold(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """coverage_after < 0.96 → target_rate_achieved == False."""
         gap_json = tmp_path / "BFO_V22_GAP.json"
@@ -1640,22 +1755,29 @@ class TestEmitCoverage:
             gap_json_path=gap_json,
             coverage_json_path=out,
             session=session,
-            n_train_pre=100, n_train_post=100,
-            n_test_pre=20, n_test_post=20,
+            n_train_pre=100,
+            n_train_post=100,
+            n_test_pre=20,
+            n_test_post=20,
         )
         assert result["target_rate_achieved"] is False
         assert result["coverage_after"] < 0.96
 
     def test_emit_coverage_delta_computed_correctly(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """coverage_delta == coverage_after - coverage_before (float math)."""
         gap_json = tmp_path / "BFO_V22_GAP.json"
         # Synthetic gap: 600 in-scope events, 360 with no odds, 0 partial
         # → coverage_before = 1 - (360/600) = 0.40.
         self._write_synthetic_gap_json(
-            gap_json, batch_id="b3",
-            n_in_scope=600, n_no_odds=360, n_partial=0,
+            gap_json,
+            batch_id="b3",
+            n_in_scope=600,
+            n_no_odds=360,
+            n_partial=0,
         )
         out = tmp_path / "BFO_V22_COVERAGE.json"
         session = self._make_session_mock(coverage_after=0.92)
@@ -1666,8 +1788,10 @@ class TestEmitCoverage:
             gap_json_path=gap_json,
             coverage_json_path=out,
             session=session,
-            n_train_pre=100, n_train_post=100,
-            n_test_pre=20, n_test_post=20,
+            n_train_pre=100,
+            n_train_post=100,
+            n_test_pre=20,
+            n_test_post=20,
         )
         # Allow ±1e-6 for float-tolerance.
         assert abs(result["coverage_before"] - 0.40) < 1e-6
@@ -1675,7 +1799,9 @@ class TestEmitCoverage:
         assert abs(result["coverage_delta"] - 0.52) < 1e-6
 
     def test_emit_coverage_cutoff_discipline_preserved_when_counts_unchanged(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """n_train_pre == n_train_post AND n_test_pre == n_test_post → True."""
         gap_json = tmp_path / "BFO_V22_GAP.json"
@@ -1689,13 +1815,17 @@ class TestEmitCoverage:
             gap_json_path=gap_json,
             coverage_json_path=out,
             session=session,
-            n_train_pre=4500, n_train_post=4500,
-            n_test_pre=900, n_test_post=900,
+            n_train_pre=4500,
+            n_train_post=4500,
+            n_test_pre=900,
+            n_test_post=900,
         )
         assert result["cutoff_date_discipline_preserved"] is True
 
     def test_emit_coverage_cutoff_discipline_violated_when_counts_drift(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """Train or test count drift → cutoff_date_discipline_preserved=False."""
         gap_json = tmp_path / "BFO_V22_GAP.json"
@@ -1710,13 +1840,17 @@ class TestEmitCoverage:
             gap_json_path=gap_json,
             coverage_json_path=out,
             session=session,
-            n_train_pre=4500, n_train_post=4501,
-            n_test_pre=900, n_test_post=900,
+            n_train_pre=4500,
+            n_train_post=4501,
+            n_test_pre=900,
+            n_test_post=900,
         )
         assert result["cutoff_date_discipline_preserved"] is False
 
     def test_emit_coverage_per_year_breakdown_has_expected_year_range(
-        self, driver, tmp_path: Path,
+        self,
+        driver,
+        tmp_path: Path,
     ) -> None:
         """per_year_coverage_breakdown has entries for ≥6 years."""
         gap_json = tmp_path / "BFO_V22_GAP.json"
@@ -1732,7 +1866,8 @@ class TestEmitCoverage:
             "2025": (50, 53),
         }
         session = self._make_session_mock(
-            coverage_after=0.92, per_year=per_year,
+            coverage_after=0.92,
+            per_year=per_year,
         )
 
         result = driver._emit_coverage_json(
@@ -1741,39 +1876,40 @@ class TestEmitCoverage:
             gap_json_path=gap_json,
             coverage_json_path=out,
             session=session,
-            n_train_pre=100, n_train_post=100,
-            n_test_pre=20, n_test_post=20,
+            n_train_pre=100,
+            n_train_post=100,
+            n_test_pre=20,
+            n_test_post=20,
         )
         breakdown = result["per_year_coverage_breakdown"]
         # ≥6 years per acceptance criterion.
         assert len(breakdown) >= 6
         # 2007 + at least one year in 2010-2022 range present.
         assert "2007" in breakdown
-        assert any(
-            y in breakdown for y in
-            ["2010", "2013", "2016", "2019", "2022"]
-        )
+        assert any(y in breakdown for y in ["2010", "2013", "2016", "2019", "2022"])
 
     # ── 9b. main() routing tests ─────────────────────────────────────────
 
     def test_main_emit_coverage_requires_all_count_args(
-        self, driver, capsys,
+        self,
+        driver,
+        capsys,
     ) -> None:
         """--emit-coverage --batch-id X without count args exits non-zero."""
         rc = driver.main(["--emit-coverage", "--batch-id", "b7"])
-        assert rc != 0, (
-            "--emit-coverage without count args must exit non-zero"
-        )
+        assert rc != 0, "--emit-coverage without count args must exit non-zero"
         captured = capsys.readouterr()
         # Error mentions one of the required count flags.
         assert any(
             flag in captured.err
-            for flag in ["--n-train-pre", "--n-train-post",
-                         "--n-test-pre", "--n-test-post"]
+            for flag in ["--n-train-pre", "--n-train-post", "--n-test-pre", "--n-test-post"]
         )
 
     def test_main_emit_coverage_invokes_function_with_correct_args(
-        self, driver, monkeypatch, tmp_path: Path,
+        self,
+        driver,
+        monkeypatch,
+        tmp_path: Path,
     ) -> None:
         """main(--emit-coverage ...) calls _emit_coverage_json with parsed args."""
         gap_json = tmp_path / "BFO_V22_GAP.json"
@@ -1782,16 +1918,21 @@ class TestEmitCoverage:
 
         # Override the COVERAGE_JSON_PATH so we don't pollute the real path.
         monkeypatch.setattr(
-            driver, "COVERAGE_JSON_PATH", str(coverage_out),
+            driver,
+            "COVERAGE_JSON_PATH",
+            str(coverage_out),
         )
 
         # Stub the SessionLocal lazy import.
         import sys
         import types
+
         fake_db_mod = types.ModuleType("ufc_prediction.db.session")
         fake_db_mod.SessionLocal = lambda: MagicMock()
         monkeypatch.setitem(
-            sys.modules, "ufc_prediction.db.session", fake_db_mod,
+            sys.modules,
+            "ufc_prediction.db.session",
+            fake_db_mod,
         )
 
         called_with: dict[str, Any] = {}
@@ -1809,15 +1950,23 @@ class TestEmitCoverage:
 
         monkeypatch.setattr(driver, "_emit_coverage_json", fake_emit)
 
-        rc = driver.main([
-            "--emit-coverage",
-            "--batch-id", "b8",
-            "--gap-json-path", str(gap_json),
-            "--n-train-pre", "4500",
-            "--n-train-post", "4500",
-            "--n-test-pre", "900",
-            "--n-test-post", "900",
-        ])
+        rc = driver.main(
+            [
+                "--emit-coverage",
+                "--batch-id",
+                "b8",
+                "--gap-json-path",
+                str(gap_json),
+                "--n-train-pre",
+                "4500",
+                "--n-train-post",
+                "4500",
+                "--n-test-pre",
+                "900",
+                "--n-test-post",
+                "900",
+            ]
+        )
         assert rc == 0
         # The stub was called with the parsed CLI args.
         assert called_with["batch_id"] == "b8"

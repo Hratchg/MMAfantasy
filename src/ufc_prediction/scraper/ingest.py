@@ -203,12 +203,8 @@ def _convert_fight(
         winner_name = fight_summary.fighter_b_name
 
     # Build fight-level stats from totals + sig strikes
-    fighter_a_stats = _build_fight_stats(
-        fight_detail.totals[0], fight_detail.sig_strikes[0]
-    )
-    fighter_b_stats = _build_fight_stats(
-        fight_detail.totals[1], fight_detail.sig_strikes[1]
-    )
+    fighter_a_stats = _build_fight_stats(fight_detail.totals[0], fight_detail.sig_strikes[0])
+    fighter_b_stats = _build_fight_stats(fight_detail.totals[1], fight_detail.sig_strikes[1])
 
     return FightRow(
         event_name=event_name,
@@ -319,9 +315,7 @@ def _scrape_event(
     try:
         event_detail = parse_event_detail(event_html, event_summary.url)
     except (ValueError, RuntimeError) as exc:
-        logger.error(
-            "Failed to parse event %s: %s", event_summary.name, exc
-        )
+        logger.error("Failed to parse event %s: %s", event_summary.name, exc)
         result.rejected += 1
         return
 
@@ -349,9 +343,7 @@ def _scrape_event(
     # Batch-fetch all fight-detail HTMLs for this event in parallel. Using
     # _safe_fetch so one bad URL doesn't abort the whole batch.
     fight_urls = [f.fight_url for f in event_detail.fights]
-    fight_fetch_results = client.map(
-        functools.partial(_safe_fetch, client), fight_urls
-    )
+    fight_fetch_results = client.map(functools.partial(_safe_fetch, client), fight_urls)
 
     # Process each fight
     fights_accepted = 0
@@ -363,17 +355,13 @@ def _scrape_event(
         event_detail.fights, fight_fetch_results, strict=False
     ):
         if fight_html is None:
-            logger.warning(
-                "Failed to fetch fight %s: %s", fight_summary.fight_url, fetch_err
-            )
+            logger.warning("Failed to fetch fight %s: %s", fight_summary.fight_url, fetch_err)
             continue
 
         try:
             fight_detail = parse_fight_detail(fight_html)
         except (ValueError, RuntimeError) as exc:
-            logger.warning(
-                "Failed to parse fight %s: %s", fight_summary.fight_url, exc
-            )
+            logger.warning("Failed to parse fight %s: %s", fight_summary.fight_url, exc)
             continue
 
         # Phase 22 REF-V22-01 — accumulate raw referee names for per-event
@@ -383,12 +371,18 @@ def _scrape_event(
 
         # Fetch/cache fighter profiles
         fighter_a_id = _ensure_fighter(
-            client, session, fight_summary.fighter_a_name,
-            fight_summary.fighter_a_url, fighter_cache,
+            client,
+            session,
+            fight_summary.fighter_a_name,
+            fight_summary.fighter_a_url,
+            fighter_cache,
         )
         fighter_b_id = _ensure_fighter(
-            client, session, fight_summary.fighter_b_name,
-            fight_summary.fighter_b_url, fighter_cache,
+            client,
+            session,
+            fight_summary.fighter_b_name,
+            fight_summary.fighter_b_url,
+            fighter_cache,
         )
 
         # Convert to FightRow for validation per D-12
@@ -401,9 +395,7 @@ def _scrape_event(
                 fight_detail=fight_detail,
             )
         except (ValidationError, ValueError) as exc:
-            logger.warning(
-                "Rejected fight %s: %s", fight_summary.fight_url, exc
-            )
+            logger.warning("Rejected fight %s: %s", fight_summary.fight_url, exc)
             continue
 
         # Determine winner_id
@@ -476,9 +468,7 @@ def _scrape_event(
     # Atomic per event
     session.commit()
     result.accepted += fights_accepted
-    logger.info(
-        "Event %s: %d fights accepted", event_detail.name, fights_accepted
-    )
+    logger.info("Event %s: %d fights accepted", event_detail.name, fights_accepted)
 
 
 def _ensure_fighter(
@@ -523,7 +513,8 @@ def _ensure_fighter(
     except (ValueError, RuntimeError) as exc:
         logger.warning(
             "Failed to fetch/parse fighter profile %s, using name-only fallback: %s",
-            url, exc,
+            url,
+            exc,
         )
         fighter = upsert_fighter(session, name, SOURCE, source_id=source_id)
 
@@ -589,19 +580,18 @@ def scrape_all_events(
         if after_date is not None:
             before_count = len(completed)
             completed = [
-                e for e in completed
-                if (parse_fight_date(e.date_str) or date.min) > after_date
+                e for e in completed if (parse_fight_date(e.date_str) or date.min) > after_date
             ]
             logger.info(
                 "Skipped %d events on or before %s, %d remaining",
-                before_count - len(completed), after_date, len(completed),
+                before_count - len(completed),
+                after_date,
+                len(completed),
             )
 
         # Batch-fetch all event-detail HTMLs in parallel. Preserves input order.
         event_urls = [e.url for e in completed]
-        event_fetch_results = client.map(
-            functools.partial(_safe_fetch, client), event_urls
-        )
+        event_fetch_results = client.map(functools.partial(_safe_fetch, client), event_urls)
 
         fighter_cache: dict[str, int] = {}
 
@@ -674,17 +664,14 @@ def scrape_latest_events(
 
         # Query existing events in DB -- match by source_url (unique per event)
         # and also by name+date as fallback for events without source_url
-        existing_events = (
-            session.query(Event)
-            .filter(Event.source == SOURCE)
-            .all()
-        )
+        existing_events = session.query(Event).filter(Event.source == SOURCE).all()
         existing_urls = {e.source_url for e in existing_events if e.source_url}
         existing_name_dates = {(e.name, e.date) for e in existing_events}
 
         # Filter to new events only
         new_events = [
-            e for e in completed
+            e
+            for e in completed
             if (
                 e.url not in existing_urls
                 and (e.name, parse_fight_date(e.date_str)) not in existing_name_dates
@@ -706,9 +693,7 @@ def scrape_latest_events(
 
         # Batch-fetch all event-detail HTMLs in parallel.
         event_urls = [e.url for e in new_events]
-        event_fetch_results = client.map(
-            functools.partial(_safe_fetch, client), event_urls
-        )
+        event_fetch_results = client.map(functools.partial(_safe_fetch, client), event_urls)
 
         fighter_cache: dict[str, int] = {}
 

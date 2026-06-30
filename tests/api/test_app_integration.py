@@ -59,7 +59,13 @@ class _FakePredictor:
     """In-memory fake mirroring ModelPredictor.predict()."""
 
     def predict(
-        self, db, fighter_a_name, fighter_b_name, *, event_date=None, refresh=False,
+        self,
+        db,
+        fighter_a_name,
+        fighter_b_name,
+        *,
+        event_date=None,
+        refresh=False,
     ):
         return {
             **_FAKE_PREDICT_RESULT,
@@ -168,7 +174,8 @@ def _predict_post_body() -> dict:
 
 
 def test_api_v1_succeeds_with_valid_key_and_sets_request_id_header(
-    client, patched_settings,
+    client,
+    patched_settings,
 ):
     """Test 4: valid X-API-Key → 200 + X-Request-ID response header."""
     headers = {"X-API-Key": patched_settings["api_keys"][0]}
@@ -177,7 +184,9 @@ def test_api_v1_succeeds_with_valid_key_and_sets_request_id_header(
         return_value=_FakePredictor(),
     ):
         resp = client.post(
-            "/api/v1/predict", json=_predict_post_body(), headers=headers,
+            "/api/v1/predict",
+            json=_predict_post_body(),
+            headers=headers,
         )
     assert resp.status_code == 200, resp.text
     rid = resp.headers.get("X-Request-ID")
@@ -192,19 +201,24 @@ def test_rate_limit_429_after_quota_exceeded(app, patched_settings):
     register_exempt_routes_on_limiter(app, test_limiter)
 
     headers = {"X-API-Key": patched_settings["api_keys"][0]}
-    with TestClient(app, raise_server_exceptions=False) as c, patch(
-        "ufc_prediction.api.v1.predict._get_predictor",
-        return_value=_FakePredictor(),
+    with (
+        TestClient(app, raise_server_exceptions=False) as c,
+        patch(
+            "ufc_prediction.api.v1.predict._get_predictor",
+            return_value=_FakePredictor(),
+        ),
     ):
         for i in range(3):
             r = c.post(
-                "/api/v1/predict", json=_predict_post_body(), headers=headers,
+                "/api/v1/predict",
+                json=_predict_post_body(),
+                headers=headers,
             )
-            assert r.status_code != 429, (
-                f"request #{i+1} unexpectedly 429: {r.text}"
-            )
+            assert r.status_code != 429, f"request #{i + 1} unexpectedly 429: {r.text}"
         fourth = c.post(
-            "/api/v1/predict", json=_predict_post_body(), headers=headers,
+            "/api/v1/predict",
+            json=_predict_post_body(),
+            headers=headers,
         )
         assert fourth.status_code == 429, fourth.text
         body = fourth.json()
@@ -229,9 +243,7 @@ def test_health_bypasses_rate_limit(app, patched_settings):
         # exceed the 3/hour bucket; 50 >> 3.
         for i in range(50):
             r = c.get("/health")
-            assert r.status_code == 200, (
-                f"/health request #{i+1} unexpectedly {r.status_code}"
-            )
+            assert r.status_code == 200, f"/health request #{i + 1} unexpectedly {r.status_code}"
 
 
 def test_cors_preflight_allows_configured_origin(client):
@@ -244,9 +256,9 @@ def test_cors_preflight_allows_configured_origin(client):
     }
     resp = client.options("/api/v1/predict", headers=headers)
     # Allowed origin: CORS middleware sets access-control-allow-origin.
-    assert resp.headers.get("access-control-allow-origin") == (
-        "https://partner-a.example.com"
-    ), resp.headers
+    assert resp.headers.get("access-control-allow-origin") == ("https://partner-a.example.com"), (
+        resp.headers
+    )
 
     bad_headers = {
         "Origin": "https://evil.example.com",
@@ -274,16 +286,14 @@ def test_access_log_emits_structured_record(client, patched_settings, caplog):
         return_value=_FakePredictor(),
     ):
         resp = client.post(
-            "/api/v1/predict", json=_predict_post_body(), headers=headers,
+            "/api/v1/predict",
+            json=_predict_post_body(),
+            headers=headers,
         )
     assert resp.status_code == 200, resp.text
 
-    access_records = [
-        r for r in caplog.records if r.name == "ufc_prediction.access"
-    ]
-    assert len(access_records) >= 1, (
-        f"expected >=1 access record, got {len(access_records)}"
-    )
+    access_records = [r for r in caplog.records if r.name == "ufc_prediction.access"]
+    assert len(access_records) >= 1, f"expected >=1 access record, got {len(access_records)}"
     rec = access_records[-1]
     assert rec.path == "/api/v1/predict"
     assert rec.method == "POST"

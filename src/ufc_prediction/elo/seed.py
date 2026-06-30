@@ -16,6 +16,7 @@ Consumer contract (Plan 43-03 EloEngine init):
     SEEDS: dict[int, float] = load_seeds(Path("data/sherdog/pre_ufc_records.csv"))
     rating = SEEDS.get(fighter_id, config.initial_rating)
 """
+
 from __future__ import annotations
 
 import csv
@@ -63,10 +64,7 @@ def tier_bonus(tier: str) -> int:
     Raises ValueError on unknown tier — no silent fallback (typo guard).
     """
     if tier not in _TIER_BONUSES:
-        raise ValueError(
-            f"Unknown org_tier: {tier!r}. Expected one of "
-            f"{sorted(_TIER_BONUSES)}."
-        )
+        raise ValueError(f"Unknown org_tier: {tier!r}. Expected one of {sorted(_TIER_BONUSES)}.")
     return _TIER_BONUSES[tier]
 
 
@@ -125,23 +123,19 @@ def load_seeds(csv_path: Path | str) -> dict[int, float]:
         for row_idx, row in enumerate(reader, start=2):  # row 1 is header
             fighter_id_str = (row.get("fighter_id") or "").strip()
             if not fighter_id_str:
-                raise SeedDerivationError(
-                    f"Row {row_idx}: required column 'fighter_id' is empty."
-                )
+                raise SeedDerivationError(f"Row {row_idx}: required column 'fighter_id' is empty.")
             try:
                 fighter_id = int(fighter_id_str)
             except ValueError as exc:
                 raise SeedDerivationError(
-                    f"Row {row_idx} fighter_id={fighter_id_str!r}: not an "
-                    f"integer ({exc})."
+                    f"Row {row_idx} fighter_id={fighter_id_str!r}: not an integer ({exc})."
                 ) from exc
 
             for col in _REQUIRED_COLUMNS:
                 val = row.get(col)
                 if val is None or str(val).strip() == "":
                     raise SeedDerivationError(
-                        f"Row {row_idx} fighter_id={fighter_id}: required "
-                        f"column {col!r} is empty."
+                        f"Row {row_idx} fighter_id={fighter_id}: required column {col!r} is empty."
                     )
 
             seeds[fighter_id] = derive_seed(row)

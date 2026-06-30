@@ -132,23 +132,32 @@ class FeatureComputer:
                 if acc.fight_count >= 1:
                     # Build feature vector from pre-fight accumulator state
                     features = self._build_features(
-                        acc, opp_acc, fighter_id, fight_id,
+                        acc,
+                        opp_acc,
+                        fighter_id,
+                        fight_id,
                         domain_elo_by_fighter_fight,
                     )
-                    raw_results.append({
-                        "fighter_id": fighter_id,
-                        "fight_id": fight_id,
-                        "as_of_date": event_date,
-                        "feature_set_version": self.config.feature_set_version,
-                        "features": features,
-                    })
+                    raw_results.append(
+                        {
+                            "fighter_id": fighter_id,
+                            "fight_id": fight_id,
+                            "as_of_date": event_date,
+                            "feature_set_version": self.config.feature_set_version,
+                            "features": features,
+                        }
+                    )
                     fight_count_at_feature.append(acc.fight_count)
 
                 # Update accumulator with this fight's raw data
                 if fighter_rs:
                     rates = compute_rate_features(fighter_rs, opponent_rs, fight_duration)
                     self._update_accumulator(
-                        acc, fighter_rs, opponent_rs, rates, fight_duration,
+                        acc,
+                        fighter_rs,
+                        opponent_rs,
+                        rates,
+                        fight_duration,
                     )
 
                 acc.fight_count += 1
@@ -183,8 +192,10 @@ class FeatureComputer:
                 "event_date": f["event_date"],
                 "winner_id": f.get("winner_id"),
                 "loser_id": (
-                    f["fighter_b_id"] if f.get("winner_id") == f["fighter_a_id"]
-                    else f["fighter_a_id"] if f.get("winner_id") == f["fighter_b_id"]
+                    f["fighter_b_id"]
+                    if f.get("winner_id") == f["fighter_a_id"]
+                    else f["fighter_a_id"]
+                    if f.get("winner_id") == f["fighter_b_id"]
                     else None
                 ),
                 "method": f.get("method"),
@@ -211,20 +222,13 @@ class FeatureComputer:
         """Build feature dict from pre-fight accumulator state."""
         cfg = self.config
         fight_minutes = (
-            acc.total_fight_time_seconds / 60.0
-            if acc.total_fight_time_seconds > 0 else 0.0
+            acc.total_fight_time_seconds / 60.0 if acc.total_fight_time_seconds > 0 else 0.0
         )
 
         # Career averages from accumulator totals
-        sig_str_per_min = (
-            acc.total_sig_str_landed / fight_minutes if fight_minutes > 0 else 0.0
-        )
-        total_str_per_min = (
-            acc.total_total_str_landed / fight_minutes if fight_minutes > 0 else 0.0
-        )
-        td_rate = (
-            acc.total_td_landed / acc.fight_count if acc.fight_count > 0 else 0.0
-        )
+        sig_str_per_min = acc.total_sig_str_landed / fight_minutes if fight_minutes > 0 else 0.0
+        total_str_per_min = acc.total_total_str_landed / fight_minutes if fight_minutes > 0 else 0.0
+        td_rate = acc.total_td_landed / acc.fight_count if acc.fight_count > 0 else 0.0
         td_accuracy: float | None = None
         if acc.total_td_attempted > 0:
             td_accuracy = acc.total_td_landed / acc.total_td_attempted
@@ -233,32 +237,31 @@ class FeatureComputer:
             td_defense = 1.0 - (acc.total_opp_td_landed / acc.total_opp_td_attempted)
         strike_defense: float | None = None
         if acc.total_opp_sig_str_attempted > 0:
-            strike_defense = 1.0 - (
-                acc.total_opp_sig_str_landed / acc.total_opp_sig_str_attempted
-            )
-        ctrl_time = (
-            acc.total_ctrl_time / acc.fight_count if acc.fight_count > 0 else 0.0
-        )
-        sub_att = (
-            acc.total_sub_attempts / acc.fight_count if acc.fight_count > 0 else 0.0
-        )
+            strike_defense = 1.0 - (acc.total_opp_sig_str_landed / acc.total_opp_sig_str_attempted)
+        ctrl_time = acc.total_ctrl_time / acc.fight_count if acc.fight_count > 0 else 0.0
+        sub_att = acc.total_sub_attempts / acc.fight_count if acc.fight_count > 0 else 0.0
 
         # EWMA values (filter out None for accuracy/defense)
         sig_str_per_min_ewma = compute_ewma(
-            acc.career_sig_str_per_min, cfg.ewma_alpha,
+            acc.career_sig_str_per_min,
+            cfg.ewma_alpha,
         )
         total_str_per_min_ewma = compute_ewma(
-            acc.career_total_str_per_min, cfg.ewma_alpha,
+            acc.career_total_str_per_min,
+            cfg.ewma_alpha,
         )
         td_rate_ewma = compute_ewma(acc.career_td_rate, cfg.ewma_alpha)
         td_accuracy_ewma = compute_ewma(
-            [v for v in acc.career_td_accuracy if v is not None], cfg.ewma_alpha,
+            [v for v in acc.career_td_accuracy if v is not None],
+            cfg.ewma_alpha,
         )
         td_defense_ewma = compute_ewma(
-            [v for v in acc.career_td_defense if v is not None], cfg.ewma_alpha,
+            [v for v in acc.career_td_defense if v is not None],
+            cfg.ewma_alpha,
         )
         strike_defense_ewma = compute_ewma(
-            [v for v in acc.career_strike_defense if v is not None], cfg.ewma_alpha,
+            [v for v in acc.career_strike_defense if v is not None],
+            cfg.ewma_alpha,
         )
         ctrl_time_ewma = compute_ewma(acc.career_ctrl_time, cfg.ewma_alpha)
         sub_att_ewma = compute_ewma(acc.career_sub_att, cfg.ewma_alpha)
@@ -266,16 +269,13 @@ class FeatureComputer:
         # Opponent-adjusted rates (D-07, D-08)
         # Compare fighter's career avg vs opponent's career avg for the same stat
         opp_fight_min = (
-            opp_acc.total_fight_time_seconds / 60.0
-            if opp_acc.total_fight_time_seconds > 0 else 0.0
+            opp_acc.total_fight_time_seconds / 60.0 if opp_acc.total_fight_time_seconds > 0 else 0.0
         )
         opp_avg_sig_str = (
-            opp_acc.total_sig_str_landed / opp_fight_min
-            if opp_fight_min > 0 else None
+            opp_acc.total_sig_str_landed / opp_fight_min if opp_fight_min > 0 else None
         )
         opp_avg_td = (
-            opp_acc.total_td_landed / opp_acc.fight_count
-            if opp_acc.fight_count > 0 else None
+            opp_acc.total_td_landed / opp_acc.fight_count if opp_acc.fight_count > 0 else None
         )
         opp_avg_strike_def: float | None = None
         if opp_acc.total_opp_sig_str_attempted > 0:
@@ -283,8 +283,7 @@ class FeatureComputer:
                 opp_acc.total_opp_sig_str_landed / opp_acc.total_opp_sig_str_attempted
             )
         opp_avg_ctrl_time = (
-            opp_acc.total_ctrl_time / opp_acc.fight_count
-            if opp_acc.fight_count > 0 else None
+            opp_acc.total_ctrl_time / opp_acc.fight_count if opp_acc.fight_count > 0 else None
         )
 
         opp_adj_sig_str = compute_opponent_adjusted(sig_str_per_min, opp_avg_sig_str)
@@ -367,9 +366,7 @@ class FeatureComputer:
         acc.career_total_str_per_min.append(
             rates["total_str_per_minute"] if rates["total_str_per_minute"] is not None else 0.0
         )
-        acc.career_td_rate.append(
-            float(rates["td_rate"]) if rates["td_rate"] is not None else 0.0
-        )
+        acc.career_td_rate.append(float(rates["td_rate"]) if rates["td_rate"] is not None else 0.0)
         acc.career_td_accuracy.append(rates["td_accuracy"])
         acc.career_td_defense.append(rates["td_defense"])
         acc.career_strike_defense.append(rates["strike_defense"])

@@ -13,22 +13,24 @@ from datetime import date, timedelta
 from pydantic import BaseModel, field_validator
 
 # All 14 valid UFC weight classes
-VALID_WEIGHT_CLASSES: frozenset[str] = frozenset({
-    "Flyweight",
-    "Bantamweight",
-    "Featherweight",
-    "Lightweight",
-    "Welterweight",
-    "Middleweight",
-    "Light Heavyweight",
-    "Heavyweight",
-    "Women's Strawweight",
-    "Women's Flyweight",
-    "Women's Bantamweight",
-    "Women's Featherweight",
-    "Catch Weight",
-    "Open Weight",
-})
+VALID_WEIGHT_CLASSES: frozenset[str] = frozenset(
+    {
+        "Flyweight",
+        "Bantamweight",
+        "Featherweight",
+        "Lightweight",
+        "Welterweight",
+        "Middleweight",
+        "Light Heavyweight",
+        "Heavyweight",
+        "Women's Strawweight",
+        "Women's Flyweight",
+        "Women's Bantamweight",
+        "Women's Featherweight",
+        "Catch Weight",
+        "Open Weight",
+    }
+)
 
 
 class FightStats(BaseModel):
@@ -115,15 +117,17 @@ class IngestResult:
     def log_rejection(self, row_index: int, raw_row: dict[str, object], error: str) -> None:
         """Record a rejected row with truncated data for debugging."""
         self.rejected += 1
-        self.rejections.append({
-            "row": row_index,
-            "data": {
-                k: str(v)[:100]
-                for k, v in raw_row.items()
-                if k in ("R_fighter", "B_fighter", "date")
-            },
-            "error": str(error)[:500],
-        })
+        self.rejections.append(
+            {
+                "row": row_index,
+                "data": {
+                    k: str(v)[:100]
+                    for k, v in raw_row.items()
+                    if k in ("R_fighter", "B_fighter", "date")
+                },
+                "error": str(error)[:500],
+            }
+        )
 
     def summary(self) -> str:
         """Return a human-readable summary of the ingestion result."""

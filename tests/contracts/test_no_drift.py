@@ -18,6 +18,7 @@ Phase 32 D-04 extension (PARTNER-V23-01):
     Pydantic emission. These tests are the gate that catches schema drift
     the moment Phase 70+ touches PredictorOutputV1.
 """
+
 from __future__ import annotations
 
 import json
@@ -97,7 +98,10 @@ def test_predictor_schema_v100_preserved():
     )
     # required field list is also locked
     assert set(committed["required"]) == {
-        "win_probability", "fighter_a", "fighter_b", "event_date",
+        "win_probability",
+        "fighter_a",
+        "fighter_b",
+        "event_date",
     }, f"v1.0.0 required list drifted: {committed['required']}"
 
 
@@ -136,7 +140,10 @@ def test_predictor_schema_v110_preserved():
     # required field list preserved verbatim from v1.0.0 (additive trio is
     # all Optional).
     assert set(committed["required"]) == {
-        "win_probability", "fighter_a", "fighter_b", "event_date",
+        "win_probability",
+        "fighter_a",
+        "fighter_b",
+        "event_date",
     }, f"v1.1.0 required list drifted: {committed['required']}"
 
 
@@ -169,12 +176,14 @@ def test_predictor_schema_v120_preserved():
         f"missing={EXPECTED_V120_PROPERTIES - props}"
     )
     assert len(committed["properties"]) == 14, (
-        f"v1.2.0 schema must carry exactly 14 properties; "
-        f"found {len(committed['properties'])}"
+        f"v1.2.0 schema must carry exactly 14 properties; found {len(committed['properties'])}"
     )
     # required field list preserved verbatim from v1.0.0/v1.1.0.
     assert set(committed["required"]) == {
-        "win_probability", "fighter_a", "fighter_b", "event_date",
+        "win_probability",
+        "fighter_a",
+        "fighter_b",
+        "event_date",
     }, f"v1.2.0 required list drifted: {committed['required']}"
 
 
@@ -295,8 +304,7 @@ def test_v120_additive_only_over_v110():
 
     added = v120_props - v110_props
     assert added == {"prediction_metadata", "disclaimer"}, (
-        f"v1.2.0 added fields = {added}; expected "
-        f"{{prediction_metadata, disclaimer}}"
+        f"v1.2.0 added fields = {added}; expected {{prediction_metadata, disclaimer}}"
     )
 
     # prediction_metadata defaults to null (Phase 25/35 lock binding).
@@ -310,6 +318,7 @@ def test_v120_additive_only_over_v110():
     # (Phase 38 HYGIENE-V24-02 — regulatory surface; non-null default
     # but additive because v1.0.0/v1.1.0 partners use extra='ignore').
     from ufc_prediction.api.disclaimer import DISCLAIMER_200W
+
     disc_default = v120["properties"]["disclaimer"].get("default")
     assert disc_default == DISCLAIMER_200W, (
         f"v1.2.0 field 'disclaimer' default drift; expected DISCLAIMER_200W"

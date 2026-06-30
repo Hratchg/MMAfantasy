@@ -89,7 +89,9 @@ class ModelTrainer:
         return float(np.mean(brier_scores))
 
     def train(
-        self, X_train: np.ndarray, y_train: np.ndarray,
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
     ) -> tuple[CalibratedClassifierCV, dict, dict]:
         """Train model with Optuna tuning and Platt calibration.
 

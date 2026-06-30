@@ -92,7 +92,8 @@ def _get_latest_elo(session: Session, fighter_id: int, elo_type: str) -> float:
 
 
 def _get_latest_computed_features(
-    session: Session, fighter_id: int,
+    session: Session,
+    fighter_id: int,
 ) -> dict[str, float | None]:
     """Read latest ``ComputedFeature.features`` JSON (lifted from
     predictor.py:_get_latest_computed_features).
@@ -151,9 +152,7 @@ def _get_cached_odds(
             return None, None
 
         rows = list(
-            session.execute(
-                select(FightOdds).where(FightOdds.fight_id == fight_id)
-            ).scalars().all()
+            session.execute(select(FightOdds).where(FightOdds.fight_id == fight_id)).scalars().all()
         )
         if not rows:
             return None, None
@@ -184,15 +183,13 @@ def _resolve_fighter_id(session: Session, name: str) -> int | None:
 
     Returns None when no row matches; caller treats as cache miss.
     """
-    rows = list(
-        session.execute(
-            select(Fighter).where(Fighter.name == name)
-        ).scalars().all()
-    )
+    rows = list(session.execute(select(Fighter).where(Fighter.name == name)).scalars().all())
     if not rows:
         return None
     canonical = prefer_canonical(
-        rows, source_key=lambda f: f.source, tiebreak_key=lambda f: f.id,
+        rows,
+        source_key=lambda f: f.source,
+        tiebreak_key=lambda f: f.id,
     )
     return canonical.id
 
@@ -383,10 +380,15 @@ def _populate_ref(
     ``_query_ref_state``; this module just wires them.
     """
     ref_history, ref_global_rates = _query_ref_state(
-        session, referee_id, event_date_val,
+        session,
+        referee_id,
+        event_date_val,
     )
     rates = compute_ref_rates_shrunk(
-        referee_id, event_date_val, ref_history, ref_global_rates,
+        referee_id,
+        event_date_val,
+        ref_history,
+        ref_global_rates,
     )
     feats["ref_finish_rate_shrunk"] = rates["ref_finish_rate_shrunk"]
     feats["ref_decision_rate_shrunk"] = rates["ref_decision_rate_shrunk"]
@@ -408,7 +410,8 @@ def _populate_ref(
 
 
 def _query_current_venue(
-    session: Session, event_id: int,
+    session: Session,
+    event_id: int,
 ) -> dict | None:
     """Look up ``{lat, lon, timezone_iana}`` for the current event's venue.
 
@@ -431,13 +434,16 @@ def _query_current_venue(
         return {"lat": lat, "lon": lon, "timezone_iana": tz}
     except Exception as exc:  # noqa: BLE001 — never raise out of feature build
         logger.warning(
-            "inference_features _query_current_venue failed: %s", exc,
+            "inference_features _query_current_venue failed: %s",
+            exc,
         )
         return None
 
 
 def _query_fighter_prior_venue(
-    session: Session, fighter_id: int, before_date: date,
+    session: Session,
+    fighter_id: int,
+    before_date: date,
 ) -> dict | None:
     """Most recent prior fight's venue for ``fighter_id``, strictly before
     ``before_date``.
@@ -451,10 +457,7 @@ def _query_fighter_prior_venue(
             select(Venue.lat, Venue.lon, Venue.timezone_iana, Event.date)
             .join(Event, Event.venue_id == Venue.id)
             .join(Fight, Fight.event_id == Event.id)
-            .where(
-                (Fight.fighter_a_id == fighter_id)
-                | (Fight.fighter_b_id == fighter_id)
-            )
+            .where((Fight.fighter_a_id == fighter_id) | (Fight.fighter_b_id == fighter_id))
             .where(Event.date < before_date)
             .order_by(Event.date.desc())
             .limit(1)
@@ -473,7 +476,8 @@ def _query_fighter_prior_venue(
         }
     except Exception as exc:  # noqa: BLE001 — never raise out of feature build
         logger.warning(
-            "inference_features _query_fighter_prior_venue failed: %s", exc,
+            "inference_features _query_fighter_prior_venue failed: %s",
+            exc,
         )
         return None
 
@@ -513,14 +517,11 @@ def _populate_travel(
     feats["travel_distance_miles_red"] = travel_red["travel_distance_miles"]
     feats["travel_distance_miles_blue"] = travel_blue["travel_distance_miles"]
     feats["travel_distance_miles_diff"] = (
-        travel_red["travel_distance_miles"]
-        - travel_blue["travel_distance_miles"]
+        travel_red["travel_distance_miles"] - travel_blue["travel_distance_miles"]
     )
     feats["tz_shift_red_signed"] = travel_red["tz_shift_signed"]
     feats["tz_shift_blue_signed"] = travel_blue["tz_shift_signed"]
-    feats["tz_shift_diff_signed"] = (
-        travel_red["tz_shift_signed"] - travel_blue["tz_shift_signed"]
-    )
+    feats["tz_shift_diff_signed"] = travel_red["tz_shift_signed"] - travel_blue["tz_shift_signed"]
 
 
 # ── Phase 23 v2.2 META live-path helpers (Plan 23-03) ──────────────────────
@@ -536,7 +537,9 @@ def _populate_travel(
 
 
 def _query_fighter_prior_fight_date(
-    session: Session, fighter_id: int, before_date: date,
+    session: Session,
+    fighter_id: int,
+    before_date: date,
 ) -> date | None:
     """Most recent prior fight event_date for ``fighter_id`` (strict <
     ``before_date``). ``None`` for debut fighters → ``layoff_days`` returns
@@ -545,10 +548,7 @@ def _query_fighter_prior_fight_date(
         stmt = (
             select(Event.date)
             .join(Fight, Fight.event_id == Event.id)
-            .where(
-                (Fight.fighter_a_id == fighter_id)
-                | (Fight.fighter_b_id == fighter_id)
-            )
+            .where((Fight.fighter_a_id == fighter_id) | (Fight.fighter_b_id == fighter_id))
             .where(Event.date < before_date)
             .order_by(Event.date.desc())
             .limit(1)
@@ -557,13 +557,17 @@ def _query_fighter_prior_fight_date(
         return result
     except Exception as exc:  # noqa: BLE001 — never raise out of feature build
         logger.warning(
-            "inference_features _query_fighter_prior_fight_date failed: %s", exc,
+            "inference_features _query_fighter_prior_fight_date failed: %s",
+            exc,
         )
         return None
 
 
 def _query_elo_history(
-    session: Session, fighter_id: int, before_date: date, limit: int = 6,
+    session: Session,
+    fighter_id: int,
+    before_date: date,
+    limit: int = 6,
 ) -> list[dict]:
     """Return up to ``limit`` most-recent prior Elo snapshots for fighter.
 
@@ -586,9 +590,7 @@ def _query_elo_history(
             .order_by(EloSnapshot.fight_date.desc())
             .limit(limit)
         )
-        fight_dates = [
-            d for d in session.execute(date_stmt).scalars().all()
-        ]
+        fight_dates = [d for d in session.execute(date_stmt).scalars().all()]
         if not fight_dates:
             return []
 
@@ -612,21 +614,26 @@ def _query_elo_history(
         result: list[dict] = []
         for fd in sorted_dates:
             entry = by_date[fd]
-            result.append({
-                "elo_overall": entry.get("overall", 1500.0),
-                "elo_striking": entry.get("striking", 1500.0),
-                "elo_grappling": entry.get("grappling", 1500.0),
-            })
+            result.append(
+                {
+                    "elo_overall": entry.get("overall", 1500.0),
+                    "elo_striking": entry.get("striking", 1500.0),
+                    "elo_grappling": entry.get("grappling", 1500.0),
+                }
+            )
         return result
     except Exception as exc:  # noqa: BLE001
         logger.warning(
-            "inference_features _query_elo_history failed: %s", exc,
+            "inference_features _query_elo_history failed: %s",
+            exc,
         )
         return []
 
 
 def _query_division_state(
-    session: Session, weight_class: str | None, before_date: date,
+    session: Session,
+    weight_class: str | None,
+    before_date: date,
 ) -> tuple[dict[str, list[dict]], float]:
     """Return ``(div_history, global_finish_rate)`` for division finish-rate
     EB compute.
@@ -648,19 +655,20 @@ def _query_division_state(
     try:
         # Per-class history: chronological list for the queried weight class.
         # Global rate: corpus-wide aggregate (matches training-path).
-        stmt = (
-            select(Fight.weight_class, Fight.method, Event.date)
-            .join(Event, Fight.event_id == Event.id)
+        stmt = select(Fight.weight_class, Fight.method, Event.date).join(
+            Event, Fight.event_id == Event.id
         )
         div_hist: dict[str, list[dict]] = {}
         total_finishes = 0
         total = 0
         for wc, method, evt_date in session.execute(stmt).all():
             if wc is not None:
-                div_hist.setdefault(wc, []).append({
-                    "event_date": evt_date,
-                    "method": method,
-                })
+                div_hist.setdefault(wc, []).append(
+                    {
+                        "event_date": evt_date,
+                        "method": method,
+                    }
+                )
             total += 1
             if classify_outcome(method) == "finish":
                 total_finishes += 1
@@ -668,13 +676,15 @@ def _query_division_state(
         return div_hist, g
     except Exception as exc:  # noqa: BLE001
         logger.warning(
-            "inference_features _query_division_state failed: %s", exc,
+            "inference_features _query_division_state failed: %s",
+            exc,
         )
         return {}, 0.0
 
 
 def _query_division_mean_reach(
-    session: Session, weight_class: str | None,
+    session: Session,
+    weight_class: str | None,
 ) -> float | None:
     """Mean reach_inches across fighters who have fought in ``weight_class``.
 
@@ -691,8 +701,7 @@ def _query_division_mean_reach(
             .select_from(Fighter)
             .join(
                 Fight,
-                (Fight.fighter_a_id == Fighter.id)
-                | (Fight.fighter_b_id == Fighter.id),
+                (Fight.fighter_a_id == Fighter.id) | (Fight.fighter_b_id == Fighter.id),
             )
             .where(Fight.weight_class == weight_class)
             .where(Fighter.reach_inches.is_not(None))
@@ -701,13 +710,15 @@ def _query_division_mean_reach(
         return float(result) if result is not None else None
     except Exception as exc:  # noqa: BLE001
         logger.warning(
-            "inference_features _query_division_mean_reach failed: %s", exc,
+            "inference_features _query_division_mean_reach failed: %s",
+            exc,
         )
         return None
 
 
 def _query_fighter_division(
-    session: Session, fighter_id: int,
+    session: Session,
+    fighter_id: int,
 ) -> str | None:
     """Resolve a fighter's most recent weight_class (best-effort).
 
@@ -718,17 +729,15 @@ def _query_fighter_division(
         stmt = (
             select(Fight.weight_class)
             .join(Event, Fight.event_id == Event.id)
-            .where(
-                (Fight.fighter_a_id == fighter_id)
-                | (Fight.fighter_b_id == fighter_id)
-            )
+            .where((Fight.fighter_a_id == fighter_id) | (Fight.fighter_b_id == fighter_id))
             .order_by(Event.date.desc())
             .limit(1)
         )
         return session.scalar(stmt)
     except Exception as exc:  # noqa: BLE001
         logger.warning(
-            "inference_features _query_fighter_division failed: %s", exc,
+            "inference_features _query_fighter_division failed: %s",
+            exc,
         )
         return None
 
@@ -753,10 +762,14 @@ def _populate_meta(
     """
     # Layoff (per-fighter only): query each fighter's prior fight date.
     prior_a = _query_fighter_prior_fight_date(
-        session, fighter_a.id, event_date_val,
+        session,
+        fighter_a.id,
+        event_date_val,
     )
     prior_b = _query_fighter_prior_fight_date(
-        session, fighter_b.id, event_date_val,
+        session,
+        fighter_b.id,
+        event_date_val,
     )
     feats["layoff_days_red"] = layoff_days(event_date_val, prior_a)
     feats["layoff_days_blue"] = layoff_days(event_date_val, prior_b)
@@ -764,10 +777,12 @@ def _populate_meta(
 
     # Age (Pitfall #5 — uses event_date).
     feats["age_at_fight_red"] = age_at_fight(
-        getattr(fighter_a, "date_of_birth", None), event_date_val,
+        getattr(fighter_a, "date_of_birth", None),
+        event_date_val,
     )
     feats["age_at_fight_blue"] = age_at_fight(
-        getattr(fighter_b, "date_of_birth", None), event_date_val,
+        getattr(fighter_b, "date_of_birth", None),
+        event_date_val,
     )
 
     # Elo velocity: query last N+1 snapshots (window=5 → need 6 entries).
@@ -786,15 +801,20 @@ def _populate_meta(
     feats["elo_grappling_velocity_diff"] = _vel_diff("elo_grappling")
 
     # Division finish rate: resolve fighter's most recent division.
-    weight_class = (
-        _query_fighter_division(session, fighter_a.id)
-        or _query_fighter_division(session, fighter_b.id)
+    weight_class = _query_fighter_division(session, fighter_a.id) or _query_fighter_division(
+        session, fighter_b.id
     )
     div_hist, global_finish_rate = _query_division_state(
-        session, weight_class, event_date_val,
+        session,
+        weight_class,
+        event_date_val,
     )
     feats["division_finish_rate_shrunk"] = division_finish_rate_shrunk(
-        weight_class, event_date_val, div_hist, global_finish_rate, k_shrink=50.0,
+        weight_class,
+        event_date_val,
+        div_hist,
+        global_finish_rate,
+        k_shrink=50.0,
     )
 
     # Reach normalized.
@@ -807,7 +827,10 @@ def _populate_meta(
 
 
 def _populate_physical(
-    fighter_a, fighter_b, feats: dict[str, float], event_date: date,
+    fighter_a,
+    fighter_b,
+    feats: dict[str, float],
+    event_date: date,
 ) -> None:
     """Section 3: Physical differentials (4 features) + stance (1 feature).
 
@@ -872,10 +895,7 @@ def _populate_odds(
         # ingest pipeline. The bfo_live single-shot only populates A's
         # moneylines from the parsed fighter-page row; B-side often arrives
         # as None and must NaN out per Pattern D.
-        if (
-            live_odds.fighter_a_opening is not None
-            and live_odds.fighter_b_opening is not None
-        ):
+        if live_odds.fighter_a_opening is not None and live_odds.fighter_b_opening is not None:
             op_a, op_b = devig_proportional(
                 live_odds.fighter_a_opening,
                 live_odds.fighter_b_opening,
@@ -887,10 +907,12 @@ def _populate_odds(
             and live_odds.fighter_b_closing_max is not None
         ):
             a_mid = closing_ml_consensus(
-                live_odds.fighter_a_closing_min, live_odds.fighter_a_closing_max,
+                live_odds.fighter_a_closing_min,
+                live_odds.fighter_a_closing_max,
             )
             b_mid = closing_ml_consensus(
-                live_odds.fighter_b_closing_min, live_odds.fighter_b_closing_max,
+                live_odds.fighter_b_closing_min,
+                live_odds.fighter_b_closing_max,
             )
             cl_a, cl_b = devig_proportional(a_mid, b_mid)
     elif cached_a is not None and cached_b is not None:
@@ -906,10 +928,7 @@ def _populate_odds(
     if cl_a is not None and cl_b is not None:
         feats["closing_prob_diff"] = cl_a - cl_b
     # line_movement_diff + sharp_money_signal — both require all 4 vals
-    if (
-        op_a is not None and op_b is not None
-        and cl_a is not None and cl_b is not None
-    ):
+    if op_a is not None and op_b is not None and cl_a is not None and cl_b is not None:
         line_move_diff = (cl_a - op_a) - (cl_b - op_b)
         feats["line_movement_diff"] = line_move_diff
         feats["sharp_money_signal"] = abs(line_move_diff)
@@ -986,10 +1005,16 @@ def build(
 
     # Section 1 & 2: Elo + performance differentials
     elo_a_overall, elo_b_overall = _populate_elo(
-        session, fighter_a.id, fighter_b.id, feats,
+        session,
+        fighter_a.id,
+        fighter_b.id,
+        feats,
     )
     feats_a_latest, feats_b_latest = _populate_performance(
-        session, fighter_a.id, fighter_b.id, feats,
+        session,
+        fighter_a.id,
+        fighter_b.id,
+        feats,
     )
 
     # Section 3: Physical + stance (Pitfall #5 fix — age uses event_date)
@@ -1000,11 +1025,18 @@ def build(
     cached_a, cached_b = (None, None)
     if live_odds is None:
         cached_a, cached_b = _get_cached_odds(
-            session, fighter_a.id, fighter_b.id, event_date,
+            session,
+            fighter_a.id,
+            fighter_b.id,
+            event_date,
         )
     _populate_odds(
-        feats, live_odds, cached_a, cached_b,
-        elo_a_overall, elo_b_overall,
+        feats,
+        live_odds,
+        cached_a,
+        cached_b,
+        elo_a_overall,
+        elo_b_overall,
     )
 
     # Section 5: 3-feature opponent-network block (NET-01/02, Phase 16-03).
@@ -1026,7 +1058,12 @@ def build(
         # event_id is None → preserves NaN-init for the 6 cols (graceful
         # degradation per Pattern D); debut fighter → 0 sentinel per D-04.
         _populate_travel(
-            session, feats, fighter_a.id, fighter_b.id, event_id, event_date,
+            session,
+            feats,
+            fighter_a.id,
+            fighter_b.id,
+            event_id,
+            event_date,
         )
         # Plan 23-03 META: 9 cols at FEATURE_COLUMNS_V22 indices 81-89.
         # Pitfall #5 fixed: age_at_fight_* uses event_date.

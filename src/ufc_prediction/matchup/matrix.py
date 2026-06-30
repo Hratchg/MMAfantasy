@@ -82,16 +82,12 @@ def compute_striking_matrix(
             features_a, "sig_str_per_minute_ewma", "sig_str_per_minute"
         ),
         a_striking_accuracy=accuracy_a,
-        a_strike_defense=_get_with_fallback(
-            features_a, "strike_defense_ewma", "strike_defense"
-        ),
+        a_strike_defense=_get_with_fallback(features_a, "strike_defense_ewma", "strike_defense"),
         b_sig_str_per_min=_get_with_fallback(
             features_b, "sig_str_per_minute_ewma", "sig_str_per_minute"
         ),
         b_striking_accuracy=accuracy_b,
-        b_strike_defense=_get_with_fallback(
-            features_b, "strike_defense_ewma", "strike_defense"
-        ),
+        b_strike_defense=_get_with_fallback(features_b, "strike_defense_ewma", "strike_defense"),
     )
 
 

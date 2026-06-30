@@ -29,6 +29,7 @@ no-match gap:
        'requires-manual-review' (NOT 'n/a' — distinguishes residual from
        same-card-ambiguous).
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -50,6 +51,7 @@ from scripts.backfill_fighter_aliases_from_dedup_recon import (
 # Test 1 — Tier 1: exact-last + first-token overlap → "high"
 # ─────────────────────────────────────────────────────────────────────
 
+
 def test_tier1_exact_lastname_with_first_token_overlap():
     """``Bobby Green`` (kaggle) → ``Bobby Green`` (ufcstats) when present.
 
@@ -60,7 +62,7 @@ def test_tier1_exact_lastname_with_first_token_overlap():
     """
     candidates = [
         ("Bobby Green", 5176),  # the actual ufcstats canonical (per recon)
-        ("King Green", 5177),   # red herring: same last, no first overlap
+        ("King Green", 5177),  # red herring: same last, no first overlap
         ("Maurice Greene", 5991),
     ]
     same_card_idx = {date(2099, 1, 1): {"green": [5176, 5177]}}  # 2 Greens
@@ -86,6 +88,7 @@ def test_tier1_exact_lastname_with_first_token_overlap():
 # Test 2 — Tier 1 / 2: case + whitespace normalization
 # ─────────────────────────────────────────────────────────────────────
 
+
 def test_normalization_lowercase_and_whitespace():
     """``  Junior Dos Santos  `` (kaggle, padded) vs ``Junior dos Santos``
     (ufcstats, mixed case) → tier 1 match via case + whitespace normalization.
@@ -108,6 +111,7 @@ def test_normalization_lowercase_and_whitespace():
 # ─────────────────────────────────────────────────────────────────────
 # Test 3 — Tier 3 nickname registry: Rampage → Quinton
 # ─────────────────────────────────────────────────────────────────────
+
 
 def test_tier3_nickname_registry_rampage_jackson():
     """``Rampage Jackson`` (kaggle, nickname form) → ``Quinton Jackson``
@@ -144,6 +148,7 @@ def test_tier3_nickname_registry_rampage_jackson():
 # Test 4 — Tier 3 nickname registry: Mirko Cro Cop → Mirko Filipovic
 # ─────────────────────────────────────────────────────────────────────
 
+
 def test_tier3_nickname_registry_mirko_cro_cop():
     """``Mirko Cro Cop`` (kaggle) → ``Mirko Filipovic`` (ufcstats) via
     NICKNAME_REGISTRY. The last name ``Cop`` does not exist in ufcstats
@@ -152,7 +157,7 @@ def test_tier3_nickname_registry_mirko_cro_cop():
     """
     candidates = [
         ("Mirko Filipovic", 6789),
-        ("Chris Cope", 4978),    # red herring with similar surname
+        ("Chris Cope", 4978),  # red herring with similar surname
         ("Kit Cope", 4511),
     ]
     same_card_idx = {date(2010, 6, 12): {"filipovic": [6789]}}
@@ -172,6 +177,7 @@ def test_tier3_nickname_registry_mirko_cro_cop():
 # ─────────────────────────────────────────────────────────────────────
 # Test 5 — no-match
 # ─────────────────────────────────────────────────────────────────────
+
 
 def test_no_match_for_wholly_unique_name():
     """``John WhollyUniqueName XYZ`` against unrelated candidates returns
@@ -208,6 +214,7 @@ def test_no_match_for_wholly_unique_name():
 # Test 6 — discovery without --apply: zero write calls
 # ─────────────────────────────────────────────────────────────────────
 
+
 def test_discover_makes_no_db_writes(tmp_path):
     """``discover()`` MUST NOT open a write transaction. We patch
     ``SessionLocal`` at the script's import site and assert no ``.add`` /
@@ -236,6 +243,7 @@ def test_discover_makes_no_db_writes(tmp_path):
 # ─────────────────────────────────────────────────────────────────────
 # Test 7 — same-card uniqueness gate (double-Smith fixture)
 # ─────────────────────────────────────────────────────────────────────
+
 
 def test_same_card_lastname_gate_double_smith():
     """**Synthetic double-Smith fixture** (mandatory per plan).
@@ -279,6 +287,7 @@ def test_same_card_lastname_gate_double_smith():
 # Test 8 (bonus sanity) — NICKNAME_REGISTRY contains the documented hops
 # ─────────────────────────────────────────────────────────────────────
 
+
 def test_nickname_registry_documented_hops_present():
     """Regression sentinel: the five documented hops in the plan's
     ``<interfaces>`` block (Rampage, Cro Cop, Minotauro, Lil Nog,
@@ -294,8 +303,7 @@ def test_nickname_registry_documented_hops_present():
     for k, v in required.items():
         assert k in NICKNAME_REGISTRY, f"missing nickname key: {k!r}"
         assert NICKNAME_REGISTRY[k] == v, (
-            f"NICKNAME_REGISTRY[{k!r}] = {NICKNAME_REGISTRY[k]!r}; "
-            f"expected {v!r}"
+            f"NICKNAME_REGISTRY[{k!r}] = {NICKNAME_REGISTRY[k]!r}; expected {v!r}"
         )
 
 
@@ -306,6 +314,7 @@ def test_nickname_registry_documented_hops_present():
 # ─────────────────────────────────────────────────────────────────────
 # Test 9 — Tier 4: women's married-name registry
 # ─────────────────────────────────────────────────────────────────────
+
 
 def test_tier4_womens_married_name_cris_cyborg():
     """``Cris Cyborg`` (kaggle ring-name) → ``Cristiane Justino`` (ufcstats
@@ -357,6 +366,7 @@ def test_tier4_registry_documented_seeds_present():
 # Test 10 — Tier 5: Brazilian fight-nickname registry
 # ─────────────────────────────────────────────────────────────────────
 
+
 def test_tier5_brazilian_nickname_rafael_feijao():
     """``Rafael Feijao`` (kaggle ring-name) → ``Rafael Cavalcante``
     (ufcstats legal-name) via BRAZILIAN_NICKNAME_REGISTRY tier 5.
@@ -369,11 +379,7 @@ def test_tier5_brazilian_nickname_rafael_feijao():
         ("Fabricio Werdum", 9102),
         ("William Macario", 9103),
     ]
-    same_card_idx = {
-        date(2013, 6, 8): {
-            "cavalcante": [9101], "werdum": [9102], "macario": [9103]
-        }
-    }
+    same_card_idx = {date(2013, 6, 8): {"cavalcante": [9101], "werdum": [9102], "macario": [9103]}}
     result = match_kaggle_to_ufcstats(
         kaggle_name="Rafael Feijao",
         ufcstats_candidates=candidates,
@@ -404,6 +410,7 @@ def test_tier5_registry_documented_seeds_present():
 # Test 11 — Tier 6: Asian name-token-set permutation (positive + negative)
 # ─────────────────────────────────────────────────────────────────────
 
+
 def test_tier6_asian_name_token_permutation_positive():
     """``Tiequan Zhang`` (kaggle given-first) → ``Zhang Tiequan`` (ufcstats
     surname-first) via Tier 6 token-set permutation match.
@@ -415,11 +422,7 @@ def test_tier6_asian_name_token_permutation_positive():
         ("Michael Bisping", 9202),
         ("BJ Penn", 9203),
     ]
-    same_card_idx = {
-        date(2011, 2, 26): {
-            "tiequan": [9201], "bisping": [9202], "penn": [9203]
-        }
-    }
+    same_card_idx = {date(2011, 2, 26): {"tiequan": [9201], "bisping": [9202], "penn": [9203]}}
     result = match_kaggle_to_ufcstats(
         kaggle_name="Tiequan Zhang",
         ufcstats_candidates=candidates,
@@ -450,9 +453,7 @@ def test_tier6_asian_name_negative_does_not_match_different_first_name():
         ("Jane Smith", 9301),
         ("Bob Jones", 9302),
     ]
-    same_card_idx = {
-        date(2099, 1, 1): {"smith": [9301], "jones": [9302]}
-    }
+    same_card_idx = {date(2099, 1, 1): {"smith": [9301], "jones": [9302]}}
     result = match_kaggle_to_ufcstats(
         kaggle_name="John Smith",
         ufcstats_candidates=candidates,
@@ -462,8 +463,7 @@ def test_tier6_asian_name_negative_does_not_match_different_first_name():
     )
     matched_id, tier, _evidence, _confidence = result
     assert tier != 6, (
-        f"Tier 6 MUST NOT fire on {'{john,smith}'} vs {'{jane,smith}'} — "
-        f"got tier={tier}"
+        f"Tier 6 MUST NOT fire on {'{john,smith}'} vs {'{jane,smith}'} — got tier={tier}"
     )
     # Either no match or a non-tier-6 resolution. Acceptable terminations:
     #   - tier 1/2 (if first-token gate matches — for 'smith' the full
@@ -475,6 +475,7 @@ def test_tier6_asian_name_negative_does_not_match_different_first_name():
 # ─────────────────────────────────────────────────────────────────────
 # Test 12 — Residual: requires-manual-review confidence
 # ─────────────────────────────────────────────────────────────────────
+
 
 def test_residual_unresolved_uses_requires_manual_review_confidence():
     """Per Path C spec: anything not matched by Tiers 1-6 gets
@@ -502,6 +503,7 @@ def test_residual_unresolved_uses_requires_manual_review_confidence():
 #           kaggle first-name is full (not an initial) and uniquely
 #           identifies the candidate among same-surname collisions
 # ─────────────────────────────────────────────────────────────────────
+
 
 def test_tier1_gate_does_not_over_fire_on_unique_full_first_name():
     """**Bug fix regression (Rule 1 — surfaced during Path C):**
@@ -534,9 +536,7 @@ def test_tier1_gate_does_not_over_fire_on_unique_full_first_name():
         ("Livinha Souza", 5964),
     ]
     # 4 Souzas on the same card
-    same_card_idx = {
-        date(2013, 5, 18): {"souza": [5229, 5263, 6524, 5964]}
-    }
+    same_card_idx = {date(2013, 5, 18): {"souza": [5229, 5263, 6524, 5964]}}
     result = match_kaggle_to_ufcstats(
         kaggle_name="Jacare Souza",
         ufcstats_candidates=candidates,
@@ -546,8 +546,7 @@ def test_tier1_gate_does_not_over_fire_on_unique_full_first_name():
     )
     matched_id, tier, _evidence, confidence = result
     assert matched_id == 5229, (
-        f"Tier-1 gate over-fired: expected id=5229 (Jacare Souza), got "
-        f"id={matched_id}, tier={tier}"
+        f"Tier-1 gate over-fired: expected id=5229 (Jacare Souza), got id={matched_id}, tier={tier}"
     )
     assert tier == 1
     assert confidence == "high"

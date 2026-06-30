@@ -27,9 +27,7 @@ from jsonschema import Draft202012Validator
 
 from ufc_prediction.api.v1.models import PredictorOutputV1
 
-SCHEMA_PATH = Path(
-    "src/ufc_prediction/contracts/predictor.schema.v1.0.0.json"
-)
+SCHEMA_PATH = Path("src/ufc_prediction/contracts/predictor.schema.v1.0.0.json")
 
 
 @pytest.fixture(scope="module")

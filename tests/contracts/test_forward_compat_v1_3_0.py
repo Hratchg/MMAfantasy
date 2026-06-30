@@ -28,6 +28,7 @@ exactly — same fake predictor, same standalone client, same
 `_post(version)` helper — so the v1.3.0 regression composes with the
 existing Phase 35 lock and shares the same false-positive surface.
 """
+
 from __future__ import annotations
 
 import json
@@ -84,7 +85,13 @@ class _FakePredictor:
     """Stable predict() that always returns the canonical Khabib/Conor body."""
 
     def predict(
-        self, db, fighter_a_name, fighter_b_name, *, event_date=None, refresh=False,
+        self,
+        db,
+        fighter_a_name,
+        fighter_b_name,
+        *,
+        event_date=None,
+        refresh=False,
     ):
         return {
             **_FAKE_PREDICT_RESULT,
@@ -147,9 +154,7 @@ def test_v130_response_keyset_pinned_to_v120_shape():
     )
 
     missing = v120_props - set(body.keys())
-    assert not missing, (
-        f"v1.3.0 response missing v1.2.0 frozen properties: {missing}"
-    )
+    assert not missing, f"v1.3.0 response missing v1.2.0 frozen properties: {missing}"
 
     assert body["schema_version"] == "1.3.0", body["schema_version"]
 
@@ -226,8 +231,7 @@ def test_v130_schema_file_properties_match_v120():
         "Phase 69 D-01 binding: success-path schemas are byte-equivalent."
     )
     assert extras_v120 == set(), (
-        f"v1.3.0 schema REMOVED v1.2.0 fields: {extras_v120}. "
-        "Forward-compat lock violation."
+        f"v1.3.0 schema REMOVED v1.2.0 fields: {extras_v120}. Forward-compat lock violation."
     )
     assert set(v130["required"]) == set(v120["required"]), (
         f"v1.3.0 required list DRIFTED from v1.2.0:\n"

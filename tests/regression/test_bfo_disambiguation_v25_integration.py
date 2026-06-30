@@ -43,10 +43,7 @@ import pytest
 pytestmark = pytest.mark.integration
 
 FIXTURE_PATH = (
-    Path(__file__).parent
-    / "fixtures"
-    / "bfo_disambiguation_v25"
-    / "integration_anomaly_row.json"
+    Path(__file__).parent / "fixtures" / "bfo_disambiguation_v25" / "integration_anomaly_row.json"
 )
 
 
@@ -309,9 +306,7 @@ def test_control_row_no_regression(
     assert summary.fighters_matched_fuzzy == 0
 
 
-def test_rollback_isolation(
-    fixture_data: dict[str, Any], session: Any
-) -> None:
+def test_rollback_isolation(fixture_data: dict[str, Any], session: Any) -> None:
     """Verify transactional rollback isolates the integration tests.
 
     Plan 41-04 threat model T-41-04-03 ("testcontainers Postgres state
@@ -327,9 +322,7 @@ def test_rollback_isolation(
     from ufc_prediction.models.fighter import Fighter
 
     anomaly = fixture_data["anomaly_row"]
-    anomaly_fixture_ids = [
-        f["fixture_db_id"] for f in anomaly["fighters"]
-    ]
+    anomaly_fixture_ids = [f["fixture_db_id"] for f in anomaly["fighters"]]
 
     # Before this test seeds anything: the anomaly fixture's explicit-id
     # Fighter rows must NOT exist in this session (proves prior test's

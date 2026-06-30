@@ -57,13 +57,10 @@ def test_coverage_aborts_below_50pct(
     """1000 training fights, only 100 with odds → 10% coverage → abort."""
     # All training-era fights (well before any sane cutoff)
     mock_fr.return_value = [
-        {"fight_id": f"f{i}", "event_date": date(2015, 1, 1)}
-        for i in range(1000)
+        {"fight_id": f"f{i}", "event_date": date(2015, 1, 1)} for i in range(1000)
     ]
     # Only 100 fight_ids have odds — 10% coverage
-    mock_odds.return_value = {
-        (f"f{i}", "fighter_x"): {} for i in range(100)
-    }
+    mock_odds.return_value = {(f"f{i}", "fighter_x"): {} for i in range(100)}
     mock_elo.return_value = {}
     mock_comp.return_value = {}
     mock_phys.return_value = {}
@@ -114,12 +111,9 @@ def test_force_flag_overrides_coverage_check(
     never fires — the assertion below fails.
     """
     mock_fr.return_value = [
-        {"fight_id": f"f{i}", "event_date": date(2015, 1, 1)}
-        for i in range(1000)
+        {"fight_id": f"f{i}", "event_date": date(2015, 1, 1)} for i in range(1000)
     ]
-    mock_odds.return_value = {
-        (f"f{i}", "fighter_x"): {} for i in range(100)
-    }
+    mock_odds.return_value = {(f"f{i}", "fighter_x"): {} for i in range(100)}
     mock_elo.return_value = {}
     mock_comp.return_value = {}
     mock_phys.return_value = {}
@@ -129,19 +123,14 @@ def test_force_flag_overrides_coverage_check(
     sentinel = "FORCE_BYPASSED_COVERAGE_CHECK"
     mock_cdm.side_effect = RuntimeError(sentinel)
 
-    result = runner.invoke(
-        app, ["predict", "train", "--trials", "1", "--force"]
-    )
+    result = runner.invoke(app, ["predict", "train", "--trials", "1", "--force"])
 
     # Assertion 1: coverage threshold abort message NOT in output
     assert "< 50% threshold" not in result.output, (
         f"--force did not bypass coverage check: {result.output}"
     )
     # Assertion 2: sentinel raised AFTER the coverage block
-    assert (
-        sentinel in str(result.exception)
-        or sentinel in result.output
-    ), (
+    assert sentinel in str(result.exception) or sentinel in result.output, (
         f"compute_division_medians not reached — coverage check still "
         f"aborted under --force. exception={result.exception!r}, "
         f"output={result.output!r}"
@@ -274,11 +263,9 @@ class TestRelaxedGateDerivation:
         )
         # Output must indicate abort/preservation
         out = (result.output or "") + (result.stderr or "")
-        assert (
-            "Aborted" in out
-            or "preserved" in out.lower()
-            or "abort" in out.lower()
-        ), f"Expected abort/preservation message; got:\n{out}"
+        assert "Aborted" in out or "preserved" in out.lower() or "abort" in out.lower(), (
+            f"Expected abort/preservation message; got:\n{out}"
+        )
 
     # Test 10: docstring de-stale (Warning 6 fix)
     def test_predict_train_docstring_no_stale_thresholds(self) -> None:

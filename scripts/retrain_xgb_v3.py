@@ -39,6 +39,7 @@ Engineering choices (documented per CONTEXT.md "Important environment notes"):
     downstream tasks (5..8) to consume but NOT placed at the production
     model path until Task 8.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -125,19 +126,27 @@ def main() -> int:
         fight_odds = load_fight_odds(session)
     finally:
         session.close()
-    print(f"  Loaded {len(fight_records)} fights / {len(fight_odds)} odds rows in {time.time() - t0:.1f}s")
+    print(
+        f"  Loaded {len(fight_records)} fights / {len(fight_odds)} odds rows in {time.time() - t0:.1f}s"
+    )
 
     print("[xgb_v3] Computing division medians (training-set only)...")
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
 
     print("[xgb_v3] Assembling feature matrix (75 columns; NET-* included)...")
     config = MLConfig(cutoff_date=cutoff_str)
     assembler = FeatureMatrixAssembler(config)
     X, y, fight_dates_full = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
     )
@@ -153,7 +162,10 @@ def main() -> int:
 
     print("[xgb_v3] Temporal split at cutoff_date...")
     X_train, X_test, y_train, y_test = split_temporal(
-        X, y, fight_dates_full, cutoff_date_obj,
+        X,
+        y,
+        fight_dates_full,
+        cutoff_date_obj,
     )
     test_mask = np.array([d >= cutoff_date_obj for d in fight_dates_full])
     fight_dates_test = np.array(fight_dates_full)[test_mask]
@@ -171,14 +183,17 @@ def main() -> int:
         model = _train_with_fixed_params(X_train, y_train, best_params, seed)
         candidate_models.append(model)
         per_slice = evaluate_per_slice(
-            model, X_test, y_test, fight_dates_test,
-            today=date.today(), random_seed=42,  # Fixed across seeds for slice consistency.
+            model,
+            X_test,
+            y_test,
+            fight_dates_test,
+            today=date.today(),
+            random_seed=42,  # Fixed across seeds for slice consistency.
         )
         candidate_per_slice.append(per_slice)
         elapsed = time.time() - t_seed
         slice_summary = ", ".join(
-            f"{slice_name}: brier={metrics['brier_score']:.4f} "
-            f"acc={metrics['accuracy']:.4f}"
+            f"{slice_name}: brier={metrics['brier_score']:.4f} acc={metrics['accuracy']:.4f}"
             for slice_name, metrics in per_slice.items()
         )
         print(f"  seed={seed} done in {elapsed:.1f}s — {slice_summary}")
@@ -200,12 +215,19 @@ def main() -> int:
         t_seed = time.time()
         print(f"[xgb_v3-no-NET] Seed {seed} ({i + 1}/{len(seeds)}) — training (72 cols)...")
         model_no_net = _train_with_fixed_params(
-            X_train_no_net, y_train, best_params, seed,
+            X_train_no_net,
+            y_train,
+            best_params,
+            seed,
         )
         candidate_no_net_models.append(model_no_net)
         per_slice_no_net = evaluate_per_slice(
-            model_no_net, X_test_no_net, y_test, fight_dates_test,
-            today=date.today(), random_seed=42,
+            model_no_net,
+            X_test_no_net,
+            y_test,
+            fight_dates_test,
+            today=date.today(),
+            random_seed=42,
         )
         candidate_no_net_per_slice.append(per_slice_no_net)
         elapsed = time.time() - t_seed
@@ -250,7 +272,10 @@ def main() -> int:
 
 
 def _train_with_fixed_params(
-    X_train: np.ndarray, y_train: np.ndarray, best_params: dict, seed: int,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    best_params: dict,
+    seed: int,
 ) -> CalibratedClassifierCV:
     """Single-seed train using the xgb_v2 best_params (skipping Optuna).
 
@@ -297,9 +322,7 @@ def _append_report_tables(
     text = report_path.read_text()
 
     median_block = "## Per-Slice Median Metrics (5 seeds × 3 slices)\n\n"
-    median_block += (
-        f"Train fights: {n_training_fights}; Test fights: {n_test_fights}\n\n"
-    )
+    median_block += f"Train fights: {n_training_fights}; Test fights: {n_test_fights}\n\n"
     median_block += (
         "| Slice | Brier (median) | Acc (median) | AUC (median) |\n"
         "|-------|----------------|--------------|--------------|\n"
@@ -314,13 +337,12 @@ def _append_report_tables(
         )
 
     sub_block = "## Per-Seed Sub-Rows\n\n"
-    sub_block += "Seed-to-seed spread is a sanity flag (CONTEXT.md noted ±0.0006 in Phase 15.1).\n\n"
+    sub_block += (
+        "Seed-to-seed spread is a sanity flag (CONTEXT.md noted ±0.0006 in Phase 15.1).\n\n"
+    )
     for slice_name in ("most_recent_12mo", "most_recent_24mo", "random_15pct"):
         sub_block += f"### {slice_name}\n\n"
-        sub_block += (
-            "| Seed | Brier | Acc | AUC |\n"
-            "|------|-------|-----|-----|\n"
-        )
+        sub_block += "| Seed | Brier | Acc | AUC |\n|------|-------|-----|-----|\n"
         briers = []
         accs = []
         for seed, per_slice in zip(seeds, per_seed_per_slice, strict=True):

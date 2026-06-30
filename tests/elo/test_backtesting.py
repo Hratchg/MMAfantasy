@@ -156,28 +156,32 @@ def test_run_parameter_backtest_sorted():
     fid = 0
     for i in range(10):
         fid += 1
-        fights.append(FightRecord(
-            fight_id=fid,
-            event_date=date(2020, 1, 1),
-            fighter_a_id=1,
-            fighter_b_id=2,
-            winner_id=1,
-            weight_class="Lightweight",
-            method="Decision",
-            method_detail="Unanimous",
-        ))
+        fights.append(
+            FightRecord(
+                fight_id=fid,
+                event_date=date(2020, 1, 1),
+                fighter_a_id=1,
+                fighter_b_id=2,
+                winner_id=1,
+                weight_class="Lightweight",
+                method="Decision",
+                method_detail="Unanimous",
+            )
+        )
     for i in range(5):
         fid += 1
-        fights.append(FightRecord(
-            fight_id=fid,
-            event_date=date(2022, 1, 1),
-            fighter_a_id=1,
-            fighter_b_id=2,
-            winner_id=1,
-            weight_class="Lightweight",
-            method="Decision",
-            method_detail="Unanimous",
-        ))
+        fights.append(
+            FightRecord(
+                fight_id=fid,
+                event_date=date(2022, 1, 1),
+                fighter_a_id=1,
+                fighter_b_id=2,
+                winner_id=1,
+                weight_class="Lightweight",
+                method="Decision",
+                method_detail="Unanimous",
+            )
+        )
 
     configs = [
         EloConfig(mov_ko_tko=1.2, mov_submission=1.1, mov_split=0.5),
@@ -266,28 +270,32 @@ def test_run_joint_optimization_structure():
     fid = 0
     for _ in range(10):
         fid += 1
-        fights.append(FightRecord(
-            fight_id=fid,
-            event_date=date(2020, 1, 1),
-            fighter_a_id=1,
-            fighter_b_id=2,
-            winner_id=1,
-            weight_class="Lightweight",
-            method="KO/TKO",
-            method_detail=None,
-        ))
+        fights.append(
+            FightRecord(
+                fight_id=fid,
+                event_date=date(2020, 1, 1),
+                fighter_a_id=1,
+                fighter_b_id=2,
+                winner_id=1,
+                weight_class="Lightweight",
+                method="KO/TKO",
+                method_detail=None,
+            )
+        )
     for _ in range(5):
         fid += 1
-        fights.append(FightRecord(
-            fight_id=fid,
-            event_date=date(2022, 1, 1),
-            fighter_a_id=1,
-            fighter_b_id=2,
-            winner_id=1,
-            weight_class="Lightweight",
-            method="KO/TKO",
-            method_detail=None,
-        ))
+        fights.append(
+            FightRecord(
+                fight_id=fid,
+                event_date=date(2022, 1, 1),
+                fighter_a_id=1,
+                fighter_b_id=2,
+                winner_id=1,
+                weight_class="Lightweight",
+                method="KO/TKO",
+                method_detail=None,
+            )
+        )
 
     independent = {
         "mov": [{"config": EloConfig(mov_ko_tko=1.5), "brier_score": 0.24}],

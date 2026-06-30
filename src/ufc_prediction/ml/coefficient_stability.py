@@ -47,10 +47,9 @@ def coefficient_stability_report(
           "n_seeds": int,
         }
     """
-    coefs = np.array([
-        m.pipeline.named_steps["clf"].coef_[0]
-        for m in per_seed_meta.values()
-    ])  # shape (n_seeds, n_features)
+    coefs = np.array(
+        [m.pipeline.named_steps["clf"].coef_[0] for m in per_seed_meta.values()]
+    )  # shape (n_seeds, n_features)
     per_feature_std = coefs.std(axis=0)
     median_sign = np.sign(np.median(coefs, axis=0))
     per_feature_sign_agreement = (np.sign(coefs) == median_sign).mean(axis=0)

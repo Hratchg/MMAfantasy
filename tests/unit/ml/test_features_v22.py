@@ -120,7 +120,11 @@ class TestComputeRefRatesShrunk:
         global_rates = {"finish": 0.5, "decision": 0.4, "no_action": 0.1}
 
         out = compute_ref_rates_shrunk(
-            7, date(2025, 3, 1), ref_history, global_rates, k_shrink=50.0,
+            7,
+            date(2025, 3, 1),
+            ref_history,
+            global_rates,
+            k_shrink=50.0,
         )
         # Only 2025-01-01 (finish) fight visible at as_of=2025-03-01.
         # n=1, finishes=1, decisions=0, no_action=0.
@@ -133,7 +137,11 @@ class TestComputeRefRatesShrunk:
 
         # Reverse check: at as_of=2026-01-01 BOTH fights visible.
         out2 = compute_ref_rates_shrunk(
-            7, date(2026, 1, 1), ref_history, global_rates, k_shrink=50.0,
+            7,
+            date(2026, 1, 1),
+            ref_history,
+            global_rates,
+            k_shrink=50.0,
         )
         exp_finish2 = beta_binomial_shrink(1, 2, 0.5, 50.0)
         exp_decision2 = beta_binomial_shrink(1, 2, 0.4, 50.0)
@@ -162,7 +170,8 @@ class TestTrainInferenceParity:
     """
 
     def test_ref_cols_parity_between_train_and_inference(
-        self, monkeypatch,
+        self,
+        monkeypatch,
     ) -> None:
         """Test 8: REF cols at indices 72-74 are byte-identical across paths."""
         from datetime import date as _date
@@ -183,25 +192,37 @@ class TestTrainInferenceParity:
         # through the inference path's _query_ref_state stub.
         fight_records = [
             {
-                "fight_id": 201, "event_id": 201,
+                "fight_id": 201,
+                "event_id": 201,
                 "event_date": _date(2024, 1, 1),
-                "fighter_a_id": 1, "fighter_b_id": 2, "winner_id": 1,
+                "fighter_a_id": 1,
+                "fighter_b_id": 2,
+                "winner_id": 1,
                 "weight_class": "Lightweight",
-                "referee_id": 1, "method": "KO/TKO",
+                "referee_id": 1,
+                "method": "KO/TKO",
             },
             {
-                "fight_id": 202, "event_id": 202,
+                "fight_id": 202,
+                "event_id": 202,
                 "event_date": _date(2024, 6, 1),
-                "fighter_a_id": 3, "fighter_b_id": 4, "winner_id": 3,
+                "fighter_a_id": 3,
+                "fighter_b_id": 4,
+                "winner_id": 3,
                 "weight_class": "Welterweight",
-                "referee_id": 2, "method": "Decision - Unanimous",
+                "referee_id": 2,
+                "method": "Decision - Unanimous",
             },
             {
-                "fight_id": 203, "event_id": 203,
+                "fight_id": 203,
+                "event_id": 203,
                 "event_date": _date(2025, 3, 1),
-                "fighter_a_id": 1, "fighter_b_id": 3, "winner_id": 1,
+                "fighter_a_id": 1,
+                "fighter_b_id": 3,
+                "winner_id": 1,
                 "weight_class": "Lightweight",
-                "referee_id": 1, "method": "Submission",
+                "referee_id": 1,
+                "method": "Submission",
             },
         ]
 
@@ -219,18 +240,24 @@ class TestTrainInferenceParity:
         computed_features: dict = {}  # NaN-propagating, fine for REF parity test
         fighter_physicals = {
             fid: {
-                "height_inches": 70.0, "reach_inches": 72.0,
-                "leg_reach_inches": 40.0, "stance": "Orthodox",
+                "height_inches": 70.0,
+                "reach_inches": 72.0,
+                "leg_reach_inches": 40.0,
+                "stance": "Orthodox",
                 "date_of_birth": _date(1990, 1, 1),
             }
             for fid in (1, 2, 3, 4)
         }
         division_medians = {
             "Lightweight": {
-                "height_inches": 70.0, "reach_inches": 72.0, "leg_reach_inches": 40.0,
+                "height_inches": 70.0,
+                "reach_inches": 72.0,
+                "leg_reach_inches": 40.0,
             },
             "Welterweight": {
-                "height_inches": 70.0, "reach_inches": 72.0, "leg_reach_inches": 40.0,
+                "height_inches": 70.0,
+                "reach_inches": 72.0,
+                "leg_reach_inches": 40.0,
             },
         }
 
@@ -251,8 +278,11 @@ class TestTrainInferenceParity:
         # the inference path will see.
         assembler = FeatureMatrixAssembler()
         X_train, _, _ = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             feature_set="v2.2",
             event_referees=event_refs,
             ref_history=shared_ref_history,
@@ -267,48 +297,61 @@ class TestTrainInferenceParity:
             return shared_ref_history, shared_global_rates
 
         monkeypatch.setattr(
-            inference_features, "_get_latest_elo",
+            inference_features,
+            "_get_latest_elo",
             lambda s, fid, et: 1500.0,
         )
         monkeypatch.setattr(
-            inference_features, "_get_latest_computed_features",
+            inference_features,
+            "_get_latest_computed_features",
             lambda s, fid: {},
         )
         monkeypatch.setattr(
-            inference_features, "_get_cached_odds",
+            inference_features,
+            "_get_cached_odds",
             lambda s, a, b, d: (None, None),
         )
         monkeypatch.setattr(
-            inference_features, "_query_ref_state", _stub_query_ref_state,
+            inference_features,
+            "_query_ref_state",
+            _stub_query_ref_state,
         )
         # Plan 23-03 META stubs — safe defaults so MagicMock session
         # doesn't break META queries (this parity test only checks REF).
         monkeypatch.setattr(
-            inference_features, "_query_fighter_prior_fight_date",
+            inference_features,
+            "_query_fighter_prior_fight_date",
             lambda s, fid, bd: None,
         )
         monkeypatch.setattr(
-            inference_features, "_query_elo_history",
+            inference_features,
+            "_query_elo_history",
             lambda s, fid, bd, limit=6: [],
         )
         monkeypatch.setattr(
-            inference_features, "_query_division_state",
+            inference_features,
+            "_query_division_state",
             lambda s, wc, bd: ({}, 0.0),
         )
         monkeypatch.setattr(
-            inference_features, "_query_division_mean_reach",
+            inference_features,
+            "_query_division_mean_reach",
             lambda s, wc: None,
         )
         monkeypatch.setattr(
-            inference_features, "_query_fighter_division",
+            inference_features,
+            "_query_fighter_division",
             lambda s, fid: None,
         )
 
         def _stub_fighter(fid: int):
             return MagicMock(
-                id=fid, name=f"Fighter-{fid}",
-                height_inches=70.0, reach_inches=72.0,
-                leg_reach_inches=40.0, stance="Orthodox",
+                id=fid,
+                name=f"Fighter-{fid}",
+                height_inches=70.0,
+                reach_inches=72.0,
+                leg_reach_inches=40.0,
+                stance="Orthodox",
                 date_of_birth=_date(1990, 1, 1),
             )
 
@@ -326,15 +369,17 @@ class TestTrainInferenceParity:
             fb = _stub_fighter(fight["fighter_b_id"])
 
             inf_row = inference_features.build(
-                session, fa, fb, event_date,
+                session,
+                fa,
+                fb,
+                event_date,
                 feature_set="v2.2",
                 referee_id=ref_id,
             )[0]
 
             # Find the corresponding training-path row by fight_id.
             train_row_idx = next(
-                i for i, f in enumerate(fight_records)
-                if f["fight_id"] == fight["fight_id"]
+                i for i, f in enumerate(fight_records) if f["fight_id"] == fight["fight_id"]
             )
             train_row = X_train[train_row_idx]
 
@@ -401,11 +446,16 @@ def test_no_banned_runtime_imports() -> None:
     Phase 22 used one-off for backfill but are NOT runtime deps).
     """
     import subprocess
+
     result = subprocess.run(
-        ["grep", "-rn",
-         "from geopy\\|import geopy\\|from pytz\\|import pytz\\|from timezonefinder\\|import timezonefinder",
-         "src/ufc_prediction/ml/features_v22/"],
-        capture_output=True, text=True,
+        [
+            "grep",
+            "-rn",
+            "from geopy\\|import geopy\\|from pytz\\|import pytz\\|from timezonefinder\\|import timezonefinder",
+            "src/ufc_prediction/ml/features_v22/",
+        ],
+        capture_output=True,
+        text=True,
     )
     # grep exit code 1 = no matches (the desired state)
     assert result.returncode == 1, (
@@ -464,18 +514,27 @@ class TestComputeTzShiftSigned:
         from ufc_prediction.ml.features_v22 import compute_tz_shift_signed
 
         out = compute_tz_shift_signed(
-            None, None, "America/Las_Vegas", date(2026, 5, 1),
+            None,
+            None,
+            "America/Las_Vegas",
+            date(2026, 5, 1),
         )
         assert out == 0.0
 
         # Either being None triggers sentinel.
         out2 = compute_tz_shift_signed(
-            "America/Las_Vegas", None, "Asia/Tokyo", date(2026, 5, 1),
+            "America/Las_Vegas",
+            None,
+            "Asia/Tokyo",
+            date(2026, 5, 1),
         )
         assert out2 == 0.0
 
         out3 = compute_tz_shift_signed(
-            None, date(2026, 1, 1), "Asia/Tokyo", date(2026, 5, 1),
+            None,
+            date(2026, 1, 1),
+            "Asia/Tokyo",
+            date(2026, 5, 1),
         )
         assert out3 == 0.0
 
@@ -486,8 +545,10 @@ class TestComputeTzShiftSigned:
         # 2026-05-01 LA: PDT = -7. 2026-05-08 Tokyo: JST = +9.
         # shift = curr_offset - prior_offset = 9 - (-7) = +16
         out = compute_tz_shift_signed(
-            "America/Los_Angeles", date(2026, 5, 1),
-            "Asia/Tokyo", date(2026, 5, 8),
+            "America/Los_Angeles",
+            date(2026, 5, 1),
+            "Asia/Tokyo",
+            date(2026, 5, 8),
         )
         assert out == pytest.approx(16.0)
 
@@ -497,8 +558,10 @@ class TestComputeTzShiftSigned:
 
         # shift = -7 - 9 = -16
         out = compute_tz_shift_signed(
-            "Asia/Tokyo", date(2026, 5, 1),
-            "America/Los_Angeles", date(2026, 5, 8),
+            "Asia/Tokyo",
+            date(2026, 5, 1),
+            "America/Los_Angeles",
+            date(2026, 5, 8),
         )
         assert out == pytest.approx(-16.0)
 
@@ -525,12 +588,14 @@ class TestComputeTravelFeatures:
         # Current fight: LA, 2026-03-01 → PST = -8h (DST starts 2026-03-08).
         out = compute_travel_features(
             {
-                "lat": 40.7128, "lon": -74.0060,
+                "lat": 40.7128,
+                "lon": -74.0060,
                 "timezone_iana": "America/New_York",
                 "event_date": date(2026, 1, 1),
             },
             {
-                "lat": 34.0522, "lon": -118.2437,
+                "lat": 34.0522,
+                "lon": -118.2437,
                 "timezone_iana": "America/Los_Angeles",
             },
             date(2026, 3, 1),
@@ -560,7 +625,8 @@ class TestTrainInferenceParityTravel:
     """
 
     def test_travel_cols_parity_between_train_and_inference(
-        self, monkeypatch,
+        self,
+        monkeypatch,
     ) -> None:
         """Same fixture → byte-identical TRAVEL cols across train + inference."""
         from datetime import date as _date
@@ -578,45 +644,63 @@ class TestTrainInferenceParityTravel:
 
         # ── Shared fixture: 3 fights, 3 venues (NYC, LA, Tokyo) ────────────
         venue_nyc = {
-            "lat": 40.7128, "lon": -74.0060,
+            "lat": 40.7128,
+            "lon": -74.0060,
             "timezone_iana": "America/New_York",
         }
         venue_la = {
-            "lat": 34.0522, "lon": -118.2437,
+            "lat": 34.0522,
+            "lon": -118.2437,
             "timezone_iana": "America/Los_Angeles",
         }
         venue_tokyo = {
-            "lat": 35.6762, "lon": 139.6503,
+            "lat": 35.6762,
+            "lon": 139.6503,
             "timezone_iana": "Asia/Tokyo",
         }
         event_venue_map = {201: venue_nyc, 202: venue_la, 203: venue_tokyo}
 
         fight_records = [
             {
-                "fight_id": 201, "event_id": 201,
+                "fight_id": 201,
+                "event_id": 201,
                 "event_date": _date(2024, 1, 1),
-                "fighter_a_id": 1, "fighter_b_id": 2, "winner_id": 1,
+                "fighter_a_id": 1,
+                "fighter_b_id": 2,
+                "winner_id": 1,
                 "weight_class": "Lightweight",
-                "referee_id": None, "method": "KO/TKO",
-                "venue_lat": venue_nyc["lat"], "venue_lon": venue_nyc["lon"],
+                "referee_id": None,
+                "method": "KO/TKO",
+                "venue_lat": venue_nyc["lat"],
+                "venue_lon": venue_nyc["lon"],
                 "venue_timezone_iana": venue_nyc["timezone_iana"],
             },
             {
-                "fight_id": 202, "event_id": 202,
+                "fight_id": 202,
+                "event_id": 202,
                 "event_date": _date(2024, 6, 1),
-                "fighter_a_id": 1, "fighter_b_id": 3, "winner_id": 1,
+                "fighter_a_id": 1,
+                "fighter_b_id": 3,
+                "winner_id": 1,
                 "weight_class": "Lightweight",
-                "referee_id": None, "method": "Decision - Unanimous",
-                "venue_lat": venue_la["lat"], "venue_lon": venue_la["lon"],
+                "referee_id": None,
+                "method": "Decision - Unanimous",
+                "venue_lat": venue_la["lat"],
+                "venue_lon": venue_la["lon"],
                 "venue_timezone_iana": venue_la["timezone_iana"],
             },
             {
-                "fight_id": 203, "event_id": 203,
+                "fight_id": 203,
+                "event_id": 203,
                 "event_date": _date(2025, 3, 1),
-                "fighter_a_id": 1, "fighter_b_id": 4, "winner_id": 1,
+                "fighter_a_id": 1,
+                "fighter_b_id": 4,
+                "winner_id": 1,
                 "weight_class": "Lightweight",
-                "referee_id": None, "method": "Submission",
-                "venue_lat": venue_tokyo["lat"], "venue_lon": venue_tokyo["lon"],
+                "referee_id": None,
+                "method": "Submission",
+                "venue_lat": venue_tokyo["lat"],
+                "venue_lon": venue_tokyo["lon"],
                 "venue_timezone_iana": venue_tokyo["timezone_iana"],
             },
         ]
@@ -635,15 +719,18 @@ class TestTrainInferenceParityTravel:
         computed_features: dict = {}
         fighter_physicals = {
             fid: {
-                "height_inches": 70.0, "reach_inches": 72.0,
-                "leg_reach_inches": 40.0, "stance": "Orthodox",
+                "height_inches": 70.0,
+                "reach_inches": 72.0,
+                "leg_reach_inches": 40.0,
+                "stance": "Orthodox",
                 "date_of_birth": _date(1990, 1, 1),
             }
             for fid in (1, 2, 3, 4)
         }
         division_medians = {
             "Lightweight": {
-                "height_inches": 70.0, "reach_inches": 72.0,
+                "height_inches": 70.0,
+                "reach_inches": 72.0,
                 "leg_reach_inches": 40.0,
             },
         }
@@ -652,14 +739,18 @@ class TestTrainInferenceParityTravel:
         sorted_records = sorted(fight_records, key=lambda f: f["event_date"])
         shared_event_venues = _build_event_venue_lookup(sorted_records)
         shared_prior_venues = _build_fighter_prior_venues(
-            sorted_records, shared_event_venues,
+            sorted_records,
+            shared_event_venues,
         )
 
         # ── Training path: pass shared inputs explicitly ───────────────────
         assembler = FeatureMatrixAssembler()
         X_train, _, _ = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             feature_set="v2.2",
             event_venues=shared_event_venues,
             fighter_prior_venues=shared_prior_venues,
@@ -690,55 +781,71 @@ class TestTrainInferenceParityTravel:
             return {**v, "event_date": _ed}
 
         monkeypatch.setattr(
-            inference_features, "_get_latest_elo",
+            inference_features,
+            "_get_latest_elo",
             lambda s, fid, et: 1500.0,
         )
         monkeypatch.setattr(
-            inference_features, "_get_latest_computed_features",
+            inference_features,
+            "_get_latest_computed_features",
             lambda s, fid: {},
         )
         monkeypatch.setattr(
-            inference_features, "_get_cached_odds",
+            inference_features,
+            "_get_cached_odds",
             lambda s, a, b, d: (None, None),
         )
         monkeypatch.setattr(
-            inference_features, "_query_ref_state",
+            inference_features,
+            "_query_ref_state",
             lambda s, r, d: ({}, {"finish": 0.0, "decision": 0.0, "no_action": 0.0}),
         )
         monkeypatch.setattr(
-            inference_features, "_query_current_venue", _stub_current_venue,
+            inference_features,
+            "_query_current_venue",
+            _stub_current_venue,
         )
         monkeypatch.setattr(
-            inference_features, "_query_fighter_prior_venue", _stub_prior_venue,
+            inference_features,
+            "_query_fighter_prior_venue",
+            _stub_prior_venue,
         )
         # Plan 23-03 META stubs — this parity test only checks TRAVEL,
         # safe defaults prevent MagicMock session from breaking META queries.
         monkeypatch.setattr(
-            inference_features, "_query_fighter_prior_fight_date",
+            inference_features,
+            "_query_fighter_prior_fight_date",
             lambda s, fid, bd: None,
         )
         monkeypatch.setattr(
-            inference_features, "_query_elo_history",
+            inference_features,
+            "_query_elo_history",
             lambda s, fid, bd, limit=6: [],
         )
         monkeypatch.setattr(
-            inference_features, "_query_division_state",
+            inference_features,
+            "_query_division_state",
             lambda s, wc, bd: ({}, 0.0),
         )
         monkeypatch.setattr(
-            inference_features, "_query_division_mean_reach",
+            inference_features,
+            "_query_division_mean_reach",
             lambda s, wc: None,
         )
         monkeypatch.setattr(
-            inference_features, "_query_fighter_division",
+            inference_features,
+            "_query_fighter_division",
             lambda s, fid: None,
         )
 
         def _stub_fighter(fid: int):
             return MagicMock(
-                id=fid, name=f"Fighter-{fid}",
-                height_inches=70.0, reach_inches=72.0,
-                leg_reach_inches=40.0, stance="Orthodox",
+                id=fid,
+                name=f"Fighter-{fid}",
+                height_inches=70.0,
+                reach_inches=72.0,
+                leg_reach_inches=40.0,
+                stance="Orthodox",
                 date_of_birth=_date(1990, 1, 1),
             )
 
@@ -756,10 +863,7 @@ class TestTrainInferenceParityTravel:
             fight_id = fight["fight_id"]
             event_date_val = fight["event_date"]
             # Replicate the deterministic swap from feature_matrix.assemble.
-            swap = (
-                int(hashlib.md5(str(fight_id).encode()).hexdigest(), 16) % 2
-                == 0
-            )
+            swap = int(hashlib.md5(str(fight_id).encode()).hexdigest(), 16) % 2 == 0
             if swap:
                 a_id = fight["fighter_b_id"]
                 b_id = fight["fighter_a_id"]
@@ -771,14 +875,16 @@ class TestTrainInferenceParityTravel:
             fb = _stub_fighter(b_id)
 
             inf_row = inference_features.build(
-                session, fa, fb, event_date_val,
+                session,
+                fa,
+                fb,
+                event_date_val,
                 feature_set="v2.2",
                 event_id=fight["event_id"],
             )[0]
 
             train_row_idx = next(
-                i for i, f in enumerate(fight_records)
-                if f["fight_id"] == fight_id
+                i for i, f in enumerate(fight_records) if f["fight_id"] == fight_id
             )
             train_row = X_train[train_row_idx]
 
@@ -837,9 +943,14 @@ class TestLayoffDays:
         """Test 4: clip_max kwarg overrides default."""
         from ufc_prediction.ml.features_v22 import layoff_days
 
-        assert layoff_days(
-            date(2026, 5, 1), date(2023, 1, 1), clip_max=365,
-        ) == 365.0
+        assert (
+            layoff_days(
+                date(2026, 5, 1),
+                date(2023, 1, 1),
+                clip_max=365,
+            )
+            == 365.0
+        )
 
 
 class TestAgeAtFight:
@@ -895,7 +1006,8 @@ class TestEloVelocity:
         from ufc_prediction.ml.features_v22 import elo_velocity
 
         result = elo_velocity(
-            [1500, 1510, 1520, 1530, 1540, 1550], window=5,
+            [1500, 1510, 1520, 1530, 1540, 1550],
+            window=5,
         )
         assert result == pytest.approx(10.0)
 
@@ -940,7 +1052,10 @@ class TestDivisionFinishRateShrunk:
         from ufc_prediction.ml.features_v22 import division_finish_rate_shrunk
 
         result = division_finish_rate_shrunk(
-            None, date(2026, 1, 1), {}, global_finish_rate=0.55,
+            None,
+            date(2026, 1, 1),
+            {},
+            global_finish_rate=0.55,
         )
         assert result == pytest.approx(0.55)
 
@@ -1087,9 +1202,7 @@ class TestFeatureColumnsV22Dedup:
 
         meta_slice = FEATURE_COLUMNS_V22[81:90]
         overlap = set(meta_slice) & set(FEATURE_COLUMNS_NO_NET)
-        assert overlap == set(), (
-            f"D-07 dedup violation in META section [81:90]: {overlap}"
-        )
+        assert overlap == set(), f"D-07 dedup violation in META section [81:90]: {overlap}"
 
     def test_meta_section_excludes_layoff_days_diff(self) -> None:
         """Test 22: layoff_days_diff absent (Q4 RESOLVED + B-1 regression)."""
@@ -1119,7 +1232,8 @@ class TestTrainInferenceParityMeta:
     """
 
     def test_meta_cols_parity_between_train_and_inference(
-        self, monkeypatch,
+        self,
+        monkeypatch,
     ) -> None:
         """Same fixture → byte-identical META cols across train + inference."""
         from datetime import date as _date
@@ -1145,25 +1259,37 @@ class TestTrainInferenceParityMeta:
 
         fight_records = [
             {
-                "fight_id": 301, "event_id": 301,
+                "fight_id": 301,
+                "event_id": 301,
                 "event_date": _date(2024, 1, 1),
-                "fighter_a_id": 1, "fighter_b_id": 2, "winner_id": 1,
+                "fighter_a_id": 1,
+                "fighter_b_id": 2,
+                "winner_id": 1,
                 "weight_class": "Lightweight",
-                "referee_id": None, "method": "KO/TKO",
+                "referee_id": None,
+                "method": "KO/TKO",
             },
             {
-                "fight_id": 302, "event_id": 302,
+                "fight_id": 302,
+                "event_id": 302,
                 "event_date": _date(2024, 6, 1),
-                "fighter_a_id": 3, "fighter_b_id": 4, "winner_id": 3,
+                "fighter_a_id": 3,
+                "fighter_b_id": 4,
+                "winner_id": 3,
                 "weight_class": "Lightweight",
-                "referee_id": None, "method": "Decision - Unanimous",
+                "referee_id": None,
+                "method": "Decision - Unanimous",
             },
             {
-                "fight_id": 303, "event_id": 303,
+                "fight_id": 303,
+                "event_id": 303,
                 "event_date": _date(2025, 3, 1),
-                "fighter_a_id": 1, "fighter_b_id": 3, "winner_id": 1,
+                "fighter_a_id": 1,
+                "fighter_b_id": 3,
+                "winner_id": 1,
                 "weight_class": "Lightweight",
-                "referee_id": None, "method": "Submission",
+                "referee_id": None,
+                "method": "Submission",
             },
         ]
 
@@ -1227,19 +1353,23 @@ class TestTrainInferenceParityMeta:
             for fighter, strict < before_date, chronological."""
             history = []
             for f in sorted(
-                fight_records, key=lambda x: x["event_date"],
+                fight_records,
+                key=lambda x: x["event_date"],
             ):
                 if f["event_date"] >= before_date:
                     continue
                 if fighter_id in (f["fighter_a_id"], f["fighter_b_id"]):
                     elo = elo_features.get(
-                        (fighter_id, f["fight_id"]), elo_default,
+                        (fighter_id, f["fight_id"]),
+                        elo_default,
                     )
-                    history.append({
-                        "elo_overall": elo["elo_overall"],
-                        "elo_striking": elo["elo_striking"],
-                        "elo_grappling": elo["elo_grappling"],
-                    })
+                    history.append(
+                        {
+                            "elo_overall": elo["elo_overall"],
+                            "elo_striking": elo["elo_striking"],
+                            "elo_grappling": elo["elo_grappling"],
+                        }
+                    )
             return history[-limit:]
 
         def _stub_division_state(session, weight_class, before_date):
@@ -1258,10 +1388,12 @@ class TestTrainInferenceParityMeta:
             for f in fight_records:
                 wc = f.get("weight_class")
                 if wc is not None:
-                    div_hist.setdefault(wc, []).append({
-                        "event_date": f["event_date"],
-                        "method": f.get("method"),
-                    })
+                    div_hist.setdefault(wc, []).append(
+                        {
+                            "event_date": f["event_date"],
+                            "method": f.get("method"),
+                        }
+                    )
                 total += 1
                 if classify_outcome(f.get("method")) == "finish":
                     total_finishes += 1
@@ -1276,55 +1408,72 @@ class TestTrainInferenceParityMeta:
 
         # Inject all META DB stubs.
         monkeypatch.setattr(
-            inference_features, "_query_fighter_prior_fight_date",
+            inference_features,
+            "_query_fighter_prior_fight_date",
             _stub_fighter_prior_fight_date,
         )
         monkeypatch.setattr(
-            inference_features, "_query_elo_history", _stub_elo_history,
+            inference_features,
+            "_query_elo_history",
+            _stub_elo_history,
         )
         monkeypatch.setattr(
-            inference_features, "_query_division_state", _stub_division_state,
+            inference_features,
+            "_query_division_state",
+            _stub_division_state,
         )
         monkeypatch.setattr(
-            inference_features, "_query_division_mean_reach",
+            inference_features,
+            "_query_division_mean_reach",
             _stub_division_mean_reach,
         )
         monkeypatch.setattr(
-            inference_features, "_query_fighter_division", _stub_fighter_division,
+            inference_features,
+            "_query_fighter_division",
+            _stub_fighter_division,
         )
 
         # Stub other DB calls so we don't hit Postgres.
         monkeypatch.setattr(
-            inference_features, "_get_latest_elo",
+            inference_features,
+            "_get_latest_elo",
             lambda s, fid, et: 1500.0,
         )
         monkeypatch.setattr(
-            inference_features, "_get_latest_computed_features",
+            inference_features,
+            "_get_latest_computed_features",
             lambda s, fid: {},
         )
         monkeypatch.setattr(
-            inference_features, "_get_cached_odds",
+            inference_features,
+            "_get_cached_odds",
             lambda s, a, b, d: (None, None),
         )
         monkeypatch.setattr(
-            inference_features, "_query_ref_state",
+            inference_features,
+            "_query_ref_state",
             lambda s, r, d: ({}, {"finish": 0.0, "decision": 0.0, "no_action": 0.0}),
         )
         # No venue lookups for this fixture (TRAVEL cols can be NaN here).
         monkeypatch.setattr(
-            inference_features, "_query_current_venue", lambda s, eid: None,
+            inference_features,
+            "_query_current_venue",
+            lambda s, eid: None,
         )
         monkeypatch.setattr(
-            inference_features, "_query_fighter_prior_venue",
+            inference_features,
+            "_query_fighter_prior_venue",
             lambda s, fid, bd: None,
         )
 
         def _stub_fighter_orm(fid: int):
             return MagicMock(
-                id=fid, name=f"Fighter-{fid}",
+                id=fid,
+                name=f"Fighter-{fid}",
                 height_inches=70.0,
                 reach_inches=fighter_reach[fid],
-                leg_reach_inches=40.0, stance="Orthodox",
+                leg_reach_inches=40.0,
+                stance="Orthodox",
                 date_of_birth=fighter_dob[fid],
             )
 
@@ -1337,10 +1486,7 @@ class TestTrainInferenceParityMeta:
             fight_id = fight["fight_id"]
             event_date_val = fight["event_date"]
             # Replicate the deterministic swap from feature_matrix.assemble.
-            swap = (
-                int(hashlib.md5(str(fight_id).encode()).hexdigest(), 16) % 2
-                == 0
-            )
+            swap = int(hashlib.md5(str(fight_id).encode()).hexdigest(), 16) % 2 == 0
             if swap:
                 a_id = fight["fighter_b_id"]
                 b_id = fight["fighter_a_id"]
@@ -1352,14 +1498,16 @@ class TestTrainInferenceParityMeta:
             fb = _stub_fighter_orm(b_id)
 
             inf_row = inference_features.build(
-                session, fa, fb, event_date_val,
+                session,
+                fa,
+                fb,
+                event_date_val,
                 feature_set="v2.2",
                 event_id=fight["event_id"],
             )[0]
 
             train_row_idx = next(
-                i for i, f in enumerate(fight_records)
-                if f["fight_id"] == fight_id
+                i for i, f in enumerate(fight_records) if f["fight_id"] == fight_id
             )
             train_row = X_train[train_row_idx]
 

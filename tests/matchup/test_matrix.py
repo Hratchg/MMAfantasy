@@ -20,9 +20,7 @@ class TestStrikingMatrix:
         features_b["sig_str_per_minute_ewma"] = 3.8
         features_b["strike_defense_ewma"] = 0.55
 
-        result = compute_striking_matrix(
-            features_a, features_b, accuracy_a=0.48, accuracy_b=0.42
-        )
+        result = compute_striking_matrix(features_a, features_b, accuracy_a=0.48, accuracy_b=0.42)
 
         assert isinstance(result, StrikingMatrix)
         # A's offense uses EWMA sig_str
@@ -43,9 +41,7 @@ class TestStrikingMatrix:
             "strike_defense_ewma": 0.70,
         }
 
-        result = compute_striking_matrix(
-            features_a, features_b, accuracy_a=0.45, accuracy_b=0.50
-        )
+        result = compute_striking_matrix(features_a, features_b, accuracy_a=0.45, accuracy_b=0.50)
 
         # A falls back to career average
         assert result.a_sig_str_per_min == 4.0  # career avg
@@ -70,9 +66,7 @@ class TestStrikingMatrix:
         features_a = sample_features_full.copy()
         features_b = sample_features_full.copy()
 
-        result = compute_striking_matrix(
-            features_a, features_b, accuracy_a=0.50, accuracy_b=0.45
-        )
+        result = compute_striking_matrix(features_a, features_b, accuracy_a=0.50, accuracy_b=0.45)
 
         # Verify all fields exist
         assert hasattr(result, "a_sig_str_per_min")

@@ -63,7 +63,10 @@ def evaluate_model(
     acc = float(accuracy_score(y_test, preds))
 
     fraction_of_positives, mean_predicted_value = calibration_curve(
-        y_test, probs, n_bins=n_bins, strategy="uniform",
+        y_test,
+        probs,
+        n_bins=n_bins,
+        strategy="uniform",
     )
 
     return {
@@ -103,7 +106,9 @@ def format_evaluation_report(
 
     # Top 10 feature importances
     sorted_features = sorted(
-        feature_importances.items(), key=lambda x: x[1], reverse=True,
+        feature_importances.items(),
+        key=lambda x: x[1],
+        reverse=True,
     )
     lines.append("Top 10 Feature Importances (Gain):")
     for name, score in sorted_features[:10]:
@@ -184,19 +189,27 @@ def evaluate_per_slice(
 
     return {
         "most_recent_12mo": evaluate_model(
-            model, X_test[mask_12mo], y_test[mask_12mo],
+            model,
+            X_test[mask_12mo],
+            y_test[mask_12mo],
         ),
         "most_recent_24mo": evaluate_model(
-            model, X_test[mask_24mo], y_test[mask_24mo],
+            model,
+            X_test[mask_24mo],
+            y_test[mask_24mo],
         ),
         "random_15pct": evaluate_model(
-            model, X_test[mask_random], y_test[mask_random],
+            model,
+            X_test[mask_random],
+            y_test[mask_random],
         ),
     }
 
 
 def _per_fight_brier_and_accuracy(
-    model: Any, X: np.ndarray, y: np.ndarray,
+    model: Any,
+    X: np.ndarray,
+    y: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return per-fight (Brier, accuracy_indicator) arrays.
 
@@ -264,7 +277,9 @@ def bootstrap_per_slice_ci(
         ("random_15pct", mask_random),
     ):
         per_brier, per_acc = _per_fight_brier_and_accuracy(
-            model, X_test[mask], y_test[mask],
+            model,
+            X_test[mask],
+            y_test[mask],
         )
         rng = np.random.default_rng(rng_seed)
         try:
@@ -327,11 +342,7 @@ def gate_verdict(
         acc = float(metrics["accuracy"])
         thresholds = contract.per_slice[slice_name]
         if brier > thresholds.brier_max:
-            failed.append(
-                f"{slice_name}: brier_score {brier:.4f} > {thresholds.brier_max}"
-            )
+            failed.append(f"{slice_name}: brier_score {brier:.4f} > {thresholds.brier_max}")
         if acc < thresholds.accuracy_min:
-            failed.append(
-                f"{slice_name}: accuracy {acc:.4f} < {thresholds.accuracy_min}"
-            )
+            failed.append(f"{slice_name}: accuracy {acc:.4f} < {thresholds.accuracy_min}")
     return (len(failed) == 0, failed)

@@ -61,9 +61,7 @@ logger = logging.getLogger(__name__)
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 DEFAULT_CSV_PATH: Path = PROJECT_ROOT / "data" / "bfo" / "fighters_names.csv"
-DEFAULT_CONFLICTS_PATH: Path = (
-    PROJECT_ROOT / "data" / "bfo" / "fighters_names_conflicts.csv"
-)
+DEFAULT_CONFLICTS_PATH: Path = PROJECT_ROOT / "data" / "bfo" / "fighters_names_conflicts.csv"
 DEFAULT_MERGE_LOG_PATH: Path = (
     PROJECT_ROOT
     / ".planning"
@@ -77,9 +75,7 @@ DEFAULT_MERGE_LOG_PATH: Path = (
 # as e.g. "Jon-Jones-819" — uppercase first letter of each word).
 # Forbids trailing-dash slugs (the WR-01 / CORPUS-V25-02 bug class)
 # inherited from the slug grammar lock in `bfo_scraper.EVENT_SLUG_ID_PATTERN`.
-_FIGHTER_HREF_RE = re.compile(
-    r"^/fighters/[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?-(\d+)$"
-)
+_FIGHTER_HREF_RE = re.compile(r"^/fighters/[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?-(\d+)$")
 
 # Pin the Phase 28-04 operator-reviewed baseline row count. If the
 # baseline CSV grows below this, the additive-merge invariant has been
@@ -143,10 +139,7 @@ def _delta_fighters(
     CSV is a candidate for re-matching.
     """
     seen = {(r.database, r.database_id) for r in baseline_rows}
-    return [
-        f for f in db_fighters
-        if (f.source, str(f.id)) not in seen
-    ]
+    return [f for f in db_fighters if (f.source, str(f.id)) not in seen]
 
 
 def _fetch_search_html(fighter_name: str, http_client) -> Optional[str]:
@@ -172,7 +165,7 @@ def _extract_bfo_numeric_id(profile_url: str) -> Optional[str]:
     """
     if not profile_url.startswith(BFO_BASE):
         return None
-    path = profile_url[len(BFO_BASE):]
+    path = profile_url[len(BFO_BASE) :]
     m = _FIGHTER_HREF_RE.match(path)
     return m.group(1) if m is not None else None
 
@@ -308,9 +301,7 @@ def _load_db_fighters(database_url: str) -> list[DBFighter]:
     engine = create_engine(database_url)
     with Session(engine) as session:
         rows = session.execute(
-            select(Fighter.id, Fighter.name, Fighter.source).where(
-                Fighter.source == "ufcstats"
-            )
+            select(Fighter.id, Fighter.name, Fighter.source).where(Fighter.source == "ufcstats")
         ).all()
     return [DBFighter(id=r.id, name=r.name, source=r.source) for r in rows]
 
@@ -335,11 +326,7 @@ class _DryRunHTTPClient:
         # Single hit for the known fighter; empty for unknown.
         lc = url.lower()
         if "jon jones" in lc or "jon+jones" in lc or "jon-jones" in lc:
-            return (
-                '<html><body>'
-                '<a href="/fighters/Jon-Jones-819">Jon Jones</a>'
-                '</body></html>'
-            )
+            return '<html><body><a href="/fighters/Jon-Jones-819">Jon Jones</a></body></html>'
         return "<html><body>No matches found.</body></html>"
 
 
@@ -372,6 +359,7 @@ def run(
         # `ScraperClient` from `bfo_scraper`). Deferred to keep this
         # script importable without the full scraper toolchain.
         from ufc_prediction.scraper.scraper_client import ScraperClient
+
         http_client = ScraperClient(delay_seconds=1.5, max_retries=3)
 
     delta = _delta_fighters(db_fighters, baseline)
@@ -381,7 +369,9 @@ def run(
     new_rows, conflicts = _classify(matched, baseline)
     logger.info(
         "Matched: %d | New rows: %d | Conflicts: %d",
-        len(matched), len(new_rows), len(conflicts),
+        len(matched),
+        len(new_rows),
+        len(conflicts),
     )
     if dry_run:
         # Emit merge log to stdout; do NOT touch the CSV.
@@ -410,8 +400,9 @@ def run(
             post_total=len(baseline),
         )
         logger.error(
-            "BLOCK: %d conflicts emitted to %s. Operator review required "
-            "before additive merge.", len(conflicts), conflicts_path,
+            "BLOCK: %d conflicts emitted to %s. Operator review required before additive merge.",
+            len(conflicts),
+            conflicts_path,
         )
         return 1
     _write_csv_additive(csv_path, baseline, new_rows)

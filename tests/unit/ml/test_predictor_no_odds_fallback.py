@@ -27,25 +27,27 @@ predictor_module = pytest.importorskip("ufc_prediction.ml.predictor")
 # Snapshot of pre-Wave-5 response keys (Phase 16-19 lineage). The new `_meta` key
 # (containing `win_probability_source`) is ADDITIVE per revision m3 Option B.
 # Phase 35 CONTRACT-V24-02 will rename `_meta` → `prediction_metadata`.
-PRE_WAVE_5_KEYS = frozenset({
-    "fighter_a",
-    "fighter_b",
-    "win_probability",
-    "base_prob",
-    "meta_prob",
-    "meta_kind",
-    "meta_learner_version",
-    "meta_skipped",
-    "meta_skipped_reason",
-    "model_probability_a",
-    "model_probability_b",
-    "elo_probability_a",
-    "elo_probability_b",
-    "elo_a",
-    "elo_b",
-    "feature_importances",
-    "odds_source",
-})
+PRE_WAVE_5_KEYS = frozenset(
+    {
+        "fighter_a",
+        "fighter_b",
+        "win_probability",
+        "base_prob",
+        "meta_prob",
+        "meta_kind",
+        "meta_learner_version",
+        "meta_skipped",
+        "meta_skipped_reason",
+        "model_probability_a",
+        "model_probability_b",
+        "elo_probability_a",
+        "elo_probability_b",
+        "elo_a",
+        "elo_b",
+        "feature_importances",
+        "odds_source",
+    }
+)
 
 
 def _build_calibrated_model(n_features: int = 72):
@@ -77,8 +79,11 @@ def _make_fallback_artifacts(tmp_path: Path, no_odds_cols: list[str]) -> None:
                 "parent_model": "xgb_v2",
                 "parent_model_sha256": "test-sha",
                 "dropped_columns": [
-                    "opening_prob_diff", "closing_prob_diff", "line_movement_diff",
-                    "sharp_money_signal", "odds_elo_divergence",
+                    "opening_prob_diff",
+                    "closing_prob_diff",
+                    "line_movement_diff",
+                    "sharp_money_signal",
+                    "odds_elo_divergence",
                 ],
                 "train_seed": 42,
                 "cutoff_date": "2023-01-01",
@@ -105,8 +110,11 @@ def _build_predictor_with_fallback(tmp_path: Path):
         n_test_fights=12,
     )
     odds_cols = {
-        "opening_prob_diff", "closing_prob_diff", "line_movement_diff",
-        "sharp_money_signal", "odds_elo_divergence",
+        "opening_prob_diff",
+        "closing_prob_diff",
+        "line_movement_diff",
+        "sharp_money_signal",
+        "odds_elo_divergence",
     }
     no_odds_cols = [c for c in FEATURE_COLUMNS_NO_NET if c not in odds_cols]
     assert len(no_odds_cols) == 67
@@ -135,8 +143,10 @@ def test_routes_to_fallback_when_live_odds_none(tmp_path: Path) -> None:
         patch("ufc_prediction.ml.predictor.fetch_matchup_odds") as mock_odds,
         patch("ufc_prediction.ml.predictor._get_latest_elo") as mock_elo,
     ):
-        fa = MagicMock(name="fa", id=1); fa.name = "A"
-        fb = MagicMock(name="fb", id=2); fb.name = "B"
+        fa = MagicMock(name="fa", id=1)
+        fa.name = "A"
+        fb = MagicMock(name="fb", id=2)
+        fb.name = "B"
         mock_resolve.side_effect = [fa, fb]
         idx = FEATURE_COLUMNS_NO_NET.index("closing_prob_diff")
         feature_vec = np.zeros((1, 72))
@@ -171,8 +181,10 @@ def test_no_route_when_live_odds_present(tmp_path: Path) -> None:
         patch("ufc_prediction.ml.predictor.fetch_matchup_odds") as mock_odds,
         patch("ufc_prediction.ml.predictor._get_latest_elo") as mock_elo,
     ):
-        fa = MagicMock(name="fa", id=1); fa.name = "A"
-        fb = MagicMock(name="fb", id=2); fb.name = "B"
+        fa = MagicMock(name="fa", id=1)
+        fa.name = "A"
+        fb = MagicMock(name="fb", id=2)
+        fb.name = "B"
         mock_resolve.side_effect = [fa, fb]
         idx = FEATURE_COLUMNS_NO_NET.index("closing_prob_diff")
         feature_vec = np.zeros((1, 72))
@@ -198,8 +210,10 @@ def test_fallback_probability_matches_direct_predict(tmp_path: Path) -> None:
         patch("ufc_prediction.ml.predictor.fetch_matchup_odds") as mock_odds,
         patch("ufc_prediction.ml.predictor._get_latest_elo") as mock_elo,
     ):
-        fa = MagicMock(name="fa", id=1); fa.name = "A"
-        fb = MagicMock(name="fb", id=2); fb.name = "B"
+        fa = MagicMock(name="fa", id=1)
+        fa.name = "A"
+        fb = MagicMock(name="fb", id=2)
+        fb.name = "B"
         mock_resolve.side_effect = [fa, fb]
         mock_build.return_value = feature_vec_full
         mock_odds.return_value = None
@@ -229,8 +243,10 @@ def test_response_shape_backward_compatible(tmp_path: Path) -> None:
         patch("ufc_prediction.ml.predictor.fetch_matchup_odds") as mock_odds,
         patch("ufc_prediction.ml.predictor._get_latest_elo") as mock_elo,
     ):
-        fa = MagicMock(name="fa", id=1); fa.name = "A"
-        fb = MagicMock(name="fb", id=2); fb.name = "B"
+        fa = MagicMock(name="fa", id=1)
+        fa.name = "A"
+        fb = MagicMock(name="fb", id=2)
+        fb.name = "B"
         mock_resolve.side_effect = [fa, fb]
         idx = FEATURE_COLUMNS_NO_NET.index("closing_prob_diff")
         feature_vec = np.zeros((1, 72))

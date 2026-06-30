@@ -53,6 +53,7 @@ Plan 21-01 Task 5 operator-action checkpoint:
        breakdown
     3. Approves to unblock Plan 21-02 (live scrape + ingest)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -74,26 +75,20 @@ BFO_ARCHIVE_START_DATE: date = date(2007, 6, 1)
 BFO_TIMEOUT_SECONDS: int = 5
 BFO_DELAY_SECONDS: float = 1.2
 BFO_MAX_RETRIES: int = 3
-TARGET_RATE_THRESHOLD: float = 0.96   # Phase 20 BFO_ARCHIVE_REACHABILITY.md
+TARGET_RATE_THRESHOLD: float = 0.96  # Phase 20 BFO_ARCHIVE_REACHABILITY.md
 SCRAPE_BATCH_DIR: str = "data/bfo/v22-backfill"
-DISAMBIGUATION_REQUIRE_UFC_PREFIX: bool = True   # CONTEXT.md D-01a
-GAP_JSON_PATH: str = (
-    ".planning/phases/21-bfo-coverage-backfill/BFO_V22_GAP.json"
-)
+DISAMBIGUATION_REQUIRE_UFC_PREFIX: bool = True  # CONTEXT.md D-01a
+GAP_JSON_PATH: str = ".planning/phases/21-bfo-coverage-backfill/BFO_V22_GAP.json"
 
 # AUDIT-01 chain (D-09(P15) carry-forward; xgb_v2 byte-identity gate).
 # --scrape mode emits the mid SHA file BEFORE returning success; if the SHA
 # diverges from the canonical baseline, --scrape exits 1 (HARD gate).
 XGB_V2_MODEL_PATH: str = "models/xgb_v2.joblib"
 AUDIT_01_BASELINE_SHA_PATH: str = ".planning/AUDIT-01-BASELINE-SHA.txt"
-AUDIT_01_SHA_MID_PATH: str = (
-    ".planning/phases/21-bfo-coverage-backfill/21-XGB-V2-SHA-MID.txt"
-)
+AUDIT_01_SHA_MID_PATH: str = ".planning/phases/21-bfo-coverage-backfill/21-XGB-V2-SHA-MID.txt"
 
 # Plan 21-02 Task 4: --emit-coverage output path.
-COVERAGE_JSON_PATH: str = (
-    ".planning/phases/21-bfo-coverage-backfill/BFO_V22_COVERAGE.json"
-)
+COVERAGE_JSON_PATH: str = ".planning/phases/21-bfo-coverage-backfill/BFO_V22_COVERAGE.json"
 
 # BFO endpoints (mirror scraper module).
 BFO_BASE: str = "https://www.bestfightodds.com"
@@ -109,9 +104,7 @@ SEARCH_URL_TEMPLATE: str = f"{BFO_BASE}/search?query={{query}}"
 # path; the inner grammar is shared.
 from ufc_prediction.scraper.bfo_scraper import EVENT_SLUG_ID_PATTERN
 
-_EVENT_HREF_RE = re.compile(
-    rf'href="(/events/({EVENT_SLUG_ID_PATTERN}))"'
-)
+_EVENT_HREF_RE = re.compile(rf'href="(/events/({EVENT_SLUG_ID_PATTERN}))"')
 
 logger = logging.getLogger(__name__)
 
@@ -128,20 +121,16 @@ def _run_af_startup_asserts() -> None:
     CONTEXT.md pointer in the message.
     """
     assert BFO_ARCHIVE_START_DATE == date(2007, 6, 1), (
-        "Locked from Phase 20 reachability finding; do not move without "
-        "re-running BFO-V22-00 audit"
+        "Locked from Phase 20 reachability finding; do not move without re-running BFO-V22-00 audit"
     )
     assert TARGET_RATE_THRESHOLD == 0.96, (
         "Locked from Phase 20 BFO_ARCHIVE_REACHABILITY.md; "
         "post-measurement renegotiation is forbidden (D-18 carry-forward)"
     )
     assert DISAMBIGUATION_REQUIRE_UFC_PREFIX is True, (
-        "CONTEXT.md D-01a — Bellator/Strikeforce slug collision guard "
-        "must remain enabled"
+        "CONTEXT.md D-01a — Bellator/Strikeforce slug collision guard must remain enabled"
     )
-    assert BFO_DELAY_SECONDS >= 1.0, (
-        "BFO_DELAY_SECONDS < 1.0 risks captcha at scale"
-    )
+    assert BFO_DELAY_SECONDS >= 1.0, "BFO_DELAY_SECONDS < 1.0 risks captcha at scale"
     assert BFO_MAX_RETRIES >= 1
     # HYG-V26-02: single-source-of-truth pin for the BFO event slug+id
     # grammar. If `bfo_scraper.EVENT_SLUG_ID_PATTERN` drifts, this halts at
@@ -207,7 +196,8 @@ def _query_gap_events(session: Any) -> list[Any]:
 
 
 def _enumerate_bfo_url(
-    client: Any, event_name: str,
+    client: Any,
+    event_name: str,
 ) -> tuple[str | None, str]:
     """Resolve ``event_name`` → BFO event URL via ``/search``.
 
@@ -224,15 +214,14 @@ def _enumerate_bfo_url(
         ``(url_or_None, status)`` where status ∈
         {``"OK"``, ``"EVENT_NOT_FOUND"``, ``"DISAMBIGUATION_FAIL"``}.
     """
-    search_url = SEARCH_URL_TEMPLATE.format(
-        query=urllib.parse.quote(event_name)
-    )
+    search_url = SEARCH_URL_TEMPLATE.format(query=urllib.parse.quote(event_name))
     try:
         html = client.get(search_url)
     except (RuntimeError, ValueError) as exc:
         logger.warning(
             "[bfo-backfill] /search fetch failed for %r: %s",
-            event_name, exc,
+            event_name,
+            exc,
         )
         return (None, "EVENT_NOT_FOUND")
 
@@ -249,9 +238,9 @@ def _enumerate_bfo_url(
     # D-01a UFC-prefix guard.
     if DISAMBIGUATION_REQUIRE_UFC_PREFIX and not slug.startswith("ufc-"):
         logger.info(
-            "[bfo-backfill] disambiguation_fail for %r: matched slug %r "
-            "is not ufc-prefixed",
-            event_name, slug,
+            "[bfo-backfill] disambiguation_fail for %r: matched slug %r is not ufc-prefixed",
+            event_name,
+            slug,
         )
         return (None, "DISAMBIGUATION_FAIL")
 
@@ -310,12 +299,8 @@ def _emit_gap_json(
     n_events_with_partial_odds = 0
 
     n_ok = sum(1 for _e, _u, s in url_results if s == "OK")
-    n_not_found = sum(
-        1 for _e, _u, s in url_results if s == "EVENT_NOT_FOUND"
-    )
-    n_disamb = sum(
-        1 for _e, _u, s in url_results if s == "DISAMBIGUATION_FAIL"
-    )
+    n_not_found = sum(1 for _e, _u, s in url_results if s == "EVENT_NOT_FOUND")
+    n_disamb = sum(1 for _e, _u, s in url_results if s == "DISAMBIGUATION_FAIL")
 
     # Wall-clock estimate: BFO_DELAY_SECONDS per acquired URL + parse overhead.
     # Round up via int(... + 0.999) to avoid 0.5 → 0 rounding for small batches.
@@ -430,7 +415,8 @@ def _emit_audit_01_mid_sha() -> None:
 
 
 def _load_gap_json_for_scrape(
-    gap_json_path: Path, batch_id_arg: str,
+    gap_json_path: Path,
+    batch_id_arg: str,
 ) -> tuple[str, list[str]]:
     """Load BFO_V22_GAP.json + return (batch_id, url_list) after validation.
 
@@ -532,8 +518,11 @@ def _write_manifest(
     """Write MANIFEST.json with the 8 fields per Plan 21-02 Task 1 step 4."""
     manifest = {
         "batch_id": batch_id,
-        "scraped_at": datetime.now(timezone.utc).isoformat().replace(
-            "+00:00", "Z",
+        "scraped_at": datetime.now(timezone.utc)
+        .isoformat()
+        .replace(
+            "+00:00",
+            "Z",
         ),
         "n_urls": n_urls,
         "n_events": n_events,
@@ -635,10 +624,7 @@ def _run_scrape_mode(
         return 1
 
     n_urls = len(urls)
-    print(
-        f"[bfo-backfill] --scrape mode engaged. batch_id={batch_id} "
-        f"n_urls={n_urls}"
-    )
+    print(f"[bfo-backfill] --scrape mode engaged. batch_id={batch_id} n_urls={n_urls}")
 
     # 2. Prepare batch dir.
     batch_dir = Path(SCRAPE_BATCH_DIR) / batch_id
@@ -686,11 +672,7 @@ def _run_scrape_mode(
             msg = record.getMessage().lower()
             if "captcha" in msg:
                 captcha_hit_count += 1
-            elif (
-                "fetch failed" in msg
-                or "parse failed" in msg
-                or "returned none" in msg
-            ):
+            elif "fetch failed" in msg or "parse failed" in msg or "returned none" in msg:
                 error_count += 1
 
     stats_handler = _StatsHandler(level=logging.WARNING)
@@ -760,8 +742,7 @@ class BFOIntegrityError(Exception):
     def __init__(self, violations: list[dict[str, Any]]):
         self.violations = violations
         super().__init__(
-            f"BFO rematch integrity violation: {len(violations)} pair(s) "
-            "failed distinctness check"
+            f"BFO rematch integrity violation: {len(violations)} pair(s) failed distinctness check"
         )
 
 
@@ -788,9 +769,7 @@ def _parse_pair_key_from_fight_id(fight_id: str) -> tuple[str, str]:
         )
     _date, a, b = parts
     if not a or not b:
-        raise ValueError(
-            f"BFO fight_id has empty fighter segment: {fight_id!r}"
-        )
+        raise ValueError(f"BFO fight_id has empty fighter segment: {fight_id!r}")
     # WR-02 fix (REVIEW.md): build an explicit 2-tuple from the sorted
     # pair so the return type matches the annotation ``tuple[str, str]``
     # without needing a ``# type: ignore[return-value]`` (which previously
@@ -864,8 +843,10 @@ def _run_integrity_check(csv_path: Path) -> dict[str, Any]:
                 odds_row = BFOOddsRow(**raw)
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
-                    "[bfo-backfill] integrity-check: invalid row in %s: "
-                    "%r (%s)", csv_path, raw, exc,
+                    "[bfo-backfill] integrity-check: invalid row in %s: %r (%s)",
+                    csv_path,
+                    raw,
+                    exc,
                 )
                 continue
             try:
@@ -873,8 +854,9 @@ def _run_integrity_check(csv_path: Path) -> dict[str, Any]:
                 event_date = odds_row.event_date
             except ValueError as exc:
                 logger.warning(
-                    "[bfo-backfill] integrity-check: skipping row with bad "
-                    "fight_id %r: %s", odds_row.fight_id, exc,
+                    "[bfo-backfill] integrity-check: skipping row with bad fight_id %r: %s",
+                    odds_row.fight_id,
+                    exc,
                 )
                 continue
             n_rows += 1
@@ -987,7 +969,8 @@ def _query_coverage_after(session: Any) -> tuple[int, int]:
 
 
 def _query_per_year_coverage(
-    session: Any, years: list[int],
+    session: Any,
+    years: list[int],
 ) -> dict[str, tuple[int, int]]:
     """Per-year ``{year_str: (covered, total)}`` using the same SQL shape."""
     from sqlalchemy import extract, func, select  # noqa: PLC0415
@@ -1086,9 +1069,7 @@ def _emit_coverage_json(
         }
 
     # 4. Cutoff-date discipline (BFO-V22-04 hard check).
-    discipline_preserved = (
-        n_train_pre == n_train_post and n_test_pre == n_test_post
-    )
+    discipline_preserved = n_train_pre == n_train_post and n_test_pre == n_test_post
 
     # 5. Known acquisition gaps. The GAP JSON's url_resolution.disambiguation_fail
     # count is the BFO-side acquisition gap (events the /search couldn't
@@ -1100,27 +1081,34 @@ def _emit_coverage_json(
     n_not_found = int(url_res.get("event_not_found", 0) or 0)
     known_gaps: list[dict[str, Any]] = []
     if n_disamb > 0:
-        known_gaps.append({
-            "category": "DISAMBIGUATION_FAIL",
-            "count": n_disamb,
-            "note": (
-                "BFO /search returned a non-ufc-prefixed slug "
-                "(Bellator/Strikeforce collision). See BFO_V22_GAP.json "
-                "per_year_breakdown for year-level distribution."
-            ),
-        })
+        known_gaps.append(
+            {
+                "category": "DISAMBIGUATION_FAIL",
+                "count": n_disamb,
+                "note": (
+                    "BFO /search returned a non-ufc-prefixed slug "
+                    "(Bellator/Strikeforce collision). See BFO_V22_GAP.json "
+                    "per_year_breakdown for year-level distribution."
+                ),
+            }
+        )
     if n_not_found > 0:
-        known_gaps.append({
-            "category": "EVENT_NOT_FOUND",
-            "count": n_not_found,
-            "note": "BFO /search returned no matching event.",
-        })
+        known_gaps.append(
+            {
+                "category": "EVENT_NOT_FOUND",
+                "count": n_not_found,
+                "note": "BFO /search returned no matching event.",
+            }
+        )
 
     # 6. Compose payload.
     payload: dict[str, Any] = {
         "batch_id": batch_id,
-        "ingested_at": datetime.now(timezone.utc).isoformat().replace(
-            "+00:00", "Z",
+        "ingested_at": datetime.now(timezone.utc)
+        .isoformat()
+        .replace(
+            "+00:00",
+            "Z",
         ),
         "coverage_before": coverage_before,
         "coverage_after": coverage_after,
@@ -1354,9 +1342,7 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 2
-        csv_path = (
-            Path(SCRAPE_BATCH_DIR) / args.batch_id / "BestFightOdds_odds.csv"
-        )
+        csv_path = Path(SCRAPE_BATCH_DIR) / args.batch_id / "BestFightOdds_odds.csv"
         try:
             summary = _run_integrity_check(csv_path)
         except FileNotFoundError as exc:
@@ -1401,12 +1387,14 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 2
         missing_count_args = [
-            flag for flag, val in (
+            flag
+            for flag, val in (
                 ("--n-train-pre", args.n_train_pre),
                 ("--n-train-post", args.n_train_post),
                 ("--n-test-pre", args.n_test_pre),
                 ("--n-test-post", args.n_test_post),
-            ) if val is None
+            )
+            if val is None
         ]
         if missing_count_args:
             print(
@@ -1481,9 +1469,7 @@ def main(argv: list[str] | None = None) -> int:
         url, status = _enumerate_bfo_url(client, event.name)
         url_results.append((event, url, status))
         if i % 50 == 0:
-            print(
-                f"[bfo-backfill]   ...{i}/{len(gap_events)} events probed."
-            )
+            print(f"[bfo-backfill]   ...{i}/{len(gap_events)} events probed.")
 
     # Build batch_id + ensure batch dir exists for Plan 21-02 reuse.
     batch_id = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
@@ -1501,9 +1487,7 @@ def main(argv: list[str] | None = None) -> int:
 
     n_ok = sum(1 for _e, _u, s in url_results if s == "OK")
     n_not_found = sum(1 for _e, _u, s in url_results if s == "EVENT_NOT_FOUND")
-    n_disamb = sum(
-        1 for _e, _u, s in url_results if s == "DISAMBIGUATION_FAIL"
-    )
+    n_disamb = sum(1 for _e, _u, s in url_results if s == "DISAMBIGUATION_FAIL")
     print(
         f"\n[bfo-backfill] Backfill scaffolding complete. Wrote:\n"
         f"  {gap_json_path}\n"

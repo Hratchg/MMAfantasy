@@ -36,9 +36,7 @@ _logger = logging.getLogger("ufc_prediction.access")
 class AccessLogMiddleware(BaseHTTPMiddleware):
     """Emit one structured access-log record per request."""
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start = time.perf_counter()
         status_code = 500  # default if downstream raises
         try:

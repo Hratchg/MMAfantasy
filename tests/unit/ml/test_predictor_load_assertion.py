@@ -47,8 +47,11 @@ def trained_calibrated_model():
     y = rng.randint(0, 2, size=60)
 
     base = XGBClassifier(
-        n_estimators=5, max_depth=2, objective="binary:logistic",
-        random_state=42, verbosity=0,
+        n_estimators=5,
+        max_depth=2,
+        objective="binary:logistic",
+        random_state=42,
+        verbosity=0,
     )
     base.fit(X[:48], y[:48])
     cal = CalibratedClassifierCV(FrozenEstimator(base), method="sigmoid")
@@ -60,7 +63,8 @@ def trained_calibrated_model():
 
 
 def test_predictor_load_passes_when_feature_columns_match(
-    tmp_path, trained_calibrated_model,
+    tmp_path,
+    trained_calibrated_model,
 ):
     """Test 1: save_model with FEATURE_COLUMNS → ModelPredictor() does NOT raise."""
     save_model(
@@ -79,7 +83,8 @@ def test_predictor_load_passes_when_feature_columns_match(
 
 
 def test_predictor_load_raises_on_length_mismatch(
-    tmp_path, trained_calibrated_model,
+    tmp_path,
+    trained_calibrated_model,
 ):
     """Test 2: shorter feature_columns → RuntimeError with column counts."""
     short_cols = list(FEATURE_COLUMNS)[:-1]
@@ -103,7 +108,8 @@ def test_predictor_load_raises_on_length_mismatch(
 
 
 def test_predictor_load_raises_on_order_mismatch(
-    tmp_path, trained_calibrated_model,
+    tmp_path,
+    trained_calibrated_model,
 ):
     """Test 3: same length, reversed order → RuntimeError."""
     reversed_cols = list(reversed(FEATURE_COLUMNS))

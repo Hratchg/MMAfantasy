@@ -142,8 +142,7 @@ def parse_sherdog_fighter_page(html: str, url: str) -> SherdogFighterProfile:
             # Opponent — name is in the second cell, may have an <a> tag
             opponent_el = cells[1].select_one("a")
             opponent_name = (
-                opponent_el.get_text(strip=True) if opponent_el
-                else cells[1].get_text(strip=True)
+                opponent_el.get_text(strip=True) if opponent_el else cells[1].get_text(strip=True)
             )
 
             # Event info — third cell contains event name and possibly date
@@ -156,8 +155,10 @@ def parse_sherdog_fighter_page(html: str, url: str) -> SherdogFighterProfile:
             event_date = None
             # Try to extract date from end of text (format: Mon / DD / YYYY)
             import re as _re
+
             date_match = _re.search(
-                r"([A-Z][a-z]{2})\s*/\s*(\d{1,2})\s*/\s*(\d{4})", event_text,
+                r"([A-Z][a-z]{2})\s*/\s*(\d{1,2})\s*/\s*(\d{4})",
+                event_text,
             )
             if date_match:
                 date_str = f"{date_match.group(1)}/{date_match.group(2)}/{date_match.group(3)}"
@@ -233,9 +234,7 @@ def parse_association_from_html(html: str) -> str | None:
     soup = BeautifulSoup(html, "lxml")
 
     # Layer 1: nested schema.org name span (modern Sherdog — most specific).
-    el = soup.select_one(
-        'div.association-class span[itemprop="memberOf"] span[itemprop="name"]'
-    )
+    el = soup.select_one('div.association-class span[itemprop="memberOf"] span[itemprop="name"]')
     if el is not None:
         text = el.get_text(strip=True)
         if text:
@@ -258,9 +257,7 @@ def parse_association_from_html(html: str) -> str | None:
                 text = sibling.get_text(strip=True)
                 if text:
                     return text
-            parent_text = (
-                strong.parent.get_text(strip=True) if strong.parent else ""
-            )
+            parent_text = strong.parent.get_text(strip=True) if strong.parent else ""
             cleaned = parent_text.removeprefix("Association:").strip()
             if cleaned:
                 return cleaned
@@ -271,6 +268,7 @@ def parse_association_from_html(html: str) -> str | None:
         href = anchor.get("href", "")
         if isinstance(href, str) and "?association=" in href:
             from urllib.parse import unquote
+
             raw = href.split("?association=", 1)[1].split("&", 1)[0]
             decoded = unquote(raw.replace("+", " ")).strip()
             if decoded:
@@ -330,9 +328,7 @@ def parse_sherdog_search_results(html: str) -> list[tuple[str, str]]:
     return results
 
 
-def filter_pre_ufc_fights(
-    fights: list[SherdogFight], first_ufc_date: date
-) -> list[SherdogFight]:
+def filter_pre_ufc_fights(fights: list[SherdogFight], first_ufc_date: date) -> list[SherdogFight]:
     """Filter fights to only those before the first UFC fight date.
 
     Excludes:
@@ -619,10 +615,12 @@ class SherdogScraper:
             return (
                 self._session.query(sa_func.min(Event.date))
                 .join(Fight, Fight.event_id == Event.id)
-                .filter(or_(
-                    Fight.fighter_a_id == fighter_obj.id,  # type: ignore[attr-defined]
-                    Fight.fighter_b_id == fighter_obj.id,  # type: ignore[attr-defined]
-                ))
+                .filter(
+                    or_(
+                        Fight.fighter_a_id == fighter_obj.id,  # type: ignore[attr-defined]
+                        Fight.fighter_b_id == fighter_obj.id,  # type: ignore[attr-defined]
+                    )
+                )
                 .scalar()
             )
 
@@ -643,23 +641,17 @@ class SherdogScraper:
                     first_ufc_fight = _first_ufc_fight_date(fighter)
 
                     if first_ufc_fight is None:
-                        logger.debug(
-                            "No UFC fights found for %s, skipping", fighter.name
-                        )
+                        logger.debug("No UFC fights found for %s, skipping", fighter.name)
                         skipped += 1
                         continue
 
                     # Search Sherdog for the fighter
-                    search_url = _SHERDOG_SEARCH_URL.format(
-                        name=fighter.name.replace(" ", "+")
-                    )
+                    search_url = _SHERDOG_SEARCH_URL.format(name=fighter.name.replace(" ", "+"))
                     search_html = self._client.get(search_url)  # type: ignore[attr-defined]
                     candidates = parse_sherdog_search_results(search_html)
 
                     if not candidates:
-                        logger.warning(
-                            "No Sherdog search results for: %s", fighter.name
-                        )
+                        logger.warning("No Sherdog search results for: %s", fighter.name)
                         unmatched += 1
                         unmatched_names.append(fighter.name)
                         continue
@@ -697,9 +689,7 @@ class SherdogScraper:
                     profile = parse_sherdog_fighter_page(profile_html, sherdog_url)
 
                     # Filter pre-UFC fights
-                    pre_ufc_fights = filter_pre_ufc_fights(
-                        profile.fights, first_ufc_fight
-                    )
+                    pre_ufc_fights = filter_pre_ufc_fights(profile.fights, first_ufc_fight)
 
                     # Compute stats
                     stats = compute_pre_ufc_stats(pre_ufc_fights)
@@ -727,7 +717,7 @@ class SherdogScraper:
             chunk_size = self._workers
             idx_counter = 0
             for chunk_start in range(0, total, chunk_size):
-                chunk = fighters[chunk_start:chunk_start + chunk_size]
+                chunk = fighters[chunk_start : chunk_start + chunk_size]
 
                 # Filter out skips up-front and pre-compute first_ufc dates.
                 work_items: list[tuple[object, object]] = []
@@ -741,15 +731,11 @@ class SherdogScraper:
                     try:
                         first_ufc = _first_ufc_fight_date(fighter)
                     except Exception:
-                        logger.exception(
-                            "Error looking up first UFC fight for %s", fighter.name
-                        )
+                        logger.exception("Error looking up first UFC fight for %s", fighter.name)
                         errors += 1
                         continue
                     if first_ufc is None:
-                        logger.debug(
-                            "No UFC fights found for %s, skipping", fighter.name
-                        )
+                        logger.debug("No UFC fights found for %s, skipping", fighter.name)
                         skipped += 1
                         continue
                     work_items.append((fighter, first_ufc))
@@ -770,12 +756,15 @@ class SherdogScraper:
                 # Stage B: parse + match (CPU-only, serial)
                 matches_to_fetch: list[tuple[object, object, str, str]] = []
                 for (fighter, first_ufc), (_u, html, err) in zip(
-                    work_items, search_results, strict=True,
+                    work_items,
+                    search_results,
+                    strict=True,
                 ):
                     if err is not None or html is None:
                         logger.warning(
                             "Failed to fetch Sherdog search for %s: %s",
-                            fighter.name, err,  # type: ignore[attr-defined]
+                            fighter.name,
+                            err,  # type: ignore[attr-defined]
                         )
                         errors += 1
                         continue
@@ -799,9 +788,7 @@ class SherdogScraper:
                         unmatched_names.append(fighter.name)  # type: ignore[attr-defined]
                         continue
                     sherdog_name, sherdog_url = match
-                    matches_to_fetch.append(
-                        (fighter, first_ufc, sherdog_url, sherdog_name)
-                    )
+                    matches_to_fetch.append((fighter, first_ufc, sherdog_url, sherdog_name))
 
                 if not matches_to_fetch:
                     continue
@@ -810,7 +797,9 @@ class SherdogScraper:
                     for fighter, _first, sherdog_url, sherdog_name in matches_to_fetch:
                         logger.info(
                             "DRY RUN match: %s -> %s (%s)",
-                            fighter.name, sherdog_name, sherdog_url,  # type: ignore[attr-defined]
+                            fighter.name,
+                            sherdog_name,
+                            sherdog_url,  # type: ignore[attr-defined]
                         )
                         fighter.sherdog_url = sherdog_url  # type: ignore[attr-defined]
                         self._session.flush()
@@ -828,20 +817,21 @@ class SherdogScraper:
 
                 # Stage D: parse + write (serial, includes DB I/O)
                 for (fighter, first_ufc, sherdog_url, sherdog_name), (
-                    _u, html, err,
+                    _u,
+                    html,
+                    err,
                 ) in zip(matches_to_fetch, profile_results, strict=True):
                     if err is not None or html is None:
                         logger.warning(
                             "Failed to fetch Sherdog profile for %s: %s",
-                            fighter.name, err,  # type: ignore[attr-defined]
+                            fighter.name,
+                            err,  # type: ignore[attr-defined]
                         )
                         errors += 1
                         continue
                     try:
                         profile = parse_sherdog_fighter_page(html, sherdog_url)
-                        pre_ufc_fights = filter_pre_ufc_fights(
-                            profile.fights, first_ufc
-                        )
+                        pre_ufc_fights = filter_pre_ufc_fights(profile.fights, first_ufc)
                         stats = compute_pre_ufc_stats(pre_ufc_fights)
                         fighter.sherdog_url = sherdog_url  # type: ignore[attr-defined]
                         fighter.pre_ufc_record = stats.model_dump(mode="json")  # type: ignore[attr-defined]
@@ -850,11 +840,14 @@ class SherdogScraper:
                         processed_since_commit += 1
                         logger.info(
                             "Matched %s -> %s (%d pre-UFC fights)",
-                            fighter.name, sherdog_name, stats.total_fights,  # type: ignore[attr-defined]
+                            fighter.name,
+                            sherdog_name,
+                            stats.total_fights,  # type: ignore[attr-defined]
                         )
                     except Exception:
                         logger.exception(
-                            "Error processing fighter: %s", fighter.name  # type: ignore[attr-defined]
+                            "Error processing fighter: %s",
+                            fighter.name,  # type: ignore[attr-defined]
                         )
                         errors += 1
 

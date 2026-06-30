@@ -199,9 +199,12 @@ def load_fights_from_db(db_url: str) -> list[FightRecord]:
                         weight_class=wc,
                     )
                 )
-    logger.info("loaded %d decisive fights (date range %s — %s)",
-                len(rows), rows[0].event_date if rows else None,
-                rows[-1].event_date if rows else None)
+    logger.info(
+        "loaded %d decisive fights (date range %s — %s)",
+        len(rows),
+        rows[0].event_date if rows else None,
+        rows[-1].event_date if rows else None,
+    )
     return rows
 
 
@@ -254,8 +257,7 @@ def build_graph(
             # qualifying date — see _temporal_subgraph_strict below).
             G[u][v]["earliest_date"] = min(G[u][v]["earliest_date"], f.event_date)
         else:
-            G.add_edge(u, v, weight=w, event_date=f.event_date,
-                       earliest_date=f.event_date)
+            G.add_edge(u, v, weight=w, event_date=f.event_date, earliest_date=f.event_date)
     return G
 
 
@@ -265,8 +267,7 @@ def _temporal_subgraph(graph: nx.DiGraph, as_of_date: date) -> nx.DiGraph:
     Includes only edges with earliest_date < as_of_date.
     """
     return graph.edge_subgraph(
-        (u, v) for u, v, d in graph.edges(data=True)
-        if d["earliest_date"] < as_of_date
+        (u, v) for u, v, d in graph.edges(data=True) if d["earliest_date"] < as_of_date
     )
 
 
@@ -344,10 +345,10 @@ def backtest_pagerank_only(
             continue
         pr_cache[d] = nx.pagerank(sub, alpha=PAGERANK_ALPHA, weight="weight")
         if (i + 1) % 250 == 0:
-            logger.info("  pr snapshot %d/%d (elapsed %.1fs)",
-                        i + 1, len(distinct_dates), time.time() - t0)
-    logger.info("  pr cache built (%d snapshots, %.1fs)",
-                len(pr_cache), time.time() - t0)
+            logger.info(
+                "  pr snapshot %d/%d (elapsed %.1fs)", i + 1, len(distinct_dates), time.time() - t0
+            )
+    logger.info("  pr cache built (%d snapshots, %.1fs)", len(pr_cache), time.time() - t0)
 
     # Build train/test arrays.
     # Label convention: y = 1 if "left" fighter won. To remove the data-source
@@ -386,8 +387,9 @@ def backtest_pagerank_only(
             X_test.append(feat)
             y_test.append(label)
 
-    logger.info("  train=%d test=%d skipped_debutant=%d",
-                len(X_train), len(X_test), skipped_debutant)
+    logger.info(
+        "  train=%d test=%d skipped_debutant=%d", len(X_train), len(X_test), skipped_debutant
+    )
 
     if len(X_train) < 100 or len(X_test) < 50:
         return {
@@ -435,6 +437,7 @@ def run_temporal_leakage_check(
     that as-of-N PageRank is computed against a strictly smaller subgraph
     (countermeasure to Gotcha 4).
     """
+
     def fighter_node(fight: FightRecord, fighter_id: int):
         if scope == "pan-mma":
             return fighter_id
@@ -490,15 +493,12 @@ def run_temporal_leakage_check(
             continue
         if node not in sub_n.nodes:
             # Debutant case: PageRank-at-N is None; PageRank-at-today must be a float
-            pr_today = nx.pagerank(sub_today, alpha=PAGERANK_ALPHA,
-                                   weight="weight").get(node)
+            pr_today = nx.pagerank(sub_today, alpha=PAGERANK_ALPHA, weight="weight").get(node)
             if pr_today is None:
                 failures.append(f"{node}: missing from both subgraphs (unexpected)")
             continue
-        pr_n = nx.pagerank(sub_n, alpha=PAGERANK_ALPHA,
-                           weight="weight").get(node)
-        pr_today = nx.pagerank(sub_today, alpha=PAGERANK_ALPHA,
-                               weight="weight").get(node)
+        pr_n = nx.pagerank(sub_n, alpha=PAGERANK_ALPHA, weight="weight").get(node)
+        pr_today = nx.pagerank(sub_today, alpha=PAGERANK_ALPHA, weight="weight").get(node)
         if pr_n is None or pr_today is None:
             failures.append(f"{node}: pagerank None unexpectedly")
             continue
@@ -507,8 +507,7 @@ def run_temporal_leakage_check(
         # avoid float-equality flakiness.
         if abs(pr_n - pr_today) < 1e-12:
             failures.append(
-                f"{node}: pr_at_N={pr_n:.6e} == pr_today={pr_today:.6e} "
-                "(temporal leakage signal)"
+                f"{node}: pr_at_N={pr_n:.6e} == pr_today={pr_today:.6e} (temporal leakage signal)"
             )
     return {
         "passed": len(failures) == 0 and checked > 0,
@@ -564,8 +563,11 @@ def render_results_md(
     # Operator prior (D-05 + D-07) is pan-mma-mov. We compare the 4 configs and
     # call a winner based on (1) lowest Brier, (2) leakage PASS, (3) operator
     # prior tie-break. The operator gates the decision.
-    valid = [r for r in ordered
-             if r["leakage"].get("passed") and not np.isnan(r["backtest"].get("brier", float("nan")))]
+    valid = [
+        r
+        for r in ordered
+        if r["leakage"].get("passed") and not np.isnan(r["backtest"].get("brier", float("nan")))
+    ]
 
     # Detect "essentially tied" — D-08 sanity floor is 0.001 on a FULL-feature
     # xgb_v3 retrain. For the spike's PageRank-only baseline, a Brier spread
@@ -685,12 +687,12 @@ it picks K={TEMPORAL_LEAKAGE_TEST_FIGHTERS_K} fighters with multi-fight history 
 subgraph at as-of-N has strictly fewer edges than at as-of-today.
 
 **MOV multipliers verified live from `EloConfig`:**
-- `mov_ko_tko = {mov['mov_ko_tko']}`
-- `mov_submission = {mov['mov_submission']}`
-- `mov_unanimous = {mov['mov_unanimous']}` (= U-DEC + generic Decision)
-- `mov_split = {mov['mov_split']}` (= S-DEC + M-DEC)
-- `mov_draw = {mov['mov_draw']}`
-- `mov_dq = {mov['mov_dq']}`
+- `mov_ko_tko = {mov["mov_ko_tko"]}`
+- `mov_submission = {mov["mov_submission"]}`
+- `mov_unanimous = {mov["mov_unanimous"]}` (= U-DEC + generic Decision)
+- `mov_split = {mov["mov_split"]}` (= S-DEC + M-DEC)
+- `mov_draw = {mov["mov_draw"]}`
+- `mov_dq = {mov["mov_dq"]}`
 
 > **Logged Assumption A4 reconciled.** The plan's instruction referenced
 > `EloConfig.mov_ratio_ko / mov_ratio_sub / mov_ratio_dec`. Those attributes
@@ -767,32 +769,36 @@ def _fmt(x):
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--config", choices=CONFIGS, default=None,
+        "--config",
+        choices=CONFIGS,
+        default=None,
         help="Run a single config (default: --all-configs)",
     )
     parser.add_argument(
-        "--all-configs", action="store_true",
+        "--all-configs",
+        action="store_true",
         help="Run all 4 configurations and produce a comparison report",
     )
     parser.add_argument(
-        "--backtest-start", default=None,
+        "--backtest-start",
+        default=None,
         help="Override backtest cutoff (default: read from xgb_v2 meta)",
     )
     parser.add_argument(
-        "--db-url", default=None,
+        "--db-url",
+        default=None,
         help="Override Postgres URL (default: env DATABASE_URL or 5433 dev DB)",
     )
     parser.add_argument(
-        "--output", required=True,
+        "--output",
+        required=True,
         help="Path to the markdown report",
     )
     args = parser.parse_args(argv)
 
     if not args.all_configs and args.config is None:
         parser.error("either --all-configs or --config must be set")
-    configs_to_run: tuple[str, ...] = (
-        CONFIGS if args.all_configs else (args.config,)
-    )
+    configs_to_run: tuple[str, ...] = CONFIGS if args.all_configs else (args.config,)
 
     # Verify EloConfig surface area (Logged Assumption A4 — emits RuntimeError
     # if the plan's referenced attributes are missing).
@@ -833,28 +839,35 @@ def main(argv: list[str] | None = None) -> int:
     for cfg in configs_to_run:
         logger.info("=== running config %s ===", cfg)
         scope, weight_mode = (
-            ("pan-mma", "mov") if cfg == "pan-mma-mov"
-            else ("pan-mma", "binary") if cfg == "pan-mma-binary"
-            else ("per-division", "mov") if cfg == "per-division-mov"
+            ("pan-mma", "mov")
+            if cfg == "pan-mma-mov"
+            else ("pan-mma", "binary")
+            if cfg == "pan-mma-binary"
+            else ("per-division", "mov")
+            if cfg == "per-division-mov"
             else ("per-division", "binary")
         )
         graph = build_graph(fights, scope=scope, weight_mode=weight_mode, mov=mov)
-        logger.info("  graph: %d nodes, %d edges (scope=%s, weight=%s)",
-                    graph.number_of_nodes(), graph.number_of_edges(),
-                    scope, weight_mode)
-        backtest = backtest_pagerank_only(
-            fights, graph, scope=scope, cutoff_date=cutoff_date
+        logger.info(
+            "  graph: %d nodes, %d edges (scope=%s, weight=%s)",
+            graph.number_of_nodes(),
+            graph.number_of_edges(),
+            scope,
+            weight_mode,
         )
+        backtest = backtest_pagerank_only(fights, graph, scope=scope, cutoff_date=cutoff_date)
         leakage = run_temporal_leakage_check(fights, graph, scope=scope)
-        results.append({
-            "config": cfg,
-            "scope": scope,
-            "weight_mode": weight_mode,
-            "n_nodes": graph.number_of_nodes(),
-            "n_edges": graph.number_of_edges(),
-            "backtest": backtest,
-            "leakage": leakage,
-        })
+        results.append(
+            {
+                "config": cfg,
+                "scope": scope,
+                "weight_mode": weight_mode,
+                "n_nodes": graph.number_of_nodes(),
+                "n_edges": graph.number_of_edges(),
+                "backtest": backtest,
+                "leakage": leakage,
+            }
+        )
 
     elapsed = time.time() - t_total
     logger.info("total spike runtime: %.1fs", elapsed)

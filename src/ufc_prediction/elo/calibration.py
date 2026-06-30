@@ -34,8 +34,7 @@ def compute_calibration_buckets(
     """
     # Initialize bucket accumulators
     bucket_data: dict[str, dict[str, list[float]]] = {
-        name: {"predictions": [], "outcomes": []}
-        for name in CALIBRATION_BUCKETS
+        name: {"predictions": [], "outcomes": []} for name in CALIBRATION_BUCKETS
     }
 
     for diff, pred, outcome in zip(elo_diffs, predictions, outcomes, strict=True):

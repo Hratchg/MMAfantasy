@@ -26,9 +26,7 @@ from ufc_prediction.api.auth import partner_label_from_request
 
 logger = logging.getLogger(__name__)
 
-EXEMPT_PATHS: frozenset[str] = frozenset(
-    {"/health", "/ready", "/docs", "/redoc", "/openapi.json"}
-)
+EXEMPT_PATHS: frozenset[str] = frozenset({"/health", "/ready", "/docs", "/redoc", "/openapi.json"})
 
 # Period -> seconds, used to derive Retry-After when slowapi's exception text
 # is well-formed. Falls back to 3600 (1 hour) for unknown periods.
@@ -119,9 +117,7 @@ def _parse_limit_detail(detail: str) -> tuple[int, str]:
     return 1000, "hour"
 
 
-def rate_limit_exceeded_handler(
-    request: Request, exc: RateLimitExceeded
-) -> JSONResponse:
+def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
     """Convert slowapi's RateLimitExceeded into the locked 429 JSON body shape.
 
     SYNC by design — ``SlowAPIMiddleware.sync_check_limits`` falls back to

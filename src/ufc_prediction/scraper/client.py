@@ -113,8 +113,7 @@ class ScraperClient:
                 if attempt < self._max_retries:
                     backoff = 2**attempt * 5  # 5s, 10s, 20s
                     logger.warning(
-                        "Transport error on %s (%s: %s), retrying in %ds "
-                        "(attempt %d/%d)",
+                        "Transport error on %s (%s: %s), retrying in %ds (attempt %d/%d)",
                         url,
                         type(exc).__name__,
                         exc,

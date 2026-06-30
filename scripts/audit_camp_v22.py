@@ -51,6 +51,7 @@ Usage:
     # Cache-only mode (no fresh fetches; for re-running off pre-warmed cache):
     uv run python scripts/audit_camp_v22.py --dry-run
 """
+
 from __future__ import annotations
 
 import argparse
@@ -67,16 +68,16 @@ from typing import Any
 
 # ── Locked constants (D-01..D-06, D-13) ──────────────────────────────────
 
-SAMPLE_SIZE: int = 200                       # D-01
-RANDOM_STATE: int = 42                       # D-01 (v2.x convention)
-ACTIVE_WINDOW_DAYS: int = 730                # A2 derivation rule (2 years)
+SAMPLE_SIZE: int = 200  # D-01
+RANDOM_STATE: int = 42  # D-01 (v2.x convention)
+ACTIVE_WINDOW_DAYS: int = 730  # A2 derivation rule (2 years)
 
-PRESENCE_THRESHOLD_MIN: float = 0.30         # D-06 minimum tier
-PRESENCE_THRESHOLD_FULL: float = 0.70        # D-06 full tier
-PARSEABLE_THRESHOLD_MIN: float = 0.25        # D-06 minimum tier
-PARSEABLE_THRESHOLD_FULL: float = 0.60       # D-06 full tier
-TOP30_THRESHOLD_MIN: float = 0.60            # D-06 minimum tier
-TOP30_THRESHOLD_FULL: float = 0.70           # D-06 full tier
+PRESENCE_THRESHOLD_MIN: float = 0.30  # D-06 minimum tier
+PRESENCE_THRESHOLD_FULL: float = 0.70  # D-06 full tier
+PARSEABLE_THRESHOLD_MIN: float = 0.25  # D-06 minimum tier
+PARSEABLE_THRESHOLD_FULL: float = 0.60  # D-06 full tier
+TOP30_THRESHOLD_MIN: float = 0.60  # D-06 minimum tier
+TOP30_THRESHOLD_FULL: float = 0.70  # D-06 full tier
 
 CACHE_DIR: Path = Path("data/sherdog_html_cache")
 ALIAS_SUFFIXES_TO_STRIP: tuple[str, ...] = (" (USA)", " MMA", " Academy", " Gym")
@@ -85,7 +86,7 @@ OUTPUT_PATH_DEFAULT: Path = Path(
 )
 
 AUDIT_VERSION: str = "v22.00"
-HIGH_FAILURE_RATE_THRESHOLD: float = 0.10    # Pitfall #5 risk flag
+HIGH_FAILURE_RATE_THRESHOLD: float = 0.10  # Pitfall #5 risk flag
 
 
 logger = logging.getLogger(__name__)
@@ -167,15 +168,15 @@ def _stratified_sample(df, n: int, seed: int):
         ratio = n / len(df)
         sampled = (
             df.groupby("strat_key", group_keys=False)
-              .apply(
-                  lambda g: g.sample(
-                      n=max(1, int(round(len(g) * ratio))),
-                      random_state=seed,
-                  ),
-                  include_groups=True,
-              )
-              .sort_index()
-              .reset_index(drop=True)
+            .apply(
+                lambda g: g.sample(
+                    n=max(1, int(round(len(g) * ratio))),
+                    random_state=seed,
+                ),
+                include_groups=True,
+            )
+            .sort_index()
+            .reset_index(drop=True)
         )
         # Trim or pad to exactly n if rounding diverged.
         if len(sampled) > n:
@@ -198,11 +199,7 @@ def _normalize_association(raw: str | None) -> str | None:
     if not stripped:
         return None
     # Case-insensitive right-anchored suffix removal.
-    pattern = (
-        r"("
-        + "|".join(re.escape(s) for s in ALIAS_SUFFIXES_TO_STRIP)
-        + r")$"
-    )
+    pattern = r"(" + "|".join(re.escape(s) for s in ALIAS_SUFFIXES_TO_STRIP) + r")$"
     normalized = re.sub(pattern, "", stripped, flags=re.IGNORECASE).strip()
     return normalized.lower() if normalized else None
 
@@ -219,7 +216,8 @@ def _load_or_fetch_html(client, sherdog_url: str) -> str | None:
     slug = sherdog_url.rsplit("/", 1)[-1]
     if not re.fullmatch(r"[A-Za-z0-9-]+", slug):
         logger.warning(
-            "[audit-camp] cache_key rejected (slug=%r); skipping URL.", slug,
+            "[audit-camp] cache_key rejected (slug=%r); skipping URL.",
+            slug,
         )
         return None
     cache_path = CACHE_DIR / f"{slug}.html"
@@ -227,6 +225,7 @@ def _load_or_fetch_html(client, sherdog_url: str) -> str | None:
         return cache_path.read_text(encoding="utf-8")
     # Cache miss — fetch via _safe_fetch_sherdog sentinel-tuple wrapper.
     from ufc_prediction.scraper.sherdog import _safe_fetch_sherdog  # noqa: PLC0415
+
     _, html, exc = _safe_fetch_sherdog(client, sherdog_url)
     if exc is not None or html is None:
         return None
@@ -285,20 +284,25 @@ def _load_fighters_with_strata(session):
     if not rows:
         return pd.DataFrame(
             columns=[
-                "fighter_id", "sherdog_url",
-                "last_weight_class", "is_active", "strat_key",
+                "fighter_id",
+                "sherdog_url",
+                "last_weight_class",
+                "is_active",
+                "strat_key",
             ]
         )
-    df = pd.DataFrame(rows, columns=[
-        "fighter_id", "sherdog_url", "weight_class", "event_date",
-    ])
+    df = pd.DataFrame(
+        rows,
+        columns=[
+            "fighter_id",
+            "sherdog_url",
+            "weight_class",
+            "event_date",
+        ],
+    )
     # Reduce per-fighter: latest fight wins for last_weight_class + is_active.
     df = df.sort_values(["fighter_id", "event_date"], ascending=[True, False])
-    latest = (
-        df.drop_duplicates(subset=["fighter_id"], keep="first")
-          .copy()
-          .reset_index(drop=True)
-    )
+    latest = df.drop_duplicates(subset=["fighter_id"], keep="first").copy().reset_index(drop=True)
     latest["last_weight_class"] = latest["weight_class"].fillna("unknown")
     latest["is_active"] = (latest["event_date"] >= cutoff).astype(bool)
     latest["strat_key"] = (
@@ -306,10 +310,15 @@ def _load_fighters_with_strata(session):
         + "_"
         + latest["is_active"].map({True: "active", False: "retired"})
     )
-    return latest[[
-        "fighter_id", "sherdog_url",
-        "last_weight_class", "is_active", "strat_key",
-    ]]
+    return latest[
+        [
+            "fighter_id",
+            "sherdog_url",
+            "last_weight_class",
+            "is_active",
+            "strat_key",
+        ]
+    ]
 
 
 def _compute_top30(
@@ -456,9 +465,7 @@ def main() -> int:
                 file=sys.stderr,
             )
             return 2
-    print(
-        "[audit-camp] AF OK: SAMPLE_SIZE=200, RANDOM_STATE=42, thresholds locked."
-    )
+    print("[audit-camp] AF OK: SAMPLE_SIZE=200, RANDOM_STATE=42, thresholds locked.")
 
     # ── Load fighters + strata from DB ────────────────────────────────────
     from ufc_prediction.db.session import SessionLocal  # noqa: PLC0415
@@ -474,20 +481,18 @@ def main() -> int:
         fighters_df = _load_fighters_with_strata(session)
     finally:
         session.close()
-    print(
-        f"[audit-camp] Loaded {len(fighters_df)} fighters in "
-        f"{time.time() - t0:.1f}s"
-    )
+    print(f"[audit-camp] Loaded {len(fighters_df)} fighters in {time.time() - t0:.1f}s")
     if len(fighters_df) == 0:
         print(
-            "[audit-camp] FATAL: no fighters with sherdog_url in DB. "
-            "Cannot audit empty corpus.",
+            "[audit-camp] FATAL: no fighters with sherdog_url in DB. Cannot audit empty corpus.",
             file=sys.stderr,
         )
         return 2
 
     sample_df = _stratified_sample(
-        fighters_df, n=SAMPLE_SIZE, seed=RANDOM_STATE,
+        fighters_df,
+        n=SAMPLE_SIZE,
+        seed=RANDOM_STATE,
     )
     print(f"[audit-camp] Sampled {len(sample_df)} fighters (seed={RANDOM_STATE}).")
 
@@ -526,16 +531,20 @@ def main() -> int:
         elif raw_assoc is not None:
             # Present but unparseable (post-normalization) — diagnostic seed
             # for Phase 22 alias-normalization table (D-02 / D-05).
-            unparseable_examples.append({
-                "sherdog_id": slug,
-                "raw_field_value": raw_assoc,
-                "why": "post-normalization empty",
-            })
-        results.append({
-            "fighter_id": int(row["fighter_id"]),
-            "raw_association": raw_assoc,
-            "normalized_association": norm_assoc,
-        })
+            unparseable_examples.append(
+                {
+                    "sherdog_id": slug,
+                    "raw_field_value": raw_assoc,
+                    "why": "post-normalization empty",
+                }
+            )
+        results.append(
+            {
+                "fighter_id": int(row["fighter_id"]),
+                "raw_association": raw_assoc,
+                "normalized_association": norm_assoc,
+            }
+        )
 
     # ── Aggregate rates (Pitfall #5: denom = n_fetched, NOT sample_size) ──
     present_rate = n_present / n_fetched if n_fetched > 0 else 0.0
@@ -543,7 +552,9 @@ def main() -> int:
     per_camp_top30, top30_rate = _compute_top30(results)
 
     scope_recommendation = _derive_scope_recommendation(
-        present_rate, parseable_rate, top30_rate,
+        present_rate,
+        parseable_rate,
+        top30_rate,
     )
 
     # ── Stratification breakdown ──────────────────────────────────────────
@@ -552,8 +563,7 @@ def main() -> int:
         strata_counts[k] = strata_counts.get(k, 0) + 1
     stratification_breakdown = {
         "derivation_rule": (
-            f"is_active = latest_fight_event_date >= today - "
-            f"{ACTIVE_WINDOW_DAYS}d"
+            f"is_active = latest_fight_event_date >= today - {ACTIVE_WINDOW_DAYS}d"
         ),
         "strata": strata_counts,
     }

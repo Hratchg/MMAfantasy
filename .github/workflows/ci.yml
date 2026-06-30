@@ -36,6 +36,30 @@ jobs:
   lint-and-test:
     name: Lint + tests (Python 3.13)
     runs-on: ubuntu-latest
+
+    # Many regression/spike tests connect to the configured Postgres
+    # (settings.database_url default localhost:5433) rather than spinning up
+    # their own testcontainer. Provide a seeded DB on 5433 so they pass.
+    # Postgres 16 matches the shipped corpus dump (data/seed/PROVENANCE.md), so
+    # the runner's preinstalled pg_restore 16 restores it natively.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ufc
+          POSTGRES_PASSWORD: ufc
+          POSTGRES_DB: ufc_prediction
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U ufc -d ufc_prediction"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: "postgresql+psycopg://ufc:ufc@localhost:5433/ufc_prediction"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,6 +71,12 @@ jobs:
 
       - name: Install dependencies (frozen lockfile)
         run: uv sync --frozen
+
+      - name: Seed corpus into Postgres
+        run: >-
+          uv run ufc db seed
+          --from data/seed/ufc_corpus_v30.dump
+          --no-migrate --force
 
       - name: ruff check
         run: uv run ruff check

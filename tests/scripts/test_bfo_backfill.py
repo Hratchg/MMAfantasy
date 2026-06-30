@@ -22,6 +22,7 @@ import json
 import logging
 from datetime import date
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -45,7 +46,7 @@ class TestLockedConstants:
 
     def test_locked_constants_present_and_correct(self, driver) -> None:
         """Constants match CONTEXT.md D-01..D-11 (REVISION) verbatim."""
-        assert driver.BFO_ARCHIVE_START_DATE == date(2007, 6, 1), (
+        assert date(2007, 6, 1) == driver.BFO_ARCHIVE_START_DATE, (
             "Pre-2007 cutoff is locked from Phase 20 reachability finding"
         )
         assert driver.BFO_TIMEOUT_SECONDS == 5
@@ -1555,7 +1556,7 @@ class TestEmitCoverage:
         # Reverse-engineer overall (covered, total) from coverage_after when
         # the caller didn't supply a tuple.
         total = 1000
-        covered = int(round(coverage_after * total))
+        covered = round(coverage_after * total)
 
         # Build the .execute().one() return-value sequence.
         # First call: overall (covered, total). Subsequent: per-year tuples

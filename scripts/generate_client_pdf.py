@@ -1,6 +1,7 @@
 """Generate client-facing PDF from METHODOLOGY_CLIENT.md."""
 
 import os
+
 import markdown
 from xhtml2pdf import pisa
 

@@ -29,7 +29,6 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-
 # ─── Locked constants (CONTEXT D-07 + RESEARCH Findings 5, 6, 8) ─────────────
 
 NOMINATIM_USER_AGENT: str = "ufc-fight-prediction-v22-venues-backfill"
@@ -95,7 +94,7 @@ def _save_cache(cache: dict[str, dict | None], cache_path: Path) -> None:
     fail to parse on the next run. Pairs with _load_cache's try/except
     fallback (defense-in-depth).
     """
-    import os  # noqa: PLC0415
+    import os
 
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = cache_path.with_suffix(cache_path.suffix + ".tmp")
@@ -142,7 +141,7 @@ def _emit_csv(rows: list[dict], output_path: Path, *, allow_shrink: bool = False
     to detected shrink. The migration seed data is the reason this is a hard
     block by default (rather than a WARN).
     """
-    import os  # noqa: PLC0415
+    import os
 
     prior_rows = _count_existing_csv_rows(output_path)
     if not allow_shrink and len(rows) < prior_rows:
@@ -185,7 +184,7 @@ def _make_geolocator():
     Lazy-imports geopy because geopy is NOT a runtime dep (D-07); the
     factory is only called on a real cache miss.
     """
-    from geopy.geocoders import Nominatim  # noqa: PLC0415
+    from geopy.geocoders import Nominatim
 
     return Nominatim(
         user_agent=NOMINATIM_USER_AGENT,
@@ -207,9 +206,9 @@ def _load_or_geocode(venue_name: str, cache: dict[str, dict | None]) -> dict | N
         return cache[venue_name]  # may be None (cached miss) — fine
 
     # Lazy-import — geopy is NOT a runtime dep (D-07)
-    import time  # noqa: PLC0415
+    import time
 
-    from geopy.exc import GeocoderRateLimited, GeocoderUnavailable  # noqa: PLC0415
+    from geopy.exc import GeocoderRateLimited, GeocoderUnavailable
 
     geolocator = _make_geolocator()
     # Hand-rolled rate limiting (1.2s between requests) + bounded retries.
@@ -229,7 +228,7 @@ def _load_or_geocode(venue_name: str, cache: dict[str, dict | None]) -> dict | N
             file=sys.stderr,
         )
         return None
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(
             f"[backfill-venues] WARN: skip {venue_name!r}: {type(exc).__name__}: {exc}",
             file=sys.stderr,
@@ -253,7 +252,7 @@ def _load_or_geocode(venue_name: str, cache: dict[str, dict | None]) -> dict | N
 
 def _derive_iana_tz(lat: float, lon: float) -> str | None:
     """TimezoneFinder() lookup — Finding 6 (NOT TimezoneFinderL; coastline accuracy)."""
-    from timezonefinder import TimezoneFinder  # noqa: PLC0415
+    from timezonefinder import TimezoneFinder
 
     tf = TimezoneFinder()
     return tf.timezone_at(lat=lat, lng=lon)
@@ -264,9 +263,10 @@ def _derive_iana_tz(lat: float, lon: float) -> str | None:
 
 def _query_distinct_venues(session: Any) -> list[tuple[str, int]]:
     """SELECT location, COUNT(*) FROM events GROUP BY location ORDER BY 2 DESC."""
-    from sqlalchemy import func as sa_func, select  # noqa: PLC0415
+    from sqlalchemy import func as sa_func
+    from sqlalchemy import select
 
-    from ufc_prediction.models import Event  # noqa: PLC0415
+    from ufc_prediction.models import Event
 
     rows = session.execute(
         select(Event.location, sa_func.count(Event.id).label("n"))
@@ -287,7 +287,7 @@ def main(argv: list[str] | None = None) -> int:
     would shrink vs the prior on-disk CSV and --allow-shrink was not set
     (WR-04 migration seed-data protection).
     """
-    import argparse  # noqa: PLC0415
+    import argparse
 
     parser = argparse.ArgumentParser(
         description=(
@@ -321,7 +321,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 2
 
-    from ufc_prediction.db.session import get_session  # noqa: PLC0415
+    from ufc_prediction.db.session import get_session
 
     cache = _load_cache(GEOCODE_CACHE)
     rows: list[dict] = []
@@ -345,7 +345,7 @@ def main(argv: list[str] | None = None) -> int:
             if record is None:
                 consecutive_fails += 1
                 if consecutive_fails >= NOMINATIM_CONSECUTIVE_FAILS_TRIGGER:
-                    import time  # noqa: PLC0415
+                    import time
 
                     print(
                         f"[backfill-venues] BACK-OFF: {consecutive_fails} consecutive "

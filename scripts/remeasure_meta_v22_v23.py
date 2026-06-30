@@ -48,7 +48,6 @@ from ufc_prediction.ml.queries import (
     load_round_stats_for_ml,
 )
 
-
 EXPECTED_XGB_V2_SHA256 = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 SLICES = list(PER_SLICE_KEYS)
 
@@ -282,7 +281,7 @@ def main() -> int:
                     file=sys.stderr,
                 )
                 return 2
-        print(f"  legacy-key value parity verified against git-fixture snapshot")
+        print("  legacy-key value parity verified against git-fixture snapshot")
 
     # meta_v2.joblib byte identity (script must never touch the .joblib)
     meta_sha_after = _sha256_file(MODELS_DIR / "meta" / "meta_v2.joblib")

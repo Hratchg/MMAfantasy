@@ -29,7 +29,6 @@ from datetime import date
 import numpy as np
 import pytest
 
-
 # ── TestHaversineKm ─────────────────────────────────────────────────────────
 
 
@@ -654,8 +653,8 @@ class TestAssemblerV25TravelBranch:
         (those run separately in the CI gate; here we just spot-check
         the row shape + length-invariant assert)."""
         from ufc_prediction.ml.feature_matrix import (
-            FeatureMatrixAssembler,
             _EXPECTED_V22_NCOLS,
+            FeatureMatrixAssembler,
         )
 
         fights, elo, perf, phys, meds = _build_synthetic_fixture()

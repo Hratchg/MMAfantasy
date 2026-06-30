@@ -53,7 +53,7 @@ def _row(
     last_organization: str = "Some Promotion",
 ) -> dict[str, str]:
     """Build a canonical 14-column CSV row dict for fixture construction."""
-    wins = int(round(win_rate * n_pre_ufc_fights)) if n_pre_ufc_fights else 0
+    wins = round(win_rate * n_pre_ufc_fights) if n_pre_ufc_fights else 0
     losses = n_pre_ufc_fights - wins
     return {
         "fighter_id": str(fighter_id),
@@ -178,7 +178,7 @@ def test_9_load_seeds_happy_path_three_rows_three_tiers(tmp_path: Path) -> None:
     seeds = load_seeds(csv_path)
 
     assert set(seeds.keys()) == {1, 2, 3}
-    assert all(isinstance(k, int) for k in seeds.keys())
+    assert all(isinstance(k, int) for k in seeds)
     assert all(isinstance(v, float) for v in seeds.values())
     assert seeds[1] == 1625.0
     assert seeds[2] == 1400.0

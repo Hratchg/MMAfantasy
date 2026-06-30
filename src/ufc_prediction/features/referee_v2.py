@@ -29,7 +29,6 @@ from typing import Any
 
 from ufc_prediction.ml.features_v22.ref import classify_outcome
 
-
 # ── Module-level constants (D-01 + D-02 LOCKED) ────────────────────────────
 
 #: Date on which the unified MMA rules took effect (Phase 65 D-01 boundary).

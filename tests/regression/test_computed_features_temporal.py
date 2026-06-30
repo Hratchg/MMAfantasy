@@ -30,7 +30,6 @@ from ufc_prediction.models.event import Event
 from ufc_prediction.models.fight import Fight
 from ufc_prediction.models.fighter import Fighter
 
-
 # ─────────────────────────────────────────────────────────────────────
 # Seed helpers — shared NOT-NULL-field skeletons for Event / Fight / Fighter
 # ─────────────────────────────────────────────────────────────────────

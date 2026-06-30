@@ -15,8 +15,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from ufc_prediction.ml.meta_persistence import get_latest_meta_version
 
 

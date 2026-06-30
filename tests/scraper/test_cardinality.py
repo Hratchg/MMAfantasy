@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import pytest
 
-from ufc_prediction.scraper.parse_event_list import parse_event_list
 from ufc_prediction.scraper.parse_event_detail import parse_event_detail
+from ufc_prediction.scraper.parse_event_list import parse_event_list
 from ufc_prediction.scraper.parse_fight_detail import parse_fight_detail
 from ufc_prediction.scraper.parse_fighter import parse_fighter_profile
 

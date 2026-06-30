@@ -73,7 +73,7 @@ import json
 import sys
 import time
 from dataclasses import asdict
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import numpy as np
@@ -103,7 +103,6 @@ from ufc_prediction.ml.queries import (
     load_round_stats_for_ml,
 )
 from ufc_prediction.ml.trainer import median_metrics
-
 
 # ── Locked constants (D-05..D-08(P17)) ────────────────────────────────
 
@@ -573,7 +572,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    spike_started = datetime.now(timezone.utc)
+    spike_started = datetime.now(UTC)
 
     # ── AF-2 startup assertion (D-01(P17, corrected) / Option B) ─────
     if len(FEATURE_COLUMNS) != 75:
@@ -940,7 +939,7 @@ def main() -> int:
     print(f"[spike] Wrote gate contract: {contract_path}")
 
     # ── Emit NOISE-FLOOR-REPORT.md ────────────────────────────────────
-    spike_finished = datetime.now(timezone.utc)
+    spike_finished = datetime.now(UTC)
     report_path = Path(args.report_path)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     _emit_report(

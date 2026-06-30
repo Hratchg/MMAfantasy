@@ -64,10 +64,9 @@ import re
 import sys
 import time
 import urllib.parse
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
-
 
 # ── Locked constants (D-01..D-11 REVISION; CONTEXT.md) ──────────────────
 
@@ -171,11 +170,11 @@ def _query_gap_events(session: Any) -> list[Any]:
     """
     # Lazy import — keeps the test module importable even when the DB
     # session machinery isn't available in the test environment.
-    from sqlalchemy import select  # noqa: PLC0415
+    from sqlalchemy import select
 
-    from ufc_prediction.models.event import Event  # noqa: PLC0415
-    from ufc_prediction.models.fight import Fight  # noqa: PLC0415
-    from ufc_prediction.models.fight_odds import FightOdds  # noqa: PLC0415
+    from ufc_prediction.models.event import Event
+    from ufc_prediction.models.fight import Fight
+    from ufc_prediction.models.fight_odds import FightOdds
 
     covered_subq = (
         select(Fight.event_id)
@@ -518,7 +517,7 @@ def _write_manifest(
     """Write MANIFEST.json with the 8 fields per Plan 21-02 Task 1 step 4."""
     manifest = {
         "batch_id": batch_id,
-        "scraped_at": datetime.now(timezone.utc)
+        "scraped_at": datetime.now(UTC)
         .isoformat()
         .replace(
             "+00:00",
@@ -634,8 +633,8 @@ def _run_scrape_mode(
     manifest_path = batch_dir / "MANIFEST.json"
 
     # 3. Lazy imports — keeps tests that monkeypatch sys.modules effective.
-    from ufc_prediction.scraper.bfo_scraper import BFOScraper  # noqa: PLC0415
-    from ufc_prediction.scraper.client import ScraperClient  # noqa: PLC0415
+    from ufc_prediction.scraper.bfo_scraper import BFOScraper
+    from ufc_prediction.scraper.client import ScraperClient
 
     client = ScraperClient(
         delay=BFO_DELAY_SECONDS,
@@ -667,7 +666,7 @@ def _run_scrape_mode(
     bfo_logger = logging.getLogger("ufc_prediction.scraper.bfo_scraper")
 
     class _StatsHandler(logging.Handler):
-        def emit(self, record: logging.LogRecord) -> None:  # noqa: D401
+        def emit(self, record: logging.LogRecord) -> None:
             nonlocal captcha_hit_count, error_count
             msg = record.getMessage().lower()
             if "captcha" in msg:
@@ -826,9 +825,9 @@ def _run_integrity_check(csv_path: Path) -> dict[str, Any]:
     # Lazy import — keeps tests that don't touch real CSVs from paying the
     # Pydantic import cost, and mirrors the lazy-import pattern used by
     # _query_gap_events / _run_scrape_mode elsewhere in this module.
-    import csv as _csv  # noqa: PLC0415
+    import csv as _csv
 
-    from ufc_prediction.scraper.bfo_models import BFOOddsRow  # noqa: PLC0415
+    from ufc_prediction.scraper.bfo_models import BFOOddsRow
 
     # pair_key → event_date → set of distinct fight_ids seen.
     by_pair: dict[
@@ -841,7 +840,7 @@ def _run_integrity_check(csv_path: Path) -> dict[str, Any]:
         for raw in _csv.DictReader(fh):
             try:
                 odds_row = BFOOddsRow(**raw)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "[bfo-backfill] integrity-check: invalid row in %s: %r (%s)",
                     csv_path,
@@ -936,11 +935,11 @@ def _query_coverage_after(session: Any) -> tuple[int, int]:
         AND fight_odds.closing_implied_prob IS NOT NULL
     Denominator: COUNT(DISTINCT fight.id) WHERE event.date >= 2007-06-01
     """
-    from sqlalchemy import func, select  # noqa: PLC0415
+    from sqlalchemy import func, select
 
-    from ufc_prediction.models.event import Event  # noqa: PLC0415
-    from ufc_prediction.models.fight import Fight  # noqa: PLC0415
-    from ufc_prediction.models.fight_odds import FightOdds  # noqa: PLC0415
+    from ufc_prediction.models.event import Event
+    from ufc_prediction.models.fight import Fight
+    from ufc_prediction.models.fight_odds import FightOdds
 
     # Denominator: distinct in-scope fight ids.
     total_stmt = (
@@ -973,11 +972,11 @@ def _query_per_year_coverage(
     years: list[int],
 ) -> dict[str, tuple[int, int]]:
     """Per-year ``{year_str: (covered, total)}`` using the same SQL shape."""
-    from sqlalchemy import extract, func, select  # noqa: PLC0415
+    from sqlalchemy import extract, func, select
 
-    from ufc_prediction.models.event import Event  # noqa: PLC0415
-    from ufc_prediction.models.fight import Fight  # noqa: PLC0415
-    from ufc_prediction.models.fight_odds import FightOdds  # noqa: PLC0415
+    from ufc_prediction.models.event import Event
+    from ufc_prediction.models.fight import Fight
+    from ufc_prediction.models.fight_odds import FightOdds
 
     out: dict[str, tuple[int, int]] = {}
     for year in years:
@@ -1104,7 +1103,7 @@ def _emit_coverage_json(
     # 6. Compose payload.
     payload: dict[str, Any] = {
         "batch_id": batch_id,
-        "ingested_at": datetime.now(timezone.utc)
+        "ingested_at": datetime.now(UTC)
         .isoformat()
         .replace(
             "+00:00",
@@ -1151,7 +1150,7 @@ def _run_emit_coverage_mode(
     next steps based on it).
     """
     # Lazy import — keeps tests that monkeypatch sys.modules effective.
-    from ufc_prediction.db.session import SessionLocal  # noqa: PLC0415
+    from ufc_prediction.db.session import SessionLocal
 
     session = SessionLocal()
     try:
@@ -1434,8 +1433,8 @@ def main(argv: list[str] | None = None) -> int:
 
     # Lazy DB + client imports — keeps test environments without the
     # full DB stack from breaking on module import.
-    from ufc_prediction.db.session import SessionLocal  # noqa: PLC0415
-    from ufc_prediction.scraper.client import ScraperClient  # noqa: PLC0415
+    from ufc_prediction.db.session import SessionLocal
+    from ufc_prediction.scraper.client import ScraperClient
 
     print("[bfo-backfill] Querying gap events from DB...")
     session = SessionLocal()
@@ -1472,7 +1471,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[bfo-backfill]   ...{i}/{len(gap_events)} events probed.")
 
     # Build batch_id + ensure batch dir exists for Plan 21-02 reuse.
-    batch_id = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    batch_id = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     batch_dir = Path(SCRAPE_BATCH_DIR) / batch_id
     batch_dir.mkdir(parents=True, exist_ok=True)
 

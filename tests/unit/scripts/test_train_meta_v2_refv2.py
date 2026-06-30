@@ -49,6 +49,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -67,7 +68,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 # Direct import from scripts/ — Task 1 deliverable. Tests collect-fail with
 # ImportError until the script exists (RED phase contract).
-from train_meta_v2_refv2 import (  # noqa: E402
+from train_meta_v2_refv2 import (
     CANONICAL_META_JSON,
     EXPECTED_META_V2_SHA256,
     EXPECTED_XGB_V2_SHA256,
@@ -78,7 +79,6 @@ from train_meta_v2_refv2 import (  # noqa: E402
     assert_audit01_invariants,
     main,
 )
-
 
 # ── Cheap tier (always runs) ──────────────────────────────────────────────
 
@@ -243,7 +243,6 @@ def test_build_live_13col_matrix_nan_guard_fires_when_col0_has_nan() -> None:
 
     import numpy as np
     import pandas as pd
-
     import train_meta_v2_refv2 as mod
 
     # Stub out the heavy dependencies that _build_live_13col_matrix imports

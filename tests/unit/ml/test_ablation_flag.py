@@ -24,7 +24,7 @@ def test_feature_columns_no_net_is_72_cols():
 
 
 def test_feature_columns_no_net_drops_trailing_3_net():
-    assert FEATURE_COLUMNS_NO_NET == FEATURE_COLUMNS[:-3]
+    assert FEATURE_COLUMNS[:-3] == FEATURE_COLUMNS_NO_NET
     assert "pagerank_diff" not in FEATURE_COLUMNS_NO_NET
     assert "sos_2hop_diff" not in FEATURE_COLUMNS_NO_NET
     assert "is_debutant_in_graph_diff" not in FEATURE_COLUMNS_NO_NET

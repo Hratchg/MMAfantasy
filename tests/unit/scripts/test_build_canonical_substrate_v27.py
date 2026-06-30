@@ -52,12 +52,11 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 # Direct import from scripts/ — Task 1 deliverable. Tests collect-fail with
 # ImportError until the script exists (RED phase contract).
-from build_canonical_substrate_v27 import (  # noqa: E402
+from build_canonical_substrate_v27 import (
     CANONICAL_FEATURE_COLUMNS,
     CANONICAL_OOF_PATH,
     CANONICAL_REFERENCE_DATE,
     DEFAULT_OUTPUT_PATH,
-    EXPECTED_CANONICAL_OOF_SHA,
     PROTECTED_OUTPUTS,
     RANDOM_15PCT_SEED,
     SLICE_NAMES,
@@ -66,9 +65,9 @@ from build_canonical_substrate_v27 import (  # noqa: E402
     main,
 )
 
-from ufc_prediction.ml.gate_verifier import EvalSlice  # noqa: E402
-from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS  # noqa: E402
-from ufc_prediction.ml.substrate_loader import load_substrate_snapshot  # noqa: E402
+from ufc_prediction.ml.gate_verifier import EvalSlice
+from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
+from ufc_prediction.ml.substrate_loader import load_substrate_snapshot
 
 # ── Shared fixture ────────────────────────────────────────────────────────
 
@@ -437,7 +436,7 @@ def test_default_output_path_is_canonical_substrate_v27() -> None:
     path without updating .gitignore will see this fail before committing
     a substrate-binary artifact accidentally.
     """
-    assert DEFAULT_OUTPUT_PATH == Path("data/intermediate/canonical_substrate_v27.parquet"), (
+    assert Path("data/intermediate/canonical_substrate_v27.parquet") == DEFAULT_OUTPUT_PATH, (
         f"DEFAULT_OUTPUT_PATH drifted from documented Plan 75-01 target: "
         f"got {DEFAULT_OUTPUT_PATH!r}"
     )

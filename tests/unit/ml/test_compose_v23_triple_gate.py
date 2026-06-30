@@ -37,7 +37,6 @@ from scripts.compose_v23_meta import (
     triple_gate_decision,
 )
 
-
 # ───────────────────────────── Mock gate contract ─────────────────────────────
 
 

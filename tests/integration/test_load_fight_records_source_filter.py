@@ -44,7 +44,6 @@ from ufc_prediction.models.event import Event
 from ufc_prediction.models.fight import Fight
 from ufc_prediction.models.fighter import Fighter
 
-
 # ─────────────────────────────────────────────────────────────────────
 # Live-DB session fixture — SAVEPOINT-bracketed; rolls back on teardown
 # ─────────────────────────────────────────────────────────────────────

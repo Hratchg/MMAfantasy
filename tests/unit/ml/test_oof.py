@@ -19,8 +19,6 @@ import pytest
 from sklearn.model_selection import TimeSeriesSplit
 from xgboost import XGBClassifier
 
-from ufc_prediction.ml.config import FEATURE_COLUMNS_NO_NET
-
 oof = pytest.importorskip("ufc_prediction.ml.oof")
 
 

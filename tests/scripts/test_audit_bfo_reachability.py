@@ -26,10 +26,8 @@ Design refinements from Task 1 findings (operator-curated CSV):
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock
 
-import httpx
 import pytest
 
 

@@ -35,17 +35,13 @@ from __future__ import annotations
 from datetime import date
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from scripts.backfill_fighter_aliases_from_dedup_recon import (
-    ASIAN_NAME_REGISTRY,
     BRAZILIAN_NICKNAME_REGISTRY,
     NICKNAME_REGISTRY,
     WOMENS_MARRIED_NAME_REGISTRY,
     discover,
     match_kaggle_to_ufcstats,
 )
-
 
 # ─────────────────────────────────────────────────────────────────────
 # Test 1 — Tier 1: exact-last + first-token overlap → "high"
@@ -65,7 +61,7 @@ def test_tier1_exact_lastname_with_first_token_overlap():
         ("King Green", 5177),  # red herring: same last, no first overlap
         ("Maurice Greene", 5991),
     ]
-    same_card_idx = {date(2099, 1, 1): {"green": [5176, 5177]}}  # 2 Greens
+    _same_card_idx = {date(2099, 1, 1): {"green": [5176, 5177]}}  # 2 Greens
     # When the same-card index has >1 last-name match, the gate forces
     # ambiguity — UNLESS the matcher has unambiguous evidence. For this
     # test we relax: a non-conflicting date (no same-card collision).

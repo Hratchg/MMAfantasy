@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
-from tests.features.conftest import make_fighter_round_stats, make_round_stats
+from tests.features.conftest import make_fighter_round_stats
 from ufc_prediction.features.rates import (
     compute_rate_features,
     estimate_fight_duration_seconds,

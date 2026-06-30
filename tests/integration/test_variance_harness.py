@@ -58,7 +58,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 SPIKE_V22: Path = REPO_ROOT / "scripts" / "spike_noise_floor_v22.py"
 SPIKE_V23: Path = REPO_ROOT / "scripts" / "spike_noise_floor_v23.py"
@@ -172,8 +171,8 @@ def test_5seed_end_to_end_distinct(cached_meta_train_xy, cached_eval_slices):
     """30-02-02 — 5-seed end-to-end on cached fixture; 5 distinct Brier per slice."""
     from datetime import date
 
-    from ufc_prediction.ml.variance import multi_seed_metrics
     from ufc_prediction.ml.evaluator import PER_SLICE_KEYS
+    from ufc_prediction.ml.variance import multi_seed_metrics
 
     X, y = cached_meta_train_xy
     # Plan 30-01 emits the fixture as a train-OR-eval set (synthetic; the

@@ -7,7 +7,6 @@ per D-07: joblib file with companion JSON metadata.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -132,7 +131,7 @@ class TestLoadModel:
 
     def test_load_model_round_trip(self, tmp_path, trained_model, sample_metrics, sample_params):
         """save_model + load_model round-trip preserves model predictions."""
-        from ufc_prediction.ml.persistence import save_model, load_model
+        from ufc_prediction.ml.persistence import load_model, save_model
 
         rng = np.random.RandomState(99)
         test_X = rng.randn(5, len(FEATURE_COLUMNS))
@@ -162,7 +161,7 @@ class TestLoadModel:
 
     def test_load_metadata(self, tmp_path, trained_model, sample_metrics, sample_params):
         """load_metadata returns the JSON metadata dict."""
-        from ufc_prediction.ml.persistence import save_model, load_metadata
+        from ufc_prediction.ml.persistence import load_metadata, save_model
 
         save_model(
             model=trained_model,

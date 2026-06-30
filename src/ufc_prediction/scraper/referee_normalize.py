@@ -12,7 +12,6 @@ from __future__ import annotations
 import re
 import unicodedata
 
-
 REFEREE_ALIASES: dict[str, str] = {
     "herbert-dean": "herb-dean",
     # Additional aliases populated post-Task-4 audit (REF_00_AUDIT.json

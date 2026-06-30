@@ -68,7 +68,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 # Direct import from scripts/ — Task 1 deliverable. Tests collect-fail with
 # ImportError until the script exists (RED phase contract).
-from retrain_xgb_v2_refv2 import (  # noqa: E402
+from retrain_xgb_v2_refv2 import (
     EXPECTED_XGB_V2_SHA256,
     OUT_JOBLIB,
     OUT_META,
@@ -77,7 +77,6 @@ from retrain_xgb_v2_refv2 import (  # noqa: E402
     assert_audit01_invariants,
     main,
 )
-
 
 # ── Cheap tier (always runs) ──────────────────────────────────────────────
 

@@ -33,15 +33,13 @@ Usage:
 from __future__ import annotations
 
 import sys
-from collections import Counter, defaultdict
-from datetime import date as date_type
+from collections import Counter
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from ufc_prediction.db.session import SessionLocal
-
 
 # ─────────────────────────────────────────────────────────────────
 # Section 1 — Per-source fight counts

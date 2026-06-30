@@ -216,7 +216,7 @@ def emit() -> int:
     print(f"[emit-30] wrote {SLICES_PATH}")
     print(f"[emit-30] wrote {META_PATH}")
     print(
-        f"[emit-30] per-slice counts: "
+        "[emit-30] per-slice counts: "
         + ", ".join(f"{k}={int(masks[k].sum())}" for k in PER_SLICE_KEYS)
     )
     return 0

@@ -74,7 +74,7 @@ class MetaLearnerLogistic:
         self.random_state: int = random_state
         self.C: float = C
 
-    def fit(self, X_meta: np.ndarray, y: np.ndarray) -> "MetaLearnerLogistic":
+    def fit(self, X_meta: np.ndarray, y: np.ndarray) -> MetaLearnerLogistic:
         """Fit pipeline; drop rows with NaN in any Level-1 feature.
 
         Warns (logger.warning) when NaN drop rate exceeds NAN_DROP_WARN_FRACTION (10%).

@@ -42,7 +42,6 @@ from ufc_prediction.ml.gate_verifier import (
     verify_candidate_vs_canonical,
 )
 
-
 # ── Synthetic fixtures ────────────────────────────────────────────────────
 
 

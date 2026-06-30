@@ -33,7 +33,6 @@ from sqlalchemy.orm import Session
 
 from ufc_prediction.dedup.source_priority import prefer_canonical
 from ufc_prediction.ml.config import (
-    FEATURE_COLUMNS,
     FEATURE_COLUMNS_V22,
     PERFORMANCE_FEATURE_KEYS,
     encode_stance_matchup,
@@ -172,7 +171,7 @@ def _get_cached_odds(
                 "closing_implied_prob": odds_b_row.closing_implied_prob,
             },
         )
-    except Exception as exc:  # noqa: BLE001 — never raise out of cache
+    except Exception as exc:
         logger.warning("inference_features cache lookup failed: %s", exc)
         return None, None
 
@@ -340,10 +339,7 @@ def _query_ref_state(
             counts[cat] += 1
             total += 1
 
-        if total == 0:
-            global_rates = nan_globals
-        else:
-            global_rates = {k: v / total for k, v in counts.items()}
+        global_rates = nan_globals if total == 0 else {k: v / total for k, v in counts.items()}
 
         if referee_id is None:
             return {}, global_rates
@@ -361,7 +357,7 @@ def _query_ref_state(
             history.append({"event_date": event_date_val, "method": method})
 
         return ({referee_id: history}, global_rates)
-    except Exception as exc:  # noqa: BLE001 — never raise out of feature build
+    except Exception as exc:
         logger.warning("inference_features _query_ref_state failed: %s", exc)
         return {}, nan_globals
 
@@ -432,7 +428,7 @@ def _query_current_venue(
         if lat is None or lon is None or tz is None:
             return None
         return {"lat": lat, "lon": lon, "timezone_iana": tz}
-    except Exception as exc:  # noqa: BLE001 — never raise out of feature build
+    except Exception as exc:
         logger.warning(
             "inference_features _query_current_venue failed: %s",
             exc,
@@ -474,7 +470,7 @@ def _query_fighter_prior_venue(
             "timezone_iana": tz,
             "event_date": event_date_val,
         }
-    except Exception as exc:  # noqa: BLE001 — never raise out of feature build
+    except Exception as exc:
         logger.warning(
             "inference_features _query_fighter_prior_venue failed: %s",
             exc,
@@ -555,7 +551,7 @@ def _query_fighter_prior_fight_date(
         )
         result = session.scalar(stmt)
         return result
-    except Exception as exc:  # noqa: BLE001 — never raise out of feature build
+    except Exception as exc:
         logger.warning(
             "inference_features _query_fighter_prior_fight_date failed: %s",
             exc,
@@ -622,7 +618,7 @@ def _query_elo_history(
                 }
             )
         return result
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning(
             "inference_features _query_elo_history failed: %s",
             exc,
@@ -674,7 +670,7 @@ def _query_division_state(
                 total_finishes += 1
         g = total_finishes / total if total > 0 else 0.0
         return div_hist, g
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning(
             "inference_features _query_division_state failed: %s",
             exc,
@@ -708,7 +704,7 @@ def _query_division_mean_reach(
         )
         result = session.scalar(stmt)
         return float(result) if result is not None else None
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning(
             "inference_features _query_division_mean_reach failed: %s",
             exc,
@@ -734,7 +730,7 @@ def _query_fighter_division(
             .limit(1)
         )
         return session.scalar(stmt)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning(
             "inference_features _query_fighter_division failed: %s",
             exc,
@@ -872,7 +868,7 @@ def _populate_physical(
 
 def _populate_odds(
     feats: dict[str, float],
-    live_odds: "MatchupOdds | None",
+    live_odds: MatchupOdds | None,
     cached_a: dict | None,
     cached_b: dict | None,
     elo_a_overall: float,
@@ -948,7 +944,7 @@ def build(
     fighter_b,
     event_date: date,
     *,
-    live_odds: "MatchupOdds | None" = None,
+    live_odds: MatchupOdds | None = None,
     include_net: bool | None = None,
     feature_set: str = "v1.0",
     referee_id: int | None = None,

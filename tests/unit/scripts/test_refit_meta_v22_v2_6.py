@@ -48,7 +48,6 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
 
 import pytest
 

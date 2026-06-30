@@ -11,7 +11,6 @@ Locks the PROTECTED_FILES set against drift from CONTRIBUTING.md L62-74.
 from __future__ import annotations
 
 import importlib.util
-import os
 import sys
 from pathlib import Path
 

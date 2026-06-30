@@ -32,7 +32,6 @@ from sqlalchemy.orm import Session
 
 from ufc_prediction.models.event import Event
 
-
 _WHITESPACE_RE = re.compile(r"\s+")
 _DEFAULT_THRESHOLD: int = 85
 

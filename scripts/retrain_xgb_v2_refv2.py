@@ -404,6 +404,7 @@ def build_92col_training_matrix(*, source: str = "synthetic") -> tuple[Any, Any,
         from compose_v25_travel import (  # type: ignore[import-not-found]
             _load_assembled_data_v25_travel,
         )
+
         from ufc_prediction.features.referee_v2 import (
             derive_event_country_bucket,
             derive_scoring_regime,
@@ -816,7 +817,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("interrupted", file=sys.stderr)
         sys.exit(130)
-    except Exception:  # noqa: BLE001
+    except Exception:
         # Defense-in-depth: any unhandled exception surfaces as exit 1
         # with a traceback so operators see the root cause but the process
         # rc is still well-defined.

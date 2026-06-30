@@ -50,7 +50,6 @@ from ufc_prediction.ml.queries import (
     load_round_stats_for_ml,
 )
 
-
 EXPECTED_XGB_V2_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 ODDS_COLS = {
     "opening_prob_diff",

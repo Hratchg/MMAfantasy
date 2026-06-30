@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RESULTS_DIR = PROJECT_ROOT / "results"
 JSON_PATH = RESULTS_DIR / "calibration_v24.json"

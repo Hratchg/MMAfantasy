@@ -58,7 +58,6 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_MD = PROJECT_ROOT / "results" / "travel_promotion_gate_v26.md"
@@ -289,7 +288,7 @@ def delegate_to_ufc_gate_verify(
     return int(result.returncode)
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--candidate",

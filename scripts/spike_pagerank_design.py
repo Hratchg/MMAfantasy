@@ -54,7 +54,7 @@ import os
 import sys
 import time
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import networkx as nx
@@ -65,7 +65,7 @@ _THIS = Path(__file__).resolve()
 _ROOT = _THIS.parent.parent
 sys.path.insert(0, str(_ROOT / "src"))
 
-from ufc_prediction.elo.config import EloConfig  # noqa: E402
+from ufc_prediction.elo.config import EloConfig
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)-7s %(name)s %(message)s",
@@ -182,23 +182,22 @@ def load_fights_from_db(db_url: str) -> list[FightRecord]:
         ORDER BY e.date ASC, f.id ASC
     """
     rows: list[FightRecord] = []
-    with psycopg.connect(db_url, connect_timeout=10) as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql)
-            for fight_id, event_date, fa, fb, winner, method, wc in cur.fetchall():
-                loser = fb if winner == fa else fa
-                rows.append(
-                    FightRecord(
-                        fight_id=fight_id,
-                        event_date=event_date,
-                        fighter_a_id=fa,
-                        fighter_b_id=fb,
-                        winner_id=winner,
-                        loser_id=loser,
-                        method=method or "Other",
-                        weight_class=wc,
-                    )
+    with psycopg.connect(db_url, connect_timeout=10) as conn, conn.cursor() as cur:
+        cur.execute(sql)
+        for fight_id, event_date, fa, fb, winner, method, wc in cur.fetchall():
+            loser = fb if winner == fa else fa
+            rows.append(
+                FightRecord(
+                    fight_id=fight_id,
+                    event_date=event_date,
+                    fighter_a_id=fa,
+                    fighter_b_id=fb,
+                    winner_id=winner,
+                    loser_id=loser,
+                    method=method or "Other",
+                    weight_class=wc,
                 )
+            )
     logger.info(
         "loaded %d decisive fights (date range %s — %s)",
         len(rows),
@@ -322,7 +321,7 @@ def backtest_pagerank_only(
     Returns Brier, Accuracy, AUC, n_train, n_test.
     """
     from sklearn.linear_model import LogisticRegression
-    from sklearn.metrics import roc_auc_score, brier_score_loss
+    from sklearn.metrics import brier_score_loss, roc_auc_score
 
     def fighter_node(fight: FightRecord, fighter_id: int):
         if scope == "pan-mma":
@@ -526,7 +525,7 @@ def render_results_md(
     elapsed_s: float,
 ) -> str:
     """Render the operator-facing results document per CONTEXT.md `<specifics>`."""
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    today = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Sort results in canonical CONFIGS order for stable output.
     by_name = {r["config"]: r for r in results}

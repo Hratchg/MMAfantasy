@@ -11,8 +11,6 @@ import optuna
 import sklearn.base
 from catboost import CatBoostClassifier
 from lightgbm import LGBMClassifier
-from sklearn.calibration import CalibratedClassifierCV
-from sklearn.frozen import FrozenEstimator
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss
@@ -173,7 +171,7 @@ class EnsembleTrainer:
         split2 = int(n * 0.85)
         X_proper, y_proper = X_train[:split1], y_train[:split1]
         X_blend, y_blend = X_train[split1:split2], y_train[split1:split2]
-        X_calib, y_calib = X_train[split2:], y_train[split2:]
+        _X_calib, _y_calib = X_train[split2:], y_train[split2:]
 
         # Step 2: Tune and train XGBoost
         xgb_params = self._tune_xgboost(X_proper, y_proper, xgb_trials)
@@ -286,6 +284,6 @@ class _EnsembleModel(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin):
             "meta": self.meta,
         }
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> "_EnsembleModel":
+    def fit(self, X: np.ndarray, y: np.ndarray) -> _EnsembleModel:
         # No-op — FrozenEstimator calls this but we're already trained
         return self

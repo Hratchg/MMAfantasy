@@ -296,7 +296,7 @@ class TestPageRankAsOfDate:
                 # sos can also be NaN (debutant) or NaN (no neighbors)
                 assert sos != sos
             else:
-                assert isinstance(pr, float) and not (pr != pr)
+                assert isinstance(pr, float) and pr == pr
                 # sos can be NaN if no in-neighbors but pagerank is defined,
                 # OR a float — either is acceptable.
 
@@ -446,7 +446,8 @@ class TestTwoHopSoS:
         """
         # Graph (i): F_strong (fid=99) beats F_GOAT (fid=5, who's the
         # GOAT in our toy_fights). At as_of=2025-01-01, F5 has high PR.
-        graph_i_fights = toy_fights + [
+        graph_i_fights = [
+            *toy_fights,
             {
                 "fight_id": 99,
                 "event_date": date(2024, 12, 1),
@@ -463,7 +464,8 @@ class TestTwoHopSoS:
 
         # Graph (ii): F_strong beats F_TomatoCan (fid=99 beats fid=98 who
         # has no wins). The toy_fights graph never references F98.
-        graph_ii_fights = toy_fights + [
+        graph_ii_fights = [
+            *toy_fights,
             {
                 "fight_id": 100,
                 "event_date": date(2024, 12, 1),

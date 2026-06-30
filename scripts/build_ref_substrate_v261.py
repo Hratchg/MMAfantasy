@@ -88,8 +88,7 @@ if str(_SCRIPTS_DIR) not in sys.path:
 # ``build_ref_substrate_v261.derive_event_country_bucket`` resolve cleanly
 # (Phase 65 D-02 coverage-gate tests). Re-importing inside ``check_coverage_gate``
 # would re-bind the local name and bypass the patch.
-from ufc_prediction.features.referee_v2 import derive_event_country_bucket  # noqa: E402
-
+from ufc_prediction.features.referee_v2 import derive_event_country_bucket
 
 # ── LOCKED constants (Phase 65 CONTEXT §D-02 / §D-03a) ──────────────────────
 

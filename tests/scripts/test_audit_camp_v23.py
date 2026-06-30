@@ -49,8 +49,9 @@ class TestVersionSuffixEdits:
 
     def test_output_path_default_points_to_phase_29(self, audit_v23) -> None:
         """Allowed edit #3: default output path is the v23 phase directory."""
-        assert audit_v23.OUTPUT_PATH_DEFAULT == Path(
-            ".planning/phases/29-camp-re-audit-eval-set-infrastructure/CAMP_V23_AUDIT.json"
+        assert (
+            Path(".planning/phases/29-camp-re-audit-eval-set-infrastructure/CAMP_V23_AUDIT.json")
+            == audit_v23.OUTPUT_PATH_DEFAULT
         )
 
 

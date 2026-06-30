@@ -33,7 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -130,12 +130,12 @@ def query_new_debutants(pre_max_date: str, post_max_date: str) -> list[dict]:
         # Empty window — no debutants possible by construction.
         return []
 
-    from sqlalchemy import func, union_all  # noqa: PLC0415
+    from sqlalchemy import func, union_all
 
-    from ufc_prediction.db.session import SessionLocal  # noqa: PLC0415
-    from ufc_prediction.models.event import Event  # noqa: PLC0415
-    from ufc_prediction.models.fight import Fight  # noqa: PLC0415
-    from ufc_prediction.models.fighter import Fighter  # noqa: PLC0415
+    from ufc_prediction.db.session import SessionLocal
+    from ufc_prediction.models.event import Event
+    from ufc_prediction.models.fight import Fight
+    from ufc_prediction.models.fighter import Fighter
 
     session = SessionLocal()
     try:
@@ -190,13 +190,13 @@ def query_per_year_bfo(years: list[str]) -> dict[str, dict[str, float | int]]:
     The query joins two FightOdds aliases — one per fighter side — and
     counts fights for which both aliases resolve to a non-null implied prob.
     """
-    from sqlalchemy import Integer, and_, case, func  # noqa: PLC0415
-    from sqlalchemy.orm import aliased  # noqa: PLC0415
+    from sqlalchemy import Integer, and_, case, func
+    from sqlalchemy.orm import aliased
 
-    from ufc_prediction.db.session import SessionLocal  # noqa: PLC0415
-    from ufc_prediction.models.event import Event  # noqa: PLC0415
-    from ufc_prediction.models.fight import Fight  # noqa: PLC0415
-    from ufc_prediction.models.fight_odds import FightOdds  # noqa: PLC0415
+    from ufc_prediction.db.session import SessionLocal
+    from ufc_prediction.models.event import Event
+    from ufc_prediction.models.fight import Fight
+    from ufc_prediction.models.fight_odds import FightOdds
 
     session = SessionLocal()
     try:
@@ -343,7 +343,7 @@ def render_json(
 ) -> str:
     verdicts = _criterion_verdicts(post, debutants_added=len(debutants))
     report = {
-        "report_iso": datetime.now(timezone.utc).isoformat(),
+        "report_iso": datetime.now(UTC).isoformat(),
         "phase": "40-corpus-growth-scraper-hygiene",
         "requirement": "CORPUS-V25-04",
         "phase_disposition": "Option A — no-growth close-out",

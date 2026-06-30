@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 import urllib.parse
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -32,9 +32,9 @@ from ufc_prediction.models.fight_odds import FightOdds
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.scraper.bfo_matcher import normalize_name
 from ufc_prediction.scraper.bfo_scraper import (
-    BFOParseError,
-    BFOParsedFight,
     SEARCH_URL,
+    BFOParsedFight,
+    BFOParseError,
     _check_captcha,
     find_bfo_fighter_url,
     parse_bfo_fighter_page,
@@ -137,7 +137,7 @@ def _try_cache(
         # scraped_at can be naive (server_default=func.now()); normalize to UTC-aware
         fetched_at = odds_a.scraped_at
         if fetched_at.tzinfo is None:
-            fetched_at = fetched_at.replace(tzinfo=timezone.utc)
+            fetched_at = fetched_at.replace(tzinfo=UTC)
 
         return MatchupOdds(
             fighter_a_opening=odds_a.opening_ml,
@@ -149,7 +149,7 @@ def _try_cache(
             fetched_at=fetched_at,
             source="cache",
         )
-    except Exception as exc:  # noqa: BLE001 — never raise out of cache
+    except Exception as exc:
         logger.warning("bfo_live cache lookup failed: %s", exc)
         return None
 
@@ -241,7 +241,7 @@ def _try_live(
             fighter_b_opening=None,
             fighter_b_closing_min=None,
             fighter_b_closing_max=None,
-            fetched_at=datetime.now(timezone.utc),
+            fetched_at=datetime.now(UTC),
             source="live",
         )
     except BFOParseError as exc:
@@ -260,7 +260,7 @@ def _try_live(
             exc,
         )
         return None
-    except Exception as exc:  # noqa: BLE001 — never raise; predict path can't abort
+    except Exception as exc:
         logger.warning(
             "bfo_live: %s vs %s unexpected failure: %s",
             fa_name,

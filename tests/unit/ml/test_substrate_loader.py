@@ -29,7 +29,6 @@ import pytest
 from ufc_prediction.ml.gate_verifier import EvalSlice
 from ufc_prediction.ml.substrate_loader import load_substrate_snapshot
 
-
 # ── Module-private fixture builder ────────────────────────────────────────
 
 

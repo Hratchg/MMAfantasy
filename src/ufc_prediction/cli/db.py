@@ -58,7 +58,7 @@ def _check_reachable(url: str) -> None:
     try:
         conn = psycopg.connect(_normalize_for_psycopg(url), connect_timeout=5)
         conn.close()
-    except Exception as exc:  # noqa: BLE001 — surface any connection failure
+    except Exception as exc:
         console.print(
             f"[red]Pre-flight 2/5 FAILED:[/red] Postgres not reachable at "
             f"{url}: {exc}; verify Docker container is running"
@@ -144,7 +144,7 @@ def _predictor_sanity_check() -> None:
 
     try:
         ModelPredictor(model_dir="models", version="v2")
-    except Exception as exc:  # noqa: BLE001 — surface any predictor regression
+    except Exception as exc:
         console.print(
             "[red]Predictor sanity check FAILED[/red] — corpus restored but "
             "ModelPredictor(version='v2') cannot instantiate. This is the "

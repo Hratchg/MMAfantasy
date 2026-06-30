@@ -6,10 +6,9 @@ import re
 
 import pytest
 
-from ufc_prediction.scraper.parse_event_list import parse_event_list
+from ufc_prediction.scraper.models import EventDetail, EventSummary
 from ufc_prediction.scraper.parse_event_detail import parse_event_detail
-from ufc_prediction.scraper.models import EventSummary, EventDetail
-
+from ufc_prediction.scraper.parse_event_list import parse_event_list
 
 # ── Event Listing Tests ─────────────────────────────────────────────────────
 

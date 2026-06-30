@@ -42,13 +42,12 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 
-from run_travel_gate_v26 import (  # noqa: E402
+from run_travel_gate_v26 import (
     DEFAULT_V261_OUT,
     delegate_to_ufc_gate_verify,
     emit_provisional_path_b,
     main,
 )
-
 
 # ── delegate_to_ufc_gate_verify: argv-construction test ───────────────────
 

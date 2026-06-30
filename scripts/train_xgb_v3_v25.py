@@ -199,7 +199,7 @@ def _audit01_postflight() -> None:
         raise SystemExit(msg)
     SHA_MID_XGB_V2_PATH.write_text(sha_xgb_v2 + "\n", encoding="utf-8")
     SHA_MID_META_V2_PATH.write_text(sha_meta_v2 + "\n", encoding="utf-8")
-    print(f"[xgb_v3] AUDIT-01 MID anchors written:")
+    print("[xgb_v3] AUDIT-01 MID anchors written:")
     print(f"  xgb_v2:  {sha_xgb_v2}")
     print(f"  meta_v2: {sha_meta_v2}")
 

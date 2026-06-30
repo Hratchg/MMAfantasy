@@ -510,7 +510,7 @@ class _SpyClient:
     def __init__(self, **kwargs: object) -> None:
         type(self).last_kwargs = dict(kwargs)
 
-    def get(self, url: str) -> str:  # noqa: ARG002 - spy
+    def get(self, url: str) -> str:
         return ""
 
     def map(self, fn, urls):  # type: ignore[no-untyped-def]
@@ -585,13 +585,13 @@ class TestScrapeConcurrencyIntegration:
         # scrape_all_events will call get(EVENT_LIST_URL) -> "" which then
         # trips parse_event_list(min_events=1) -> ValueError. That's fine;
         # we only care about the ScraperClient(...) kwargs captured by the spy.
-        with pytest.raises(Exception):  # noqa: BLE001, PT011
+        with pytest.raises(Exception):
             ingest_mod.scrape_all_events(session=None)  # type: ignore[arg-type]
 
         assert _SpyClient.last_kwargs.get("workers") == 4
 
         # Override path: workers=7 flows through.
         _SpyClient.last_kwargs = {}
-        with pytest.raises(Exception):  # noqa: BLE001, PT011
+        with pytest.raises(Exception):
             ingest_mod.scrape_all_events(session=None, workers=7)  # type: ignore[arg-type]
         assert _SpyClient.last_kwargs.get("workers") == 7

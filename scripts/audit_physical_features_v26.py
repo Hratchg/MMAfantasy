@@ -30,7 +30,6 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -348,7 +347,7 @@ def _load_db_fighter_cohorts(
 def run(
     *,
     dry_run: bool,
-    database_url: Optional[str] = None,
+    database_url: str | None = None,
     out_path: Path = RESULTS_PATH,
 ) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -373,7 +372,7 @@ def run(
     return 0
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     grp = parser.add_mutually_exclusive_group(required=True)
     grp.add_argument("--dry-run", action="store_true")

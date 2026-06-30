@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import date
 
-import pytest
 from typer.testing import CliRunner
 
 from ufc_prediction.cli.main import app

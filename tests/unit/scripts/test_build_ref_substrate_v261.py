@@ -68,7 +68,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 # Direct import from scripts/ — Task 1 deliverable. Tests collect-fail with
 # ImportError until the script exists (RED phase contract).
-from build_ref_substrate_v261 import (  # noqa: E402
+from build_ref_substrate_v261 import (
     PROTECTED_OUTPUTS,
     RANDOM_15PCT_SEED,
     REF_FEATURE_COLUMNS,
@@ -79,8 +79,8 @@ from build_ref_substrate_v261 import (  # noqa: E402
     main,
 )
 
-from ufc_prediction.ml.gate_verifier import EvalSlice  # noqa: E402
-from ufc_prediction.ml.substrate_loader import load_substrate_snapshot  # noqa: E402
+from ufc_prediction.ml.gate_verifier import EvalSlice
+from ufc_prediction.ml.substrate_loader import load_substrate_snapshot
 
 # ── Shared fixture ────────────────────────────────────────────────────────
 
@@ -200,8 +200,8 @@ def test_feature_col_0_is_xgb_v2_refv2_oof_not_canonical() -> None:
         f"(candidate-aligned), got {REF_FEATURE_COLUMNS[0]!r}"
     )
     assert REF_FEATURE_COLUMNS[0] != "xgb_oof_prob", (
-        f"REF_FEATURE_COLUMNS[0] must NOT be the canonical name "
-        f"'xgb_oof_prob' — col[0] swap is the substrate-drift signal"
+        "REF_FEATURE_COLUMNS[0] must NOT be the canonical name "
+        "'xgb_oof_prob' — col[0] swap is the substrate-drift signal"
     )
 
 
@@ -273,8 +273,9 @@ def test_builder_is_deterministic_across_simulated_calendar_drift(
     between two builds; if CR-03 is in place, the inner ``_FixedDate`` patch
     wins and both builds match.
     """
-    import compose_v25_travel as _cv  # type: ignore[import-not-found]
     from datetime import date as _date
+
+    import compose_v25_travel as _cv  # type: ignore[import-not-found]
 
     # First build: monkeypatch ``date`` so .today() returns 2025-01-15.
     class _Today2025_01_15(_date):
@@ -344,7 +345,7 @@ def test_coverage_gate_fires_when_unknown_exceeds_threshold(
         lambda _: "UNKNOWN",
     )
     # Sanity: the threshold constant exists and is the expected value.
-    assert UNKNOWN_BUCKET_MAX_PROPORTION == pytest.approx(0.20)
+    assert pytest.approx(0.20) == UNKNOWN_BUCKET_MAX_PROPORTION
 
     target = tmp_path / "should_block.parquet"
     with pytest.raises(RuntimeError, match="coverage gate"):

@@ -418,7 +418,7 @@ def evaluate_domain_brier(
 
     Returns dict with attribution_config, brier_score, n_test_fights.
     """
-    from ufc_prediction.elo.domain import DomainEloComputer, _FINISH_RATIOS
+    from ufc_prediction.elo.domain import _FINISH_RATIOS, DomainEloComputer
 
     config = elo_config or EloConfig()
 

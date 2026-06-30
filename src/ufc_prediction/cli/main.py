@@ -660,7 +660,7 @@ _ensure_scripts_on_path()
 # Module-level import so unittest.mock.patch("...scripts.scrape_referees_full.main")
 # can resolve and substitute the driver entry-point during tests.
 # Use importlib because `scripts/` lacks __init__.py and isn't a real package.
-import importlib as _importlib  # noqa: E402
+import importlib as _importlib
 
 _scrape_referees_full = _importlib.import_module("scrape_referees_full")
 
@@ -1212,7 +1212,7 @@ def backtest_params(
                 round_stats = load_round_stats_by_fight(session)
                 console.print("\n[bold]Domain Attribution Backtest (25 configs)...[/bold]")
 
-                # noqa: DEBUT-V25 -- backtest path intentionally unseeded for
+                # DEBUT-V25 -- backtest path intentionally unseeded for
                 # v2.3-baseline comparability. Phase 43 backtest-vs-prod
                 # comparisons need a constant 1500-default substrate so the
                 # backtest grid search isolates domain-attribution params from
@@ -2141,7 +2141,8 @@ def gate_verify(
 
     Contract sources:
       - Verifier contract: ``.planning/gate_methodology_v2.6.md`` §6.
-      - CLI output surface: ``.planning/phases/63-substrate-snapshot-loader-crit-v261-01/63-CONTEXT.md`` §D-04.
+      - CLI output surface:
+        ``.planning/phases/63-substrate-snapshot-loader-crit-v261-01/63-CONTEXT.md`` §D-04.
 
     Phase 75 METH-V27-02 (Plan 75-03): ``--dual-substrate`` extends this
     command with the v2.7 dual-test methodology. When ``--dual-substrate``
@@ -2175,8 +2176,8 @@ def gate_verify(
 
     if dual_substrate:
         # All four guard clauses above confirm both substrate paths are set.
-        assert candidate_substrate is not None  # noqa: S101 — type narrowing
-        assert canonical_substrate is not None  # noqa: S101 — type narrowing
+        assert candidate_substrate is not None
+        assert canonical_substrate is not None
         _gate_verify_dual_substrate(
             candidate=candidate,
             canonical=canonical,
@@ -2192,7 +2193,7 @@ def gate_verify(
     # ``substrate_parquet`` parameter (Plan 75-03 D-04 backward-compat
     # promotion to optional). The narrowing assertion below makes mypy-strict
     # happy without altering runtime behavior.
-    assert substrate_parquet is not None  # noqa: S101 — type narrowing
+    assert substrate_parquet is not None
     # Function-scope imports keep module-load cheap and mirror the
     # gate_recalib pattern (load_gate_contract is imported inside the
     # function body, not at module top-level).

@@ -35,7 +35,6 @@ from ufc_prediction.api.rate_limit import (
     register_exempt_routes_on_limiter,
 )
 
-
 _FAKE_PREDICT_RESULT = {
     "fighter_a": "Khabib Nurmagomedov",
     "fighter_b": "Conor McGregor",

@@ -72,11 +72,9 @@ import logging
 import re
 import sys
 import time
-from dataclasses import asdict, dataclass, field
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
-
 
 # ── Locked constants (D-01..D-06, D-13) ──────────────────────────────────
 
@@ -153,8 +151,7 @@ def _stratified_sample(df, n: int, seed: int):
     Returns:
         pandas.DataFrame of length ``n``, with index reset.
     """
-    import pandas as pd  # noqa: PLC0415 — lazy import; keeps test cost low
-    from sklearn.model_selection import train_test_split  # noqa: PLC0415
+    from sklearn.model_selection import train_test_split
 
     if n >= len(df):
         return df.reset_index(drop=True)
@@ -236,7 +233,7 @@ def _load_or_fetch_html(client, sherdog_url: str) -> str | None:
     if cache_path.exists():
         return cache_path.read_text(encoding="utf-8")
     # Cache miss — fetch via _safe_fetch_sherdog sentinel-tuple wrapper.
-    from ufc_prediction.scraper.sherdog import _safe_fetch_sherdog  # noqa: PLC0415
+    from ufc_prediction.scraper.sherdog import _safe_fetch_sherdog
 
     _, html, exc = _safe_fetch_sherdog(client, sherdog_url)
     if exc is not None or html is None:
@@ -262,12 +259,12 @@ def _load_fighters_with_strata(session):
         pandas.DataFrame columns: fighter_id, sherdog_url, last_weight_class,
         is_active, strat_key.
     """
-    import pandas as pd  # noqa: PLC0415
-    from sqlalchemy import or_, select  # noqa: PLC0415
+    import pandas as pd
+    from sqlalchemy import or_, select
 
-    from ufc_prediction.models.event import Event  # noqa: PLC0415
-    from ufc_prediction.models.fight import Fight  # noqa: PLC0415
-    from ufc_prediction.models.fighter import Fighter  # noqa: PLC0415
+    from ufc_prediction.models.event import Event
+    from ufc_prediction.models.fight import Fight
+    from ufc_prediction.models.fighter import Fighter
 
     today = date.today()
     cutoff = today - timedelta(days=ACTIVE_WINDOW_DAYS)
@@ -347,7 +344,7 @@ def _compute_top30(
     approximate fight count as fighter count × 1 for the audit). A future
     Phase 22 full-corpus scrape would join Fight rows for true coverage.
     """
-    from collections import defaultdict  # noqa: PLC0415
+    from collections import defaultdict
 
     bucket: dict[str, dict[str, Any]] = defaultdict(
         lambda: {"fight_count": 0, "alias_variations": set()}
@@ -447,7 +444,7 @@ def main() -> int:
     output_path = Path(args.output_path)
     logging.basicConfig(level=logging.INFO, format="[audit-camp] %(message)s")
 
-    spike_started = datetime.now(timezone.utc)
+    spike_started = datetime.now(UTC)
 
     # ── AF startup assertions (D-13: thresholds frozen BEFORE live HTTP) ──
     if SAMPLE_SIZE != 200:
@@ -480,9 +477,9 @@ def main() -> int:
     print("[audit-camp] AF OK: SAMPLE_SIZE=200, RANDOM_STATE=42, thresholds locked.")
 
     # ── Load fighters + strata from DB ────────────────────────────────────
-    from ufc_prediction.db.session import SessionLocal  # noqa: PLC0415
-    from ufc_prediction.scraper.client import ScraperClient  # noqa: PLC0415
-    from ufc_prediction.scraper.sherdog import (  # noqa: PLC0415
+    from ufc_prediction.db.session import SessionLocal
+    from ufc_prediction.scraper.client import ScraperClient
+    from ufc_prediction.scraper.sherdog import (
         parse_association_from_html,
     )
 
@@ -604,7 +601,7 @@ def main() -> int:
         stratification_breakdown=stratification_breakdown,
         risk_flags=risk_flags,
     )
-    spike_finished = datetime.now(timezone.utc)
+    spike_finished = datetime.now(UTC)
 
     # ── Final 5-line stdout summary (CONTEXT.md Discretion) ───────────────
     print(

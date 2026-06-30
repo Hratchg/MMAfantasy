@@ -132,7 +132,7 @@ def get_fighter_detail(
         select(func.count())
         .select_from(Fight)
         .where(fight_filter)
-        .where(Fight.winner_id != None)  # noqa: E711
+        .where(Fight.winner_id.is_not(None))
         .where(Fight.winner_id != fighter_id)
     )
     losses = session.scalar(losses_stmt) or 0

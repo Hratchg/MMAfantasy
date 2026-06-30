@@ -69,10 +69,10 @@ from ufc_prediction.ml.evaluator import (
 )
 
 __all__ = [
-    "bootstrap_resample",
-    "multi_seed_metrics",
     "aggregate_variance",
     "assert_distinct_seed_brier",
+    "bootstrap_resample",
+    "multi_seed_metrics",
 ]
 
 

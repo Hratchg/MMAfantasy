@@ -27,7 +27,6 @@ from __future__ import annotations
 from datetime import date
 from typing import Any, Literal
 
-
 # ── Method-string → category map (Q2 RESOLVED) ──────────────────────────────
 
 _FINISH_METHODS: frozenset[str] = frozenset(

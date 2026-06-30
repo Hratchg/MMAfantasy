@@ -6,12 +6,10 @@ Mirrors tests/integration/test_live_odds_acceptance.py fixture pattern.
 
 from __future__ import annotations
 
-import json
 from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import joblib
 import numpy as np
 import pytest
 from sklearn.calibration import CalibratedClassifierCV

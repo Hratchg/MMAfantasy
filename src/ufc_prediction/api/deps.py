@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from ufc_prediction.db.session import SessionLocal
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[Session]:
     """Yield a database session, closing it when the request completes."""
     session = SessionLocal()
     try:

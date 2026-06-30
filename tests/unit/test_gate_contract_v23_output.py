@@ -17,9 +17,6 @@ per-slice thresholds + aggregated variance dicts. Verifies:
 from __future__ import annotations
 
 import json
-from pathlib import Path
-
-import pytest
 
 
 def _synthetic_per_slice_above_floor():

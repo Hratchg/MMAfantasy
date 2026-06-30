@@ -40,8 +40,8 @@ class TestOptunaObjective:
 
     def test_objective_returns_float(self, small_synthetic_data):
         """Optuna objective function returns a float Brier score."""
-        from ufc_prediction.ml.trainer import ModelTrainer
         from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
 
         X, y = small_synthetic_data
         config = MLConfig(n_optuna_trials=1, cv_splits=2)
@@ -57,8 +57,8 @@ class TestOptunaObjective:
 
     def test_objective_uses_timeseries_split(self, small_synthetic_data):
         """Verify TimeSeriesSplit is used in the objective (per D-06)."""
-        from ufc_prediction.ml.trainer import ModelTrainer
         from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
 
         X, y = small_synthetic_data
         config = MLConfig(n_optuna_trials=1, cv_splits=3)
@@ -74,8 +74,8 @@ class TestOptunaObjective:
 
     def test_xgb_uses_binary_logistic(self, small_synthetic_data):
         """XGBClassifier uses objective='binary:logistic' (per D-05)."""
-        from ufc_prediction.ml.trainer import ModelTrainer
         from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
 
         X, y = small_synthetic_data
         config = MLConfig(n_optuna_trials=1, cv_splits=2)
@@ -96,8 +96,8 @@ class TestTrainingPipeline:
 
     def test_train_returns_calibrated_model(self, synthetic_train_data):
         """Training pipeline produces a CalibratedClassifierCV model."""
-        from ufc_prediction.ml.trainer import ModelTrainer
         from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
 
         X, y = synthetic_train_data
         config = MLConfig(n_optuna_trials=3, cv_splits=2)
@@ -109,8 +109,8 @@ class TestTrainingPipeline:
 
     def test_train_returns_best_params_dict(self, synthetic_train_data):
         """Training returns a dict of best hyperparameters."""
-        from ufc_prediction.ml.trainer import ModelTrainer
         from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
 
         X, y = synthetic_train_data
         config = MLConfig(n_optuna_trials=3, cv_splits=2)
@@ -125,8 +125,8 @@ class TestTrainingPipeline:
 
     def test_train_returns_feature_importances(self, synthetic_train_data):
         """Training returns feature importances dict keyed by FEATURE_COLUMNS."""
-        from ufc_prediction.ml.trainer import ModelTrainer
         from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
 
         X, y = synthetic_train_data
         config = MLConfig(n_optuna_trials=3, cv_splits=2)
@@ -141,8 +141,8 @@ class TestTrainingPipeline:
 
     def test_calibrated_model_predict_proba(self, synthetic_train_data):
         """Calibrated model's predict_proba returns probabilities in [0, 1]."""
-        from ufc_prediction.ml.trainer import ModelTrainer
         from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
 
         X, y = synthetic_train_data
         config = MLConfig(n_optuna_trials=3, cv_splits=2)
@@ -161,8 +161,8 @@ class TestTrainingPipeline:
 
         Per RESEARCH Pitfall 6: calibration data must be separate from training data.
         """
-        from ufc_prediction.ml.trainer import ModelTrainer
         from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
 
         X, y = synthetic_train_data
         config = MLConfig(n_optuna_trials=3, cv_splits=2)
@@ -176,8 +176,8 @@ class TestTrainingPipeline:
 
     def test_feature_importance_extraction(self):
         """Feature importance dict can be extracted from the base XGBoost estimator."""
-        from ufc_prediction.ml.trainer import ModelTrainer
         from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
 
         # Use data with actual signal so importance is non-zero
         rng = np.random.RandomState(42)
@@ -203,8 +203,8 @@ class TestTrainMultiSeed:
 
     def test_returns_models_params_importances_seeds(self, synthetic_train_data):
         """train_multi_seed returns dict with models/params/importances/seeds."""
-        from ufc_prediction.ml.trainer import ModelTrainer
         from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
 
         X, y = synthetic_train_data
         config = MLConfig(n_optuna_trials=1, cv_splits=2)
@@ -224,6 +224,7 @@ class TestTrainMultiSeed:
     def test_default_seeds_are_d16(self):
         """Default seeds are [42, 43, 44, 45, 46] per CONTEXT.md D-16."""
         import inspect
+
         from ufc_prediction.ml.trainer import ModelTrainer
 
         sig = inspect.signature(ModelTrainer.train_multi_seed)
@@ -236,8 +237,8 @@ class TestTrainMultiSeed:
         Implemented as a try/finally block so the config (immutable) is
         restored to its pre-call value even if a seed throws.
         """
-        from ufc_prediction.ml.trainer import ModelTrainer
         from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
 
         X, y = synthetic_train_data
         config = MLConfig(n_optuna_trials=1, cv_splits=2, random_seed=777)
@@ -249,6 +250,7 @@ class TestTrainMultiSeed:
     def test_back_compat_train_signature_unchanged(self):
         """Existing train(X, y) signature is preserved for back-compat."""
         import inspect
+
         from ufc_prediction.ml.trainer import ModelTrainer
 
         sig = inspect.signature(ModelTrainer.train)

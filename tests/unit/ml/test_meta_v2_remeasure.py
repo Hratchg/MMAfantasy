@@ -16,7 +16,6 @@ from pathlib import Path
 
 import pytest
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 META_META_PATH = PROJECT_ROOT / "models" / "meta" / "meta_v2_meta.json"
 META_JOBLIB_PATH = PROJECT_ROOT / "models" / "meta" / "meta_v2.joblib"

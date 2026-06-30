@@ -25,11 +25,8 @@ from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 from ufc_prediction.scraper.bfo_ingest import BFOOddsIngester
 from ufc_prediction.scraper.bfo_models import BFOOddsRow
-
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
 

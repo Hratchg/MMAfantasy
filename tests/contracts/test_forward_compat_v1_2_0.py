@@ -278,7 +278,7 @@ def test_v100_response_field_order_matches_declaration():
     # Extract the subset of response keys present in the v1.0.0 frozen
     # declaration, preserving the response's emission order.
     declaration_set = set(V100_DECLARED_ORDER)
-    response_v100_order = [k for k in body_v100.keys() if k in declaration_set]
+    response_v100_order = [k for k in body_v100 if k in declaration_set]
     assert response_v100_order == V100_DECLARED_ORDER, (
         f"v1.0.0 field order drifted from declaration\n"
         f"  expected: {V100_DECLARED_ORDER}\n"

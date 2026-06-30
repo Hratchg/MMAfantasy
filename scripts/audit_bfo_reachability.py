@@ -93,7 +93,7 @@ import csv
 import logging
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -103,13 +103,12 @@ from bs4 import BeautifulSoup
 from ufc_prediction.scraper.bfo_classify import (
     BFO_HOMEPAGE_TITLE,
     EVENT_NOT_FOUND_SENTINEL,
-    NON_REACHABLE_STATUSES,
-    REACHABLE as REACHABLE_STATUS,
-    classify,
     extract_title,
 )
+from ufc_prediction.scraper.bfo_classify import (
+    REACHABLE as REACHABLE_STATUS,
+)
 from ufc_prediction.scraper.bfo_scraper import BFOParseError, _check_captcha
-
 
 # ── Locked constants (D-07, D-08) ────────────────────────────────────────
 
@@ -232,7 +231,7 @@ def _probe(
             }
         )
         return base_row
-    except (httpx.TimeoutException,) as exc:
+    except httpx.TimeoutException as exc:
         elapsed = time.monotonic() - t0
         base_row.update(
             {
@@ -559,7 +558,7 @@ def _write_reachability_md(
       5. Couture–Liddell Substitution Note
       6. Risk Flags
     """
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     n_total = sum(len(rows) for rows in per_year.values())
     n_reachable = sum(
         sum(1 for r in rows if r.get("status") == REACHABLE_STATUS) for rows in per_year.values()
@@ -575,7 +574,7 @@ def _write_reachability_md(
         f"({n_reachable / n_total:.1%} if n_total>0; "
         f"captcha_hits={n_captcha})."
         if n_total > 0
-        else f"Overall: 0/0 reachable (no probes recorded).",
+        else "Overall: 0/0 reachable (no probes recorded).",
         "",
         "## Probe Methodology",
         "",
@@ -695,7 +694,7 @@ def main() -> int:
     targets_csv = Path(args.targets_csv)
     logging.basicConfig(level=logging.INFO, format="[audit-bfo] %(message)s")
 
-    spike_started = datetime.now(timezone.utc)
+    spike_started = datetime.now(UTC)
 
     # ── AF startup assertions (Pitfall #7 + D-13 carry-forward) ────────
     af_rc = _assert_locked_constants()
@@ -720,7 +719,7 @@ def main() -> int:
         return 2
 
     # ── Lazy import: ScraperClient (keeps test cost low; aligned with audit_camp_v22)
-    from ufc_prediction.scraper.client import ScraperClient  # noqa: PLC0415
+    from ufc_prediction.scraper.client import ScraperClient
 
     client = ScraperClient(
         delay=BFO_DELAY_SECONDS,
@@ -755,7 +754,7 @@ def main() -> int:
         target_rationale=target_rationale,
         risk_flags=risk_flags,
     )
-    spike_finished = datetime.now(timezone.utc)
+    spike_finished = datetime.now(UTC)
 
     # ── Final stdout summary (5+ lines per CONTEXT Claude's Discretion) ─
     n_total = sum(len(rows) for rows in per_year.values())

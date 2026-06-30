@@ -227,12 +227,12 @@ def _synthesize_13col_matrix(*, seed: int = DEFAULT_SEED) -> tuple[Any, Any]:
     """
     import datetime as _dt
 
-    import numpy as np
-
     import compose_v25_travel as _cv  # type: ignore[import-not-found]
+    import numpy as np
     from compose_v25_travel import (  # type: ignore[import-not-found]
         _build_synthetic_v25,
     )
+
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
 
     class _FixedDate(_dt.date):
@@ -280,8 +280,8 @@ def _build_live_13col_matrix() -> tuple[Any, Any]:
     Synthetic mode is sufficient for the test suite + canonical demonstration.
     """
     import numpy as np
-
     import train_meta_v22 as _tm  # type: ignore[import-not-found]
+
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
 
     X_v22, y, _fight_dates, fight_records = _tm._load_assembled_data_v22()
@@ -662,6 +662,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("interrupted", file=sys.stderr)
         sys.exit(130)
-    except Exception:  # noqa: BLE001
+    except Exception:
         traceback.print_exc()
         sys.exit(1)

@@ -44,14 +44,13 @@ import csv
 import logging
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator, Optional
 
 from ufc_prediction.scraper.bfo_matcher import normalize_name
 from ufc_prediction.scraper.bfo_scraper import (
     BFO_BASE,
-    EVENT_SLUG_ID_PATTERN,
     MIN_FUZZ_SCORE,
     SEARCH_URL,
     find_bfo_fighter_url,
@@ -142,7 +141,7 @@ def _delta_fighters(
     return [f for f in db_fighters if (f.source, str(f.id)) not in seen]
 
 
-def _fetch_search_html(fighter_name: str, http_client) -> Optional[str]:
+def _fetch_search_html(fighter_name: str, http_client) -> str | None:
     """Call BFO ``/search?query=<normalized-name>`` and return HTML body.
 
     The caller owns rate-limiting + captcha backoff; this is a thin shim
@@ -152,12 +151,12 @@ def _fetch_search_html(fighter_name: str, http_client) -> Optional[str]:
     url = SEARCH_URL.format(query=normalize_name(fighter_name))
     try:
         return http_client.get(url)
-    except Exception as exc:  # noqa: BLE001 - defensive boundary
+    except Exception as exc:
         logger.warning("BFO search fetch failed for %r: %s", fighter_name, exc)
         return None
 
 
-def _extract_bfo_numeric_id(profile_url: str) -> Optional[str]:
+def _extract_bfo_numeric_id(profile_url: str) -> str | None:
     """Extract the numeric BFO id from ``https://.../fighters/<Slug>-<N>``.
 
     Mirrors the slug-id grammar of ``EVENT_SLUG_ID_PATTERN`` for events,
@@ -175,8 +174,8 @@ class MatchResult:
     """One match attempt outcome."""
 
     db_fighter: DBFighter
-    matched_url: Optional[str]
-    bfo_numeric_id: Optional[str]
+    matched_url: str | None
+    bfo_numeric_id: str | None
 
     @property
     def matched(self) -> bool:
@@ -322,7 +321,7 @@ class _DryRunHTTPClient:
     """Returns a synthetic search HTML body for the dry-run fixture."""
 
     @staticmethod
-    def get(url: str) -> Optional[str]:
+    def get(url: str) -> str | None:
         # Single hit for the known fighter; empty for unknown.
         lc = url.lower()
         if "jon jones" in lc or "jon+jones" in lc or "jon-jones" in lc:
@@ -339,7 +338,7 @@ def run(
     csv_path: Path = DEFAULT_CSV_PATH,
     conflicts_path: Path = DEFAULT_CONFLICTS_PATH,
     merge_log_path: Path = DEFAULT_MERGE_LOG_PATH,
-    database_url: Optional[str] = None,
+    database_url: str | None = None,
 ) -> int:
     """Return process exit code (0 clean / 1 conflicts / 2 error)."""
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -419,7 +418,7 @@ def run(
     return 0
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     grp = parser.add_mutually_exclusive_group(required=True)
     grp.add_argument("--dry-run", action="store_true")

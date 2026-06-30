@@ -24,7 +24,6 @@ from pathlib import Path
 
 import pytest
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 VERIFY_SCRIPT_PATH = PROJECT_ROOT / "scripts" / "verify_meta_v3_gate_v25.py"
 

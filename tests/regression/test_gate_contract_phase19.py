@@ -6,8 +6,6 @@ D-07(P19) carry-forward of Pitfall #16: any drift in gate_contract.json's formul
 import json
 import pathlib
 
-import pytest
-
 
 def test_gate_contract_thresholds_are_v2_1_for_phase19():
     """D-06(P18): gate_contract.json must contain Phase-17-derived thresholds.

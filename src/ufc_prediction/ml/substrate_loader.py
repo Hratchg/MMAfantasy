@@ -35,7 +35,6 @@ from typing import Any
 
 from ufc_prediction.ml.gate_verifier import EvalSlice
 
-
 # ── Module-private schema constants ───────────────────────────────────────
 #
 # Locked parquet schema per CONTEXT §D-01 (flat per-prediction rows).

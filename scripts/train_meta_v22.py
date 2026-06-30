@@ -33,7 +33,9 @@ from pathlib import Path
 import numpy as np
 
 # Phase 26 constants
-EXPECTED_XGB_V2_SHA256: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+EXPECTED_XGB_V2_SHA256: str = (
+    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+)
 EXPECTED_XGB_V2_BEST_PARAMS: dict = {
     "n_estimators": 253,
     "max_depth": 7,
@@ -49,9 +51,7 @@ EXPECTED_XGB_V2_N_FEATURES: int = 72
 EXPECTED_CUTOFF_DATE: str = "2023-01-01"
 SEEDS_DEFAULT: tuple[int, ...] = (42, 43, 44, 45, 46)
 PER_SLICE_KEYS: tuple[str, ...] = (
-    "most_recent_12mo",
-    "most_recent_24mo",
-    "random_15pct",
+    "most_recent_12mo", "most_recent_24mo", "random_15pct",
 )
 STEPWISE_HURDLE: float = 0.003  # D-13(v2.0) — locked; AF-10 ban on tuning downward
 
@@ -71,7 +71,8 @@ def assert_phase26_invariants() -> None:
     """AUDIT-01 + AF-1 + Pitfall B + AF-2 invariant check."""
     sha_actual = hashlib.sha256(Path("models/xgb_v2.joblib").read_bytes()).hexdigest()
     assert sha_actual == EXPECTED_XGB_V2_SHA256, (
-        f"AUDIT-01 violation: xgb_v2 SHA drift. got={sha_actual} expected={EXPECTED_XGB_V2_SHA256}"
+        f"AUDIT-01 violation: xgb_v2 SHA drift. got={sha_actual} "
+        f"expected={EXPECTED_XGB_V2_SHA256}"
     )
     meta = json.loads(Path("models/xgb_v2_meta.json").read_text(encoding="utf-8"))
     assert meta["n_features"] == EXPECTED_XGB_V2_N_FEATURES, (
@@ -122,21 +123,15 @@ def _load_assembled_data_v22() -> tuple[np.ndarray, np.ndarray, np.ndarray, list
         session.close()
 
     division_medians = compute_division_medians(
-        fighter_physicals,
-        fight_records,
-        cutoff_date_obj,
+        fighter_physicals, fight_records, cutoff_date_obj,
     )
 
     config = MLConfig(cutoff_date=EXPECTED_CUTOFF_DATE)
     assembler = FeatureMatrixAssembler(config)
     # v2.2 feature_set: returns 90-col matrix (FEATURE_COLUMNS_V22).
     X_v22, y, fight_dates = assembler.assemble(
-        fight_records,
-        elo_features,
-        computed_features,
-        fighter_physicals,
-        division_medians,
-        round_stats,
+        fight_records, elo_features, computed_features,
+        fighter_physicals, division_medians, round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
         feature_set="v2.2",
@@ -162,9 +157,8 @@ def _build_synthetic_data_v22(n: int = 600):
         elif i < 2 * n // 3:
             d = date(2024, 1 + (i % 12), 1 + (i % 28))
         else:
-            d = today.replace(day=max(1, (i % 28))) - _datetime.timedelta(
-                days=int(rng.integers(1, 364))
-            )
+            d = today.replace(day=max(1, (i % 28))) - \
+                _datetime.timedelta(days=int(rng.integers(1, 364)))
         dates.append(d)
         fight_ids.append(i)
     return X_v22, y, np.array(dates), fight_ids, base_cutoff, today
@@ -187,9 +181,7 @@ def _compute_elo_prob_for_fight(fight: dict, elo_features: dict) -> float:
 
 
 def _build_meta_eval_xgb_probs(
-    base_estimator,
-    X_train_72: np.ndarray,
-    y_train: np.ndarray,
+    base_estimator, X_train_72: np.ndarray, y_train: np.ndarray,
     X_eval_72: np.ndarray,
 ) -> np.ndarray:
     """Single base XGB on full meta_train; return eval probs.
@@ -203,7 +195,9 @@ def _build_meta_eval_xgb_probs(
 def _write_sha_artifact(path: Path) -> str:
     """Read xgb_v2.joblib SHA, assert it equals baseline, write to ``path``."""
     sha = hashlib.sha256(Path("models/xgb_v2.joblib").read_bytes()).hexdigest()
-    assert sha == EXPECTED_XGB_V2_SHA256, f"AUDIT-01 violation: xgb_v2 SHA drifted to {sha[:12]}..."
+    assert sha == EXPECTED_XGB_V2_SHA256, (
+        f"AUDIT-01 violation: xgb_v2 SHA drifted to {sha[:12]}..."
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(sha + "\n", encoding="utf-8")
     return sha
@@ -234,12 +228,11 @@ def _persist_candidate_and_contract(
     )
 
     input_hash = compute_meta_input_distribution_hash(
-        X_meta_train,
-        y_meta_train,
-        xgb_oof_aligned,
+        X_meta_train, y_meta_train, xgb_oof_aligned,
     )
     oof_parquet_sha = (
-        hashlib.sha256(cache_path.read_bytes()).hexdigest() if cache_path.exists() else "0" * 64
+        hashlib.sha256(cache_path.read_bytes()).hexdigest()
+        if cache_path.exists() else "0" * 64
     )
 
     META_DIR.mkdir(parents=True, exist_ok=True)
@@ -254,9 +247,7 @@ def _persist_candidate_and_contract(
         meta_oof_parquet_sha256=oof_parquet_sha,
         meta_learner_brier_delta_vs_logistic=0.0,
         best_params={
-            "C": 1.0,
-            "penalty": "l2",
-            "solver": "lbfgs",
+            "C": 1.0, "penalty": "l2", "solver": "lbfgs",
             "PolynomialFeatures": "degree=2 interaction_only=True include_bias=False",
         },
         metrics={
@@ -290,8 +281,7 @@ def _persist_candidate_and_contract(
     }
     contract_path = META_DIR / "meta_v2-contract.json"
     contract_path.write_text(
-        json.dumps(contract, indent=2) + "\n",
-        encoding="utf-8",
+        json.dumps(contract, indent=2) + "\n", encoding="utf-8",
     )
     return model_path, meta_path, contract_path
 
@@ -338,12 +328,9 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
     if args.dry_run:
         X_v22, y, dates, fight_ids, base_cutoff, today = _build_synthetic_data_v22()
         fight_records = [
-            {
-                "fight_id": fight_ids[i],
-                "event_date": dates[i].item() if hasattr(dates[i], "item") else dates[i],
-                "fighter_a_id": i * 2,
-                "fighter_b_id": i * 2 + 1,
-            }
+            {"fight_id": fight_ids[i],
+             "event_date": dates[i].item() if hasattr(dates[i], "item") else dates[i],
+             "fighter_a_id": i * 2, "fighter_b_id": i * 2 + 1}
             for i in range(len(fight_ids))
         ]
         fight_dates = dates
@@ -400,9 +387,7 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
         "TimeSeriesSplit, n_jobs=1)..."
     )
     xgb_oof_prob, oof_meta = generate_oof_predictions(
-        X_oof,
-        y[meta_train_idx],
-        fight_dates[meta_train_idx],
+        X_oof, y[meta_train_idx], fight_dates[meta_train_idx],
         base_trainer=None,  # uses xgb_v2 best_params (AF-1)
         cache_path=META_OOF_PARQUET_PATH,
         force_rebuild=args.no_cache_oof,
@@ -423,23 +408,22 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
     else:
         from ufc_prediction.db.session import SessionLocal
         from ufc_prediction.ml.queries import load_elo_features
-
         _session = SessionLocal()
         try:
             _elo_features = load_elo_features(_session)
         finally:
             _session.close()
-        elo_prob_train = np.array(
-            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_train_idx]
-        )
-        elo_prob_eval = np.array(
-            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_eval_idx]
-        )
+        elo_prob_train = np.array([
+            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
+            for i in meta_train_idx
+        ])
+        elo_prob_eval = np.array([
+            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
+            for i in meta_eval_idx
+        ])
 
     X_meta_train = build_meta_features_v22(
-        xgb_oof_aligned,
-        elo_prob_train,
-        X_v22[meta_train_idx],
+        xgb_oof_aligned, elo_prob_train, X_v22[meta_train_idx],
     )
     y_meta_train = y[meta_train_idx]
 
@@ -448,14 +432,11 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
     base_estimator = _make_oof_estimator(seed=42)
     xgb_eval_prob = _build_meta_eval_xgb_probs(
         base_estimator,
-        X_v22[meta_train_idx][:, :72],
-        y[meta_train_idx],
+        X_v22[meta_train_idx][:, :72], y[meta_train_idx],
         X_v22[meta_eval_idx][:, :72],
     )
     X_meta_eval = build_meta_features_v22(
-        xgb_eval_prob,
-        elo_prob_eval,
-        X_v22[meta_eval_idx],
+        xgb_eval_prob, elo_prob_eval, X_v22[meta_eval_idx],
     )
     y_meta_eval = y[meta_eval_idx]
     fight_dates_eval = fight_dates[meta_eval_idx]
@@ -477,12 +458,12 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
     # D-04: window boundaries (12mo / 24mo / random_15pct) unchanged.
     NAN_DROP_POLICY = "per_feature_strict_baseline"
     BASELINE_COLS = ("xgb_oof_prob", "elo_prob")
-    NON_BASELINE_IDX = [i for i, c in enumerate(META_V22_FEATURE_COLUMNS) if c not in BASELINE_COLS]
+    NON_BASELINE_IDX = [
+        i for i, c in enumerate(META_V22_FEATURE_COLUMNS) if c not in BASELINE_COLS
+    ]
 
     eval_mask = apply_nan_drop_policy(
-        X_meta_eval,
-        META_V22_FEATURE_COLUMNS,
-        policy=NAN_DROP_POLICY,
+        X_meta_eval, META_V22_FEATURE_COLUMNS, policy=NAN_DROP_POLICY,
     )
     eval_dropped = int((~eval_mask).sum())
     if eval_dropped:
@@ -494,7 +475,9 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
         )
     # Capture fight_ids per surviving eval row BEFORE we lose the meta_eval
     # ordering (used by the per-slice fight_id audit dump below).
-    meta_eval_fight_ids_pre_drop = [fight_records[i]["fight_id"] for i in meta_eval_idx]
+    meta_eval_fight_ids_pre_drop = [
+        fight_records[i]["fight_id"] for i in meta_eval_idx
+    ]
     meta_eval_fight_ids_surviving = [
         meta_eval_fight_ids_pre_drop[i] for i, keep in enumerate(eval_mask) if keep
     ]
@@ -506,9 +489,7 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
     # drops internally, but we need consistent counts for save_meta_model
     # input_hash; trim to non-baseline-NaN rows here so subsequent helpers see clean shapes.
     train_mask = apply_nan_drop_policy(
-        X_meta_train,
-        META_V22_FEATURE_COLUMNS,
-        policy=NAN_DROP_POLICY,
+        X_meta_train, META_V22_FEATURE_COLUMNS, policy=NAN_DROP_POLICY,
     )
     if (~train_mask).sum():
         print(
@@ -538,9 +519,10 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
         eval_nan = np.isnan(X_meta_eval[:, idx])
         if eval_nan.any():
             X_meta_eval[eval_nan, idx] = median_val
-    n_train_imputed_cells = int(
-        sum(int(np.isnan(X_meta_train[train_mask][:, idx]).sum()) for idx in NON_BASELINE_IDX)
-    )
+    n_train_imputed_cells = int(sum(
+        int(np.isnan(X_meta_train[train_mask][:, idx]).sum())
+        for idx in NON_BASELINE_IDX
+    ))
     print(
         f"[train_meta_v22] non-baseline NaN imputed (train-medians) on "
         f"{len(NON_BASELINE_IDX)} cols; n_imputed_cells={n_train_imputed_cells}"
@@ -556,10 +538,7 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
     for seed in args.seeds:
         meta = MetaLearnerLogistic(random_state=seed).fit(X_meta_train_clean, y_meta_train_clean)
         per_seed_results[seed] = evaluate_per_slice(
-            meta,
-            X_meta_eval,
-            y_meta_eval,
-            fight_dates_eval,
+            meta, X_meta_eval, y_meta_eval, fight_dates_eval,
         )
         per_seed_meta[seed] = meta
 
@@ -572,7 +551,7 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
     xgb_v2_baseline_brier = {
         "most_recent_12mo": contract.per_slice["most_recent_12mo"].median_brier_xgb_v2,
         "most_recent_24mo": contract.per_slice["most_recent_24mo"].median_brier_xgb_v2,
-        "random_15pct": contract.per_slice["random_15pct"].median_brier_xgb_v2,
+        "random_15pct":     contract.per_slice["random_15pct"].median_brier_xgb_v2,
     }
     hurdle_failures: list[str] = []
     brier_delta = {}
@@ -630,10 +609,13 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
     per_slice_fight_ids = {
         "most_recent_12mo": [int(x) for x in surviving_arr[mask_12mo][:5000]],
         "most_recent_24mo": [int(x) for x in surviving_arr[mask_24mo][:5000]],
-        "random_15pct": [int(x) for x in surviving_arr[mask_random][:5000]],
+        "random_15pct":     [int(x) for x in surviving_arr[mask_random][:5000]],
     }
     per_slice_n = {k: len(v) for k, v in per_slice_fight_ids.items()}
-    print(f"[train_meta_v22] per-slice surviving fight counts (D-06 floor=500): {per_slice_n}")
+    print(
+        f"[train_meta_v22] per-slice surviving fight counts (D-06 floor=500): "
+        f"{per_slice_n}"
+    )
 
     # D-06 HALT-AND-DECIDE: if any slice < 500, emit operator artifact.
     # Under autonomous mode (Plan 29-02 ran via /gsd-autonomous), option (a)
@@ -644,7 +626,8 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
     below_floor = {s: n for s, n in per_slice_n.items() if n < 500}
     if below_floor:
         halt_path = Path(
-            ".planning/phases/29-camp-re-audit-eval-set-infrastructure/29-02-HALT-AND-DECIDE.md"
+            ".planning/phases/29-camp-re-audit-eval-set-infrastructure/"
+            "29-02-HALT-AND-DECIDE.md"
         )
         halt_path.parent.mkdir(parents=True, exist_ok=True)
         halt_path.write_text(
@@ -737,7 +720,6 @@ def _read_xgb_v2_sha() -> str:
 
 # ─────────────────────────── Stepwise mode (Plan 26-03) ────────────────────────
 
-
 def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
     """REF + TRAVEL forward-stepwise verdicts (Plan 26-03 Task 2)."""
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
@@ -768,7 +750,9 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
         }
         baseline_source = "META_V22_CALIB_CLEARED"
     else:
-        baseline_brier_per_slice = {slc: float(xgb_v2_baseline[slc]) for slc in PER_SLICE_KEYS}
+        baseline_brier_per_slice = {
+            slc: float(xgb_v2_baseline[slc]) for slc in PER_SLICE_KEYS
+        }
         baseline_source = "XGB_V2"
 
     print(f"[train_meta_v22 stepwise] baseline_source={baseline_source}")
@@ -778,12 +762,9 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
     if args.dry_run:
         X_v22, y, dates, fight_ids, base_cutoff, today = _build_synthetic_data_v22()
         fight_records = [
-            {
-                "fight_id": fight_ids[i],
-                "event_date": dates[i].item() if hasattr(dates[i], "item") else dates[i],
-                "fighter_a_id": i * 2,
-                "fighter_b_id": i * 2 + 1,
-            }
+            {"fight_id": fight_ids[i],
+             "event_date": dates[i].item() if hasattr(dates[i], "item") else dates[i],
+             "fighter_a_id": i * 2, "fighter_b_id": i * 2 + 1}
             for i in range(len(fight_ids))
         ]
         fight_dates = dates
@@ -808,9 +789,7 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
     X_oof = X_v22[meta_train_idx][:, :72]
     _enforce_72col_view(X_oof)
     xgb_oof_prob, _ = generate_oof_predictions(
-        X_oof,
-        y[meta_train_idx],
-        fight_dates[meta_train_idx],
+        X_oof, y[meta_train_idx], fight_dates[meta_train_idx],
         base_trainer=None,
         cache_path=META_OOF_PARQUET_PATH,
         force_rebuild=False,
@@ -828,36 +807,32 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
     else:
         from ufc_prediction.db.session import SessionLocal
         from ufc_prediction.ml.queries import load_elo_features
-
         _session = SessionLocal()
         try:
             _elo_features = load_elo_features(_session)
         finally:
             _session.close()
-        elo_prob_train = np.array(
-            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_train_idx]
-        )
-        elo_prob_eval = np.array(
-            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_eval_idx]
-        )
+        elo_prob_train = np.array([
+            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
+            for i in meta_train_idx
+        ])
+        elo_prob_eval = np.array([
+            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
+            for i in meta_eval_idx
+        ])
 
     base_estimator = _make_oof_estimator(seed=42)
     xgb_eval_prob = _build_meta_eval_xgb_probs(
         base_estimator,
-        X_v22[meta_train_idx][:, :72],
-        y[meta_train_idx],
+        X_v22[meta_train_idx][:, :72], y[meta_train_idx],
         X_v22[meta_eval_idx][:, :72],
     )
 
     base_train_meta_v22 = build_meta_features_v22(
-        xgb_oof_aligned,
-        elo_prob_train,
-        X_v22[meta_train_idx],
+        xgb_oof_aligned, elo_prob_train, X_v22[meta_train_idx],
     )
     base_eval_meta_v22 = build_meta_features_v22(
-        xgb_eval_prob,
-        elo_prob_eval,
-        X_v22[meta_eval_idx],
+        xgb_eval_prob, elo_prob_eval, X_v22[meta_eval_idx],
     )
 
     contract = load_gate_contract(version="v2.2")
@@ -886,10 +861,7 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
     for seed in seeds:
         meta = MetaLearnerLogistic(random_state=seed).fit(X_ref_train_clean, y_ref_train_clean)
         per_seed_ref[seed] = evaluate_per_slice(
-            meta,
-            X_ref_eval_clean,
-            y_ref_eval_clean,
-            fight_dates_ref_eval,
+            meta, X_ref_eval_clean, y_ref_eval_clean, fight_dates_ref_eval,
         )
     median_ref = median_metrics(list(per_seed_ref.values()))
     ref_gate_pass, ref_gate_failures = gate_verdict(median_ref, contract)
@@ -899,8 +871,7 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
     }
     ref_hurdle_failures = [
         f"{slc}: Δ={ref_delta[slc]:.4f} < {STEPWISE_HURDLE:.3f}"
-        for slc in PER_SLICE_KEYS
-        if ref_delta[slc] < STEPWISE_HURDLE
+        for slc in PER_SLICE_KEYS if ref_delta[slc] < STEPWISE_HURDLE
     ]
     ref_clears = bool(ref_gate_pass and not ref_hurdle_failures)
 
@@ -927,7 +898,9 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
     # ── TRAVEL step ──
     # Baseline = REF candidate if REF cleared, else prior baseline (META/XGB_V2)
     if ref_clears:
-        travel_baseline = {slc: float(median_ref[slc]["brier_score"]) for slc in PER_SLICE_KEYS}
+        travel_baseline = {
+            slc: float(median_ref[slc]["brier_score"]) for slc in PER_SLICE_KEYS
+        }
         travel_baseline_source = baseline_source + "_REF_CLEARED"
     else:
         travel_baseline = dict(baseline_brier_per_slice)
@@ -956,20 +929,18 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
     y_travel_eval_clean = y[meta_eval_idx][travel_eval_mask]
     fight_dates_travel_eval = fight_dates[meta_eval_idx][travel_eval_mask]
 
-    travel_data_coverage_pct = float((~np.isnan(travel_data_train)).any(axis=1).mean())
+    travel_data_coverage_pct = float(
+        (~np.isnan(travel_data_train)).any(axis=1).mean()
+    )
 
     per_seed_travel: dict[int, dict] = {}
     if X_travel_train_clean.shape[0] > 0 and X_travel_eval_clean.shape[0] > 0:
         for seed in seeds:
             meta = MetaLearnerLogistic(random_state=seed).fit(
-                X_travel_train_clean,
-                y_travel_train_clean,
+                X_travel_train_clean, y_travel_train_clean,
             )
             per_seed_travel[seed] = evaluate_per_slice(
-                meta,
-                X_travel_eval_clean,
-                y_travel_eval_clean,
-                fight_dates_travel_eval,
+                meta, X_travel_eval_clean, y_travel_eval_clean, fight_dates_travel_eval,
             )
 
     if per_seed_travel:
@@ -981,11 +952,12 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
         }
         travel_hurdle_failures = [
             f"{slc}: Δ={travel_delta[slc]:.4f} < {STEPWISE_HURDLE:.3f}"
-            for slc in PER_SLICE_KEYS
-            if travel_delta[slc] < STEPWISE_HURDLE
+            for slc in PER_SLICE_KEYS if travel_delta[slc] < STEPWISE_HURDLE
         ]
         travel_clears = bool(travel_gate_pass and not travel_hurdle_failures)
-        travel_candidate = {slc: float(median_travel[slc]["brier_score"]) for slc in PER_SLICE_KEYS}
+        travel_candidate = {
+            slc: float(median_travel[slc]["brier_score"]) for slc in PER_SLICE_KEYS
+        }
     else:
         # Degenerate case: no rows survived after symmetric NaN-drop.
         travel_gate_pass = False
@@ -1016,8 +988,7 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
         "produced_at": datetime.now(tz=UTC).isoformat(),
     }
     TRAVEL_STEPWISE_PATH.write_text(
-        json.dumps(travel_payload, indent=2, default=str),
-        encoding="utf-8",
+        json.dumps(travel_payload, indent=2, default=str), encoding="utf-8",
     )
     print(f"[stepwise] TRAVEL_STEPWISE.json → {TRAVEL_STEPWISE_PATH} clears={travel_clears}")
 
@@ -1031,37 +1002,28 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Phase 26 META-V22 spike + stepwise")
     parser.add_argument(
-        "--mode",
-        choices=["spike", "stepwise"],
-        default="spike",
+        "--mode", choices=["spike", "stepwise"], default="spike",
         help="spike = 5-seed × 3-slice META-V22 training (Plan 26-02); "
-        "stepwise = REF + TRAVEL forward-stepwise (Plan 26-03)",
+             "stepwise = REF + TRAVEL forward-stepwise (Plan 26-03)",
     )
     parser.add_argument(
-        "--feature-set",
-        default="v2.2",
+        "--feature-set", default="v2.2",
         help="Feature set (locked at v2.2 for Phase 26)",
     )
     parser.add_argument(
-        "--seeds",
-        nargs="+",
-        type=int,
-        default=list(SEEDS_DEFAULT),
+        "--seeds", nargs="+", type=int, default=list(SEEDS_DEFAULT),
         help="Random seeds (default: 42 43 44 45 46)",
     )
     parser.add_argument(
-        "--cache-path",
-        default=str(META_OOF_PARQUET_PATH),
+        "--cache-path", default=str(META_OOF_PARQUET_PATH),
         help="OOF parquet cache path (Phase-26 scoped per Pitfall #9)",
     )
     parser.add_argument(
-        "--no-cache-oof",
-        action="store_true",
+        "--no-cache-oof", action="store_true",
         help="Force OOF parquet rebuild",
     )
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
+        "--dry-run", action="store_true",
         help="Synthetic smoke run (no DB / real xgb_v2 inference)",
     )
     args = parser.parse_args(argv)

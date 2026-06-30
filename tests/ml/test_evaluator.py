@@ -233,8 +233,9 @@ class TestBootstrapPerSliceCI:
 
     def test_bootstrap_per_slice_ci_uses_bca(self, synthetic_slices, monkeypatch):
         """Spy on scipy.stats.bootstrap; assert every observed call uses method='BCa'."""
-        from ufc_prediction.ml.evaluator import bootstrap_per_slice_ci
         from scipy.stats import bootstrap as real_bootstrap
+
+        from ufc_prediction.ml.evaluator import bootstrap_per_slice_ci
 
         observed_methods: list[str] = []
 

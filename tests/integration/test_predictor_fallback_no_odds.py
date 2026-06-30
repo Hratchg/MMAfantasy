@@ -300,7 +300,7 @@ def test_predict_call_does_not_mutate_protected_artifacts(
     if sha_meta_before is not None:
         sha_meta_after = _sha256(meta_path)
         assert sha_meta_after == sha_meta_before, (
-            f"meta_v2.joblib SHA changed across predict call. AUDIT-01 chain broken."
+            "meta_v2.joblib SHA changed across predict call. AUDIT-01 chain broken."
         )
 
     # Sanity: the canonical xgb_v2.joblib SHA should still match the

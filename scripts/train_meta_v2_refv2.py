@@ -227,7 +227,7 @@ def assert_meta_v2_layout() -> None:
 # ── Plan 65-02 OOF parquet loader ─────────────────────────────────────────
 
 
-def load_xgb_refv2_oof(path: Path) -> "Any":
+def load_xgb_refv2_oof(path: Path) -> Any:
     """Read Plan 65-02 OOF parquet from disk into a DataFrame.
 
     Schema (per Plan 65-02 SUMMARY): ``{fight_id int64, oof_prob float64,
@@ -275,12 +275,12 @@ def _synthesize_13col_matrix(*, seed: int = DEFAULT_SEED) -> tuple[Any, Any]:
     """
     import datetime as _dt
 
-    import numpy as np
-
     import compose_v25_travel as _cv  # type: ignore[import-not-found]
+    import numpy as np
     from compose_v25_travel import (  # type: ignore[import-not-found]
         _build_synthetic_v25,
     )
+
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
 
     class _FixedDate(_dt.date):
@@ -338,8 +338,8 @@ def _build_live_13col_matrix(*, xgb_refv2_oof_df: Any) -> tuple[Any, Any]:
     Returns ``(X_13, y)`` aligned with the rows present in the OOF parquet.
     """
     import numpy as np
-
     import train_meta_v22 as _tm  # type: ignore[import-not-found]
+
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
 
     # 1. v2.2 90-col matrix + fight_records.
@@ -347,8 +347,8 @@ def _build_live_13col_matrix(*, xgb_refv2_oof_df: Any) -> tuple[Any, Any]:
     assert X_v22.shape[1] == 90, f"v2.2 substrate must be 90 cols; got {X_v22.shape[1]}"
 
     # 2. Elo P(A wins) per fight (canonical helper).
-    from ufc_prediction.ml.queries import load_elo_features
     from ufc_prediction.db.session import SessionLocal
+    from ufc_prediction.ml.queries import load_elo_features
 
     session = SessionLocal()
     try:
@@ -733,7 +733,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("interrupted", file=sys.stderr)
         sys.exit(130)
-    except Exception:  # noqa: BLE001
+    except Exception:
         # Defense-in-depth: any unhandled exception surfaces as exit 1
         # with a traceback so operators see the root cause but the process
         # rc is still well-defined.

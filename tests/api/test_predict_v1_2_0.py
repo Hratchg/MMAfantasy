@@ -26,7 +26,6 @@ from fastapi.testclient import TestClient
 from ufc_prediction.api.deps import get_db
 from ufc_prediction.api.v1 import predict as v1_predict
 
-
 # Mirrors the predictor.predict() return shape after Plan 35-04: the dict
 # now carries a `prediction_metadata` sub-dict with the 7 internal keys
 # (including win_probability_source which the partner-facing model drops).
@@ -97,7 +96,7 @@ def _standalone_app_client() -> TestClient:
     return TestClient(app)
 
 
-def _post(client: TestClient, **extra) -> "dict | None":
+def _post(client: TestClient, **extra) -> dict | None:
     """Helper: POST a happy-path matchup body + return response."""
     body = {
         "fighter_a": "Khabib Nurmagomedov",

@@ -292,7 +292,7 @@ def bootstrap_per_slice_ci(
                 confidence_level=confidence_level,
             ).confidence_interval
             half_brier = (ci_brier.high - ci_brier.low) / 2
-        except Exception:  # noqa: BLE001 — DegenerateDataWarning escalation; Pitfall B
+        except Exception:
             half_brier = float("nan")
         rng = np.random.default_rng(rng_seed)
         try:
@@ -305,7 +305,7 @@ def bootstrap_per_slice_ci(
                 confidence_level=confidence_level,
             ).confidence_interval
             half_acc = (ci_acc.high - ci_acc.low) / 2
-        except Exception:  # noqa: BLE001 — DegenerateDataWarning escalation; Pitfall B
+        except Exception:
             half_acc = float("nan")
         results[slice_name] = {
             "brier_ci_half": float(half_brier),
@@ -316,7 +316,7 @@ def bootstrap_per_slice_ci(
 
 def gate_verdict(
     per_slice_median: dict[str, dict[str, Any]],
-    contract: "GateContract | None" = None,
+    contract: GateContract | None = None,
 ) -> tuple[bool, list[str]]:
     """Apply the v2.1 per-slice promotion gate per CONTEXT.md D-04(P17).
 

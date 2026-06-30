@@ -64,7 +64,6 @@ import os
 import sys
 from datetime import date
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -82,7 +81,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 # Direct import from scripts/ — Task 1 deliverable. Tests collect-fail with
 # ImportError until the script exists (RED phase contract).
-from train_meta_v2_netd import (  # noqa: E402
+from train_meta_v2_netd import (
     CANONICAL_META_JSON,
     EXPECTED_META_V2_SHA256,
     EXPECTED_XGB_V2_SHA256,
@@ -95,7 +94,6 @@ from train_meta_v2_netd import (  # noqa: E402
     assert_audit01_invariants,
     main,
 )
-
 
 # ── Cheap tier (always runs) ──────────────────────────────────────────────
 
@@ -272,7 +270,7 @@ def test_frozen_date_constant_is_phase_66_phase_start() -> None:
     Distinct from Phase 65's date(2026, 6, 4) so Phase 66 synthetic matrices
     do not collide with Phase 65's by frozen-date.
     """
-    assert META_NETD_FROZEN_DATE == date(2026, 6, 6)
+    assert date(2026, 6, 6) == META_NETD_FROZEN_DATE
 
 
 def test_nan_imputation_strategy_is_global_median() -> None:
@@ -468,7 +466,6 @@ def test_no_nan_in_training_matrix_after_imputation() -> None:
     no NaN regardless — so we assert the post-condition).
     """
     import numpy as np
-
     import train_meta_v2_netd as mod
 
     X_13, y = mod.build_13col_training_matrix(source="synthetic")

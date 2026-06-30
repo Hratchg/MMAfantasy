@@ -51,7 +51,6 @@ from scripts.compose_v25_travel import (
     hurdle_clears,
 )
 
-
 # ────────────────── Locked-constant invariants ───────────────────────
 
 

@@ -29,12 +29,11 @@ import random
 import sys
 import time
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from ufc_prediction.scraper.referee_normalize import normalize_referee_name
-
 
 # ── Locked constants (CONTEXT D-01..D-02 + REVISION-02) ──────────────────
 
@@ -91,7 +90,7 @@ def _sample_event_urls(
     Uses Python random.Random(random_state).sample for reproducibility (NOT SQL ORDER BY RANDOM()
     which is non-deterministic across Postgres versions).
     """
-    from sqlalchemy import text  # noqa: PLC0415 — lazy import; keeps test cost low
+    from sqlalchemy import text
 
     rows = session.execute(
         text(
@@ -132,7 +131,7 @@ def _load_or_fetch_html(
     """
     cache_dir.mkdir(parents=True, exist_ok=True)
     # Defensive cache-key validation: only allow [A-Za-z0-9_-]
-    import re  # noqa: PLC0415
+    import re
 
     if not re.fullmatch(r"[A-Za-z0-9_-]+", cache_key):
         logger.warning("[audit-referees] cache_key rejected (key=%r); skipping URL.", cache_key)
@@ -142,7 +141,7 @@ def _load_or_fetch_html(
         return cache_path.read_text(encoding="utf-8")
     try:
         html = client.get(source_url)
-    except Exception as exc:  # noqa: BLE001 — fetch failures are expected; log and bail
+    except Exception as exc:
         logger.warning("[audit-referees] fetch failed for %s: %s", source_url, exc)
         return None
     if html:
@@ -214,7 +213,7 @@ def main(argv: list[str] | None = None) -> int:
     output_path = Path(args.output_path)
     logging.basicConfig(level=logging.INFO, format="[audit-referees] %(message)s")
 
-    spike_started = datetime.now(timezone.utc)
+    spike_started = datetime.now(UTC)
 
     # ── AF startup assertions (locked-constants drift detection) ──────────
     expected = {
@@ -236,12 +235,12 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # ── Lazy imports for DB + scraper (skip cost for AF-only invocation) ──
-    from ufc_prediction.db.session import SessionLocal  # noqa: PLC0415
-    from ufc_prediction.scraper.client import ScraperClient  # noqa: PLC0415
-    from ufc_prediction.scraper.parse_event_detail import (  # noqa: PLC0415
+    from ufc_prediction.db.session import SessionLocal
+    from ufc_prediction.scraper.client import ScraperClient
+    from ufc_prediction.scraper.parse_event_detail import (
         parse_event_detail,
     )
-    from ufc_prediction.scraper.parse_fight_detail import (  # noqa: PLC0415
+    from ufc_prediction.scraper.parse_fight_detail import (
         parse_fight_detail,
     )
 
@@ -302,7 +301,7 @@ def main(argv: list[str] | None = None) -> int:
         n_fetched += 1
         try:
             event_detail = parse_event_detail(event_html, source_url)
-        except Exception as exc:  # noqa: BLE001 — audit driver tolerates parser drift
+        except Exception as exc:
             if len(unparseable_examples) < 5:
                 unparseable_examples.append(f"event_id={event_id} parse_event_detail failed: {exc}")
             continue
@@ -326,7 +325,7 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             try:
                 fight_detail = parse_fight_detail(fight_html)
-            except Exception as exc:  # noqa: BLE001 — audit driver tolerates parser drift
+            except Exception as exc:
                 if len(unparseable_examples) < 5:
                     unparseable_examples.append(
                         f"event_id={event_id} fight_slug={fight_slug} "
@@ -386,7 +385,7 @@ def main(argv: list[str] | None = None) -> int:
         risk_flags=risk_flags,
         n_cache_write_failures=len(cache_write_failures),
     )
-    spike_finished = datetime.now(timezone.utc)
+    spike_finished = datetime.now(UTC)
 
     print(
         f"\n[audit-referees] Audit complete. Wrote:\n"

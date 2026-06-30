@@ -12,7 +12,7 @@ Per Pitfall #12: column ordering is locked by FEATURE_COLUMNS.
 from __future__ import annotations
 
 import math
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -251,7 +251,7 @@ def test_odds_block_parity_with_live(monkeypatch):
         fighter_b_opening=170,
         fighter_b_closing_min=150,
         fighter_b_closing_max=190,
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=datetime.now(UTC),
         source="live",
     )
     session = _patch_session_with_snapshots(monkeypatch)
@@ -621,7 +621,7 @@ class TestV22Dispatch:
         idx_age_red = FEATURE_COLUMNS_V22.index("age_at_fight_red")
         idx_age_blue = FEATURE_COLUMNS_V22.index("age_at_fight_blue")
         assert not np.isnan(vec[idx_age_red]), (
-            f"age_at_fight_red unexpectedly NaN; DoB stub is 1990-01-01"
+            "age_at_fight_red unexpectedly NaN; DoB stub is 1990-01-01"
         )
         assert not np.isnan(vec[idx_age_blue])
 
@@ -653,7 +653,7 @@ class TestV22Dispatch:
         """Test 9: inference_features defines _EXPECTED_V22_NCOLS == 90 (D-10)."""
         from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
 
-        assert inference_features._EXPECTED_V22_NCOLS == len(FEATURE_COLUMNS_V22)
+        assert len(FEATURE_COLUMNS_V22) == inference_features._EXPECTED_V22_NCOLS
         assert inference_features._EXPECTED_V22_NCOLS == 90
 
 

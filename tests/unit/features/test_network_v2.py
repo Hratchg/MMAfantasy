@@ -17,15 +17,14 @@ from __future__ import annotations
 
 from datetime import date
 
-import networkx as nx
 import pytest
 
 from ufc_prediction.features.network_v2 import (
     DECAY_BASE,
     _decay_subgraph,
     build_fight_graph_v2,
-    compute_pagerank_at_v2,
     compute_2hop_sos_at_v2,
+    compute_pagerank_at_v2,
 )
 
 

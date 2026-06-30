@@ -35,12 +35,10 @@ import argparse
 import logging
 import re
 import sys
-import time
 from collections import Counter
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
-
 
 # ── Locked constants (Phase 28 CONTEXT D-04 + Phase 22 audit_referees.py) ──
 
@@ -124,7 +122,7 @@ def _load_or_fetch_html(
         return cached
     try:
         html = client.get(source_url)
-    except Exception as exc:  # noqa: BLE001 — fetch failures are expected; log and bail
+    except Exception as exc:
         logger.warning("[scrape-referees] fetch failed for %s: %s", source_url, exc)
         return None
     if html:
@@ -141,9 +139,9 @@ def _events_needing_referee(session) -> Iterable:
     Returns an iterable of Event ORM objects in id-order (deterministic for
     idempotent re-runs). Empty iterator if substrate is already complete.
     """
-    from sqlalchemy import select  # noqa: PLC0415 — lazy import; keeps unit cost low
+    from sqlalchemy import select
 
-    from ufc_prediction.models.event import Event  # noqa: PLC0415
+    from ufc_prediction.models.event import Event
 
     return (
         session.execute(
@@ -168,7 +166,7 @@ def _resolve_event_referee(
     Returns ``(new_ref_id, raw_name)`` for telemetry. Sets
     ``db_event.referee_id`` ONLY if currently NULL.
     """
-    from ufc_prediction.data.upsert import upsert_referee  # noqa: PLC0415
+    from ufc_prediction.data.upsert import upsert_referee
 
     if not raw_names:
         return (None, None)
@@ -268,7 +266,7 @@ def main(
     logging.basicConfig(level=logging.INFO, format="[scrape-referees] %(message)s")
 
     # Pre-flight: open session, count NULL-referee events.
-    from ufc_prediction.db.session import SessionLocal  # noqa: PLC0415
+    from ufc_prediction.db.session import SessionLocal
 
     session = SessionLocal()
     try:
@@ -317,11 +315,11 @@ def _run_confirmed_scrape(
     workers: int,
 ) -> int:
     """Confirmed-path scrape loop. Returns exit code."""
-    from ufc_prediction.scraper.client import ScraperClient  # noqa: PLC0415
-    from ufc_prediction.scraper.parse_event_detail import parse_event_detail  # noqa: PLC0415
-    from ufc_prediction.scraper.parse_fight_detail import parse_fight_detail  # noqa: PLC0415
+    from ufc_prediction.scraper.client import ScraperClient
+    from ufc_prediction.scraper.parse_event_detail import parse_event_detail
+    from ufc_prediction.scraper.parse_fight_detail import parse_fight_detail
 
-    spike_started = datetime.now(timezone.utc)
+    spike_started = datetime.now(UTC)
     client = ScraperClient(
         delay=delay,
         max_retries=HTTP_MAX_RETRIES,
@@ -363,7 +361,7 @@ def _run_confirmed_scrape(
         consecutive_failures = 0
         try:
             event_detail = parse_event_detail(event_html, ev.source_url)
-        except Exception as exc:  # noqa: BLE001 — slim driver tolerates parser drift
+        except Exception as exc:
             logger.warning(
                 "[scrape-referees] parse_event_detail failed for event_id=%s: %s", ev.id, exc
             )
@@ -405,7 +403,7 @@ def _run_confirmed_scrape(
         if missing_urls:
             try:
                 fetched = client.map_get(missing_urls)
-            except Exception as exc:  # noqa: BLE001 — slim driver tolerates HTTP layer faults
+            except Exception as exc:
                 logger.warning(
                     "[scrape-referees] map_get failed for event_id=%s (%d urls): %s",
                     ev.id,
@@ -434,7 +432,7 @@ def _run_confirmed_scrape(
                 continue
             try:
                 fight_detail = parse_fight_detail(fight_html)
-            except Exception as exc:  # noqa: BLE001 — slim driver tolerates parser drift
+            except Exception as exc:
                 msg = str(exc)
                 logger.warning(
                     "[scrape-referees] parse_fight_detail failed event_id=%s slug=%s: %s",
@@ -468,7 +466,7 @@ def _run_confirmed_scrape(
         else:
             unresolved += 1
 
-    spike_finished = datetime.now(timezone.utc)
+    spike_finished = datetime.now(UTC)
     duration_s = (spike_finished - spike_started).total_seconds()
     print(
         f"[scrape-referees] Scrape complete. resolved={resolved}, "

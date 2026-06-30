@@ -145,7 +145,7 @@ def test_writes_correct_csv_format(bfo, tmp_path: Path) -> None:
             closing_range_max=None,
         ),
     ]
-    scraper._write_odds_csv(rows)  # noqa: SLF001 — exercising the helper directly
+    scraper._write_odds_csv(rows)
 
     out = tmp_path / "BestFightOdds_odds.csv"
     assert out.exists()
@@ -172,9 +172,6 @@ def test_writes_correct_csv_format(bfo, tmp_path: Path) -> None:
 
 def test_uses_thread_pool(bfo) -> None:
     """``scrape_all`` invokes ``client.map`` (thread pool) instead of multiprocessing."""
-    from sqlalchemy import select
-
-    from ufc_prediction.models.fighter import Fighter
 
     client = MagicMock()
     # Two map calls: search stage (returns search HTMLs), profile stage (returns
@@ -197,7 +194,7 @@ def test_uses_thread_pool(bfo) -> None:
     )
     # We call scrape_all but don't assert on its return — only on map usage.
     # If scrape_all branches to multiprocessing, client.map would not be called.
-    try:
+    try:  # noqa: SIM105
         scraper.scrape_all()
     except Exception:
         # Errors downstream of `client.map` are fine — we only care that map was hit.
@@ -507,11 +504,11 @@ class TestScrapeEventUrls:
         """
         from unittest.mock import MagicMock
 
-        from ufc_prediction.scraper.bfo_ingest import (  # noqa: PLC0415
+        from ufc_prediction.scraper.bfo_ingest import (
             BFOOddsIngester,
             IngestSummary,
         )
-        from ufc_prediction.scraper.bfo_models import (  # noqa: PLC0415
+        from ufc_prediction.scraper.bfo_models import (
             BFOFighterName,
         )
 

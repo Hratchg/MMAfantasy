@@ -259,7 +259,9 @@ def save_contract_json(
     contract_path = dir_path / f"xgb_{version}-contract.json"
 
     if not model_path.exists():
-        raise FileNotFoundError(f"save_contract_json: model joblib not found: {model_path}")
+        raise FileNotFoundError(
+            f"save_contract_json: model joblib not found: {model_path}"
+        )
 
     model_sha = hashlib.sha256(model_path.read_bytes()).hexdigest()
     contract = {

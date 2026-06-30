@@ -93,12 +93,12 @@ class _FakePredictor:
 
     def predict(
         self,
-        db,  # noqa: ARG002
+        db,
         fighter_a_name: str,
         fighter_b_name: str,
         *,
-        event_date=None,  # noqa: ARG002
-        refresh=False,  # noqa: ARG002
+        event_date=None,
+        refresh=False,
     ) -> dict:
         return {
             **_FAKE_PREDICT_RESULT,

@@ -17,7 +17,6 @@ mounted and return 200.
 
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 
 from ufc_prediction.api import app as app_module

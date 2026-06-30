@@ -35,7 +35,7 @@ import logging
 import os
 import re
 import sys
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -45,12 +45,12 @@ _SRC = _PROJECT_ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from ufc_prediction.scraper.sherdog import (  # noqa: E402
+from ufc_prediction.scraper.sherdog import (
     compute_pre_ufc_stats,
     filter_pre_ufc_fights,
     parse_sherdog_fighter_page,
 )
-from ufc_prediction.scraper.sherdog_models import (  # noqa: E402
+from ufc_prediction.scraper.sherdog_models import (
     PreUFCRecord,
     SherdogFight,
 )
@@ -380,7 +380,7 @@ def _write_antibot_halt(
     body_snippet: str,
 ) -> None:
     halt_path.parent.mkdir(parents=True, exist_ok=True)
-    iso = datetime.now(timezone.utc).isoformat()
+    iso = datetime.now(UTC).isoformat()
     halt_path.write_text(
         "Sherdog anti-bot challenge detected — HALTING per Phase 40 trust precedent.\n"
         f"timestamp_utc={iso}\n"
@@ -450,7 +450,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         halt_path.unlink()
 
-    started = datetime.now(timezone.utc)
+    started = datetime.now(UTC)
     started_iso = started.isoformat()
     logger.info("=== Plan 43-01 DEBUT-V25-01 ingestion start: %s ===", started_iso)
     logger.info("output=%s", args.output)
@@ -490,7 +490,7 @@ def main(argv: list[str] | None = None) -> int:
                 "fighter_id": fighter_id,
                 "sherdog_url": sherdog_url or "",
                 "reason": reason,
-                "logged_at": datetime.now(timezone.utc).isoformat(),
+                "logged_at": datetime.now(UTC).isoformat(),
             }
         )
         failure_reason_counts[reason] = failure_reason_counts.get(reason, 0) + 1
@@ -512,7 +512,7 @@ def main(argv: list[str] | None = None) -> int:
 
             try:
                 html, status_code = _fetch_with_status(client, sherdog_url)
-            except Exception as exc:  # noqa: BLE001 — polite catch-all
+            except Exception as exc:
                 reason = f"fetch_error:{type(exc).__name__}"
                 _record_failure(fighter_id, sherdog_url, reason)
                 logger.warning(
@@ -550,11 +550,11 @@ def main(argv: list[str] | None = None) -> int:
                     record=record,
                     last_org=last_org,
                     tier=tier,
-                    scraped_at=datetime.now(timezone.utc).isoformat(),
+                    scraped_at=datetime.now(UTC).isoformat(),
                 )
                 new_rows.append(row)
                 ok_count += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 reason = f"parse_error:{type(exc).__name__}"
                 _record_failure(fighter_id, sherdog_url, reason)
                 logger.warning(
@@ -581,7 +581,7 @@ def main(argv: list[str] | None = None) -> int:
     final_count = upsert_csv(args.output, new_rows)
     write_failures_csv(args.failures_output, failures)
 
-    elapsed = (datetime.now(timezone.utc) - started).total_seconds()
+    elapsed = (datetime.now(UTC) - started).total_seconds()
     logger.info("=== Plan 43-01 DEBUT-V25-01 ingestion done ===")
     logger.info("total_enumerated=%d", total_enumerated)
     logger.info("ok=%d", ok_count)

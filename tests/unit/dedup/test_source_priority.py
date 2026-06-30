@@ -20,11 +20,10 @@ from dataclasses import dataclass
 import pytest
 
 source_priority = pytest.importorskip("ufc_prediction.dedup.source_priority")
-from ufc_prediction.dedup.source_priority import (  # noqa: E402
+from ufc_prediction.dedup.source_priority import (
     SOURCE_PRIORITY,
     prefer_canonical,
 )
-
 
 # ── Test doubles ─────────────────────────────────────────────────────────
 

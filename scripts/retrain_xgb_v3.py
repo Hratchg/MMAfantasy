@@ -47,7 +47,6 @@ import json
 import pickle
 import sys
 import time
-from dataclasses import replace as dc_replace
 from datetime import date
 from pathlib import Path
 
@@ -73,8 +72,7 @@ from ufc_prediction.ml.queries import (
     load_pre_ufc_records,
     load_round_stats_for_ml,
 )
-from ufc_prediction.ml.trainer import ModelTrainer, median_metrics
-
+from ufc_prediction.ml.trainer import median_metrics
 
 SEEDS: tuple[int, ...] = (42, 43, 44, 45, 46)  # D-16
 NO_NET_FEATURE_COUNT: int = 72  # NET-* lives at indices 72/73/74 (Gotcha 9)

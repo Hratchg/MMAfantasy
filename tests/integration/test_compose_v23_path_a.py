@@ -27,8 +27,6 @@ These tests use synthetic harness invocations of ``triple_gate_decision``
 from __future__ import annotations
 
 import json
-import os
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -39,11 +37,8 @@ from scripts.compose_v23_meta import (
     EXPECTED_XGB_V2_SHA256,
     META_V22_BASELINE_BRIER,
     PER_SLICE_KEYS,
-    STEPWISE_HURDLE,
-    TOTAL_MARGIN_HURDLE,
     triple_gate_decision,
 )
-
 
 # ─────────────────────────── Mock gate contract ─────────────────────────────
 
@@ -268,7 +263,7 @@ def test_full_pipeline_cached_fixtures(tmp_path: Path, monkeypatch: pytest.Monke
     load_gate_contract.cache_clear()
 
     # Redirect artifact paths to tmp_path so we don't clobber real artifacts.
-    from scripts import compose_v23_meta as cm  # noqa: PLC0415
+    from scripts import compose_v23_meta as cm
 
     phase_tmp = tmp_path / "phase32"
     phase_tmp.mkdir(parents=True, exist_ok=True)
@@ -283,7 +278,7 @@ def test_full_pipeline_cached_fixtures(tmp_path: Path, monkeypatch: pytest.Monke
     # Run in dry-run mode for the integration smoke (no DB hit).
     parser = cm.build_parser()
     args = parser.parse_args(["--dry-run", "--seeds", "2", "3"])
-    report = cm.run_composition(args)
+    _report = cm.run_composition(args)
 
     # Report exists at the monkey-patched path.
     rpt_path = phase_tmp / "COMPOSITION_V23_REPORT.json"

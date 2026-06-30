@@ -149,7 +149,8 @@ FEATURE_COLUMNS_NO_NET: list[str] = FEATURE_COLUMNS[:-3]
 #     differential is — and ours uses a 720-clip the existing col does not).
 #
 # Final count: 72 + 3 + 6 + 10 = 91 cols (revised from 92 after Q4 RESOLVED).
-FEATURE_COLUMNS_V22: list[str] = FEATURE_COLUMNS_NO_NET + [
+FEATURE_COLUMNS_V22: list[str] = [
+    *FEATURE_COLUMNS_NO_NET,
     # ── REF (3 cols; per-event, NOT per-fighter-differential) ───────
     "ref_finish_rate_shrunk",
     "ref_decision_rate_shrunk",
@@ -193,7 +194,8 @@ FEATURE_COLUMNS_V22: list[str] = FEATURE_COLUMNS_NO_NET + [
 # the per-fighter raw form is not exposed at this layer).
 #
 # Final count: 90 + 2 = 92 cols.
-FEATURE_COLUMNS_V25_TRAVEL: list[str] = FEATURE_COLUMNS_V22 + [
+FEATURE_COLUMNS_V25_TRAVEL: list[str] = [
+    *FEATURE_COLUMNS_V22,
     "travel_distance_km",  # Haversine km, fighter_red - fighter_blue differential
     "tz_shift_hours",  # ±12 clipped hours, fighter_red - fighter_blue differential
 ]

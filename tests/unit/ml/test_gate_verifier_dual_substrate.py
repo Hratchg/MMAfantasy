@@ -68,7 +68,6 @@ from ufc_prediction.ml.gate_verifier import (
     verify_candidate_vs_canonical_dual_substrate,
 )
 
-
 # ── Mock-verdict factory ──────────────────────────────────────────────────
 #
 # The combinator branch tests are kept fast by NOT loading any joblib

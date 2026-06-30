@@ -127,7 +127,7 @@ def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSO
     """
     try:
         limit_int, period = _parse_limit_detail(str(exc.detail))
-    except Exception:  # noqa: BLE001 — defensive: never crash on a malformed slowapi exc
+    except Exception:
         logger.warning("rate_limit_exceeded_handler: detail parse failed", exc_info=True)
         limit_int, period = 1000, "hour"
     retry_after = _PERIOD_SECONDS.get(period, 3600)

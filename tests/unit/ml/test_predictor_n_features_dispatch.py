@@ -15,9 +15,6 @@ Goes GREEN at Wave 1 Task 11.
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import numpy as np
 import pytest
 from sklearn.calibration import CalibratedClassifierCV

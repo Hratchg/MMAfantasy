@@ -19,13 +19,11 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from ufc_prediction.api.deps import get_db
 from ufc_prediction.api.v1 import predict as v1_predict
-
 
 _FAKE_PREDICT_RESULT = {
     "fighter_a": "Khabib Nurmagomedov",

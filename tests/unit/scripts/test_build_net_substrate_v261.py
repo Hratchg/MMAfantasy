@@ -77,7 +77,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 # Direct import from scripts/ — Task 1 deliverable. Tests collect-fail with
 # ImportError until the script exists (RED phase contract).
-from build_net_substrate_v261 import (  # noqa: E402
+from build_net_substrate_v261 import (
     DEBUTANT_NAN_MAX_PROPORTION,
     NET_FEATURE_COLUMNS,
     NET_SUBSTRATE_REFERENCE_DATE,
@@ -88,8 +88,8 @@ from build_net_substrate_v261 import (  # noqa: E402
     main,
 )
 
-from ufc_prediction.ml.gate_verifier import EvalSlice  # noqa: E402
-from ufc_prediction.ml.substrate_loader import load_substrate_snapshot  # noqa: E402
+from ufc_prediction.ml.gate_verifier import EvalSlice
+from ufc_prediction.ml.substrate_loader import load_substrate_snapshot
 
 # ── Shared fixture ────────────────────────────────────────────────────────
 
@@ -211,12 +211,12 @@ def test_feature_col_0_is_xgb_v2_netd_oof_not_canonical_nor_refv2() -> None:
         f"(candidate-aligned), got {NET_FEATURE_COLUMNS[0]!r}"
     )
     assert NET_FEATURE_COLUMNS[0] != "xgb_oof_prob", (
-        f"NET_FEATURE_COLUMNS[0] must NOT be the canonical name "
-        f"'xgb_oof_prob' — col[0] swap is the substrate-drift signal"
+        "NET_FEATURE_COLUMNS[0] must NOT be the canonical name "
+        "'xgb_oof_prob' — col[0] swap is the substrate-drift signal"
     )
     assert NET_FEATURE_COLUMNS[0] != "xgb_v2_refv2_oof", (
-        f"NET_FEATURE_COLUMNS[0] must NOT be the Phase 65 REF name "
-        f"'xgb_v2_refv2_oof' — Phase 66 is NET, NOT REF"
+        "NET_FEATURE_COLUMNS[0] must NOT be the Phase 65 REF name "
+        "'xgb_v2_refv2_oof' — Phase 66 is NET, NOT REF"
     )
 
 
@@ -288,8 +288,9 @@ def test_builder_is_deterministic_across_simulated_calendar_drift(
     between two builds; if CR-03 is in place, the inner ``_FixedDate`` patch
     wins and both builds match.
     """
-    import compose_v25_travel as _cv  # type: ignore[import-not-found]
     from datetime import date as _date
+
+    import compose_v25_travel as _cv  # type: ignore[import-not-found]
 
     # First build: monkeypatch ``date`` so .today() returns 2025-01-15.
     class _Today2025_01_15(_date):
@@ -358,7 +359,7 @@ def test_nan_coverage_gate_fires_when_debutant_exceeds_threshold(
     → proportion = 100% (well above 20%) → gate fires.
     """
     # Sanity: the threshold constant exists and is the expected value.
-    assert DEBUTANT_NAN_MAX_PROPORTION == pytest.approx(0.20)
+    assert pytest.approx(0.20) == DEBUTANT_NAN_MAX_PROPORTION
 
     # Force every fight_id in the OOF map to carry NaN — every synthetic
     # row will be flagged as debutant → 100% gate-triggering.

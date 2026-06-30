@@ -8,7 +8,6 @@ for the Phase 21-only statuses (PRE_ARCHIVE_SKIP, DISAMBIGUATION_FAIL).
 from __future__ import annotations
 
 import httpx
-import pytest
 
 from ufc_prediction.scraper.bfo_classify import (
     BFO_HOMEPAGE_TITLE,
@@ -28,7 +27,6 @@ from ufc_prediction.scraper.bfo_classify import (
     extract_title,
     is_real_event_title,
 )
-
 
 # ── Constants ─────────────────────────────────────────────────────────────
 

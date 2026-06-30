@@ -13,7 +13,6 @@ gate_methodology_v2.6.md §7.3:
 from __future__ import annotations
 
 import importlib.util
-import os
 import sys
 from pathlib import Path
 

@@ -22,7 +22,7 @@ warns on unrecognized markers but doesn't fail).
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -196,7 +196,7 @@ def test_cold_cache_live_fetch_populates_closing_prob_diff(
         fighter_b_opening=170,
         fighter_b_closing_min=150,
         fighter_b_closing_max=190,
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=datetime.now(UTC),
         source="live",
     )
     monkeypatch.setattr(
@@ -259,7 +259,7 @@ def test_warm_cache_skips_http_populates_closing_prob_diff(
         fighter_b_opening=160,
         fighter_b_closing_min=140,
         fighter_b_closing_max=180,
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=datetime.now(UTC),
         source="cache",
     )
 

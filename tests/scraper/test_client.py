@@ -167,7 +167,7 @@ class TestScraperClientGet:
 
         client = ScraperClient(delay=0.0, max_retries=3)
 
-        with pytest.raises(RuntimeError, match="Failed to fetch.*after 3 retries"):
+        with pytest.raises(RuntimeError, match=r"Failed to fetch.*after 3 retries"):
             client.get("http://example.com")
 
         assert mock_client.get.call_count == 4  # initial + 3 retries
@@ -219,7 +219,7 @@ class TestScraperClientGet:
 
         client = ScraperClient(delay=0.0, max_retries=3)
 
-        with pytest.raises(RuntimeError, match="Failed to fetch.*ReadError"):
+        with pytest.raises(RuntimeError, match=r"Failed to fetch.*ReadError"):
             client.get("http://example.com")
 
         assert mock_client.get.call_count == 4  # initial + 3 retries

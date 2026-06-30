@@ -64,7 +64,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # D-18 LOCKED constants (PROJECT.md cross-cutting invariant #3; NO
 # post-measurement renegotiation).
@@ -845,7 +844,7 @@ def _build_verdict_md(verdict: dict[str, Any]) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Phase 45 Plan 45-04 — meta_v3 gate verification on v2.5 substrate (META3-V25-03)"

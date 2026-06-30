@@ -12,6 +12,7 @@ tripwire, ship-passing at commit but firing if cache is regenerated incorrectly.
 
 import json
 import pathlib
+
 import pytest
 
 pytest.importorskip("ufc_prediction.ml.oof")

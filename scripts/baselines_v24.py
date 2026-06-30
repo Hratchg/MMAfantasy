@@ -47,7 +47,6 @@ from ufc_prediction.ml.queries import (
     load_round_stats_for_ml,
 )
 
-
 EXPECTED_XGB_V2_SHA256 = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 SLICES = list(PER_SLICE_KEYS)  # ("most_recent_12mo", "most_recent_24mo", "random_15pct")
 BASELINES = [

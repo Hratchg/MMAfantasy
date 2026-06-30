@@ -17,8 +17,6 @@ future drift is caught immediately.
 import json
 import pathlib
 
-import pytest
-
 
 def test_gate_contract_thresholds_are_v2_1_not_v2_0():
     """D-06(P18): gate_contract.json must contain Phase-17-derived thresholds.

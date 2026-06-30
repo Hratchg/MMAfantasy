@@ -19,8 +19,6 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "verify_travel_oof_v25.py"
 

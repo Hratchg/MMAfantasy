@@ -42,7 +42,6 @@ from ufc_prediction.ml.queries import (
     load_round_stats_for_ml,
 )
 
-
 EXPECTED_XGB_V2_SHA256 = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MODELS_DIR = PROJECT_ROOT / "models"

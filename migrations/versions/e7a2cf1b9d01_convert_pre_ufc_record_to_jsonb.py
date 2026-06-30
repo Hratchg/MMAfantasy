@@ -12,9 +12,8 @@ structured JSON in Postgres.
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision: str = "e7a2cf1b9d01"
 down_revision: Union[str, None] = "b394e0f2770e"

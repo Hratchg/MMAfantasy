@@ -27,7 +27,6 @@ import pytest
 
 from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_PATH = PROJECT_ROOT / "scripts" / "train_meta_v3_v25.py"
 XGB_V3_PATH = PROJECT_ROOT / "models" / "xgb_v3.joblib"

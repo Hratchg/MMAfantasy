@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RESULTS_PATH = PROJECT_ROOT / "results" / "baselines_v24.json"
 CANONICAL_XGB_V2_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
@@ -19,7 +18,7 @@ CANONICAL_XGB_V2_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d
 @pytest.fixture(scope="module")
 def baselines_doc() -> dict:
     if not RESULTS_PATH.exists():
-        pytest.skip(f"results/baselines_v24.json missing — run scripts/baselines_v24.py first")
+        pytest.skip("results/baselines_v24.json missing — run scripts/baselines_v24.py first")
     return json.loads(RESULTS_PATH.read_text())
 
 

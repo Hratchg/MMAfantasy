@@ -9,10 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-
 # ─── Module 1: referee_normalize (lands at Task 2; tests must PASS now) ──────
-
-
 from ufc_prediction.scraper.referee_normalize import (
     REFEREE_ALIASES,
     normalize_referee_name,

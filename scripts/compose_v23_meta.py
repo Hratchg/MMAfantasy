@@ -520,7 +520,7 @@ def _short_circuit_path_c(reason: str, steps: list[dict]) -> dict:
     }
 
 
-def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
+def run_composition(args) -> dict:
     """Main orchestration — runs 4-step composition + triple-gate decision.
 
     Returns the full report dict (also written to COMPOSITION_V23_REPORT.json).
@@ -889,11 +889,11 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
             slc: float(median_calib[slc]["brier_score"]) for slc in PER_SLICE_KEYS
         }
         baseline_source_for_ref = "CALIB (cleared)"
-        surviving_after_calib_brier = calib_to_ref_baseline
+        _surviving_after_calib_brier = calib_to_ref_baseline
     else:
         calib_to_ref_baseline = dict(meta_to_calib_baseline)
         baseline_source_for_ref = "META (CALIB rejected; pruned)"
-        surviving_after_calib_brier = meta_to_calib_baseline
+        _surviving_after_calib_brier = meta_to_calib_baseline
     print(
         f"[compose_v23] STEP 2 (CALIB): step_clears={meta_to_calib_clears} "
         f"gate_pass={calib_gate_pass}"

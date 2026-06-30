@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from ufc_prediction.features.regularize import (
     apply_shrinkage,
     apply_shrinkage_to_features,

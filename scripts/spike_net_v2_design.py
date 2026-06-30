@@ -64,7 +64,7 @@ import json
 import shutil
 import sys
 import time
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import numpy as np
@@ -99,7 +99,6 @@ from ufc_prediction.ml.queries import (
     load_round_stats_for_ml,
 )
 from ufc_prediction.ml.trainer import median_metrics
-
 
 # ── Phase 18 locked constants (D-01..D-03(P18); NET-V2-00 pre-registration) ─
 
@@ -375,7 +374,7 @@ def _emit_report(
     lines.append("## Per-Variant Tables")
     lines.append("")
     for variant in VARIANTS_PRE_REGISTERED:
-        cols = 72 if variant == "ablation" else 75
+        _cols = 72 if variant == "ablation" else 75
         suffix = "(72 cols)" if variant == "ablation" else "(75 cols; 0.98^days edge weights)"
         lines.append(f"### Variant: `{variant}` {suffix}")
         lines.append("")
@@ -552,7 +551,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    spike_started = datetime.now(timezone.utc)
+    spike_started = datetime.now(UTC)
 
     # ── AF-2 startup assertion ────────────────────────────────────────
     if len(FEATURE_COLUMNS) != 75:
@@ -575,7 +574,7 @@ def main() -> int:
         print(f"[spike] FATAL: {msg}", file=sys.stderr)
         return 2
     if list(FEATURE_COLUMNS_NO_NET) != list(FEATURE_COLUMNS[:-3]):
-        msg = f"FEATURE_COLUMNS_NO_NET drift: expected FEATURE_COLUMNS[:-3]; got divergent list."
+        msg = "FEATURE_COLUMNS_NO_NET drift: expected FEATURE_COLUMNS[:-3]; got divergent list."
         print(f"[spike] FATAL: {msg}", file=sys.stderr)
         return 2
     print(
@@ -958,7 +957,7 @@ def main() -> int:
             extra_meta=extra,
         )
         joblib_path = Path("models") / f"xgb_{version_tag}.joblib"
-        meta_path = Path("models") / f"xgb_{version_tag}_meta.json"
+        _meta_path = Path("models") / f"xgb_{version_tag}_meta.json"
         sha = hashlib.sha256(joblib_path.read_bytes()).hexdigest()
         persisted_paths[f"models/xgb_{version_tag}.joblib"] = f"sha256 {sha[:16]}..."
         print(f"[spike] Persisted variant '{variant}' -> {joblib_path} (sha256 {sha[:16]}...)")
@@ -1008,7 +1007,7 @@ def main() -> int:
             persisted_paths[f"archive/{version_tag}*"] = f"sha256 {v_sha[:16]}..."
 
     # ── Emit NET-DESIGN-COMPARISON.md ─────────────────────────────────
-    spike_finished = datetime.now(timezone.utc)
+    spike_finished = datetime.now(UTC)
     report_path = Path(args.report_path)
     _emit_report(
         report_path,

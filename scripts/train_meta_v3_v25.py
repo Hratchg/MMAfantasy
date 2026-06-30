@@ -51,7 +51,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Phase 45 constants — AUDIT-01 anchor SHAs (PROJECT.md cross-cutting invariants
 # #1 and #2). Pre-flight + post-flight checks against these are SystemExit hard
@@ -243,17 +242,17 @@ def _audit01_postflight(xgb_v2_sha_pre: str, meta_v2_sha_pre: str) -> None:
     meta_v2_sha_post = _sha256_file(META_V2_PATH)
     if xgb_v2_sha_post != xgb_v2_sha_pre:
         print(
-            f"[train_meta_v3_v25] FATAL AUDIT-01 postflight: xgb_v2 SHA drift!",
+            "[train_meta_v3_v25] FATAL AUDIT-01 postflight: xgb_v2 SHA drift!",
             file=sys.stderr,
         )
         sys.exit(2)
     if meta_v2_sha_post != meta_v2_sha_pre:
         print(
-            f"[train_meta_v3_v25] FATAL AUDIT-01 postflight: meta_v2 SHA drift!",
+            "[train_meta_v3_v25] FATAL AUDIT-01 postflight: meta_v2 SHA drift!",
             file=sys.stderr,
         )
         sys.exit(2)
-    print(f"[train_meta_v3_v25] AUDIT-01 postflight OK — xgb_v2+meta_v2 byte-identical.")
+    print("[train_meta_v3_v25] AUDIT-01 postflight OK — xgb_v2+meta_v2 byte-identical.")
 
 
 def _load_level1_substrate_from_db() -> pd.DataFrame:
@@ -639,8 +638,8 @@ def main(argv: list[str] | None = None) -> int:
     metadata["per_seed_metrics"] = {str(seed): per_seed_slice[seed] for seed in args.seeds}
     metadata["seeds"] = list(args.seeds)
     metadata["canonical_seed"] = canonical_seed
-    metadata["n_meta_train_rows"] = int(len(X_meta_train_clean))
-    metadata["n_meta_eval_rows"] = int(len(X_meta_eval_clean))
+    metadata["n_meta_train_rows"] = len(X_meta_train_clean)
+    metadata["n_meta_eval_rows"] = len(X_meta_eval_clean)
     metadata["nan_drop_policy"] = "per_feature_strict_baseline"
     metadata["nan_imputation_medians"] = nan_imputation_medians
     metadata["trained_at"] = datetime.now(tz=UTC).isoformat()

@@ -30,7 +30,6 @@ from sklearn.model_selection import train_test_split
 
 from ufc_prediction.db.session import SessionLocal
 from ufc_prediction.ml.config import FEATURE_COLUMNS_NO_NET, FEATURE_COLUMNS_V22, MLConfig
-from ufc_prediction.ml.evaluator import PER_SLICE_KEYS
 from ufc_prediction.ml.feature_matrix import (
     FeatureMatrixAssembler,
     compute_division_medians,
@@ -168,7 +167,7 @@ def main() -> int:
     else:
         X72_sample = X72_test
         Xv22_sample = Xv22_test
-        y_sample = y_test
+        _y_sample = y_test
         n_actual = X72_test.shape[0]
     print(f"  SHAP stratified sample: target={n_target} actual={n_actual}")
 
@@ -200,7 +199,7 @@ def main() -> int:
     xgb_rank_order = np.argsort(mean_abs_xgb)[::-1]
     xgb_cpd_rank = int(np.where(xgb_rank_order == cpd_idx)[0][0]) + 1
 
-    print(f"[importance] Plotting xgb_v2 SHAP summary...")
+    print("[importance] Plotting xgb_v2 SHAP summary...")
     plt.figure()
     shap.summary_plot(
         shap_xgb,

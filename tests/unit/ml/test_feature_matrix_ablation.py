@@ -12,9 +12,6 @@ from __future__ import annotations
 
 from datetime import date
 
-import numpy as np
-import pytest
-
 from ufc_prediction.ml.config import FEATURE_COLUMNS, FEATURE_COLUMNS_NO_NET
 from ufc_prediction.ml.feature_matrix import FeatureMatrixAssembler
 

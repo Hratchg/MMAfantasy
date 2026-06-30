@@ -1228,7 +1228,7 @@ class TestV22Dispatch:
         from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
         from ufc_prediction.ml.feature_matrix import _EXPECTED_V22_NCOLS
 
-        assert _EXPECTED_V22_NCOLS == len(FEATURE_COLUMNS_V22)
+        assert len(FEATURE_COLUMNS_V22) == _EXPECTED_V22_NCOLS
         assert _EXPECTED_V22_NCOLS == 90
 
 
@@ -1473,8 +1473,9 @@ class TestV22Travel:
         # The assembler's v2.2 pre-pass calls these helpers ONLY after the
         # `sorted(fight_records, key=...)` line — verify that line exists
         # in the source as a static contract.
-        import ufc_prediction.ml.feature_matrix as fm_module
         import inspect
+
+        import ufc_prediction.ml.feature_matrix as fm_module
 
         src = inspect.getsource(fm_module.FeatureMatrixAssembler.assemble)
         assert "sorted(" in src and "event_date" in src, (

@@ -14,7 +14,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 
-def get_session() -> Generator[Session, None, None]:
+def get_session() -> Generator[Session]:
     """Get a database session. Use as a generator-based dependency."""
     session = SessionLocal()
     try:

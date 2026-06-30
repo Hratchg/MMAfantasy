@@ -321,7 +321,7 @@ def test_v120_additive_only_over_v110():
 
     disc_default = v120["properties"]["disclaimer"].get("default")
     assert disc_default == DISCLAIMER_200W, (
-        f"v1.2.0 field 'disclaimer' default drift; expected DISCLAIMER_200W"
+        "v1.2.0 field 'disclaimer' default drift; expected DISCLAIMER_200W"
     )
 
     # v1.1.0 required set is preserved verbatim — no new required fields.

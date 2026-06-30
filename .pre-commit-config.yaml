@@ -37,7 +37,7 @@ repos:
 
   # Ruff lint + format.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.10
+    rev: v0.15.14  # match the version pinned in uv.lock so pre-commit and CI agree
     hooks:
       - id: ruff
         args: [--fix]

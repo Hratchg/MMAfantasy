@@ -18,10 +18,6 @@ Per CONTEXT.md D-02 + D-03 binding: per-step ≥0.003 Brier hurdle is the
 
 from __future__ import annotations
 
-import math
-
-import pytest
-
 # Wave 0 RED: this import MUST fail until Task 2 creates compose_v23_meta.
 # Tests will not be skipped — they will error at import (pytest collects
 # the failure, which is the RED signal).
@@ -30,7 +26,6 @@ from scripts.compose_v23_meta import (
     STEPWISE_HURDLE,
     per_step_brier_clears,
 )
-
 
 # ───────────────────────────── Per-slice constants ─────────────────────────────
 

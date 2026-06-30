@@ -67,9 +67,13 @@ END_SHA_PATH = PHASE_31_DIR / "31-XGB-V2-SHA-PHASE-31-END.txt"
 # those assert the LITERAL values; downstream tests then reuse the imports
 # for cascade comparisons.
 
-from ufc_prediction.cli.predict import (  # noqa: E402
+from ufc_prediction.cli.predict import (
     EXPECTED_FORMULA_HASH,
+)
+from ufc_prediction.cli.predict import (
     EXPECTED_XGB_V2_SHA as AUDIT_01_BASELINE_SHA,
+)
+from ufc_prediction.cli.predict import (
     OPERATOR_FLOOR_V23 as OPERATOR_ACCURACY_FLOOR,
 )
 

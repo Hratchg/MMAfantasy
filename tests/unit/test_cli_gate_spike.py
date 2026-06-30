@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Module-level constant assertions (no CLI invocation needed)
 # ---------------------------------------------------------------------------

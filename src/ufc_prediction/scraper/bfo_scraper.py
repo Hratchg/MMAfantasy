@@ -59,7 +59,9 @@ from rapidfuzz import fuzz
 from sqlalchemy import select
 
 from ufc_prediction.models.fighter import Fighter
-from ufc_prediction.scraper.bfo_matcher import normalize_name  # noqa: F401  (kept for downstream re-use)
+from ufc_prediction.scraper.bfo_matcher import (
+    normalize_name,
+)
 from ufc_prediction.scraper.bfo_models import BFOFighterName, BFOOddsRow
 
 logger = logging.getLogger(__name__)
@@ -438,7 +440,6 @@ def _bookie_lines_for_matchup(
     cells (e.g. the prop popup column).
     """
     lines: list[int] = []
-    target = f"[{{}},{side},{matchup_id}]"  # data-li format: [bookie,side,mu]
     for cell in odds_table.find_all("td", attrs={"data-li": True}):
         data_li = cell.get("data-li", "")
         match = _DATA_LI_RE.match(data_li)

@@ -18,7 +18,7 @@ import hashlib
 import json
 import subprocess
 import sys
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import numpy as np
@@ -113,7 +113,7 @@ def _spike_main(argv):
     side effects until the gate-spike subcommand actually fires.
     """
     _ensure_scripts_on_path()
-    from spike_noise_floor_v23 import main as spike_main  # noqa: E402
+    from spike_noise_floor_v23 import main as spike_main
 
     return spike_main(argv)
 
@@ -125,7 +125,7 @@ def _assert_xgb_v2_sha(label: str) -> str:
     drift. Module-level seam so unit tests can stub without touching disk.
     """
     _ensure_scripts_on_path()
-    from spike_noise_floor_v23 import _assert_xgb_v2_sha as spike_assert  # noqa: E402
+    from spike_noise_floor_v23 import _assert_xgb_v2_sha as spike_assert
 
     return spike_assert(label)
 
@@ -147,11 +147,12 @@ def _compute_v23_variance_dict(
     avoid the live DB / META load.
     """
     _ensure_scripts_on_path()
-    from spike_noise_floor_v23 import (  # noqa: E402
+    from spike_noise_floor_v23 import (
         _load_meta_train_eval_matrices,
         _meta_fit_fn,
         _no_bootstrap_metrics,
     )
+
     from ufc_prediction.ml.variance import (
         aggregate_variance,
         bootstrap_resample,
@@ -281,7 +282,7 @@ def _build_per_slice_thresholds_v23(
     """
     from ufc_prediction.ml.gate_contract import PerSliceThresholds
 
-    per_slice: dict[str, "PerSliceThresholds"] = {}
+    per_slice: dict[str, PerSliceThresholds] = {}
     for slc in ("most_recent_12mo", "most_recent_24mo", "random_15pct"):
         a = aggregated[slc]
         median_brier = float(a["median_brier"])
@@ -326,7 +327,7 @@ def _apply_operator_floor_and_detect_breach(
     """
     from ufc_prediction.ml.gate_contract import PerSliceThresholds
 
-    floored: dict[str, "PerSliceThresholds"] = {}
+    floored: dict[str, PerSliceThresholds] = {}
     breach: dict[str, dict] = {}
     for slc, ts in per_slice.items():
         pre = float(ts.accuracy_min)
@@ -392,6 +393,7 @@ def _emit_v23_contract(
     the dropped name would silently regress the audit lineage.
     """
     from dataclasses import asdict
+
     from ufc_prediction.ml.config import get_feature_columns
     from ufc_prediction.ml.gate_contract import GateContract
 
@@ -689,7 +691,7 @@ def predict_gate_spike(
     if halt_required:
         halt_body = _render_31_halt_and_decide(
             diagnostic,
-            triggered_at=datetime.now(timezone.utc).isoformat(),
+            triggered_at=datetime.now(UTC).isoformat(),
         )
         halt_path = PHASE_31_DIR / "31-HALT-AND-DECIDE.md"
         halt_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1065,7 +1067,7 @@ def predict_train(
     # Phase 15 (Claude's discretion): training-set odds coverage check.
     # Bypass with --force.
     cutoff_date_obj = date.fromisoformat(config.cutoff_date)
-    fights_with_odds = {fid for (_fighter_id, fid) in fight_odds.keys()}
+    fights_with_odds = {fid for (_fighter_id, fid) in fight_odds}
     training_total = sum(1 for f in fight_records if f["event_date"] < cutoff_date_obj)
     training_with_odds = sum(
         1
@@ -1227,7 +1229,7 @@ def predict_coverage(
     finally:
         session.close()
 
-    fights_with_odds = {fid for (_fighter_id, fid) in fight_odds.keys()}
+    fights_with_odds = {fid for (_fighter_id, fid) in fight_odds}
     by_year: dict[int, dict[str, int]] = defaultdict(lambda: {"total": 0, "with_odds": 0})
     for fight in fight_records:
         year = fight["event_date"].year

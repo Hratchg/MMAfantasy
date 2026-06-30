@@ -627,14 +627,13 @@ def _build_synthetic_v25(n: int = 600) -> tuple[np.ndarray, np.ndarray, np.ndarr
     return X_v25, y, np.array(dates), fight_records
 
 
-def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
+def run_composition(args) -> dict:
     """Pipeline driver: AUDIT-01 preflight → load data → baseline+candidate →
     floor/hurdle → emit TRAVEL_COMPOSITION_V25_REPORT.json.
 
     Returns the full report dict. Per Plan 42-02 spec: does NOT persist the
     candidate blender (Plan 42-03 Path A conditional).
     """
-    from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
     from ufc_prediction.ml.gate_contract import load_gate_contract
     from ufc_prediction.ml.meta_features_v22 import (
         META_V22_FEATURE_COLUMNS,
@@ -836,7 +835,7 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
         return Xt, Xe
 
     X_base_train_clean = base_train_meta_v22[base_train_mask]
-    y_base_train_clean = y[meta_train_idx][base_train_mask]
+    _y_base_train_clean = y[meta_train_idx][base_train_mask]
     X_base_eval_clean = base_eval_meta_v22[base_eval_mask]
     y_base_eval_clean = y[meta_eval_idx][base_eval_mask]
     fight_dates_base_eval = fight_dates[meta_eval_idx][base_eval_mask]
@@ -1185,7 +1184,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    report = run_composition(args)
+    _report = run_composition(args)
     return 0
 
 

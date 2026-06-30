@@ -368,6 +368,7 @@ def make_three_way_split(
         f"D-01(P19) violation: base ∩ meta_eval non-empty (size={len(base_ids & meta_eval_ids)})"
     )
     assert meta_train_ids.isdisjoint(meta_eval_ids), (
-        f"D-01(P19) violation: meta_train ∩ meta_eval non-empty (size={len(meta_train_ids & meta_eval_ids)})"
+        "D-01(P19) violation: meta_train ∩ meta_eval non-empty "
+        f"(size={len(meta_train_ids & meta_eval_ids)})"
     )
     return base_train, meta_train, meta_eval

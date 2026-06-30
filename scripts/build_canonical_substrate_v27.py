@@ -81,8 +81,7 @@ if str(_SCRIPTS_DIR) not in sys.path:
 # Module-level import of canonical META-V22 column contract so the import-time
 # assertion below catches accidental drift between this builder's col[0]
 # expectation and the canonical META-V22 source-of-truth.
-from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS  # noqa: E402
-
+from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
 
 # ── LOCKED constants (Phase 75 CONTEXT §D-01 / §D-02 / §D-06) ──────────────
 

@@ -11,7 +11,6 @@ Per Plan 26-01 Task 2 behavior list:
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from ufc_prediction.ml.config import FEATURE_COLUMNS_NO_NET, FEATURE_COLUMNS_V22
 from ufc_prediction.ml.meta_features_v22 import (

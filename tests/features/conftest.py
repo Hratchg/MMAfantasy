@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 def make_round_stats(overrides: dict | None = None) -> dict:
     """Factory returning a dict with all RoundStats column keys.

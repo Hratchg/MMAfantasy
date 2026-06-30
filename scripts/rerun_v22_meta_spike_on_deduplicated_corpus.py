@@ -37,7 +37,7 @@ import json
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 XGB_V2_PATH = Path("models/xgb_v2.joblib")
@@ -187,7 +187,7 @@ def emit_report(
     verdict: str | None,
 ) -> None:
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now(tz=timezone.utc).isoformat()
+    ts = datetime.now(tz=UTC).isoformat()
     lines = [
         "---",
         "phase: 28-referee-venue-ingestion-pipeline",
@@ -226,7 +226,7 @@ def emit_report(
         f"- META-V22 random_15pct Brier: **{V22_REF_META_BRIER}**",
         f"- xgb_v2 (gate) random_15pct Brier: **{V22_REF_XGB_BRIER}**",
         f"- Margin: **{V22_REF_MARGIN}** (gate − META-V22)",
-        f"- Verdict: ✓ PRESERVED (reference)",
+        "- Verdict: ✓ PRESERVED (reference)",
         "",
         "## Re-spike results (v2.3 Plan 28-04 — deduplicated corpus)",
         "",
@@ -459,7 +459,7 @@ def main():
                 f"Phase 26 candidate_meta.json (mtime predates this run)"
             )
         }
-        print(f"Spike failed — verdict will be DEFERRED-PENDING-PHASE-29")
+        print("Spike failed — verdict will be DEFERRED-PENDING-PHASE-29")
     print()
 
     # 7. Extract random_15pct + verdict (only if spike succeeded)

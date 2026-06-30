@@ -53,10 +53,10 @@ _SCRIPTS_DIR = REPO_ROOT / "scripts"
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
-from build_canonical_substrate_v27 import (  # type: ignore[import-not-found]  # noqa: E402
+from build_canonical_substrate_v27 import (  # type: ignore[import-not-found]
     build_canonical_substrate_parquet,
 )
-from build_ref_substrate_v261 import (  # type: ignore[import-not-found]  # noqa: E402
+from build_ref_substrate_v261 import (  # type: ignore[import-not-found]
     build_substrate_parquet as build_ref_substrate_parquet,
 )
 

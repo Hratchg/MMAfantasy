@@ -29,7 +29,6 @@ from typing import Any
 
 import pytest
 
-
 # ── Docker-availability gate (per Phase 41 CONTEXT) ───────────────────────
 
 

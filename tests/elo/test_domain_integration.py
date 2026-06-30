@@ -27,7 +27,6 @@ from ufc_prediction.models.fight import Fight
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.models.round_stats import RoundStats
 
-
 # ── Seed helpers ────────────────────────────────────────────────────────────
 
 
@@ -97,7 +96,7 @@ def seed_striker_archetype(session):
     session.flush()
 
     # Add round stats for ALL fights (so domain Elo is computed for all)
-    for i, (fight, opp_idx) in enumerate(zip(fights, range(6))):
+    for i, (fight, opp_idx) in enumerate(zip(fights, range(6), strict=False)):
         opp = opponents[opp_idx]
         method = fight_specs[i][3]
 
@@ -207,7 +206,7 @@ def seed_grappler_archetype(session):
     session.flush()
 
     # Add round stats for ALL fights
-    for i, (fight, opp_idx) in enumerate(zip(fights, range(6))):
+    for i, (fight, opp_idx) in enumerate(zip(fights, range(6), strict=False)):
         opp = opponents[opp_idx]
         method = fight_specs[i][3]
 

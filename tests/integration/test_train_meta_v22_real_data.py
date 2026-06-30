@@ -48,8 +48,8 @@ def test_meta_v2_joblib_not_promoted_yet():
     Promotion is Plan 26-04 only (D-10)."""
     meta_v2 = META_DIR / "meta_v2.joblib"
     assert not meta_v2.exists(), (
-        f"meta_v2.joblib exists prematurely; promotion is Plan 26-04 only "
-        f"(D-10 hard-gate-then-save discipline)"
+        "meta_v2.joblib exists prematurely; promotion is Plan 26-04 only "
+        "(D-10 hard-gate-then-save discipline)"
     )
 
 

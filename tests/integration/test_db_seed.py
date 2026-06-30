@@ -70,7 +70,7 @@ def _wait_for_pg(
             conn = psycopg.connect(url, connect_timeout=2)
             conn.close()
             return
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             last_exc = exc
             time.sleep(0.5)
     raise RuntimeError(f"postgres at {host}:{port} not reachable within {timeout_s}s: {last_exc}")

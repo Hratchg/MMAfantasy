@@ -271,7 +271,7 @@ def assert_meta_v2_layout() -> None:
 # ── Plan 66-01 OOF parquet loader ─────────────────────────────────────────
 
 
-def load_xgb_netd_oof(path: Path) -> "Any":
+def load_xgb_netd_oof(path: Path) -> Any:
     """Read Plan 66-01 OOF parquet from disk into a DataFrame.
 
     Schema (per Plan 66-01 SUMMARY): ``{fight_id int64, oof_prob float64,
@@ -305,7 +305,7 @@ def load_xgb_netd_oof(path: Path) -> "Any":
 # ── NaN imputation (Phase 65 CR-02 inherited + Phase 66 D-03a) ────────────
 
 
-def _impute_nans_inplace(X_13: "Any") -> "Any":
+def _impute_nans_inplace(X_13: Any) -> Any:
     """Replace NaN entries in ``X_13`` column-wise with the column's global median.
 
     NET v2 cols (PageRank/2hop-SoS) return ``None`` for debutants; col[0]
@@ -362,12 +362,12 @@ def _synthesize_13col_matrix(*, seed: int = DEFAULT_SEED) -> tuple[Any, Any]:
     """
     import datetime as _dt
 
-    import numpy as np
-
     import compose_v25_travel as _cv  # type: ignore[import-not-found]
+    import numpy as np
     from compose_v25_travel import (  # type: ignore[import-not-found]
         _build_synthetic_v25,
     )
+
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
 
     class _FixedDate(_dt.date):
@@ -442,8 +442,8 @@ def _build_live_13col_matrix(*, xgb_netd_oof_df: Any) -> tuple[Any, Any]:
     Returns ``(X_13, y)`` aligned with the rows present in the OOF parquet.
     """
     import numpy as np
-
     import train_meta_v22 as _tm  # type: ignore[import-not-found]
+
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
 
     # 1. v2.2 90-col matrix + fight_records.
@@ -855,7 +855,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("interrupted", file=sys.stderr)
         sys.exit(130)
-    except Exception:  # noqa: BLE001
+    except Exception:
         # Defense-in-depth: any unhandled exception surfaces as exit 1
         # with a traceback so operators see the root cause but the process
         # rc is still well-defined.

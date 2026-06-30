@@ -32,13 +32,12 @@ import pytest
 
 from ufc_prediction.features.referee_v2 import (
     EVENT_COUNTRY_BUCKETS,
-    RefereeV2Stratification,
     SCORING_REGIME_UNIFIED_START,
+    RefereeV2Stratification,
     compute_ref_v2_features_shrunk,
     derive_event_country_bucket,
     derive_scoring_regime,
 )
-
 
 # ── Task 1: derive_scoring_regime (D-01) ───────────────────────────────────
 
@@ -48,7 +47,7 @@ class TestDeriveScoringRegime:
 
     def test_module_constant_pins_boundary(self) -> None:
         """The named constant prevents silent boundary drift (T-65-03)."""
-        assert SCORING_REGIME_UNIFIED_START == date(2017, 1, 1)
+        assert date(2017, 1, 1) == SCORING_REGIME_UNIFIED_START
 
     def test_derive_scoring_regime_boundary(self) -> None:
         """2016-12-31 is pre; 2017-01-01 is post (inclusive on post)."""

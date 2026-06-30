@@ -39,7 +39,6 @@ from ufc_prediction.features.network import (
     _compute_edge_weight,
 )
 
-
 # Locked per D-02(P18) — Lazova & Basnarkov 2015 ~34.3-day half-life.
 DECAY_BASE: float = 0.98
 

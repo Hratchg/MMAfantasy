@@ -290,7 +290,6 @@ def _compute_net_v2_columns(
         Length matches ``len(fight_records)``. Entries are ``float``
         (with ``np.nan`` for debutants).
     """
-    import numpy as np
 
     from ufc_prediction.features.network_v2 import (
         build_fight_graph_v2,
@@ -812,7 +811,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("interrupted", file=sys.stderr)
         sys.exit(130)
-    except Exception:  # noqa: BLE001
+    except Exception:
         # Defense-in-depth: any unhandled exception surfaces as exit 1
         # with a traceback so operators see the root cause but the process
         # rc is still well-defined.

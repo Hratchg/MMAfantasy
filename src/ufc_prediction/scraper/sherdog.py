@@ -207,7 +207,8 @@ def parse_association_from_html(html: str) -> str | None:
         <div class="association-class">
             ASSOCIATION<br />
             <span itemprop="memberOf" itemscope ...>
-                <a class="association" itemprop="url" href="/stats/fightfinder?association=City+Kickboxing">
+                <a class="association" itemprop="url"
+                   href="/stats/fightfinder?association=City+Kickboxing">
                     <span itemprop="name">City Kickboxing</span>
                 </a>
             </span>

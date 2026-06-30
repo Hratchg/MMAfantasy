@@ -102,7 +102,7 @@ def test_health_and_ready_bypass_limiter(client):
 
 def test_exempt_paths_constant():
     expected = {"/health", "/ready", "/docs", "/redoc", "/openapi.json"}
-    assert EXEMPT_PATHS == frozenset(expected)
+    assert frozenset(expected) == EXEMPT_PATHS
     assert isinstance(EXEMPT_PATHS, frozenset)
 
 

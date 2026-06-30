@@ -17,7 +17,6 @@ import pytest
 from ufc_prediction.elo.config import EloConfig
 from ufc_prediction.elo.engine import EloEngine, FightRecord
 
-
 # ── Helpers (local — avoid coupling to tests/elo/conftest.py which has its own
 # auto-use fixtures and counter resets specific to that test directory) ──────
 
@@ -134,7 +133,7 @@ def test_3_empty_seeds_is_no_op_regression_invariant() -> None:
     snaps2 = e2.compute_all(fights2)
 
     assert len(snaps1) == len(snaps2), f"Snapshot count differs: e1={len(snaps1)} e2={len(snaps2)}"
-    for i, (s1, s2) in enumerate(zip(snaps1, snaps2)):
+    for i, (s1, s2) in enumerate(zip(snaps1, snaps2, strict=False)):
         assert s1.fighter_id == s2.fighter_id, f"snapshot {i} fighter_id"
         assert s1.fight_id == s2.fight_id, f"snapshot {i} fight_id"
         assert s1.division == s2.division, f"snapshot {i} division"

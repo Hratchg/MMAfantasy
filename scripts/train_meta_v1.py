@@ -106,7 +106,7 @@ LAST_PER_SEED_RESULTS: dict[int, dict] = {}
 # Re-exported here so monkeypatching ``train_meta_v1.gate_verdict`` in Plan
 # 19-02 Task 1a tests redirects the gate decision without touching the
 # evaluator module's binding.
-from ufc_prediction.ml.evaluator import gate_verdict  # noqa: E402
+from ufc_prediction.ml.evaluator import gate_verdict
 
 
 def assert_phase19_invariants() -> None:
@@ -435,6 +435,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # ── Step 3: Real-data wiring (Plan 19-02 Task 1a deliverable) ──
+    from ufc_prediction.ml.config import FEATURE_COLUMNS_NO_NET
+    from ufc_prediction.ml.evaluator import evaluate_per_slice
     from ufc_prediction.ml.gate_contract import load_gate_contract
     from ufc_prediction.ml.meta_learner import (
         META_FEATURE_COLUMNS,
@@ -446,8 +448,6 @@ def main(argv: list[str] | None = None) -> int:
         generate_oof_predictions,
         make_three_way_split,
     )
-    from ufc_prediction.ml.config import FEATURE_COLUMNS_NO_NET
-    from ufc_prediction.ml.evaluator import evaluate_per_slice
     from ufc_prediction.ml.trainer import median_metrics
 
     # (a) Load fights + assemble feature matrix (mockable via _load_assembled_data).
@@ -509,7 +509,7 @@ def main(argv: list[str] | None = None) -> int:
             _elo_features = load_elo_features(_session)
         finally:
             _session.close()
-    except Exception:  # noqa: BLE001 — tests bypass via mocked _compute_elo_prob_for_fight
+    except Exception:
         _elo_features = {}
 
     elo_prob_train = np.array(
@@ -594,7 +594,7 @@ def main(argv: list[str] | None = None) -> int:
     contract = load_gate_contract()
     passed, failures = gate_verdict(median, contract)
 
-    METRIC_KEYS_FOR_OVERALL = ("brier_score",)
+    _METRIC_KEYS_FOR_OVERALL = ("brier_score",)
     median_brier_overall = float(np.median([median[s]["brier_score"] for s in PER_SLICE_KEYS]))
 
     # (g) Persist + archive.
@@ -673,7 +673,7 @@ def main(argv: list[str] | None = None) -> int:
             archive_dir=META_ARCHIVE_DIR,
         )
         print(f"[train_meta_v1] AUDIT-03 archived: meta_v1_<{sha[:8]}>.joblib")
-    except Exception as exc:  # noqa: BLE001 — Task 3 fallback path catches absent candidate
+    except Exception as exc:
         print(f"[train_meta_v1] AUDIT-03 archive failed (Task 3 fallback expected): {exc}")
 
     # (h) Write the markdown spike report. Pass META_LEARNER_REPORT_PATH
@@ -683,8 +683,8 @@ def main(argv: list[str] | None = None) -> int:
         per_seed=per_seed_results,
         passed=passed,
         failures=failures,
-        n_meta_train=int(len(meta_train_idx)),
-        n_meta_eval=int(len(meta_eval_idx)),
+        n_meta_train=len(meta_train_idx),
+        n_meta_eval=len(meta_eval_idx),
         out_path=META_LEARNER_REPORT_PATH,
     )
     print(f"[train_meta_v1] Report written: {META_LEARNER_REPORT_PATH}")

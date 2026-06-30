@@ -92,7 +92,6 @@ from sqlalchemy.exc import IntegrityError
 
 from ufc_prediction.db.session import SessionLocal
 
-
 # ─────────────────────────────────────────────────────────────────────
 # Constants
 # ─────────────────────────────────────────────────────────────────────
@@ -998,13 +997,13 @@ def main() -> int:
 
     # Discovery
     result = discover(args.csv)
-    print(f"\nDiscovery summary:")
+    print("\nDiscovery summary:")
     print(f"  CSV written to: {result['out_csv_path']}")
     print(f"  Total rows: {result['total_rows']}")
     print(f"  By tier: {result['tier_counts']}")
     print(f"  By confidence: {result['conf_counts']}")
     print(f"  Same-card-ambiguous rows: {result['ambiguous_same_card']}")
-    print(f"\nHALT — review CSV before --apply")
+    print("\nHALT — review CSV before --apply")
     return 0
 
 

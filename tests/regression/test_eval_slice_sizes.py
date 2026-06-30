@@ -113,7 +113,7 @@ def test_apply_nan_drop_policy_rejects_unknown_policy():
     apply_nan_drop_policy = _import_apply_nan_drop_policy()
     X = np.ones((5, 3))
     cols = ["xgb_oof_prob", "elo_prob", "closing_prob_diff"]
-    with pytest.raises(ValueError, match="bogus|unknown|policy"):
+    with pytest.raises(ValueError, match=r"bogus|unknown|policy"):
         apply_nan_drop_policy(X, cols, policy="bogus")
 
 
@@ -166,9 +166,10 @@ def _spike_data_fresh_or_run() -> dict:
     else:
         try:
             data = json.loads(SPIKE_JSON_PATH.read_text())
-            if "nan_drop_policy" not in data:
-                needs_run = True
-            elif (time.time() - SPIKE_JSON_PATH.stat().st_mtime) > SPIKE_STALE_AFTER_SECONDS:
+            if (
+                "nan_drop_policy" not in data
+                or (time.time() - SPIKE_JSON_PATH.stat().st_mtime) > SPIKE_STALE_AFTER_SECONDS
+            ):
                 needs_run = True
         except (json.JSONDecodeError, KeyError):
             needs_run = True

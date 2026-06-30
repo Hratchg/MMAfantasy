@@ -19,6 +19,8 @@ import math
 import numpy as np
 import pytest
 
+from ufc_prediction.ml.evaluator import PER_SLICE_KEYS
+
 # Will fail import until Task 2 GREEN commit lands variance.py.
 from ufc_prediction.ml.variance import (
     aggregate_variance,
@@ -26,7 +28,6 @@ from ufc_prediction.ml.variance import (
     bootstrap_resample,
     multi_seed_metrics,
 )
-from ufc_prediction.ml.evaluator import PER_SLICE_KEYS
 
 
 def _synthetic_xy(

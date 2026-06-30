@@ -75,7 +75,7 @@ def predict(
         try:
             matches_a = search_fighters(db, body.fighter_a)
             matches_b = search_fighters(db, body.fighter_b)
-        except Exception:  # noqa: BLE001 — fall through to predictor for any DB error
+        except Exception:
             matches_a = matches_b = []
         if len(matches_a) == 1 and len(matches_b) == 1 and matches_a[0].id == matches_b[0].id:
             raise HTTPException(

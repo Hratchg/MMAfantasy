@@ -9,7 +9,7 @@ not batch); reuses parsers, never raises.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -115,7 +115,7 @@ def test_fetch_matchup_odds_cache_hit_skips_http(monkeypatch):
         fighter_b_opening=130,
         fighter_b_closing_min=120,
         fighter_b_closing_max=140,
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=datetime.now(UTC),
         source="cache",
     )
     monkeypatch.setattr(bfo_live, "_try_cache", lambda session, fa, fb, ed: cached)

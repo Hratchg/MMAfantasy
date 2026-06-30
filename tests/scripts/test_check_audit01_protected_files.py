@@ -33,6 +33,15 @@ def mod():
     return m
 
 
+@pytest.fixture(autouse=True)
+def _assume_changed(mod, monkeypatch):
+    """The guard now flags only protected paths that differ from HEAD (so a
+    clean `--all-files` run passes). These tests exercise the block/override
+    LOGIC, so assume the paths handed in are genuinely being changed.
+    """
+    monkeypatch.setattr(mod, "_differs_from_head", lambda _path: True)
+
+
 def test_protected_files_set_matches_contributing_md(mod) -> None:
     """The protected set must enumerate exactly the CONTRIBUTING.md L62-74 list.
 

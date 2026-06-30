@@ -46,6 +46,7 @@ bootstrap-no-op which produces bit-identical floats; near-misses are NOT
 the bug. Any reviewer who "fixes" this to `np.isclose` re-introduces the
 v2.2 silent-failure mode.
 """
+
 from __future__ import annotations
 
 import json
@@ -57,23 +58,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 SPIKE_V22: Path = REPO_ROOT / "scripts" / "spike_noise_floor_v22.py"
 SPIKE_V23: Path = REPO_ROOT / "scripts" / "spike_noise_floor_v23.py"
-PHASE30_DIR: Path = (
-    REPO_ROOT / ".planning" / "phases" / "30-multi-seed-variance-harness"
-)
-FIXTURE_NPZ: Path = (
-    REPO_ROOT / "tests" / "fixtures" / "variance" / "meta_train_xy.npz"
-)
-FIXTURE_SLICES: Path = (
-    REPO_ROOT / "tests" / "fixtures" / "variance" / "eval_slices.json"
-)
+PHASE30_DIR: Path = REPO_ROOT / ".planning" / "phases" / "30-multi-seed-variance-harness"
+FIXTURE_NPZ: Path = REPO_ROOT / "tests" / "fixtures" / "variance" / "meta_train_xy.npz"
+FIXTURE_SLICES: Path = REPO_ROOT / "tests" / "fixtures" / "variance" / "eval_slices.json"
 
-EXPECTED_XGB_V2_SHA: str = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
+EXPECTED_XGB_V2_SHA: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.1409
 PLAN_29_03_TOLERANCE: float = 0.0001
 
@@ -115,8 +107,12 @@ def _meta_fit_fn_lite(X_train, y_train, seed):
     subprocess invocation.
     """
     from sklearn.linear_model import LogisticRegression
+
     return LogisticRegression(
-        C=1.0, penalty="l2", solver="lbfgs", max_iter=1000,
+        C=1.0,
+        penalty="l2",
+        solver="lbfgs",
+        max_iter=1000,
         random_state=int(seed),
     ).fit(X_train, y_train)
 
@@ -157,13 +153,14 @@ def test_spike_v23_fork_shape() -> None:
 
     # v22 spike byte-identical to its prior commit (D-03 fork-not-mutate).
     result = subprocess.run(
-        ["git", "diff", "--stat", "HEAD", "--",
-         "scripts/spike_noise_floor_v22.py"],
-        cwd=str(REPO_ROOT), capture_output=True, text=True, check=True,
+        ["git", "diff", "--stat", "HEAD", "--", "scripts/spike_noise_floor_v22.py"],
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
+        check=True,
     )
     assert result.stdout.strip() == "", (
-        f"D-03 violation: scripts/spike_noise_floor_v22.py has diffs "
-        f"vs HEAD:\n{result.stdout}"
+        f"D-03 violation: scripts/spike_noise_floor_v22.py has diffs vs HEAD:\n{result.stdout}"
     )
 
 
@@ -174,8 +171,8 @@ def test_5seed_end_to_end_distinct(cached_meta_train_xy, cached_eval_slices):
     """30-02-02 — 5-seed end-to-end on cached fixture; 5 distinct Brier per slice."""
     from datetime import date
 
-    from ufc_prediction.ml.variance import multi_seed_metrics
     from ufc_prediction.ml.evaluator import PER_SLICE_KEYS
+    from ufc_prediction.ml.variance import multi_seed_metrics
 
     X, y = cached_meta_train_xy
     # Plan 30-01 emits the fixture as a train-OR-eval set (synthetic; the
@@ -183,14 +180,17 @@ def test_5seed_end_to_end_distinct(cached_meta_train_xy, cached_eval_slices):
     # use the same (X, y) for train and eval and let bootstrap inject the
     # variance — the test is about the HARNESS's distinct-Brier
     # invariant, not about generalization.
-    fight_dates = np.array(
-        [date.fromisoformat(s) for s in cached_eval_slices["fight_dates_eval"]]
-    )
+    fight_dates = np.array([date.fromisoformat(s) for s in cached_eval_slices["fight_dates_eval"]])
 
     seeds = (42, 43, 44, 45, 46)
     per_seed = multi_seed_metrics(
-        X, y, X, y, fight_dates,
-        seeds=seeds, fit_fn=_meta_fit_fn_lite,
+        X,
+        y,
+        X,
+        y,
+        fight_dates,
+        seeds=seeds,
+        fit_fn=_meta_fit_fn_lite,
     )
     assert set(per_seed.keys()) == {int(s) for s in seeds}
 
@@ -212,8 +212,10 @@ def test_zero_variance_halt(tmp_path) -> None:
     """30-02-03 — synthetic collapse triggers 30-VARIANCE-HALT.md emission."""
     # Import the spike module via importlib (scripts/ not on sys.path).
     import importlib.util
+
     spec = importlib.util.spec_from_file_location(
-        "spike_v23_for_halt_test", str(SPIKE_V23),
+        "spike_v23_for_halt_test",
+        str(SPIKE_V23),
     )
     spike_mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(spike_mod)
@@ -245,36 +247,45 @@ def test_zero_variance_halt(tmp_path) -> None:
 
     aggregated = {
         "most_recent_12mo": {
-            "seed_std_brier": 0.001, "seed_std_acc": 0.001,
+            "seed_std_brier": 0.001,
+            "seed_std_acc": 0.001,
             "bootstrap_ci_half_brier": 0.005,
             "bootstrap_ci_half_acc": 0.005,
-            "std_brier_used": 0.005, "std_acc_used": 0.005,
+            "std_brier_used": 0.005,
+            "std_acc_used": 0.005,
         },
         "most_recent_24mo": {
-            "seed_std_brier": 0.001, "seed_std_acc": 0.001,
+            "seed_std_brier": 0.001,
+            "seed_std_acc": 0.001,
             "bootstrap_ci_half_brier": 0.005,
             "bootstrap_ci_half_acc": 0.005,
-            "std_brier_used": 0.005, "std_acc_used": 0.005,
+            "std_brier_used": 0.005,
+            "std_acc_used": 0.005,
         },
         # Collapse signature: seed_std == 0.0 on random_15pct.
         "random_15pct": {
-            "seed_std_brier": 0.0, "seed_std_acc": 0.0,
+            "seed_std_brier": 0.0,
+            "seed_std_acc": 0.0,
             "bootstrap_ci_half_brier": 0.005,
             "bootstrap_ci_half_acc": 0.005,
-            "std_brier_used": 0.005, "std_acc_used": 0.005,
+            "std_brier_used": 0.005,
+            "std_acc_used": 0.005,
         },
     }
 
     # Detect zero-variance slices (mirror spike main's logic).
     zero_variance_slices = [
-        slc for slc, v in aggregated.items()
+        slc
+        for slc, v in aggregated.items()
         if v["seed_std_brier"] == 0.0 or v["seed_std_acc"] == 0.0
     ]
     assert zero_variance_slices == ["random_15pct"], zero_variance_slices
 
     # Render the HALT artifact via the spike's helper.
     body = spike_mod._render_variance_halt(
-        zero_variance_slices, aggregated, per_seed,
+        zero_variance_slices,
+        aggregated,
+        per_seed,
         triggered_at="2026-05-22T00:00:00+00:00",
     )
 
@@ -323,9 +334,7 @@ def test_seed42_deterministic_matches_plan_29_03(tmp_path) -> None:
     canonical-lineage anchor binds against the REAL Plan 29-03 data path
     (synthetic fixtures do not reproduce 0.1409 — that's the binding).
     """
-    if not os.environ.get("DATABASE_URL") and not os.environ.get(
-        "RUN_LIVE_DB_TESTS"
-    ):
+    if not os.environ.get("DATABASE_URL") and not os.environ.get("RUN_LIVE_DB_TESTS"):
         pytest.skip(
             "test_seed42_deterministic_matches_plan_29_03 requires the live "
             "DB to reproduce Plan 29-03's 0.1409 anchor. Set DATABASE_URL or "
@@ -339,36 +348,44 @@ def test_seed42_deterministic_matches_plan_29_03(tmp_path) -> None:
 
     result = subprocess.run(
         [
-            sys.executable, str(SPIKE_V23),
-            "--seeds", "42",
+            sys.executable,
+            str(SPIKE_V23),
+            "--seeds",
+            "42",
             "--no-bootstrap",
-            "--report-path", str(tmp_report),
-            "--sha-end-path", str(tmp_sha),
-            "--halt-path", str(tmp_halt),
+            "--report-path",
+            str(tmp_report),
+            "--sha-end-path",
+            str(tmp_sha),
+            "--halt-path",
+            str(tmp_halt),
         ],
         cwd=str(REPO_ROOT),
-        capture_output=True, text=True, timeout=600,
+        capture_output=True,
+        text=True,
+        timeout=600,
     )
     # Deterministic seed=42 + no-bootstrap on real data should not trigger
     # HALT (Path A) — single-seed runs produce seed_std=0 trivially, but
     # the test bypasses by being SKIPPED if DB unreachable. If we're here,
     # the spike succeeded.
     assert result.returncode in (0, 3), (
-        f"spike exit code {result.returncode}; stdout=\n{result.stdout}\n"
-        f"stderr=\n{result.stderr}"
+        f"spike exit code {result.returncode}; stdout=\n{result.stdout}\nstderr=\n{result.stderr}"
     )
     assert tmp_report.exists(), f"report not emitted: {tmp_report}"
 
     report_text = tmp_report.read_text(encoding="utf-8")
     # Parse frontmatter for canonical_lineage_brier_random_15pct.
     brier_line = next(
-        (ln for ln in report_text.splitlines()
-         if ln.startswith("canonical_lineage_brier_random_15pct:")),
+        (
+            ln
+            for ln in report_text.splitlines()
+            if ln.startswith("canonical_lineage_brier_random_15pct:")
+        ),
         None,
     )
     assert brier_line is not None, (
-        f"missing canonical_lineage_brier_random_15pct in report:\n"
-        f"{report_text[:2000]}"
+        f"missing canonical_lineage_brier_random_15pct in report:\n{report_text[:2000]}"
     )
     brier = float(brier_line.split(":", 1)[1].strip())
     delta = abs(brier - PLAN_29_03_RANDOM_15PCT_BRIER)
@@ -400,8 +417,10 @@ def test_no_bootstrap_does_not_emit_spurious_halt(tmp_path) -> None:
     + `_no_bootstrap_metrics` so it stays DB-free + bit-deterministic.
     """
     import importlib.util
+
     spec = importlib.util.spec_from_file_location(
-        "spike_v23_for_cr01_test", str(SPIKE_V23),
+        "spike_v23_for_cr01_test",
+        str(SPIKE_V23),
     )
     spike_mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(spike_mod)
@@ -424,21 +443,30 @@ def test_no_bootstrap_does_not_emit_spurious_halt(tmp_path) -> None:
     for seed in seeds:
         fake_per_seed[int(seed)] = {
             "most_recent_12mo": {
-                "brier_score": 0.140, "accuracy": 0.65,
+                "brier_score": 0.140,
+                "accuracy": 0.65,
                 "auc_roc": 0.70,
             },
             "most_recent_24mo": {
-                "brier_score": 0.145, "accuracy": 0.64,
+                "brier_score": 0.145,
+                "accuracy": 0.64,
                 "auc_roc": 0.71,
             },
             "random_15pct": {
-                "brier_score": 0.141, "accuracy": 0.63,
+                "brier_score": 0.141,
+                "accuracy": 0.63,
                 "auc_roc": 0.72,
             },
         }
 
     def fake_no_bootstrap_metrics(
-        X_train, y_train, X_eval, y_eval, fight_dates_eval, *, seeds,
+        X_train,
+        y_train,
+        X_eval,
+        y_eval,
+        fight_dates_eval,
+        *,
+        seeds,
     ):
         # Return our pre-built identical-tuples dict (skips actual LR fit).
         return {int(s): fake_per_seed[int(s)] for s in seeds}
@@ -448,23 +476,28 @@ def test_no_bootstrap_does_not_emit_spurious_halt(tmp_path) -> None:
         for slc in spike_mod.PER_SLICE_KEYS:
             aggregated[slc] = {
                 # seed_std == 0 on every slice (identical-tuples regime).
-                "seed_std_brier": 0.0, "seed_std_acc": 0.0,
+                "seed_std_brier": 0.0,
+                "seed_std_acc": 0.0,
                 "bootstrap_ci_half_brier": 0.005,
                 "bootstrap_ci_half_acc": 0.005,
-                "std_brier_used": 0.005, "std_acc_used": 0.005,
+                "std_brier_used": 0.005,
+                "std_acc_used": 0.005,
             }
         return aggregated, []
 
     def fake_meta_fit_fn(X_train, y_train, seed):
         class _Stub:
             def predict_proba(self, X):
-                return np.column_stack([
-                    np.full(X.shape[0], 0.5),
-                    np.full(X.shape[0], 0.5),
-                ])
+                return np.column_stack(
+                    [
+                        np.full(X.shape[0], 0.5),
+                        np.full(X.shape[0], 0.5),
+                    ]
+                )
 
             def predict(self, X):
                 return np.zeros(X.shape[0], dtype=int)
+
         return _Stub()
 
     saved_loader = spike_mod._load_meta_train_eval_matrices
@@ -480,12 +513,14 @@ def test_no_bootstrap_does_not_emit_spurious_halt(tmp_path) -> None:
     # exercised in the canonical 10-seed spike run.
     def fake_sha(label):
         return spike_mod.EXPECTED_XGB_V2_SHA
+
     spike_mod._assert_xgb_v2_sha = fake_sha
 
     # Also patch variance.aggregate_variance — it's imported INSIDE main()
     # via `from ufc_prediction.ml.variance import aggregate_variance, ...`,
     # so patch the source module so the inner import picks it up.
     from ufc_prediction.ml import variance as variance_mod
+
     saved_agg = variance_mod.aggregate_variance
     variance_mod.aggregate_variance = fake_aggregate
 
@@ -494,14 +529,20 @@ def test_no_bootstrap_does_not_emit_spurious_halt(tmp_path) -> None:
     tmp_halt = tmp_path / "30-VARIANCE-HALT.md"
 
     try:
-        rc = spike_mod.main([
-            "--seeds", *[str(s) for s in seeds],
-            "--no-bootstrap",
-            "--dry-run",  # avoid live DB; the patched loader ignores this anyway
-            "--report-path", str(tmp_report),
-            "--sha-end-path", str(tmp_sha),
-            "--halt-path", str(tmp_halt),
-        ])
+        rc = spike_mod.main(
+            [
+                "--seeds",
+                *[str(s) for s in seeds],
+                "--no-bootstrap",
+                "--dry-run",  # avoid live DB; the patched loader ignores this anyway
+                "--report-path",
+                str(tmp_report),
+                "--sha-end-path",
+                str(tmp_sha),
+                "--halt-path",
+                str(tmp_halt),
+            ]
+        )
     finally:
         spike_mod._load_meta_train_eval_matrices = saved_loader
         spike_mod._no_bootstrap_metrics = saved_no_boot
@@ -522,8 +563,7 @@ def test_no_bootstrap_does_not_emit_spurious_halt(tmp_path) -> None:
     # Report must reflect Path A outcome.
     report_text = tmp_report.read_text(encoding="utf-8")
     assert "actual_outcome: path_a_non_zero_variance" in report_text, (
-        f"--no-bootstrap rc=0 path must materialize Path A outcome:\n"
-        f"{report_text[:1500]}"
+        f"--no-bootstrap rc=0 path must materialize Path A outcome:\n{report_text[:1500]}"
     )
 
 
@@ -551,7 +591,8 @@ def test_fixture_emitter_mask_matches_evaluator() -> None:
     # Load the fixture-emitter module via importlib (scripts/ not on sys.path).
     emitter_path = REPO_ROOT / "scripts" / "_emit_30_variance_fixtures.py"
     spec = importlib.util.spec_from_file_location(
-        "emit_30_for_wr06_test", str(emitter_path),
+        "emit_30_for_wr06_test",
+        str(emitter_path),
     )
     emitter_mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(emitter_mod)
@@ -575,12 +616,10 @@ def test_fixture_emitter_mask_matches_evaluator() -> None:
     actual = emitter_mod._compute_slice_masks(fight_dates, today=today)
 
     assert np.array_equal(actual["most_recent_12mo"], expected_12mo), (
-        "fixture emitter's 12mo mask diverged from evaluator's 12mo mask "
-        "(WR-06 drift guard fired)"
+        "fixture emitter's 12mo mask diverged from evaluator's 12mo mask (WR-06 drift guard fired)"
     )
     assert np.array_equal(actual["most_recent_24mo"], expected_24mo), (
-        "fixture emitter's 24mo mask diverged from evaluator's 24mo mask "
-        "(WR-06 drift guard fired)"
+        "fixture emitter's 24mo mask diverged from evaluator's 24mo mask (WR-06 drift guard fired)"
     )
     assert np.array_equal(actual["random_15pct"], expected_random), (
         "fixture emitter's random_15pct mask diverged from evaluator's "

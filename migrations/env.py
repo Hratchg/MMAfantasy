@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, pool
 
 from ufc_prediction.config import settings
 from ufc_prediction.db.base import Base
-from ufc_prediction.models import *  # noqa: F403 -- register all models
+from ufc_prediction.models import *
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -60,9 +60,7 @@ def run_migrations_online() -> None:
     connectable = create_engine(get_url(), poolclass=pool.NullPool)
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

@@ -61,7 +61,7 @@ def test_429_after_third_request(client):
     headers = {"X-API-Key": "partner-a:secret-a"}
     for i in range(3):
         resp = client.get("/api/v1/test", headers=headers)
-        assert resp.status_code == 200, f"request #{i+1} unexpectedly 429"
+        assert resp.status_code == 200, f"request #{i + 1} unexpectedly 429"
     fourth = client.get("/api/v1/test", headers=headers)
     assert fourth.status_code == 429
 
@@ -102,7 +102,7 @@ def test_health_and_ready_bypass_limiter(client):
 
 def test_exempt_paths_constant():
     expected = {"/health", "/ready", "/docs", "/redoc", "/openapi.json"}
-    assert EXEMPT_PATHS == frozenset(expected)
+    assert frozenset(expected) == EXEMPT_PATHS
     assert isinstance(EXEMPT_PATHS, frozenset)
 
 

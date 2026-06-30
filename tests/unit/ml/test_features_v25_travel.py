@@ -29,7 +29,6 @@ from datetime import date
 import numpy as np
 import pytest
 
-
 # ── TestHaversineKm ─────────────────────────────────────────────────────────
 
 
@@ -97,8 +96,10 @@ class TestTzShiftHoursClipped:
 
         # Both in winter (Jan 15) — EST and PST in effect.
         shift = compute_tz_shift_hours_clipped(
-            "America/New_York", date(2026, 1, 15),
-            "America/Los_Angeles", date(2026, 1, 15),
+            "America/New_York",
+            date(2026, 1, 15),
+            "America/Los_Angeles",
+            date(2026, 1, 15),
         )
         assert shift == pytest.approx(-3.0)
 
@@ -109,8 +110,10 @@ class TestTzShiftHoursClipped:
         )
 
         shift = compute_tz_shift_hours_clipped(
-            "America/Los_Angeles", date(2026, 1, 15),
-            "America/New_York", date(2026, 1, 15),
+            "America/Los_Angeles",
+            date(2026, 1, 15),
+            "America/New_York",
+            date(2026, 1, 15),
         )
         assert shift == pytest.approx(3.0)
 
@@ -121,8 +124,10 @@ class TestTzShiftHoursClipped:
         )
 
         shift = compute_tz_shift_hours_clipped(
-            "America/New_York", date(2026, 7, 15),
-            "America/Los_Angeles", date(2026, 7, 15),
+            "America/New_York",
+            date(2026, 7, 15),
+            "America/Los_Angeles",
+            date(2026, 7, 15),
         )
         assert shift == pytest.approx(-3.0)
 
@@ -140,8 +145,10 @@ class TestTzShiftHoursClipped:
         )
 
         shift = compute_tz_shift_hours_clipped(
-            "America/Los_Angeles", date(2025, 3, 8),
-            "America/Los_Angeles", date(2025, 3, 10),
+            "America/Los_Angeles",
+            date(2025, 3, 8),
+            "America/Los_Angeles",
+            date(2025, 3, 10),
         )
         # PDT (-7) - PST (-8) = +1.0
         assert shift == pytest.approx(1.0)
@@ -155,8 +162,10 @@ class TestTzShiftHoursClipped:
         # Jan 2026: Auckland is in NZDT (UTC+13); Honolulu HST (UTC-10).
         # raw = -10 - 13 = -23; clipped to -12.0.
         shift = compute_tz_shift_hours_clipped(
-            "Pacific/Auckland", date(2026, 1, 15),
-            "Pacific/Honolulu", date(2026, 1, 15),
+            "Pacific/Auckland",
+            date(2026, 1, 15),
+            "Pacific/Honolulu",
+            date(2026, 1, 15),
         )
         assert shift == pytest.approx(-12.0)
 
@@ -167,8 +176,10 @@ class TestTzShiftHoursClipped:
         )
 
         shift = compute_tz_shift_hours_clipped(
-            "Pacific/Honolulu", date(2026, 1, 15),
-            "Pacific/Auckland", date(2026, 1, 15),
+            "Pacific/Honolulu",
+            date(2026, 1, 15),
+            "Pacific/Auckland",
+            date(2026, 1, 15),
         )
         assert shift == pytest.approx(12.0)
 
@@ -179,7 +190,10 @@ class TestTzShiftHoursClipped:
         )
 
         result = compute_tz_shift_hours_clipped(
-            None, None, "America/Los_Angeles", date(2026, 1, 15),
+            None,
+            None,
+            "America/Los_Angeles",
+            date(2026, 1, 15),
         )
         assert math.isnan(result), f"expected NaN, got {result}"
 
@@ -190,8 +204,10 @@ class TestTzShiftHoursClipped:
         )
 
         result = compute_tz_shift_hours_clipped(
-            "America/New_York", None,
-            "America/Los_Angeles", date(2026, 1, 15),
+            "America/New_York",
+            None,
+            "America/Los_Angeles",
+            date(2026, 1, 15),
         )
         assert math.isnan(result)
 
@@ -202,7 +218,10 @@ class TestTzShiftHoursClipped:
         )
 
         result = compute_tz_shift_hours_clipped(
-            None, None, "America/Chicago", date(2026, 6, 1),
+            None,
+            None,
+            "America/Chicago",
+            date(2026, 6, 1),
         )
         assert math.isnan(result) is True
 
@@ -224,12 +243,14 @@ class TestComputeTravelV25Features:
         )
 
         prior = {
-            "lat": 36.1027, "lon": -115.1761,
+            "lat": 36.1027,
+            "lon": -115.1761,
             "timezone_iana": "America/Los_Angeles",
             "event_date": date(2025, 12, 1),
         }
         curr = {
-            "lat": 40.7505, "lon": -73.9934,
+            "lat": 40.7505,
+            "lon": -73.9934,
             "timezone_iana": "America/New_York",
         }
         out = compute_travel_v25_features(prior, curr, date(2026, 1, 15))
@@ -242,7 +263,8 @@ class TestComputeTravelV25Features:
         )
 
         curr = {
-            "lat": 40.7505, "lon": -73.9934,
+            "lat": 40.7505,
+            "lon": -73.9934,
             "timezone_iana": "America/New_York",
         }
         out = compute_travel_v25_features(None, curr, date(2026, 1, 15))
@@ -256,12 +278,14 @@ class TestComputeTravelV25Features:
         )
 
         prior = {
-            "lat": 36.1027, "lon": -115.1761,
+            "lat": 36.1027,
+            "lon": -115.1761,
             "timezone_iana": "America/Los_Angeles",
             "event_date": date(2025, 12, 1),
         }
         curr = {
-            "lat": 40.7505, "lon": -73.9934,
+            "lat": 40.7505,
+            "lon": -73.9934,
             "timezone_iana": "America/New_York",
         }
         out = compute_travel_v25_features(prior, curr, date(2026, 1, 15))
@@ -278,7 +302,8 @@ class TestComputeTravelV25Features:
         from ufc_prediction.ml.features_v22.travel import compute_travel_features
 
         curr = {
-            "lat": 40.7505, "lon": -73.9934,
+            "lat": 40.7505,
+            "lon": -73.9934,
             "timezone_iana": "America/New_York",
         }
         out = compute_travel_features(None, curr, date(2026, 1, 15))
@@ -375,52 +400,77 @@ def _build_synthetic_fixture():
     fights = [
         # Fight 1: A=1 (debut), B=2 (debut), at T-Mobile (2025-06-01)
         {
-            "fight_id": 1, "event_id": 100,
+            "fight_id": 1,
+            "event_id": 100,
             "event_date": date(2025, 6, 1),
-            "fighter_a_id": 1, "fighter_b_id": 2,
-            "winner_id": 1, "weight_class": "Lightweight",
-            "method": "Decision", "referee_id": None,
-            "venue_lat": t_mobile[0], "venue_lon": t_mobile[1],
+            "fighter_a_id": 1,
+            "fighter_b_id": 2,
+            "winner_id": 1,
+            "weight_class": "Lightweight",
+            "method": "Decision",
+            "referee_id": None,
+            "venue_lat": t_mobile[0],
+            "venue_lon": t_mobile[1],
             "venue_timezone_iana": t_mobile[2],
         },
         # Fight 2: A=2, B=3 (debut), at MSG (2025-08-01) — A=2 has prior=T-Mobile
         {
-            "fight_id": 2, "event_id": 200,
+            "fight_id": 2,
+            "event_id": 200,
             "event_date": date(2025, 8, 1),
-            "fighter_a_id": 2, "fighter_b_id": 3,
-            "winner_id": 2, "weight_class": "Lightweight",
-            "method": "Decision", "referee_id": None,
-            "venue_lat": msg[0], "venue_lon": msg[1],
+            "fighter_a_id": 2,
+            "fighter_b_id": 3,
+            "winner_id": 2,
+            "weight_class": "Lightweight",
+            "method": "Decision",
+            "referee_id": None,
+            "venue_lat": msg[0],
+            "venue_lon": msg[1],
             "venue_timezone_iana": msg[2],
         },
         # Fight 3: A=1, B=3, at T-Mobile (2025-10-01) — both veterans
         {
-            "fight_id": 3, "event_id": 300,
+            "fight_id": 3,
+            "event_id": 300,
             "event_date": date(2025, 10, 1),
-            "fighter_a_id": 1, "fighter_b_id": 3,
-            "winner_id": 1, "weight_class": "Lightweight",
-            "method": "Decision", "referee_id": None,
-            "venue_lat": t_mobile[0], "venue_lon": t_mobile[1],
+            "fighter_a_id": 1,
+            "fighter_b_id": 3,
+            "winner_id": 1,
+            "weight_class": "Lightweight",
+            "method": "Decision",
+            "referee_id": None,
+            "venue_lat": t_mobile[0],
+            "venue_lon": t_mobile[1],
             "venue_timezone_iana": t_mobile[2],
         },
         # Fight 4: A=2, B=1, at MSG (2025-12-01) — both veterans
         {
-            "fight_id": 4, "event_id": 400,
+            "fight_id": 4,
+            "event_id": 400,
             "event_date": date(2025, 12, 1),
-            "fighter_a_id": 2, "fighter_b_id": 1,
-            "winner_id": 2, "weight_class": "Lightweight",
-            "method": "Decision", "referee_id": None,
-            "venue_lat": msg[0], "venue_lon": msg[1],
+            "fighter_a_id": 2,
+            "fighter_b_id": 1,
+            "winner_id": 2,
+            "weight_class": "Lightweight",
+            "method": "Decision",
+            "referee_id": None,
+            "venue_lat": msg[0],
+            "venue_lon": msg[1],
             "venue_timezone_iana": msg[2],
         },
         # Fight 5: A=3, B=4 (debut), at T-Mobile (2026-02-01) — B debut
         {
-            "fight_id": 5, "event_id": 500,
+            "fight_id": 5,
+            "event_id": 500,
             "event_date": date(2026, 2, 1),
-            "fighter_a_id": 3, "fighter_b_id": 4,
-            "winner_id": 3, "weight_class": "Lightweight",
-            "method": "Decision", "referee_id": None,
-            "venue_lat": t_mobile[0], "venue_lon": t_mobile[1],
+            "fighter_a_id": 3,
+            "fighter_b_id": 4,
+            "winner_id": 3,
+            "weight_class": "Lightweight",
+            "method": "Decision",
+            "referee_id": None,
+            "venue_lat": t_mobile[0],
+            "venue_lon": t_mobile[1],
             "venue_timezone_iana": t_mobile[2],
         },
     ]
@@ -429,29 +479,35 @@ def _build_synthetic_fixture():
         "elo_diff_overall": 0.0,
         "elo_diff_striking": 0.0,
         "elo_diff_grappling": 0.0,
-        "elo_a_overall": 1500.0, "elo_a_striking": 1500.0, "elo_a_grappling": 1500.0,
-        "elo_b_overall": 1500.0, "elo_b_striking": 1500.0, "elo_b_grappling": 1500.0,
+        "elo_a_overall": 1500.0,
+        "elo_a_striking": 1500.0,
+        "elo_a_grappling": 1500.0,
+        "elo_b_overall": 1500.0,
+        "elo_b_striking": 1500.0,
+        "elo_b_grappling": 1500.0,
     }
     elo_features = {(f["fighter_a_id"], f["fight_id"]): default_elo for f in fights}
 
     # Computed features default to 0 for all PERFORMANCE_FEATURE_KEYS.
     from ufc_prediction.ml.config import PERFORMANCE_FEATURE_KEYS
+
     default_perf = {k: 0.0 for k in PERFORMANCE_FEATURE_KEYS}
-    computed_features = {
-        (f["fighter_a_id"], f["fight_id"]): default_perf for f in fights
-    }
+    computed_features = {(f["fighter_a_id"], f["fight_id"]): default_perf for f in fights}
 
     fighter_physicals = {
         fid: {
-            "height_inches": 70.0, "reach_inches": 70.0,
-            "leg_reach_inches": 40.0, "stance": "Orthodox",
+            "height_inches": 70.0,
+            "reach_inches": 70.0,
+            "leg_reach_inches": 40.0,
+            "stance": "Orthodox",
             "date_of_birth": date(1990, 1, 1),
         }
         for fid in (1, 2, 3, 4)
     }
     division_medians = {
         "Lightweight": {
-            "height_inches": 70.0, "reach_inches": 70.0,
+            "height_inches": 70.0,
+            "reach_inches": 70.0,
             "leg_reach_inches": 40.0,
         }
     }
@@ -466,7 +522,11 @@ class TestAssemblerV25TravelBranch:
         fights, elo, perf, phys, meds = _build_synthetic_fixture()
         asm = FeatureMatrixAssembler()
         X, y, dates = asm.assemble(
-            fights, elo, perf, phys, meds,
+            fights,
+            elo,
+            perf,
+            phys,
+            meds,
             feature_set="v2.5-travel",
         )
         assert X.shape[1] == 92, f"expected 92 cols, got {X.shape[1]}"
@@ -483,10 +543,20 @@ class TestAssemblerV25TravelBranch:
         fights, elo, perf, phys, meds = _build_synthetic_fixture()
         asm = FeatureMatrixAssembler()
         X22, _, _ = asm.assemble(
-            fights, elo, perf, phys, meds, feature_set="v2.2",
+            fights,
+            elo,
+            perf,
+            phys,
+            meds,
+            feature_set="v2.2",
         )
         X25, _, _ = asm.assemble(
-            fights, elo, perf, phys, meds, feature_set="v2.5-travel",
+            fights,
+            elo,
+            perf,
+            phys,
+            meds,
+            feature_set="v2.5-travel",
         )
         # First 90 cols must be byte-identical (NaN-aware).
         assert X22.shape[1] == 90
@@ -503,7 +573,12 @@ class TestAssemblerV25TravelBranch:
         fights, elo, perf, phys, meds = _build_synthetic_fixture()
         asm = FeatureMatrixAssembler()
         X, _, _ = asm.assemble(
-            fights, elo, perf, phys, meds, feature_set="v2.5-travel",
+            fights,
+            elo,
+            perf,
+            phys,
+            meds,
+            feature_set="v2.5-travel",
         )
         # Fight 1 (row 0): both A=1 and B=2 are debutants. red-blue = NaN-NaN = NaN.
         assert math.isnan(X[0, 90]), f"row 0 col 90 (km) should be NaN, got {X[0, 90]}"
@@ -516,7 +591,12 @@ class TestAssemblerV25TravelBranch:
         fights, elo, perf, phys, meds = _build_synthetic_fixture()
         asm = FeatureMatrixAssembler()
         X, _, _ = asm.assemble(
-            fights, elo, perf, phys, meds, feature_set="v2.5-travel",
+            fights,
+            elo,
+            perf,
+            phys,
+            meds,
+            feature_set="v2.5-travel",
         )
         # Fight 3 (row 2): A=1 last fought at T-Mobile (fight 1);
         # B=3 last fought at MSG (fight 2). Current = T-Mobile.
@@ -532,9 +612,7 @@ class TestAssemblerV25TravelBranch:
         assert X[2, 90] == pytest.approx(-3612.0, abs=80.0), (
             f"fight 3 km diff = {X[2, 90]}, expected ~-3612"
         )
-        assert X[2, 91] == pytest.approx(3.0), (
-            f"fight 3 hrs diff = {X[2, 91]}, expected ~+3"
-        )
+        assert X[2, 91] == pytest.approx(3.0), f"fight 3 hrs diff = {X[2, 91]}, expected ~+3"
 
     def test_assemble_v25_travel_uses_red_minus_blue_differential(self) -> None:
         """Red - Blue differential semantics verified explicitly.
@@ -558,15 +636,16 @@ class TestAssemblerV25TravelBranch:
         fights, elo, perf, phys, meds = _build_synthetic_fixture()
         asm = FeatureMatrixAssembler()
         X, _, _ = asm.assemble(
-            fights, elo, perf, phys, meds, feature_set="v2.5-travel",
+            fights,
+            elo,
+            perf,
+            phys,
+            meds,
+            feature_set="v2.5-travel",
         )
         # Fight 4 (row 3) — swap=True per md5("4"); post-swap a=1, b=2.
-        assert X[3, 90] == pytest.approx(3612.0, abs=80.0), (
-            f"fight 4 km diff = {X[3, 90]}"
-        )
-        assert X[3, 91] == pytest.approx(3.0), (
-            f"fight 4 hrs diff = {X[3, 91]}"
-        )
+        assert X[3, 90] == pytest.approx(3612.0, abs=80.0), f"fight 4 km diff = {X[3, 90]}"
+        assert X[3, 91] == pytest.approx(3.0), f"fight 4 hrs diff = {X[3, 91]}"
 
     def test_assemble_v22_path_unchanged_after_v25_landing(self) -> None:
         """REGRESSION GUARD: re-run v2.2 path; must emit 90-col rows
@@ -574,14 +653,19 @@ class TestAssemblerV25TravelBranch:
         (those run separately in the CI gate; here we just spot-check
         the row shape + length-invariant assert)."""
         from ufc_prediction.ml.feature_matrix import (
-            FeatureMatrixAssembler,
             _EXPECTED_V22_NCOLS,
+            FeatureMatrixAssembler,
         )
 
         fights, elo, perf, phys, meds = _build_synthetic_fixture()
         asm = FeatureMatrixAssembler()
         X, _, _ = asm.assemble(
-            fights, elo, perf, phys, meds, feature_set="v2.2",
+            fights,
+            elo,
+            perf,
+            phys,
+            meds,
+            feature_set="v2.2",
         )
         assert X.shape[1] == 90
         assert _EXPECTED_V22_NCOLS == 90

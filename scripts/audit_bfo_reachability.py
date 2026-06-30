@@ -85,6 +85,7 @@ Usage:
         --targets-csv data/bfo_event_probe_targets.csv \\
         --output-path /tmp/bfo_reachability.md
 """
+
 from __future__ import annotations
 
 import argparse
@@ -92,7 +93,7 @@ import csv
 import logging
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -102,25 +103,24 @@ from bs4 import BeautifulSoup
 from ufc_prediction.scraper.bfo_classify import (
     BFO_HOMEPAGE_TITLE,
     EVENT_NOT_FOUND_SENTINEL,
-    NON_REACHABLE_STATUSES,
-    REACHABLE as REACHABLE_STATUS,
-    classify,
     extract_title,
 )
+from ufc_prediction.scraper.bfo_classify import (
+    REACHABLE as REACHABLE_STATUS,
+)
 from ufc_prediction.scraper.bfo_scraper import BFOParseError, _check_captcha
-
 
 # ── Locked constants (D-07, D-08) ────────────────────────────────────────
 
 YEAR_ANCHORS: tuple[int, ...] = (2007, 2010, 2013, 2016, 2019, 2022)  # D-07
-EVENTS_PER_YEAR: int = 5                                              # D-07
-EARLY_STOP_CONSECUTIVE_FAILURES: int = 5                              # D-07
-TOTAL_PROBE_BUDGET: int = 30                                          # D-07 (6×5)
-RANDOM_STATE: int = 42                                                # v2.x
+EVENTS_PER_YEAR: int = 5  # D-07
+EARLY_STOP_CONSECUTIVE_FAILURES: int = 5  # D-07
+TOTAL_PROBE_BUDGET: int = 30  # D-07 (6×5)
+RANDOM_STATE: int = 42  # v2.x
 
-BFO_TIMEOUT_SECONDS: float = 5.0                                      # D-08
-BFO_DELAY_SECONDS: float = 1.2                                        # D-08
-BFO_MAX_RETRIES: int = 3                                              # D-08
+BFO_TIMEOUT_SECONDS: float = 5.0  # D-08
+BFO_DELAY_SECONDS: float = 1.2  # D-08
+BFO_MAX_RETRIES: int = 3  # D-08
 
 # Phase 21 BFO-V22-03 RED test consumes ``target_rate``; the floor
 # guarantees the audit pre-registers an actionable target even when
@@ -129,8 +129,8 @@ BFO_MAX_RETRIES: int = 3                                              # D-08
 POST_2007_TARGET_FLOOR: float = 0.80
 
 # Risk-flag thresholds (D-10).
-CAPTCHA_RISK_THRESHOLD: float = 0.05          # captcha_rate per year
-REACHABILITY_RISK_THRESHOLD: float = 0.60     # reachability_rate per year
+CAPTCHA_RISK_THRESHOLD: float = 0.05  # captcha_rate per year
+REACHABILITY_RISK_THRESHOLD: float = 0.60  # reachability_rate per year
 
 TARGETS_CSV: Path = Path("data/bfo_event_probe_targets.csv")
 OUTPUT_PATH_DEFAULT: Path = Path(
@@ -204,10 +204,12 @@ def _probe(
 
     # ── Operator-marked unfindable rows: no HTTP, just sentinel status.
     if url == EVENT_NOT_FOUND_SENTINEL:
-        base_row.update({
-            "status": "event_not_found",
-            "elapsed_s": 0.0,
-        })
+        base_row.update(
+            {
+                "status": "event_not_found",
+                "elapsed_s": 0.0,
+            }
+        )
         return base_row
 
     t0 = time.monotonic()
@@ -220,28 +222,34 @@ def _probe(
             classification = "not_found"
         else:
             classification = "http_other"
-        base_row.update({
-            "status": classification,
-            "elapsed_s": elapsed,
-            "http_status_code": status_code,
-            "exc": f"{type(exc).__name__}: {exc}",
-        })
+        base_row.update(
+            {
+                "status": classification,
+                "elapsed_s": elapsed,
+                "http_status_code": status_code,
+                "exc": f"{type(exc).__name__}: {exc}",
+            }
+        )
         return base_row
-    except (httpx.TimeoutException,) as exc:
+    except httpx.TimeoutException as exc:
         elapsed = time.monotonic() - t0
-        base_row.update({
-            "status": "timeout",
-            "elapsed_s": elapsed,
-            "exc": f"{type(exc).__name__}: {exc}",
-        })
+        base_row.update(
+            {
+                "status": "timeout",
+                "elapsed_s": elapsed,
+                "exc": f"{type(exc).__name__}: {exc}",
+            }
+        )
         return base_row
     except RuntimeError as exc:
         elapsed = time.monotonic() - t0
-        base_row.update({
-            "status": "error",
-            "elapsed_s": elapsed,
-            "exc": f"{type(exc).__name__}: {exc}",
-        })
+        base_row.update(
+            {
+                "status": "error",
+                "elapsed_s": elapsed,
+                "exc": f"{type(exc).__name__}: {exc}",
+            }
+        )
         return base_row
 
     elapsed = time.monotonic() - t0
@@ -253,11 +261,13 @@ def _probe(
     try:
         _check_captcha(soup)
     except BFOParseError as exc:
-        base_row.update({
-            "status": "captcha",
-            "captcha_hit": True,
-            "exc": f"{type(exc).__name__}: {exc}",
-        })
+        base_row.update(
+            {
+                "status": "captcha",
+                "captcha_hit": True,
+                "exc": f"{type(exc).__name__}: {exc}",
+            }
+        )
         return base_row
 
     # Title-based discrimination (Task 1 finding).
@@ -477,12 +487,8 @@ def _format_url_format_drift(
     for year in sorted(per_year.keys()):
         rows = per_year[year]
         n_total = len(rows)
-        n_event_not_found = sum(
-            1 for r in rows if r.get("status") == "event_not_found"
-        )
-        n_homepage = sum(
-            1 for r in rows if r.get("status") == "homepage_fallback"
-        )
+        n_event_not_found = sum(1 for r in rows if r.get("status") == "event_not_found")
+        n_homepage = sum(1 for r in rows if r.get("status") == "homepage_fallback")
         if n_event_not_found == n_total and n_total > 0:
             note = (
                 f"  - {year}: all {n_total} rows EVENT_NOT_FOUND — "
@@ -552,16 +558,12 @@ def _write_reachability_md(
       5. Couture–Liddell Substitution Note
       6. Risk Flags
     """
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     n_total = sum(len(rows) for rows in per_year.values())
     n_reachable = sum(
-        sum(1 for r in rows if r.get("status") == REACHABLE_STATUS)
-        for rows in per_year.values()
+        sum(1 for r in rows if r.get("status") == REACHABLE_STATUS) for rows in per_year.values()
     )
-    n_captcha = sum(
-        sum(1 for r in rows if r.get("captcha_hit"))
-        for rows in per_year.values()
-    )
+    n_captcha = sum(sum(1 for r in rows if r.get("captcha_hit")) for rows in per_year.values())
 
     lines: list[str] = [
         "# BFO Archive Reachability — Phase 20 / BFO-V22-00",
@@ -570,8 +572,9 @@ def _write_reachability_md(
         "",
         f"Overall: **{n_reachable}/{n_total} reachable** "
         f"({n_reachable / n_total:.1%} if n_total>0; "
-        f"captcha_hits={n_captcha})." if n_total > 0
-        else f"Overall: 0/0 reachable (no probes recorded).",
+        f"captcha_hits={n_captcha})."
+        if n_total > 0
+        else "Overall: 0/0 reachable (no probes recorded).",
         "",
         "## Probe Methodology",
         "",
@@ -581,23 +584,20 @@ def _write_reachability_md(
         f"- Early-stop: `{EARLY_STOP_CONSECUTIVE_FAILURES}` consecutive "
         f"non-reachable rows per year",
         f"- HTTP timeout: `{BFO_TIMEOUT_SECONDS}s`",
-        f"- Inter-request delay: `{BFO_DELAY_SECONDS}s` "
-        f"(ScraperClient per-thread rate limit)",
+        f"- Inter-request delay: `{BFO_DELAY_SECONDS}s` (ScraperClient per-thread rate limit)",
         f"- Max retries: `{BFO_MAX_RETRIES}` "
         f"(ScraperClient exponential backoff 5/10/20s on 429/503/TransportError)",
         f"- Random seed: `{RANDOM_STATE}` (v2.x convention)",
-        f"- Targets CSV: `{TARGETS_CSV}` (operator-curated; Option B per "
-        "RESEARCH §Pitfall #3)",
+        f"- Targets CSV: `{TARGETS_CSV}` (operator-curated; Option B per RESEARCH §Pitfall #3)",
         "",
         "Status taxonomy (per-row):",
         "- `reachable` — HTTP 200 + event-specific `<title>` (not BFO homepage)",
-        "- `homepage_fallback` — HTTP 200 + generic BFO homepage `<title>` "
-        "(URL ID invalid)",
+        "- `homepage_fallback` — HTTP 200 + generic BFO homepage `<title>` (URL ID invalid)",
         "- `not_found` — HTTP 404",
         "- `http_other` — non-200, non-404 HTTP status",
         "- `timeout` — read timeout / connection timeout",
         "- `error` — transport_fail / RuntimeError (retries exhausted)",
-        "- `captcha` — HTTP 200 + Cloudflare challenge body (`id=\"hfmr8\"`)",
+        '- `captcha` — HTTP 200 + Cloudflare challenge body (`id="hfmr8"`)',
         "- `event_not_found` — CSV sentinel; operator marked URL as "
         "unfindable (no HTTP request issued)",
         "",
@@ -694,7 +694,7 @@ def main() -> int:
     targets_csv = Path(args.targets_csv)
     logging.basicConfig(level=logging.INFO, format="[audit-bfo] %(message)s")
 
-    spike_started = datetime.now(timezone.utc)
+    spike_started = datetime.now(UTC)
 
     # ── AF startup assertions (Pitfall #7 + D-13 carry-forward) ────────
     af_rc = _assert_locked_constants()
@@ -719,7 +719,7 @@ def main() -> int:
         return 2
 
     # ── Lazy import: ScraperClient (keeps test cost low; aligned with audit_camp_v22)
-    from ufc_prediction.scraper.client import ScraperClient  # noqa: PLC0415
+    from ufc_prediction.scraper.client import ScraperClient
 
     client = ScraperClient(
         delay=BFO_DELAY_SECONDS,
@@ -732,15 +732,15 @@ def main() -> int:
     for year in YEAR_ANCHORS:
         print(f"[audit-bfo] year={year}: loading {EVENTS_PER_YEAR} candidates...")
         candidates = _load_event_urls_for_year(
-            year, k=EVENTS_PER_YEAR, targets_csv=targets_csv,
+            year,
+            k=EVENTS_PER_YEAR,
+            targets_csv=targets_csv,
         )
         print(f"[audit-bfo] year={year}: probing {len(candidates)} URLs...")
         rows = _probe_year(client, year=year, candidates=candidates)
         per_year[year] = rows
         n_reachable = sum(1 for r in rows if r.get("status") == REACHABLE_STATUS)
-        print(
-            f"[audit-bfo] year={year}: {n_reachable}/{len(rows)} reachable."
-        )
+        print(f"[audit-bfo] year={year}: {n_reachable}/{len(rows)} reachable.")
 
     # ── Derive pre-registered target + risk flags ──────────────────────
     target_rate, target_rationale = _derive_post2007_target(per_year)
@@ -754,18 +754,14 @@ def main() -> int:
         target_rationale=target_rationale,
         risk_flags=risk_flags,
     )
-    spike_finished = datetime.now(timezone.utc)
+    spike_finished = datetime.now(UTC)
 
     # ── Final stdout summary (5+ lines per CONTEXT Claude's Discretion) ─
     n_total = sum(len(rows) for rows in per_year.values())
     n_reachable_all = sum(
-        sum(1 for r in rows if r.get("status") == REACHABLE_STATUS)
-        for rows in per_year.values()
+        sum(1 for r in rows if r.get("status") == REACHABLE_STATUS) for rows in per_year.values()
     )
-    n_captcha_all = sum(
-        sum(1 for r in rows if r.get("captcha_hit"))
-        for rows in per_year.values()
-    )
+    n_captcha_all = sum(sum(1 for r in rows if r.get("captcha_hit")) for rows in per_year.values())
     print(
         f"\n[audit-bfo] Audit complete. Wrote:\n"
         f"  {output_path}\n"

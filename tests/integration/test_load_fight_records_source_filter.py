@@ -29,6 +29,7 @@ testcontainers ``session`` fixture, with no Docker dependency. The whole
 suite gracefully skips if the live DB is unreachable (e.g., in pure-CI
 environments with neither Docker nor the prod DB).
 """
+
 from __future__ import annotations
 
 import os
@@ -43,10 +44,10 @@ from ufc_prediction.models.event import Event
 from ufc_prediction.models.fight import Fight
 from ufc_prediction.models.fighter import Fighter
 
-
 # ─────────────────────────────────────────────────────────────────────
 # Live-DB session fixture — SAVEPOINT-bracketed; rolls back on teardown
 # ─────────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture()
 def rollback_session():
@@ -85,6 +86,7 @@ def rollback_session():
 # Fixture: seed a tiny mixed-source corpus inside the SAVEPOINT
 # ─────────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture()
 def mixed_source_corpus(rollback_session):
     """Seed 3 events (ufcstats, kaggle-mdabbert, kaggle-rajeevw) + 4 fights.
@@ -113,30 +115,71 @@ def mixed_source_corpus(rollback_session):
         (base_f + 6, "Frank Frajeevw"),
     ]:
         session.add(Fighter(id=fid, name=name, source="ufcstats"))
-    session.add(Event(id=base_e + 1, name="UFC TestUfcstats-A",
-                      date=date(2099, 1, 1), source="ufcstats"))
-    session.add(Event(id=base_e + 2, name="UFC Event - 2099-01-01",
-                      date=date(2099, 1, 1), source="kaggle-mdabbert"))
-    session.add(Event(id=base_e + 3, name="UFC Event - 2099-06-15",
-                      date=date(2099, 6, 15), source="kaggle-rajeevw"))
+    session.add(
+        Event(id=base_e + 1, name="UFC TestUfcstats-A", date=date(2099, 1, 1), source="ufcstats")
+    )
+    session.add(
+        Event(
+            id=base_e + 2,
+            name="UFC Event - 2099-01-01",
+            date=date(2099, 1, 1),
+            source="kaggle-mdabbert",
+        )
+    )
+    session.add(
+        Event(
+            id=base_e + 3,
+            name="UFC Event - 2099-06-15",
+            date=date(2099, 6, 15),
+            source="kaggle-rajeevw",
+        )
+    )
     session.flush()
-    session.add(Fight(id=base_x + 1, event_id=base_e + 1,
-                      fighter_a_id=base_f + 1, fighter_b_id=base_f + 2,
-                      winner_id=base_f + 1, weight_class="lightweight",
-                      source="ufcstats"))
-    session.add(Fight(id=base_x + 2, event_id=base_e + 2,
-                      fighter_a_id=base_f + 3, fighter_b_id=base_f + 4,
-                      winner_id=base_f + 3, weight_class="welterweight",
-                      source="kaggle-mdabbert"))
-    session.add(Fight(id=base_x + 3, event_id=base_e + 3,
-                      fighter_a_id=base_f + 5, fighter_b_id=base_f + 6,
-                      winner_id=base_f + 6, weight_class="bantamweight",
-                      source="kaggle-rajeevw"))
+    session.add(
+        Fight(
+            id=base_x + 1,
+            event_id=base_e + 1,
+            fighter_a_id=base_f + 1,
+            fighter_b_id=base_f + 2,
+            winner_id=base_f + 1,
+            weight_class="lightweight",
+            source="ufcstats",
+        )
+    )
+    session.add(
+        Fight(
+            id=base_x + 2,
+            event_id=base_e + 2,
+            fighter_a_id=base_f + 3,
+            fighter_b_id=base_f + 4,
+            winner_id=base_f + 3,
+            weight_class="welterweight",
+            source="kaggle-mdabbert",
+        )
+    )
+    session.add(
+        Fight(
+            id=base_x + 3,
+            event_id=base_e + 3,
+            fighter_a_id=base_f + 5,
+            fighter_b_id=base_f + 6,
+            winner_id=base_f + 6,
+            weight_class="bantamweight",
+            source="kaggle-rajeevw",
+        )
+    )
     # NULL-winner sentinel — already-existing winner_id filter must drop this.
-    session.add(Fight(id=base_x + 4, event_id=base_e + 1,
-                      fighter_a_id=base_f + 1, fighter_b_id=base_f + 2,
-                      winner_id=None, weight_class="lightweight",
-                      source="ufcstats"))
+    session.add(
+        Fight(
+            id=base_x + 4,
+            event_id=base_e + 1,
+            fighter_a_id=base_f + 1,
+            fighter_b_id=base_f + 2,
+            winner_id=None,
+            weight_class="lightweight",
+            source="ufcstats",
+        )
+    )
     session.flush()
     return session
 
@@ -144,6 +187,7 @@ def mixed_source_corpus(rollback_session):
 # ─────────────────────────────────────────────────────────────────────
 # Test 1 — sources contract (the HIGH-severity finding fix)
 # ─────────────────────────────────────────────────────────────────────
+
 
 def test_load_fight_records_returns_only_ufcstats_source(mixed_source_corpus):
     """Filter must reject every non-ufcstats event source.
@@ -166,9 +210,7 @@ def test_load_fight_records_returns_only_ufcstats_source(mixed_source_corpus):
     assert base + 1 in fight_ids, "ufcstats fixture row was unexpectedly dropped"
     assert base + 2 not in fight_ids, "kaggle-mdabbert leaked through filter"
     assert base + 3 not in fight_ids, "kaggle-rajeevw leaked through filter"
-    assert base + 4 not in fight_ids, (
-        "NULL-winner sentinel leaked (winner_id filter regression)"
-    )
+    assert base + 4 not in fight_ids, "NULL-winner sentinel leaked (winner_id filter regression)"
 
     # Global source contract: every returned fight_id must join to a
     # ufcstats-source event. (Scoped to the fixture window via id range
@@ -183,7 +225,9 @@ def test_load_fight_records_returns_only_ufcstats_source(mixed_source_corpus):
                 "WHERE f.id = ANY(:ids)"
             ),
             {"ids": [fid for fid in fight_ids if fid in fixture_ids]},
-        ).scalars().all()
+        )
+        .scalars()
+        .all()
     )
     # The returned set should contain only ufcstats (kaggle rows were dropped
     # by the filter so we never query them).
@@ -203,7 +247,9 @@ def test_load_fight_records_returns_only_ufcstats_source(mixed_source_corpus):
                 "WHERE f.id = ANY(:ids)"
             ),
             {"ids": fight_ids},
-        ).scalars().all()
+        )
+        .scalars()
+        .all()
     )
     assert global_sources == {"ufcstats"}, (
         f"load_fight_records must return only ufcstats-source rows globally; "
@@ -214,6 +260,7 @@ def test_load_fight_records_returns_only_ufcstats_source(mixed_source_corpus):
 # ─────────────────────────────────────────────────────────────────────
 # Test 2 — NULL-source defense (schema + predicate)
 # ─────────────────────────────────────────────────────────────────────
+
 
 def test_events_source_schema_is_not_null(rollback_session):
     """First-line defense: ``events.source`` is ``NOT NULL`` at the schema
@@ -232,10 +279,13 @@ def test_events_source_schema_is_not_null(rollback_session):
 
     session = rollback_session
     with pytest.raises(IntegrityError) as exc_info:
-        session.execute(text(
-            "INSERT INTO events (id, name, date, source, created_at) "
-            "VALUES (9500002, :n, :d, NULL, now())"
-        ), {"n": "Forged NULL Event", "d": date(2098, 2, 1)})
+        session.execute(
+            text(
+                "INSERT INTO events (id, name, date, source, created_at) "
+                "VALUES (9500002, :n, :d, NULL, now())"
+            ),
+            {"n": "Forged NULL Event", "d": date(2098, 2, 1)},
+        )
         session.flush()
     # psycopg surfaces the NotNullViolation; assert on the column name to
     # pin the constraint to events.source specifically (not a generic
@@ -249,6 +299,7 @@ def test_events_source_schema_is_not_null(rollback_session):
 # ─────────────────────────────────────────────────────────────────────
 # Test 3 — live-DB row-count smoke (opt-in via env var)
 # ─────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.skipif(
     os.getenv("UFC28_LIVE_DB") != "1",

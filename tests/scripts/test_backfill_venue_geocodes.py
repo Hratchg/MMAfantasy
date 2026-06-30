@@ -6,6 +6,7 @@ violation per RESEARCH Finding 8).
 
 Banned imports per Pitfall #1 / Finding 11: nothing under ``ufc_prediction.ml.*``.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -36,8 +37,16 @@ class TestLockedConstants:
     def test_csv_header_10_cols(self, backfill) -> None:
         assert len(backfill.CSV_HEADER) == 10
         assert backfill.CSV_HEADER == [
-            "venue_id", "name", "city", "state", "country",
-            "lat", "lon", "timezone_iana", "n_events", "geocode_source",
+            "venue_id",
+            "name",
+            "city",
+            "state",
+            "country",
+            "lat",
+            "lon",
+            "timezone_iana",
+            "n_events",
+            "geocode_source",
         ]
 
     def test_output_path_committed_to_repo(self, backfill) -> None:
@@ -80,8 +89,10 @@ class TestCacheFirstGeocode:
         # rate-limit doesn't slow the test.
         mock_geolocator = MagicMock()
         mock_geolocator.geocode.return_value = mock_loc
-        with patch.object(backfill, "_make_geolocator", return_value=mock_geolocator), \
-             patch("time.sleep"):
+        with (
+            patch.object(backfill, "_make_geolocator", return_value=mock_geolocator),
+            patch("time.sleep"),
+        ):
             backfill._load_or_geocode("O2 Arena, London", cache)
 
         assert "O2 Arena, London" in cache
@@ -96,8 +107,10 @@ class TestCacheFirstGeocode:
 
         mock_geolocator = MagicMock()
         mock_geolocator.geocode.return_value = None  # Nominatim says "no result"
-        with patch.object(backfill, "_make_geolocator", return_value=mock_geolocator), \
-             patch("time.sleep"):
+        with (
+            patch.object(backfill, "_make_geolocator", return_value=mock_geolocator),
+            patch("time.sleep"),
+        ):
             first_result = backfill._load_or_geocode("Nonexistent Venue, XYZ", cache)
         assert first_result is None
         # The miss MUST be cached so reruns short-circuit
@@ -120,8 +133,7 @@ class TestEmitCsv:
         backfill._emit_csv([], out)
         first_line = out.read_text(encoding="utf-8").splitlines()[0]
         assert first_line == (
-            "venue_id,name,city,state,country,"
-            "lat,lon,timezone_iana,n_events,geocode_source"
+            "venue_id,name,city,state,country,lat,lon,timezone_iana,n_events,geocode_source"
         )
 
     def test_emit_row_count(self, backfill, tmp_path: Path) -> None:

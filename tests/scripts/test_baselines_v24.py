@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RESULTS_PATH = PROJECT_ROOT / "results" / "baselines_v24.json"
 CANONICAL_XGB_V2_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
@@ -19,7 +18,7 @@ CANONICAL_XGB_V2_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d
 @pytest.fixture(scope="module")
 def baselines_doc() -> dict:
     if not RESULTS_PATH.exists():
-        pytest.skip(f"results/baselines_v24.json missing — run scripts/baselines_v24.py first")
+        pytest.skip("results/baselines_v24.json missing — run scripts/baselines_v24.py first")
     return json.loads(RESULTS_PATH.read_text())
 
 
@@ -39,8 +38,9 @@ def test_required_keys_per_row(baselines_doc: dict) -> None:
 
 def test_market_baseline_has_n_with_market(baselines_doc: dict) -> None:
     """market_directional_implied_baseline rows must carry n_with_market."""
-    market_rows = [r for r in baselines_doc["rows"]
-                   if r["model"] == "market_directional_implied_baseline"]
+    market_rows = [
+        r for r in baselines_doc["rows"] if r["model"] == "market_directional_implied_baseline"
+    ]
     assert len(market_rows) == 3
     for r in market_rows:
         assert "n_with_market" in r, f"row {r} missing n_with_market"

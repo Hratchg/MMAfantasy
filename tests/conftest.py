@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from testcontainers.postgres import PostgresContainer
 
 from ufc_prediction.db.base import Base
-from ufc_prediction.models import *  # noqa: F403 -- register all models
+from ufc_prediction.models import *
 
 
 @pytest.fixture(scope="session")

@@ -79,16 +79,20 @@ def get_latest_meta_version(meta_dir: str = DEFAULT_META_DIR) -> str | None:
     if not versions:
         return None
     return f"v{max(versions)}"
+
+
 SUPPORTED_META_KINDS: frozenset[str] = frozenset({"logistic", "nn"})
-SCHEMA_REQUIRED_FIELDS: frozenset[str] = frozenset({
-    "meta_version",
-    "meta_kind",
-    "meta_feature_columns",
-    "meta_input_distribution_hash",
-    "base_model_version",
-    "base_model_sha256",
-    "meta_learner_brier_delta_vs_logistic",
-})
+SCHEMA_REQUIRED_FIELDS: frozenset[str] = frozenset(
+    {
+        "meta_version",
+        "meta_kind",
+        "meta_feature_columns",
+        "meta_input_distribution_hash",
+        "base_model_version",
+        "base_model_sha256",
+        "meta_learner_brier_delta_vs_logistic",
+    }
+)
 
 
 class MetaSchemaError(ValueError):
@@ -163,9 +167,7 @@ def save_meta_model(
         MetaSchemaError if meta_kind is invalid.
     """
     if meta_kind not in SUPPORTED_META_KINDS:
-        raise MetaSchemaError(
-            f"meta_kind={meta_kind!r} not in {sorted(SUPPORTED_META_KINDS)}"
-        )
+        raise MetaSchemaError(f"meta_kind={meta_kind!r} not in {sorted(SUPPORTED_META_KINDS)}")
 
     dir_path = Path(meta_dir)
     dir_path.mkdir(parents=True, exist_ok=True)
@@ -198,9 +200,7 @@ def _validate_schema(metadata: dict) -> None:
     """Raise MetaSchemaError if metadata violates schema."""
     missing = SCHEMA_REQUIRED_FIELDS - set(metadata.keys())
     if missing:
-        raise MetaSchemaError(
-            f"meta JSON missing required fields: {sorted(missing)}"
-        )
+        raise MetaSchemaError(f"meta JSON missing required fields: {sorted(missing)}")
     if metadata["meta_kind"] not in SUPPORTED_META_KINDS:
         raise MetaSchemaError(
             f"meta_kind={metadata['meta_kind']!r} not in {sorted(SUPPORTED_META_KINDS)}"

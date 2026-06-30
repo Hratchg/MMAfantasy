@@ -59,7 +59,9 @@ from rapidfuzz import fuzz
 from sqlalchemy import select
 
 from ufc_prediction.models.fighter import Fighter
-from ufc_prediction.scraper.bfo_matcher import normalize_name  # noqa: F401  (kept for downstream re-use)
+from ufc_prediction.scraper.bfo_matcher import (
+    normalize_name,
+)
 from ufc_prediction.scraper.bfo_models import BFOFighterName, BFOOddsRow
 
 logger = logging.getLogger(__name__)
@@ -193,9 +195,7 @@ def _check_captcha(soup: BeautifulSoup) -> None:
     el = soup.find(id=_CAPTCHA_ID)
     if el is not None:
         snippet = el.get_text(strip=True)[:80] if hasattr(el, "get_text") else ""
-        raise BFOParseError(
-            f"BFO CAPTCHA gate hit (id={_CAPTCHA_ID}): {snippet}"
-        )
+        raise BFOParseError(f"BFO CAPTCHA gate hit (id={_CAPTCHA_ID}): {snippet}")
 
 
 def _parse_moneyline(cell_text: str) -> int | None:
@@ -281,9 +281,7 @@ class BFOEventPage:
 _DATA_LI_RE = re.compile(r"\[(\d+),(\d+),(\d+)\]")
 # Pattern: extract ``YYYY`` from a meta description like
 # "...for Cage Warriors 205 on April 26, 2026. Find the best..."
-_DESC_DATE_RE = re.compile(
-    r"on\s+([A-Z][a-z]+)\s+(\d{1,2}),\s*(\d{4})", re.IGNORECASE
-)
+_DESC_DATE_RE = re.compile(r"on\s+([A-Z][a-z]+)\s+(\d{1,2}),\s*(\d{4})", re.IGNORECASE)
 # Pattern: extract a fighter slug from /fighters/<Slug-Name-NNNN>.
 _FIGHTER_SLUG_RE = re.compile(r"^/fighters/([A-Za-z0-9-]+)$")
 # Single source of truth for the BFO event slug+id grammar.
@@ -320,15 +318,14 @@ def _extract_event_date_from_meta(soup: BeautifulSoup) -> date | None:
         return None
     month_name, day_str, year_str = match.groups()
     try:
-        return datetime.strptime(
-            f"{month_name} {day_str} {year_str}", "%B %d %Y"
-        ).date()
+        return datetime.strptime(f"{month_name} {day_str} {year_str}", "%B %d %Y").date()
     except ValueError:
         return None
 
 
 def _extract_event_name_and_url(
-    soup: BeautifulSoup, event_url: str,
+    soup: BeautifulSoup,
+    event_url: str,
 ) -> tuple[str, str]:
     """Return (event_name, canonical_event_url) from the event-header div.
 
@@ -345,8 +342,8 @@ def _extract_event_name_and_url(
     header = soup.select_one("div.table-header")
     if header is None:
         logger.warning(
-            "BFO event page %s has no div.table-header (returning empty "
-            "event_name)", event_url,
+            "BFO event page %s has no div.table-header (returning empty event_name)",
+            event_url,
         )
         return ("", event_url)
     h1 = header.find("h1")
@@ -399,7 +396,8 @@ def canonicalize_event_url(href: str, *, fallback: str) -> str:
         logger.warning(
             "BFO event href %r does not match canonical /events/<slug>-<id> "
             "pattern; falling back to %r (CORPUS-V25-02 drift guard).",
-            href, fallback,
+            href,
+            fallback,
         )
         return fallback
     return f"{BFO_BASE}{href}"
@@ -430,7 +428,9 @@ def _matchup_id_from_tr(tr: Tag) -> str | None:
 
 
 def _bookie_lines_for_matchup(
-    odds_table: Tag, matchup_id: str, side: int,
+    odds_table: Tag,
+    matchup_id: str,
+    side: int,
 ) -> list[int]:
     """Return all integer bookie lines for ``(matchup_id, side)``.
 
@@ -440,7 +440,6 @@ def _bookie_lines_for_matchup(
     cells (e.g. the prop popup column).
     """
     lines: list[int] = []
-    target = f"[{{}},{side},{matchup_id}]"  # data-li format: [bookie,side,mu]
     for cell in odds_table.find_all("td", attrs={"data-li": True}):
         data_li = cell.get("data-li", "")
         match = _DATA_LI_RE.match(data_li)
@@ -514,19 +513,16 @@ def parse_bfo_event_page(html: str, event_url: str) -> BFOEventPage:
     # carries matchup labels in tr id="mu-N" → next tr (opponent) form.
     # The RIGHT table (table.odds-table inside table-scroller) carries the
     # per-bookie odds cells with data-li="[bookie,side,muId]".
-    label_tables = table_div.select(
-        "table.odds-table-responsive-header"
-    )
+    label_tables = table_div.select("table.odds-table-responsive-header")
     odds_tables = [
-        t for t in table_div.select("table.odds-table")
+        t
+        for t in table_div.select("table.odds-table")
         if "odds-table-responsive-header" not in (t.get("class") or [])
     ]
     label_table = label_tables[0] if label_tables else None
     odds_table = odds_tables[0] if odds_tables else None
     if label_table is None or odds_table is None:
-        raise BFOParseError(
-            f"Missing odds-table or label-table on {event_url}"
-        )
+        raise BFOParseError(f"Missing odds-table or label-table on {event_url}")
 
     matchups: list[BFOEventMatchup] = []
     rows = [r for r in label_table.find_all("tr") if isinstance(r, Tag)]
@@ -558,9 +554,7 @@ def parse_bfo_event_page(html: str, event_url: str) -> BFOEventPage:
 
         # Extract fighter slugs + names from the two rows.
         a_link = rows[i].find("a", href=lambda h: h and h.startswith("/fighters/"))
-        b_link = opponent_row.find(
-            "a", href=lambda h: h and h.startswith("/fighters/")
-        )
+        b_link = opponent_row.find("a", href=lambda h: h and h.startswith("/fighters/"))
         if a_link is None or b_link is None:
             i += 1
             continue
@@ -689,9 +683,7 @@ def parse_bfo_fighter_page(html: str, fighter_url: str) -> BFOFighterPage:
 
         # Opponent — link in the detail row's oppcell.
         opp_link = detail.select_one("th.oppcell a")
-        opponent_name = (
-            opp_link.get_text(strip=True) if opp_link is not None else ""
-        )
+        opponent_name = opp_link.get_text(strip=True) if opp_link is not None else ""
         opp_href = opp_link.get("href", "") if opp_link is not None else ""
         opponent_bfo_id = _id_from_href(opp_href)
 
@@ -714,7 +706,8 @@ def parse_bfo_fighter_page(html: str, fighter_url: str) -> BFOFighterPage:
             except ValueError:
                 logger.warning(
                     "Could not parse BFO date %r on %s — skipping fight",
-                    date_str, fighter_url,
+                    date_str,
+                    fighter_url,
                 )
                 continue
         else:
@@ -874,19 +867,13 @@ class BFOScraper:
         # 1. Read fighter list (D-02 + Phase 14 canonical-source filter).
         db_fighters: list[tuple[int, str]] = list(
             self._session.execute(
-                select(Fighter.id, Fighter.name).where(
-                    Fighter.source == "ufcstats"
-                )
+                select(Fighter.id, Fighter.name).where(Fighter.source == "ufcstats")
             ).all()
         )
         if not db_fighters:
             # Fallback: no fighters tagged ufcstats — read the whole table.
-            logger.warning(
-                "No fighters with source='ufcstats'; falling back to full table."
-            )
-            db_fighters = list(
-                self._session.execute(select(Fighter.id, Fighter.name)).all()
-            )
+            logger.warning("No fighters with source='ufcstats'; falling back to full table.")
+            db_fighters = list(self._session.execute(select(Fighter.id, Fighter.name)).all())
 
         summary.fighters_processed = len(db_fighters)
         if not db_fighters:
@@ -897,8 +884,7 @@ class BFOScraper:
 
         # 2. Stage A — parallel search-page fetch.
         search_urls = [
-            SEARCH_URL.format(query=urllib.parse.quote_plus(name))
-            for _id, name in db_fighters
+            SEARCH_URL.format(query=urllib.parse.quote_plus(name)) for _id, name in db_fighters
         ]
         search_results = self._client.map(  # type: ignore[attr-defined]
             functools.partial(_safe_fetch_bfo, self._client),
@@ -907,9 +893,7 @@ class BFOScraper:
 
         # 3. Stage B — parse + match.
         profile_targets: list[tuple[int, str, str]] = []  # (db_id, db_name, profile_url)
-        for (db_id, db_name), result in zip(
-            db_fighters, search_results, strict=False
-        ):
+        for (db_id, db_name), result in zip(db_fighters, search_results, strict=False):
             # _safe_fetch_bfo always returns a 3-tuple; defensive unpacking
             # for cases where map was mocked to return something else.
             try:
@@ -920,7 +904,9 @@ class BFOScraper:
                 continue
             if err is not None or html is None:
                 logger.warning(
-                    "BFO search failed for %s: %s", db_name, err,
+                    "BFO search failed for %s: %s",
+                    db_name,
+                    err,
                 )
                 summary.fighters_unmatched += 1
                 summary.unmatched_db_names.append(db_name)
@@ -1007,9 +993,7 @@ class BFOScraper:
                 # fight. The ingester expects 2 rows per fight_id (one per
                 # fighter side); see _canonical_fight_id docstring.
                 opp_id = fight.opponent_bfo_id or fight.opponent_name
-                fight_id_proxy = _canonical_fight_id(
-                    fight.event_date, bfo_id, opp_id
-                )
+                fight_id_proxy = _canonical_fight_id(fight.event_date, bfo_id, opp_id)
                 key = (fight_id_proxy, bfo_id)
                 if key in seen:
                     continue
@@ -1026,9 +1010,7 @@ class BFOScraper:
                 summary.fights_emitted += 1
 
             if progress_callback is not None:
-                progress_callback(
-                    summary.fighters_processed, summary.fights_emitted
-                )
+                progress_callback(summary.fighters_processed, summary.fights_emitted)
 
         # 6. Write CSVs in BFOOddsIngester column order (D-04).
         self._write_odds_csv(odds_rows)
@@ -1094,7 +1076,9 @@ class BFOScraper:
                 html = self._client.get(url)  # type: ignore[attr-defined]
             except (RuntimeError, ValueError) as exc:
                 logger.warning(
-                    "BFO event fetch failed for %s: %s", url, exc,
+                    "BFO event fetch failed for %s: %s",
+                    url,
+                    exc,
                 )
                 continue
             if html is None:
@@ -1108,7 +1092,9 @@ class BFOScraper:
                 # caller (Plan 21-01 backfill driver) decides whether to
                 # back off or continue.
                 logger.warning(
-                    "BFO event parse failed for %s: %s", url, exc,
+                    "BFO event parse failed for %s: %s",
+                    url,
+                    exc,
                 )
                 continue
 
@@ -1129,9 +1115,7 @@ class BFOScraper:
                 # 999.4 regression guard (date prefix needed for
                 # _resolve_fight closest-date matching).
                 pair = sorted([mu.fighter_a_slug, mu.fighter_b_slug])
-                fight_id = (
-                    f"{page.event_date.isoformat()}|{pair[0]}|{pair[1]}"
-                )
+                fight_id = f"{page.event_date.isoformat()}|{pair[0]}|{pair[1]}"
                 # Side A row.
                 odds_rows.append(
                     BFOOddsRow(

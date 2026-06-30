@@ -68,7 +68,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 # Direct import from scripts/ — Task 1 deliverable. Tests collect-fail with
 # ImportError until the script exists (RED phase contract).
-from retrain_xgb_v2_refv2 import (  # noqa: E402
+from retrain_xgb_v2_refv2 import (
     EXPECTED_XGB_V2_SHA256,
     OUT_JOBLIB,
     OUT_META,
@@ -77,7 +77,6 @@ from retrain_xgb_v2_refv2 import (  # noqa: E402
     assert_audit01_invariants,
     main,
 )
-
 
 # ── Cheap tier (always runs) ──────────────────────────────────────────────
 
@@ -109,8 +108,7 @@ def test_argparse_help_exits_zero() -> None:
 def test_expected_xgb_v2_sha256_matches_audit01() -> None:
     """The locked AUDIT-01 SHA constant matches the canonical hex (D-10)."""
     assert (
-        EXPECTED_XGB_V2_SHA256
-        == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+        EXPECTED_XGB_V2_SHA256 == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
     )
 
 
@@ -353,9 +351,7 @@ def test_compute_ref_v2_columns_synthetic_matches_live_formula() -> None:
             f"row {i}: live={lv!r} synth={sv!r}. The two paths must share "
             f"the same classify_outcome-based accounting."
         )
-    for i, (lv, sv) in enumerate(
-        zip(live_decision, synth_decision, strict=True)
-    ):
+    for i, (lv, sv) in enumerate(zip(live_decision, synth_decision, strict=True)):
         assert abs(lv - sv) < 1e-12, (
             f"CR-01 regression: live vs synthetic decision_col diverge at "
             f"row {i}: live={lv!r} synth={sv!r}."
@@ -447,13 +443,9 @@ def test_dry_run_oof_parquet_schema(dry_run_built: Path) -> None:
 def test_audit01_invariants_unchanged_after_dry_run(dry_run_built: Path) -> None:
     """After running ``--dry-run``, the canonical SHAs are byte-identical."""
     assert dry_run_built is not None
-    sha_xgb = hashlib.sha256(
-        (REPO_ROOT / "models" / "xgb_v2.joblib").read_bytes()
-    ).hexdigest()
+    sha_xgb = hashlib.sha256((REPO_ROOT / "models" / "xgb_v2.joblib").read_bytes()).hexdigest()
     sha_meta = hashlib.sha256(
         (REPO_ROOT / "models" / "meta" / "meta_v2.joblib").read_bytes()
     ).hexdigest()
     assert sha_xgb == EXPECTED_XGB_V2_SHA256
-    assert (
-        sha_meta == "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
-    )
+    assert sha_meta == "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"

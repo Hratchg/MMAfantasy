@@ -32,13 +32,12 @@ import pytest
 
 from ufc_prediction.features.referee_v2 import (
     EVENT_COUNTRY_BUCKETS,
-    RefereeV2Stratification,
     SCORING_REGIME_UNIFIED_START,
+    RefereeV2Stratification,
     compute_ref_v2_features_shrunk,
     derive_event_country_bucket,
     derive_scoring_regime,
 )
-
 
 # ── Task 1: derive_scoring_regime (D-01) ───────────────────────────────────
 
@@ -48,7 +47,7 @@ class TestDeriveScoringRegime:
 
     def test_module_constant_pins_boundary(self) -> None:
         """The named constant prevents silent boundary drift (T-65-03)."""
-        assert SCORING_REGIME_UNIFIED_START == date(2017, 1, 1)
+        assert date(2017, 1, 1) == SCORING_REGIME_UNIFIED_START
 
     def test_derive_scoring_regime_boundary(self) -> None:
         """2016-12-31 is pre; 2017-01-01 is post (inclusive on post)."""
@@ -114,7 +113,8 @@ class TestDeriveEventCountryBucket:
         [None, "", "Mongolia", "Antarctica", "Atlantis", "Wakanda"],
     )
     def test_derive_event_country_bucket_unknown(
-        self, venue_country: str | None,
+        self,
+        venue_country: str | None,
     ) -> None:
         """T-65-02: unmapped countries must fall through to ``UNKNOWN``,
         never silently route to US via fallthrough."""
@@ -259,9 +259,9 @@ class TestStrictPreFightDiscipline:
         """Past entries contribute; future entries are silently filtered."""
         cohort_history = {
             US_POST: [
-                _entry(date(2023, 1, 1), "KO/TKO"),       # counted (finish)
+                _entry(date(2023, 1, 1), "KO/TKO"),  # counted (finish)
                 _entry(date(2023, 6, 1), "Decision - Unanimous"),  # counted (decision)
-                _entry(AS_OF, "KO/TKO"),                  # excluded (same-day)
+                _entry(AS_OF, "KO/TKO"),  # excluded (same-day)
                 _entry(date(2024, 8, 1), "Decision - Split"),  # excluded (future)
             ],
         }
@@ -345,9 +345,13 @@ class TestBetaBinomialClosedForm:
         # k=0 is the raw rate (no shrinkage at all).
         assert finish_k0 == pytest.approx(0.8)
         # Distance from prior shrinks monotonically as k grows.
-        assert abs(finish_k200 - global_finish_rate) < abs(
-            finish_k50 - global_finish_rate,
-        ) < abs(finish_k0 - global_finish_rate)
+        assert (
+            abs(finish_k200 - global_finish_rate)
+            < abs(
+                finish_k50 - global_finish_rate,
+            )
+            < abs(finish_k0 - global_finish_rate)
+        )
 
     def test_body_no_action_dilutes_via_denominator(self) -> None:
         """no_action entries inflate ``n`` (denominator) but neither numerator."""
@@ -377,8 +381,8 @@ class TestCohortIsolation:
     def test_body_pre_post_2017_cohorts_isolated(self) -> None:
         """pre_2017 finish-heavy cohort must not bleed into the post_2017 query."""
         cohort_history = {
-            US_PRE: _balanced_cohort(100, 0),    # 100 finishes / 0 decisions
-            US_POST: _balanced_cohort(0, 100),   # 0 finishes / 100 decisions
+            US_PRE: _balanced_cohort(100, 0),  # 100 finishes / 0 decisions
+            US_POST: _balanced_cohort(0, 100),  # 0 finishes / 100 decisions
         }
         global_finish_rate = 0.45
 
@@ -484,16 +488,16 @@ class TestReturnContract:
         """
         cohort_history = {
             US_POST: [
-                _entry(date(2023, 1, 1), "KO/TKO"),                # finish
-                _entry(date(2023, 2, 1), "TKO"),                   # finish
-                _entry(date(2023, 3, 1), "Submission"),            # finish
-                _entry(date(2023, 4, 1), "SUB"),                   # finish
-                _entry(date(2023, 5, 1), "Decision"),              # decision
+                _entry(date(2023, 1, 1), "KO/TKO"),  # finish
+                _entry(date(2023, 2, 1), "TKO"),  # finish
+                _entry(date(2023, 3, 1), "Submission"),  # finish
+                _entry(date(2023, 4, 1), "SUB"),  # finish
+                _entry(date(2023, 5, 1), "Decision"),  # decision
                 _entry(date(2023, 6, 1), "Decision - Unanimous"),  # decision
-                _entry(date(2023, 7, 1), "Decision - Split"),      # decision
-                _entry(date(2023, 8, 1), "Decision - Majority"),   # decision
-                _entry(date(2023, 9, 1), "No Contest"),            # no_action
-                _entry(date(2023, 10, 1), None),                   # no_action
+                _entry(date(2023, 7, 1), "Decision - Split"),  # decision
+                _entry(date(2023, 8, 1), "Decision - Majority"),  # decision
+                _entry(date(2023, 9, 1), "No Contest"),  # no_action
+                _entry(date(2023, 10, 1), None),  # no_action
             ],
         }
         out = compute_ref_v2_features_shrunk(

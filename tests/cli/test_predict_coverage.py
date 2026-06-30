@@ -1,4 +1,5 @@
 """RED tests for `ufc predict coverage` subcommand (Phase 15.1 D-06)."""
+
 from __future__ import annotations
 
 import inspect
@@ -22,13 +23,10 @@ def test_per_year_table_renders_with_70pct_marker(
     mock_sl: MagicMock,
 ) -> None:
     mock_fr.return_value = [
-        {"fight_id": f"f{i}", "event_date": date(2015, 1, 1)}
-        for i in range(100)
+        {"fight_id": f"f{i}", "event_date": date(2015, 1, 1)} for i in range(100)
     ]
     # 70/100 fights have odds = 70% coverage
-    mock_odds.return_value = {
-        ("fighter_x", f"f{i}"): {} for i in range(70)
-    }
+    mock_odds.return_value = {("fighter_x", f"f{i}"): {} for i in range(70)}
     result = runner.invoke(app, ["predict", "coverage"])
     assert result.exit_code == 0, result.output
     assert "70.0%" in result.output
@@ -44,8 +42,7 @@ def test_no_year_meets_threshold_warns(
     mock_sl: MagicMock,
 ) -> None:
     mock_fr.return_value = [
-        {"fight_id": f"f{i}", "event_date": date(2010, 1, 1)}
-        for i in range(100)
+        {"fight_id": f"f{i}", "event_date": date(2010, 1, 1)} for i in range(100)
     ]
     mock_odds.return_value = {}
     result = runner.invoke(app, ["predict", "coverage"])
@@ -62,12 +59,9 @@ def test_threshold_flag_overrides_default(
     mock_sl: MagicMock,
 ) -> None:
     mock_fr.return_value = [
-        {"fight_id": f"f{i}", "event_date": date(2018, 1, 1)}
-        for i in range(100)
+        {"fight_id": f"f{i}", "event_date": date(2018, 1, 1)} for i in range(100)
     ]
-    mock_odds.return_value = {
-        ("fighter_x", f"f{i}"): {} for i in range(60)
-    }
+    mock_odds.return_value = {("fighter_x", f"f{i}"): {} for i in range(60)}
     result = runner.invoke(app, ["predict", "coverage", "--threshold", "0.50"])
     assert result.exit_code == 0, result.output
     assert "60.0%" in result.output
@@ -107,9 +101,7 @@ def test_load_fight_records_called_once(
     mock_fr: MagicMock,
     mock_sl: MagicMock,
 ) -> None:
-    mock_fr.return_value = [
-        {"fight_id": "f1", "event_date": date(2015, 1, 1)}
-    ]
+    mock_fr.return_value = [{"fight_id": "f1", "event_date": date(2015, 1, 1)}]
     mock_odds.return_value = {}
     runner.invoke(app, ["predict", "coverage"])
     assert mock_fr.call_count == 1
@@ -159,8 +151,7 @@ def test_collision_fighter_id_not_counted_as_fight_id(
         f"counted as fight_id=5 odds coverage. Output:\n{result.output}"
     )
     assert "100.0%" in result.output, (
-        "2020 must report 100% -- fight_id=999 has real odds. "
-        f"Output:\n{result.output}"
+        f"2020 must report 100% -- fight_id=999 has real odds. Output:\n{result.output}"
     )
 
 
@@ -181,8 +172,7 @@ def test_coverage_matches_direct_fight_id_count(
     """
     # 2023: 4 fights total, 2 distinct fight_ids have odds (each from 2 fighters)
     mock_fr.return_value = [
-        {"fight_id": fid, "event_date": date(2023, 3, 1)}
-        for fid in [101, 102, 103, 104]
+        {"fight_id": fid, "event_date": date(2023, 3, 1)} for fid in [101, 102, 103, 104]
     ]
     # Two-fighter-per-fight pattern: fights 101 and 102 covered, 103/104 not
     mock_odds.return_value = {

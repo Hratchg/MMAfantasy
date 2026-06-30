@@ -35,12 +35,8 @@ def test_no_future_event_dates(
     """After ingestion, no event has a date in the future."""
     _ingest_fixture_data(session, rajeevw_fighters_csv, rajeevw_fights_csv)
 
-    future_events = (
-        session.query(Event).filter(Event.date > date.today()).count()
-    )
-    assert future_events == 0, (
-        f"Found {future_events} event(s) with future dates"
-    )
+    future_events = session.query(Event).filter(Event.date > date.today()).count()
+    assert future_events == 0, f"Found {future_events} event(s) with future dates"
 
 
 def test_fighter_fights_chronologically_ordered(
@@ -61,9 +57,7 @@ def test_fighter_fights_chronologically_ordered(
         fights = (
             session.query(Fight)
             .join(Event, Fight.event_id == Event.id)
-            .filter(
-                (Fight.fighter_a_id == fighter.id) | (Fight.fighter_b_id == fighter.id)
-            )
+            .filter((Fight.fighter_a_id == fighter.id) | (Fight.fighter_b_id == fighter.id))
             .order_by(Event.date)
             .all()
         )
@@ -95,11 +89,5 @@ def test_no_self_fights(
     """
     _ingest_fixture_data(session, rajeevw_fighters_csv, rajeevw_fights_csv)
 
-    self_fights = (
-        session.query(Fight)
-        .filter(Fight.fighter_a_id == Fight.fighter_b_id)
-        .count()
-    )
-    assert self_fights == 0, (
-        f"Found {self_fights} fight(s) where a fighter fights themselves"
-    )
+    self_fights = session.query(Fight).filter(Fight.fighter_a_id == Fight.fighter_b_id).count()
+    assert self_fights == 0, f"Found {self_fights} fight(s) where a fighter fights themselves"

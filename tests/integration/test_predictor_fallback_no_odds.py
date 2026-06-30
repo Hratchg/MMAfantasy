@@ -52,15 +52,25 @@ def upcoming_event_date() -> date:
 def stub_fighters():
     """Two duck-typed Fighter rows the inference pipeline can read."""
     fa = MagicMock(
-        id=1, name="Khabib Nurmagomedov", source="ufcstats",
-        height_inches=70.0, reach_inches=70.0, leg_reach_inches=39.0,
-        stance="Orthodox", date_of_birth=date(1988, 9, 20),
+        id=1,
+        name="Khabib Nurmagomedov",
+        source="ufcstats",
+        height_inches=70.0,
+        reach_inches=70.0,
+        leg_reach_inches=39.0,
+        stance="Orthodox",
+        date_of_birth=date(1988, 9, 20),
     )
     fa.name = "Khabib Nurmagomedov"
     fb = MagicMock(
-        id=2, name="Conor McGregor", source="ufcstats",
-        height_inches=69.0, reach_inches=74.0, leg_reach_inches=40.0,
-        stance="Southpaw", date_of_birth=date(1988, 7, 14),
+        id=2,
+        name="Conor McGregor",
+        source="ufcstats",
+        height_inches=69.0,
+        reach_inches=74.0,
+        leg_reach_inches=40.0,
+        stance="Southpaw",
+        date_of_birth=date(1988, 7, 14),
     )
     fb.name = "Conor McGregor"
     return fa, fb
@@ -96,7 +106,7 @@ def patched_predictor(stub_fighters):
     fa, fb = stub_fighters
 
     def fake_get_elo(session, fighter_id, elo_type):
-        is_a = (fighter_id == fa.id)
+        is_a = fighter_id == fa.id
         if elo_type == "overall":
             return 1620.0 if is_a else 1480.0
         if elo_type == "striking":
@@ -117,13 +127,16 @@ def patched_predictor(stub_fighters):
         return fa if name == fa.name else fb
 
     predictor_instance = pred_mod.ModelPredictor(
-        model_dir="models", version="v2",
+        model_dir="models",
+        version="v2",
     )
 
-    with patch.object(inf, "_get_latest_elo", fake_get_elo), \
-         patch.object(inf, "_get_latest_computed_features", fake_get_perf), \
-         patch.object(pred_mod, "_resolve_fighter", fake_resolve_fighter), \
-         patch.object(pred_mod, "_get_latest_elo", fake_get_elo):
+    with (
+        patch.object(inf, "_get_latest_elo", fake_get_elo),
+        patch.object(inf, "_get_latest_computed_features", fake_get_perf),
+        patch.object(pred_mod, "_resolve_fighter", fake_resolve_fighter),
+        patch.object(pred_mod, "_get_latest_elo", fake_get_elo),
+    ):
         yield predictor_instance, fa, fb, MagicMock()
 
 
@@ -156,7 +169,10 @@ def _capture_inference_vec(monkeypatch):
 
 
 def test_bfo_unreachable_routes_to_no_odds_fallback(
-    patched_predictor, predict_log_path, upcoming_event_date, monkeypatch,
+    patched_predictor,
+    predict_log_path,
+    upcoming_event_date,
+    monkeypatch,
 ):
     """End-to-end: cache miss + live failure → predictor returns a
     win_probability sourced from xgb_v2_no_odds, response[prediction_metadata]
@@ -174,7 +190,9 @@ def test_bfo_unreachable_routes_to_no_odds_fallback(
     captured = _capture_inference_vec(monkeypatch)
 
     result = pred.predict(
-        session, fa.name, fb.name,
+        session,
+        fa.name,
+        fb.name,
         event_date=upcoming_event_date,
     )
 
@@ -182,8 +200,7 @@ def test_bfo_unreachable_routes_to_no_odds_fallback(
     vec = captured["vec"][0]
     cl_idx = FEATURE_COLUMNS.index("closing_prob_diff")
     assert np.isnan(vec[cl_idx]), (
-        f"closing_prob_diff should be NaN when both BFO paths fail. "
-        f"Got {vec[cl_idx]!r}."
+        f"closing_prob_diff should be NaN when both BFO paths fail. Got {vec[cl_idx]!r}."
     )
 
     # ── Assertion 2: response[prediction_metadata].win_probability_source ──
@@ -200,8 +217,7 @@ def test_bfo_unreachable_routes_to_no_odds_fallback(
 
     # ── Assertion 3: odds_source reports 'nan' ─────────────────────────────
     assert result["odds_source"] == "nan", (
-        f"BFO-unreachable predict must report odds_source='nan'. "
-        f"Got {result['odds_source']!r}."
+        f"BFO-unreachable predict must report odds_source='nan'. Got {result['odds_source']!r}."
     )
 
     # ── Assertion 4: META skipped with fallback reason ────────────────────
@@ -220,8 +236,7 @@ def test_bfo_unreachable_routes_to_no_odds_fallback(
     # the fallback model directly. The predictor's choice must equal this.
     fallback_model = joblib.load("models/xgb_v2_no_odds.joblib")
     assert pred.fallback_keep_idx is not None, (
-        "predictor.fallback_keep_idx must be set when the fallback artifact "
-        "is present in models/."
+        "predictor.fallback_keep_idx must be set when the fallback artifact is present in models/."
     )
     X_no_odds = captured["vec"][:, pred.fallback_keep_idx]
     expected_proba_a = float(fallback_model.predict_proba(X_no_odds)[0, 1])
@@ -235,7 +250,8 @@ def test_bfo_unreachable_routes_to_no_odds_fallback(
 
     # The top-level win_probability field mirrors fighter A's proba.
     assert float(result["win_probability"]) == pytest.approx(
-        expected_proba_a, abs=1e-9,
+        expected_proba_a,
+        abs=1e-9,
     )
 
 
@@ -243,7 +259,9 @@ def test_bfo_unreachable_routes_to_no_odds_fallback(
 
 
 def test_predict_call_does_not_mutate_protected_artifacts(
-    patched_predictor, upcoming_event_date, monkeypatch,
+    patched_predictor,
+    upcoming_event_date,
+    monkeypatch,
 ):
     """AUDIT-01 chain integrity: a predict call must not mutate the
     on-disk SHA of xgb_v2.joblib or meta_v2.joblib. The fallback path
@@ -267,7 +285,9 @@ def test_predict_call_does_not_mutate_protected_artifacts(
     monkeypatch.setattr(bfo_live, "_try_live", lambda *a, **kw: None)
 
     pred.predict(
-        session, fa.name, fb.name,
+        session,
+        fa.name,
+        fb.name,
         event_date=upcoming_event_date,
     )
 
@@ -280,15 +300,12 @@ def test_predict_call_does_not_mutate_protected_artifacts(
     if sha_meta_before is not None:
         sha_meta_after = _sha256(meta_path)
         assert sha_meta_after == sha_meta_before, (
-            f"meta_v2.joblib SHA changed across predict call. "
-            f"AUDIT-01 chain broken."
+            "meta_v2.joblib SHA changed across predict call. AUDIT-01 chain broken."
         )
 
     # Sanity: the canonical xgb_v2.joblib SHA should still match the
     # AUDIT-01 baseline at the project root.
-    canonical_sha = (
-        "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-    )
+    canonical_sha = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
     assert sha_xgb_after == canonical_sha, (
         f"xgb_v2.joblib drifted from canonical AUDIT-01 baseline. "
         f"Expected {canonical_sha}, got {sha_xgb_after}."

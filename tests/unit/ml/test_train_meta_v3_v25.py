@@ -14,6 +14,7 @@ Tests use synthetic DataFrames (no DB, no on-disk artifacts) so the file runs
 loaded via importlib so the script does not need to live inside a packaged
 module (matches the Plan 45-02 test_train_xgb_v3_v25 pattern).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -25,7 +26,6 @@ import pandas as pd
 import pytest
 
 from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_PATH = PROJECT_ROOT / "scripts" / "train_meta_v3_v25.py"
@@ -133,37 +133,47 @@ def test_no_travel_v25_sibling_cols():
     # Synthetic OOF DataFrame — distinctive sentinel values in xgb_v3 column
     # so we can assert exact propagation to Level-1 col 0.
     n = 6
-    oof_df = pd.DataFrame({
-        "fight_id": np.arange(n, dtype=np.int64),
-        "xgb_v3_oof_prob": np.array([0.111, 0.222, 0.333, 0.444, 0.555, 0.666]),
-        "split": ["train"] * n,
-        "train_or_test": ["train"] * n,
-        "event_date": pd.to_datetime([
-            "2023-06-01", "2023-07-01", "2023-08-01",
-            "2023-09-01", "2023-10-01", "2023-11-01",
-        ]),
-    })
+    oof_df = pd.DataFrame(
+        {
+            "fight_id": np.arange(n, dtype=np.int64),
+            "xgb_v3_oof_prob": np.array([0.111, 0.222, 0.333, 0.444, 0.555, 0.666]),
+            "split": ["train"] * n,
+            "train_or_test": ["train"] * n,
+            "event_date": pd.to_datetime(
+                [
+                    "2023-06-01",
+                    "2023-07-01",
+                    "2023-08-01",
+                    "2023-09-01",
+                    "2023-10-01",
+                    "2023-11-01",
+                ]
+            ),
+        }
+    )
 
     # Synthetic Level-1 source DataFrame containing the 11 non-xgb-OOF cols
     # (elo_prob is the 2nd "external" col + the 11 v2.2 FEATURE_COLUMNS_V22 cols).
     # Use distinctive but distinct values per column so substitution drift is
     # detectable.
-    level1_df = pd.DataFrame({
-        "fight_id": np.arange(n, dtype=np.int64),
-        "elo_prob": np.linspace(0.40, 0.60, n),
-        "closing_prob_diff": np.linspace(-0.10, 0.10, n),
-        "stance_matchup": np.zeros(n),
-        "height_diff": np.linspace(-2.0, 2.0, n),
-        "reach_diff": np.linspace(-3.0, 3.0, n),
-        "days_since_last_fight_diff": np.linspace(-30, 30, n),
-        "age_diff": np.linspace(-5.0, 5.0, n),
-        "elo_overall_diff": np.linspace(-100.0, 100.0, n),
-        "elo_striking_diff": np.linspace(-50.0, 50.0, n),
-        "elo_grappling_diff": np.linspace(-50.0, 50.0, n),
-        "division_finish_rate_shrunk": np.linspace(0.30, 0.50, n),
-        "sharp_money_signal": np.linspace(-0.05, 0.05, n),
-        "y": np.array([0, 1, 0, 1, 0, 1]),
-    })
+    level1_df = pd.DataFrame(
+        {
+            "fight_id": np.arange(n, dtype=np.int64),
+            "elo_prob": np.linspace(0.40, 0.60, n),
+            "closing_prob_diff": np.linspace(-0.10, 0.10, n),
+            "stance_matchup": np.zeros(n),
+            "height_diff": np.linspace(-2.0, 2.0, n),
+            "reach_diff": np.linspace(-3.0, 3.0, n),
+            "days_since_last_fight_diff": np.linspace(-30, 30, n),
+            "age_diff": np.linspace(-5.0, 5.0, n),
+            "elo_overall_diff": np.linspace(-100.0, 100.0, n),
+            "elo_striking_diff": np.linspace(-50.0, 50.0, n),
+            "elo_grappling_diff": np.linspace(-50.0, 50.0, n),
+            "division_finish_rate_shrunk": np.linspace(0.30, 0.50, n),
+            "sharp_money_signal": np.linspace(-0.05, 0.05, n),
+            "y": np.array([0, 1, 0, 1, 0, 1]),
+        }
+    )
 
     X_meta, y = mod.assemble_level1_input(oof_df, level1_df)
 

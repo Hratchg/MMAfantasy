@@ -14,6 +14,7 @@ Emits 15 rows = 5 baselines × 3 slices (meta_v22 anchor + 4 baselines × 3 slic
 
 AUDIT-01 pre/post SHA assertions on xgb_v2.joblib + meta_v2.joblib (inference-only).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -46,7 +47,6 @@ from ufc_prediction.ml.queries import (
     load_round_stats_for_ml,
 )
 
-
 EXPECTED_XGB_V2_SHA256 = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 SLICES = list(PER_SLICE_KEYS)  # ("most_recent_12mo", "most_recent_24mo", "random_15pct")
 BASELINES = [
@@ -78,9 +78,12 @@ def _sha256_file(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def _slice_masks(fight_dates: np.ndarray, today: date, random_seed: int = 42) -> dict[str, np.ndarray]:
+def _slice_masks(
+    fight_dates: np.ndarray, today: date, random_seed: int = 42
+) -> dict[str, np.ndarray]:
     """Mirror evaluator.evaluate_per_slice's slice construction (returns boolean masks)."""
     from datetime import timedelta
+
     cutoff_12mo = today - timedelta(days=365)
     cutoff_24mo = today - timedelta(days=730)
     mask_12mo = np.array([d >= cutoff_12mo for d in fight_dates])
@@ -137,13 +140,19 @@ def main() -> int:
 
     print("[baselines] Assembling 72-col xgb_v2-baseline feature matrix...")
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
     config = MLConfig(cutoff_date=cutoff_str)
     assembler = FeatureMatrixAssembler(config)
     X72, y, fight_dates_full = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
         feature_set="v2.1-no-net",
@@ -158,8 +167,12 @@ def main() -> int:
     print("[baselines] Re-assembling 90-col META-V22 feature matrix...")
     assembler_v22 = FeatureMatrixAssembler(config)
     X_v22, y_v22, fight_dates_v22 = assembler_v22.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
         feature_set="v2.2",
@@ -208,7 +221,9 @@ def main() -> int:
     # Mask NaN rows symmetrically — match the meta_v22 inference contract
     nan_mask_full = np.isnan(level1_test).any(axis=1)
     meta_proba_full = np.full(len(y_test), np.nan)
-    meta_proba_full[~nan_mask_full] = meta_v2.pipeline.predict_proba(level1_test[~nan_mask_full])[:, 1]
+    meta_proba_full[~nan_mask_full] = meta_v2.pipeline.predict_proba(level1_test[~nan_mask_full])[
+        :, 1
+    ]
     print(f"  meta_v2 NaN-drop: {int(nan_mask_full.sum())}/{len(y_test)} rows")
 
     # ── Precompute market baseline per-fight closing_implied_prob from DB ─
@@ -253,14 +268,21 @@ def main() -> int:
         meta_valid = ~np.isnan(meta_proba_sl)
         if meta_valid.sum() > 0:
             meta_brier = float(brier_score_loss(y_sl[meta_valid], meta_proba_sl[meta_valid]))
-            meta_acc = float(accuracy_score(y_sl[meta_valid], (meta_proba_sl[meta_valid] >= 0.5).astype(int)))
+            meta_acc = float(
+                accuracy_score(y_sl[meta_valid], (meta_proba_sl[meta_valid] >= 0.5).astype(int))
+            )
             meta_n = int(meta_valid.sum())
         else:
             meta_brier, meta_acc, meta_n = float("nan"), float("nan"), 0
-        rows.append({
-            "slice": sl, "model": "meta_v22",
-            "brier": meta_brier, "accuracy": meta_acc, "n": meta_n,
-        })
+        rows.append(
+            {
+                "slice": sl,
+                "model": "meta_v22",
+                "brier": meta_brier,
+                "accuracy": meta_acc,
+                "n": meta_n,
+            }
+        )
 
         # market baseline (n_with_market separately)
         market_proba_sl = market_proxy[mask]
@@ -269,47 +291,62 @@ def main() -> int:
         n_with_market_per_slice[sl] = n_with_market
         if n_with_market > 0:
             mb = float(brier_score_loss(y_sl[market_valid_sl], market_proba_sl[market_valid_sl]))
-            ma = float(accuracy_score(y_sl[market_valid_sl],
-                                       (market_proba_sl[market_valid_sl] >= 0.5).astype(int)))
+            ma = float(
+                accuracy_score(
+                    y_sl[market_valid_sl], (market_proba_sl[market_valid_sl] >= 0.5).astype(int)
+                )
+            )
         else:
             mb, ma = float("nan"), float("nan")
-        rows.append({
-            "slice": sl, "model": "market_directional_implied_baseline",
-            "brier": mb, "accuracy": ma, "n": n_with_market,
-            "n_with_market": n_with_market,
-        })
+        rows.append(
+            {
+                "slice": sl,
+                "model": "market_directional_implied_baseline",
+                "brier": mb,
+                "accuracy": ma,
+                "n": n_with_market,
+                "n_with_market": n_with_market,
+            }
+        )
 
         # elo_only
         eo_sl = elo_only_proba[mask]
-        rows.append({
-            "slice": sl, "model": "elo_only",
-            "brier": float(brier_score_loss(y_sl, eo_sl)),
-            "accuracy": float(accuracy_score(y_sl, (eo_sl >= 0.5).astype(int))),
-            "n": n_obs,
-        })
+        rows.append(
+            {
+                "slice": sl,
+                "model": "elo_only",
+                "brier": float(brier_score_loss(y_sl, eo_sl)),
+                "accuracy": float(accuracy_score(y_sl, (eo_sl >= 0.5).astype(int))),
+                "n": n_obs,
+            }
+        )
 
         # xgb_v2_no_odds
         no_sl = no_odds_proba[mask]
-        rows.append({
-            "slice": sl, "model": "xgb_v2_no_odds",
-            "brier": float(brier_score_loss(y_sl, no_sl)),
-            "accuracy": float(accuracy_score(y_sl, (no_sl >= 0.5).astype(int))),
-            "n": n_obs,
-        })
+        rows.append(
+            {
+                "slice": sl,
+                "model": "xgb_v2_no_odds",
+                "brier": float(brier_score_loss(y_sl, no_sl)),
+                "accuracy": float(accuracy_score(y_sl, (no_sl >= 0.5).astype(int))),
+                "n": n_obs,
+            }
+        )
 
         # coin_flip
         cf_sl = coin_flip_proba[mask]
-        rows.append({
-            "slice": sl, "model": "coin_flip",
-            "brier": float(brier_score_loss(y_sl, cf_sl)),
-            "accuracy": float(accuracy_score(y_sl, (cf_sl >= 0.5).astype(int))),
-            "n": n_obs,
-        })
+        rows.append(
+            {
+                "slice": sl,
+                "model": "coin_flip",
+                "brier": float(brier_score_loss(y_sl, cf_sl)),
+                "accuracy": float(accuracy_score(y_sl, (cf_sl >= 0.5).astype(int))),
+                "n": n_obs,
+            }
+        )
 
     # Compute delta vs meta_v22 per slice
-    anchor_by_slice = {
-        r["slice"]: r for r in rows if r["model"] == "meta_v22"
-    }
+    anchor_by_slice = {r["slice"]: r for r in rows if r["model"] == "meta_v22"}
     for r in rows:
         if r["model"] == "meta_v22":
             continue

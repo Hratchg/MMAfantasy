@@ -27,8 +27,6 @@ These tests use synthetic harness invocations of ``triple_gate_decision``
 from __future__ import annotations
 
 import json
-import os
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -39,13 +37,11 @@ from scripts.compose_v23_meta import (
     EXPECTED_XGB_V2_SHA256,
     META_V22_BASELINE_BRIER,
     PER_SLICE_KEYS,
-    STEPWISE_HURDLE,
-    TOTAL_MARGIN_HURDLE,
     triple_gate_decision,
 )
 
-
 # ─────────────────────────── Mock gate contract ─────────────────────────────
+
 
 @dataclass(frozen=True)
 class _MockSliceThresholds:
@@ -65,7 +61,7 @@ def _make_contract_v23() -> _MockContract:
         per_slice={
             "most_recent_12mo": _MockSliceThresholds(brier_max=0.1512, accuracy_min=0.7814),
             "most_recent_24mo": _MockSliceThresholds(brier_max=0.1583, accuracy_min=0.7627),
-            "random_15pct":     _MockSliceThresholds(brier_max=0.1374, accuracy_min=0.7812),
+            "random_15pct": _MockSliceThresholds(brier_max=0.1374, accuracy_min=0.7812),
         },
     )
 
@@ -76,11 +72,12 @@ def _median_passes() -> dict:
     return {
         "most_recent_12mo": {"brier_score": 0.140, "accuracy": 0.79},
         "most_recent_24mo": {"brier_score": 0.150, "accuracy": 0.78},
-        "random_15pct":     {"brier_score": 0.130, "accuracy": 0.80},
+        "random_15pct": {"brier_score": 0.130, "accuracy": 0.80},
     }
 
 
 # ─────────────────────────── Path A meta_v3 promotion ───────────────────────
+
 
 def test_meta_v3_promotion_path_a(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """When triple_gate clears all 3 legs → meta_v3.joblib + meta_v3_meta.json saved.
@@ -96,9 +93,7 @@ def test_meta_v3_promotion_path_a(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     )
 
     # Synthesize a final candidate that beats META-V22 by >0.003 on all slices.
-    final_brier = {
-        slc: META_V22_BASELINE_BRIER[slc] - 0.010 for slc in PER_SLICE_KEYS
-    }
+    final_brier = {slc: META_V22_BASELINE_BRIER[slc] - 0.010 for slc in PER_SLICE_KEYS}
     median_final = _median_passes()
     prior_step_clears = {
         "meta_to_calib": True,
@@ -163,10 +158,12 @@ def test_meta_v3_promotion_path_a(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 
 # ─────────────────────────── Path C no-promotion ────────────────────────────
 
+
 def test_path_c_no_promote_on_per_step_miss(tmp_path: Path) -> None:
     """Per-step-miss (REF→TRAVEL fails hurdle) → reject, path_c, no meta_v3 saved."""
     final_brier = {
-        slc: META_V22_BASELINE_BRIER[slc] - 0.001 for slc in PER_SLICE_KEYS  # margin miss
+        slc: META_V22_BASELINE_BRIER[slc] - 0.001
+        for slc in PER_SLICE_KEYS  # margin miss
     }
     prior_step_clears = {
         "meta_to_calib": True,
@@ -191,9 +188,7 @@ def test_path_c_no_promote_on_per_step_miss(tmp_path: Path) -> None:
 
 def test_path_c_materialization_on_step_4_below_hurdle() -> None:
     """Synthetic 4-step composition where TRAVEL Δ=0.001 < 0.003 → path_c."""
-    final_brier = {
-        slc: META_V22_BASELINE_BRIER[slc] - 0.001 for slc in PER_SLICE_KEYS
-    }
+    final_brier = {slc: META_V22_BASELINE_BRIER[slc] - 0.001 for slc in PER_SLICE_KEYS}
     prior_step_clears = {
         "meta_to_calib": True,
         "calib_to_ref": True,
@@ -212,6 +207,7 @@ def test_path_c_materialization_on_step_4_below_hurdle() -> None:
 
 # ─────────────────────────── Path C short-circuit (Pitfall 9) ────────────────
 
+
 def test_path_c_no_promote_when_step1_short_circuits() -> None:
     """Pitfall 9: META Step 1 Brier > gate_max on ALL 3 slices → path_c early.
 
@@ -223,12 +219,12 @@ def test_path_c_no_promote_when_step1_short_circuits() -> None:
     final_brier_above_gate = {
         "most_recent_12mo": 0.220,
         "most_recent_24mo": 0.220,
-        "random_15pct":     0.220,
+        "random_15pct": 0.220,
     }
     median_above_gate = {
         "most_recent_12mo": {"brier_score": 0.220, "accuracy": 0.70},
         "most_recent_24mo": {"brier_score": 0.220, "accuracy": 0.70},
-        "random_15pct":     {"brier_score": 0.220, "accuracy": 0.70},
+        "random_15pct": {"brier_score": 0.220, "accuracy": 0.70},
     }
     prior_step_clears = {
         "meta_to_calib": False,
@@ -250,6 +246,7 @@ def test_path_c_no_promote_when_step1_short_circuits() -> None:
 
 # ─────────────────────────── Full pipeline (cached fixtures) ────────────────
 
+
 def test_full_pipeline_cached_fixtures(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """End-to-end 4-step composition + COMPOSITION_V23_REPORT.json emission.
 
@@ -266,7 +263,8 @@ def test_full_pipeline_cached_fixtures(tmp_path: Path, monkeypatch: pytest.Monke
     load_gate_contract.cache_clear()
 
     # Redirect artifact paths to tmp_path so we don't clobber real artifacts.
-    from scripts import compose_v23_meta as cm  # noqa: PLC0415
+    from scripts import compose_v23_meta as cm
+
     phase_tmp = tmp_path / "phase32"
     phase_tmp.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(cm, "PHASE32_DIR", phase_tmp)
@@ -280,7 +278,7 @@ def test_full_pipeline_cached_fixtures(tmp_path: Path, monkeypatch: pytest.Monke
     # Run in dry-run mode for the integration smoke (no DB hit).
     parser = cm.build_parser()
     args = parser.parse_args(["--dry-run", "--seeds", "2", "3"])
-    report = cm.run_composition(args)
+    _report = cm.run_composition(args)
 
     # Report exists at the monkey-patched path.
     rpt_path = phase_tmp / "COMPOSITION_V23_REPORT.json"
@@ -302,13 +300,12 @@ def test_full_pipeline_cached_fixtures(tmp_path: Path, monkeypatch: pytest.Monke
 
 # ─────────────────────────── Path B distinction ─────────────────────────────
 
+
 def test_path_b_partial_composition_distinct_from_path_c(tmp_path: Path) -> None:
     """Path B distinguishes some-steps-cleared + gate-miss from total failure."""
     # META + CALIB cleared; REF and TRAVEL did not — surviving CALIB candidate
     # misses gate (Brier exceeds 24mo brier_max).
-    final_brier = {
-        slc: META_V22_BASELINE_BRIER[slc] - 0.010 for slc in PER_SLICE_KEYS
-    }
+    final_brier = {slc: META_V22_BASELINE_BRIER[slc] - 0.010 for slc in PER_SLICE_KEYS}
     median_with_gate_miss = _median_passes()
     median_with_gate_miss["most_recent_24mo"] = {"brier_score": 0.180, "accuracy": 0.79}
     prior_step_clears = {

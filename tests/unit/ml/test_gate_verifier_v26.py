@@ -31,7 +31,6 @@ from ufc_prediction.ml.gate_verifier import (
     verify_candidate_vs_canonical,
 )
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 
@@ -57,7 +56,9 @@ def _make_pipeline_and_persist(
 
 
 def _make_eval_slice(
-    X: np.ndarray, y: np.ndarray, sha: str = "sha-fixture",
+    X: np.ndarray,
+    y: np.ndarray,
+    sha: str = "sha-fixture",
 ) -> EvalSlice:
     return EvalSlice(
         feature_vectors=tuple(tuple(float(v) for v in row) for row in X),
@@ -71,6 +72,7 @@ def _make_eval_slice(
 
 def test_brier_score_matches_sklearn() -> None:
     from sklearn.metrics import brier_score_loss
+
     preds = [0.1, 0.8, 0.6, 0.3]
     outs = [0, 1, 1, 0]
     expected = brier_score_loss(outs, preds)
@@ -214,6 +216,7 @@ def test_clean_pass_emits_path_a_promote(tmp_path: Path) -> None:
 
     # Custom contract: low brier_max so candidate's clean signal passes
     from ufc_prediction.ml.gate_contract import GateContract, PerSliceThresholds
+
     contract = GateContract(
         version="v2.6",
         derived_at="2026-06-03",

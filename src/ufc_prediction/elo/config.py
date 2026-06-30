@@ -33,15 +33,15 @@ class EloConfig:
     # Inactivity regression (D-08, validated Phase 9.1) [E]
     inactivity_threshold_days: int = 270  # was 365 [L]; backtest optimal: 270d (9mo)
     inactivity_regression_rate: float = 0.10  # per month past threshold; confirmed optimal [E]
-    inactivity_regression_cap: float = 0.50   # confirmed optimal [E]
+    inactivity_regression_cap: float = 0.50  # confirmed optimal [E]
 
     # Margin-of-victory multipliers (D-01, validated Phase 9.1) [E]
-    mov_ko_tko: float = 1.2      # was 1.5 [L]; backtest optimal: 1.2
+    mov_ko_tko: float = 1.2  # was 1.5 [L]; backtest optimal: 1.2
     mov_submission: float = 1.1  # was 1.4 [L]; backtest optimal: 1.1
-    mov_unanimous: float = 1.0   # [S] standard baseline
-    mov_split: float = 0.5       # was 0.8 [L]; backtest optimal: 0.5
-    mov_draw: float = 0.5        # [S] standard
-    mov_dq: float = 0.8          # [L] held fixed during backtest per D-04
+    mov_unanimous: float = 1.0  # [S] standard baseline
+    mov_split: float = 0.5  # was 0.8 [L]; backtest optimal: 0.5
+    mov_draw: float = 0.5  # [S] standard
+    mov_dq: float = 0.8  # [L] held fixed during backtest per D-04
 
     def __post_init__(self) -> None:
         """Validate parameter constraints to prevent silent misconfiguration."""

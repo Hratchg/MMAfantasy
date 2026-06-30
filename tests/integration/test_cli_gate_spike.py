@@ -39,22 +39,34 @@ def _stubbed_variance_above_floor() -> tuple[dict, list[str]]:
     return (
         {
             "most_recent_12mo": {
-                "median_brier": 0.18, "median_acc": 0.745,
-                "seed_std_brier": 0.003, "seed_std_acc": 0.004,
-                "bootstrap_ci_half_brier": 0.0035, "bootstrap_ci_half_acc": 0.006,
-                "std_brier_used": 0.0035, "std_acc_used": 0.006,
+                "median_brier": 0.18,
+                "median_acc": 0.745,
+                "seed_std_brier": 0.003,
+                "seed_std_acc": 0.004,
+                "bootstrap_ci_half_brier": 0.0035,
+                "bootstrap_ci_half_acc": 0.006,
+                "std_brier_used": 0.0035,
+                "std_acc_used": 0.006,
             },
             "most_recent_24mo": {
-                "median_brier": 0.19, "median_acc": 0.735,
-                "seed_std_brier": 0.003, "seed_std_acc": 0.004,
-                "bootstrap_ci_half_brier": 0.0035, "bootstrap_ci_half_acc": 0.006,
-                "std_brier_used": 0.0035, "std_acc_used": 0.006,
+                "median_brier": 0.19,
+                "median_acc": 0.735,
+                "seed_std_brier": 0.003,
+                "seed_std_acc": 0.004,
+                "bootstrap_ci_half_brier": 0.0035,
+                "bootstrap_ci_half_acc": 0.006,
+                "std_brier_used": 0.0035,
+                "std_acc_used": 0.006,
             },
             "random_15pct": {
-                "median_brier": 0.17, "median_acc": 0.755,
-                "seed_std_brier": 0.003, "seed_std_acc": 0.004,
-                "bootstrap_ci_half_brier": 0.0035, "bootstrap_ci_half_acc": 0.006,
-                "std_brier_used": 0.0035, "std_acc_used": 0.006,
+                "median_brier": 0.17,
+                "median_acc": 0.755,
+                "seed_std_brier": 0.003,
+                "seed_std_acc": 0.004,
+                "bootstrap_ci_half_brier": 0.0035,
+                "bootstrap_ci_half_acc": 0.006,
+                "std_brier_used": 0.0035,
+                "std_acc_used": 0.006,
             },
         },
         [],
@@ -66,23 +78,35 @@ def _stubbed_variance_below_floor() -> tuple[dict, list[str]]:
     return (
         {
             "most_recent_12mo": {
-                "median_brier": 0.21, "median_acc": 0.745,
-                "seed_std_brier": 0.003, "seed_std_acc": 0.004,
-                "bootstrap_ci_half_brier": 0.004, "bootstrap_ci_half_acc": 0.006,
-                "std_brier_used": 0.004, "std_acc_used": 0.006,
+                "median_brier": 0.21,
+                "median_acc": 0.745,
+                "seed_std_brier": 0.003,
+                "seed_std_acc": 0.004,
+                "bootstrap_ci_half_brier": 0.004,
+                "bootstrap_ci_half_acc": 0.006,
+                "std_brier_used": 0.004,
+                "std_acc_used": 0.006,
             },
             "most_recent_24mo": {
-                "median_brier": 0.22, "median_acc": 0.735,
-                "seed_std_brier": 0.003, "seed_std_acc": 0.004,
-                "bootstrap_ci_half_brier": 0.004, "bootstrap_ci_half_acc": 0.006,
-                "std_brier_used": 0.004, "std_acc_used": 0.006,
+                "median_brier": 0.22,
+                "median_acc": 0.735,
+                "seed_std_brier": 0.003,
+                "seed_std_acc": 0.004,
+                "bootstrap_ci_half_brier": 0.004,
+                "bootstrap_ci_half_acc": 0.006,
+                "std_brier_used": 0.004,
+                "std_acc_used": 0.006,
             },
             "random_15pct": {
                 # median_acc 0.65 + std_acc_used 0.01 = 0.66 < 0.70 BREACH
-                "median_brier": 0.24, "median_acc": 0.65,
-                "seed_std_brier": 0.003, "seed_std_acc": 0.005,
-                "bootstrap_ci_half_brier": 0.004, "bootstrap_ci_half_acc": 0.010,
-                "std_brier_used": 0.004, "std_acc_used": 0.010,
+                "median_brier": 0.24,
+                "median_acc": 0.65,
+                "seed_std_brier": 0.003,
+                "seed_std_acc": 0.005,
+                "bootstrap_ci_half_brier": 0.004,
+                "bootstrap_ci_half_acc": 0.010,
+                "std_brier_used": 0.004,
+                "std_acc_used": 0.010,
             },
         },
         [],
@@ -110,27 +134,30 @@ def _patch_path_a_environment(monkeypatch, tmp_path, *, below_floor: bool = Fals
         raising=False,
     )
     monkeypatch.setattr(
-        pred_mod, "_spike_main", lambda argv: 0, raising=False,
+        pred_mod,
+        "_spike_main",
+        lambda argv: 0,
+        raising=False,
     )
     monkeypatch.setattr(
         pred_mod,
         "_assert_xgb_v2_sha",
-        lambda label: (
-            "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-        ),
+        lambda label: "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099",
         raising=False,
     )
     monkeypatch.setattr(
         pred_mod,
         "_compute_v23_variance_dict",
         lambda seed_list, bootstrap=True: (
-            _stubbed_variance_below_floor() if below_floor
-            else _stubbed_variance_above_floor()
+            _stubbed_variance_below_floor() if below_floor else _stubbed_variance_above_floor()
         ),
         raising=False,
     )
     monkeypatch.setattr(
-        pred_mod, "PHASE_31_DIR", phase_31_isolated, raising=False,
+        pred_mod,
+        "PHASE_31_DIR",
+        phase_31_isolated,
+        raising=False,
     )
     return phase_31_isolated
 
@@ -159,9 +186,7 @@ def test_cli_dispatch_synthetic(monkeypatch, tmp_path):
     c = json.loads(contract_path.read_text(encoding="utf-8"))
     assert c["version"] == "v2.3"
     assert c["n_seeds_observed"] == 10
-    assert c["formula_hash"] == (
-        "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
-    )
+    assert c["formula_hash"] == ("7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a")
 
     # END SHA artifact emitted at PHASE_31_DIR/31-XGB-V2-SHA-PHASE-31-END.txt
     end_sha_path = phase_31_iso / "31-XGB-V2-SHA-PHASE-31-END.txt"
@@ -182,7 +207,9 @@ def test_cli_dispatch_synthetic(monkeypatch, tmp_path):
 def test_cli_halt_on_below_floor(monkeypatch, tmp_path):
     """CLI exits 3 + emits 31-HALT-AND-DECIDE.md on synthetic below-floor variance."""
     phase_31_iso = _patch_path_a_environment(
-        monkeypatch, tmp_path, below_floor=True,
+        monkeypatch,
+        tmp_path,
+        below_floor=True,
     )
     contract_path = tmp_path / "gate_contract_v2.3.json"
 
@@ -215,17 +242,9 @@ def test_cli_halt_on_below_floor(monkeypatch, tmp_path):
     assert "## Operator Action Required" in halt_body
 
     # All 3 Path D outcome-path IDs (Pattern 7)
-    assert (
-        "v23_substrate_fills_but_gate_lt_floor_path_d_delay_ship" in halt_body
-    )
-    assert (
-        "v23_substrate_fills_but_gate_lt_floor_path_d_ship_v22_publicly"
-        in halt_body
-    )
-    assert (
-        "v23_substrate_fills_but_gate_lt_floor_path_d_accept_lower_floor"
-        in halt_body
-    )
+    assert "v23_substrate_fills_but_gate_lt_floor_path_d_delay_ship" in halt_body
+    assert "v23_substrate_fills_but_gate_lt_floor_path_d_ship_v22_publicly" in halt_body
+    assert "v23_substrate_fills_but_gate_lt_floor_path_d_accept_lower_floor" in halt_body
 
     # END SHA artifact NOT emitted on Path D (Pitfall 5 — WR-04 carry-forward)
     assert not (phase_31_iso / "31-XGB-V2-SHA-PHASE-31-END.txt").exists()
@@ -243,7 +262,8 @@ def test_cli_halt_on_below_floor(monkeypatch, tmp_path):
 
 
 def test_cli_halt_path_d_runs_end_sha_assertion_without_writing_artifact(
-    monkeypatch, tmp_path,
+    monkeypatch,
+    tmp_path,
 ):
     """Path D invokes _assert_xgb_v2_sha twice (STARTUP + END) but does NOT
     write the END SHA artifact file (Pitfall 5).
@@ -264,9 +284,7 @@ def test_cli_halt_path_d_runs_end_sha_assertion_without_writing_artifact(
 
     def tracking_sha(label: str) -> str:
         sha_calls.append(label)
-        return (
-            "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-        )
+        return "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 
     monkeypatch.setattr(
         pred_mod,
@@ -276,7 +294,10 @@ def test_cli_halt_path_d_runs_end_sha_assertion_without_writing_artifact(
     )
     monkeypatch.setattr(pred_mod, "_spike_main", lambda argv: 0, raising=False)
     monkeypatch.setattr(
-        pred_mod, "_assert_xgb_v2_sha", tracking_sha, raising=False,
+        pred_mod,
+        "_assert_xgb_v2_sha",
+        tracking_sha,
+        raising=False,
     )
     monkeypatch.setattr(
         pred_mod,
@@ -285,7 +306,10 @@ def test_cli_halt_path_d_runs_end_sha_assertion_without_writing_artifact(
         raising=False,
     )
     monkeypatch.setattr(
-        pred_mod, "PHASE_31_DIR", phase_31_isolated, raising=False,
+        pred_mod,
+        "PHASE_31_DIR",
+        phase_31_isolated,
+        raising=False,
     )
 
     contract_path = tmp_path / "gate_contract_v2.3.json"
@@ -304,8 +328,7 @@ def test_cli_halt_path_d_runs_end_sha_assertion_without_writing_artifact(
         f"STARTUP SHA assertion missing on Path D; calls={sha_calls}"
     )
     assert "PHASE-31-END" in sha_calls, (
-        f"END SHA assertion missing on Path D; calls={sha_calls} — "
-        "Pitfall 5 enforcement regressed"
+        f"END SHA assertion missing on Path D; calls={sha_calls} — Pitfall 5 enforcement regressed"
     )
 
     # Invariant 2: END SHA artifact file NOT written (Path D pre-templates).
@@ -339,9 +362,7 @@ def test_cli_dispatch_preserves_v21_v22_contracts(monkeypatch, tmp_path):
     v21_path = Path(".planning/gate_contract.json")
     v22_path = Path(".planning/gate_contract_v2.2.json")
     if not v21_path.exists() or not v22_path.exists():
-        pytest.skip(
-            "v2.1+v2.2 contracts not in checkout; audit-lineage regression n/a"
-        )
+        pytest.skip("v2.1+v2.2 contracts not in checkout; audit-lineage regression n/a")
 
     sha_v21_before = _sha256(v21_path)
     sha_v22_before = _sha256(v22_path)
@@ -370,6 +391,5 @@ def test_cli_dispatch_preserves_v21_v22_contracts(monkeypatch, tmp_path):
 
     # Phase 31 dir + tmp_path also unpolluted in repo working tree
     assert not Path(
-        ".planning/phases/31-gate-v23-re-derivation-on-populated-substrate/"
-        "31-HALT-AND-DECIDE.md"
+        ".planning/phases/31-gate-v23-re-derivation-on-populated-substrate/31-HALT-AND-DECIDE.md"
     ).exists(), "Test polluted real Phase 31 dir with HALT artifact"

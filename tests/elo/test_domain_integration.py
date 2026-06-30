@@ -27,7 +27,6 @@ from ufc_prediction.models.fight import Fight
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.models.round_stats import RoundStats
 
-
 # ── Seed helpers ────────────────────────────────────────────────────────────
 
 
@@ -55,11 +54,13 @@ def seed_striker_archetype(session):
     session.flush()
 
     events = []
-    for i, (name, d) in enumerate([
-        ("Striker Event 1", date(2019, 1, 15)),
-        ("Striker Event 2", date(2019, 7, 20)),
-        ("Striker Event 3", date(2020, 3, 10)),
-    ]):
+    for i, (name, d) in enumerate(
+        [
+            ("Striker Event 1", date(2019, 1, 15)),
+            ("Striker Event 2", date(2019, 7, 20)),
+            ("Striker Event 3", date(2020, 3, 10)),
+        ]
+    ):
         ev = Event(name=name, date=d, source="test")
         session.add(ev)
         events.append(ev)
@@ -95,40 +96,56 @@ def seed_striker_archetype(session):
     session.flush()
 
     # Add round stats for ALL fights (so domain Elo is computed for all)
-    for i, (fight, opp_idx) in enumerate(zip(fights, range(6))):
+    for i, (fight, opp_idx) in enumerate(zip(fights, range(6), strict=False)):
         opp = opponents[opp_idx]
         method = fight_specs[i][3]
 
         if method == "KO/TKO":
             # KO/TKO fights: high strikes, fixed 80/20 ratio applies anyway
             for round_num in range(1, 3):
-                session.add(RoundStats(
-                    fight_id=fight.id, fighter_id=striker.id,
-                    round_number=round_num,
-                    sig_strikes_landed=50, takedowns_landed=0,
-                    control_time_seconds=5,
-                ))
-                session.add(RoundStats(
-                    fight_id=fight.id, fighter_id=opp.id,
-                    round_number=round_num,
-                    sig_strikes_landed=30, takedowns_landed=0,
-                    control_time_seconds=5,
-                ))
+                session.add(
+                    RoundStats(
+                        fight_id=fight.id,
+                        fighter_id=striker.id,
+                        round_number=round_num,
+                        sig_strikes_landed=50,
+                        takedowns_landed=0,
+                        control_time_seconds=5,
+                    )
+                )
+                session.add(
+                    RoundStats(
+                        fight_id=fight.id,
+                        fighter_id=opp.id,
+                        round_number=round_num,
+                        sig_strikes_landed=30,
+                        takedowns_landed=0,
+                        control_time_seconds=5,
+                    )
+                )
         else:
             # Decision fights: HIGH sig_strikes, LOW grappling
             for round_num in range(1, 4):
-                session.add(RoundStats(
-                    fight_id=fight.id, fighter_id=striker.id,
-                    round_number=round_num,
-                    sig_strikes_landed=55, takedowns_landed=0,
-                    control_time_seconds=10,
-                ))
-                session.add(RoundStats(
-                    fight_id=fight.id, fighter_id=opp.id,
-                    round_number=round_num,
-                    sig_strikes_landed=45, takedowns_landed=1,
-                    control_time_seconds=15,
-                ))
+                session.add(
+                    RoundStats(
+                        fight_id=fight.id,
+                        fighter_id=striker.id,
+                        round_number=round_num,
+                        sig_strikes_landed=55,
+                        takedowns_landed=0,
+                        control_time_seconds=10,
+                    )
+                )
+                session.add(
+                    RoundStats(
+                        fight_id=fight.id,
+                        fighter_id=opp.id,
+                        round_number=round_num,
+                        sig_strikes_landed=45,
+                        takedowns_landed=1,
+                        control_time_seconds=15,
+                    )
+                )
     session.flush()
 
     return {"fighter": striker, "fights": fights, "opponents": opponents}
@@ -189,40 +206,56 @@ def seed_grappler_archetype(session):
     session.flush()
 
     # Add round stats for ALL fights
-    for i, (fight, opp_idx) in enumerate(zip(fights, range(6))):
+    for i, (fight, opp_idx) in enumerate(zip(fights, range(6), strict=False)):
         opp = opponents[opp_idx]
         method = fight_specs[i][3]
 
         if method == "Submission":
             # Submission fights: moderate stats, 20/80 fixed ratio applies
             for round_num in range(1, 3):
-                session.add(RoundStats(
-                    fight_id=fight.id, fighter_id=grappler.id,
-                    round_number=round_num,
-                    sig_strikes_landed=15, takedowns_landed=4,
-                    control_time_seconds=180,
-                ))
-                session.add(RoundStats(
-                    fight_id=fight.id, fighter_id=opp.id,
-                    round_number=round_num,
-                    sig_strikes_landed=20, takedowns_landed=0,
-                    control_time_seconds=10,
-                ))
+                session.add(
+                    RoundStats(
+                        fight_id=fight.id,
+                        fighter_id=grappler.id,
+                        round_number=round_num,
+                        sig_strikes_landed=15,
+                        takedowns_landed=4,
+                        control_time_seconds=180,
+                    )
+                )
+                session.add(
+                    RoundStats(
+                        fight_id=fight.id,
+                        fighter_id=opp.id,
+                        round_number=round_num,
+                        sig_strikes_landed=20,
+                        takedowns_landed=0,
+                        control_time_seconds=10,
+                    )
+                )
         else:
             # Decision fights: LOW strikes, HIGH grappling
             for round_num in range(1, 4):
-                session.add(RoundStats(
-                    fight_id=fight.id, fighter_id=grappler.id,
-                    round_number=round_num,
-                    sig_strikes_landed=15, takedowns_landed=4,
-                    control_time_seconds=200,
-                ))
-                session.add(RoundStats(
-                    fight_id=fight.id, fighter_id=opp.id,
-                    round_number=round_num,
-                    sig_strikes_landed=12, takedowns_landed=0,
-                    control_time_seconds=20,
-                ))
+                session.add(
+                    RoundStats(
+                        fight_id=fight.id,
+                        fighter_id=grappler.id,
+                        round_number=round_num,
+                        sig_strikes_landed=15,
+                        takedowns_landed=4,
+                        control_time_seconds=200,
+                    )
+                )
+                session.add(
+                    RoundStats(
+                        fight_id=fight.id,
+                        fighter_id=opp.id,
+                        round_number=round_num,
+                        sig_strikes_landed=12,
+                        takedowns_landed=0,
+                        control_time_seconds=20,
+                    )
+                )
     session.flush()
 
     return {"fighter": grappler, "fights": fights, "opponents": opponents}
@@ -323,11 +356,7 @@ def test_flush_preserves_overall(session):
     flush_snapshots(session, overall_snaps)
     session.flush()
 
-    overall_count = (
-        session.query(EloSnapshot)
-        .filter(EloSnapshot.elo_type == "overall")
-        .count()
-    )
+    overall_count = session.query(EloSnapshot).filter(EloSnapshot.elo_type == "overall").count()
     assert overall_count > 0
 
     # Create fake domain snapshots manually
@@ -348,11 +377,7 @@ def test_flush_preserves_overall(session):
     session.flush()
 
     # Verify overall snapshots are unchanged
-    new_overall_count = (
-        session.query(EloSnapshot)
-        .filter(EloSnapshot.elo_type == "overall")
-        .count()
-    )
+    new_overall_count = session.query(EloSnapshot).filter(EloSnapshot.elo_type == "overall").count()
     assert new_overall_count == overall_count, "Domain flush destroyed overall snapshots!"
 
     # Verify domain snapshots were written
@@ -411,16 +436,8 @@ def test_full_pipeline(session):
     overall_snaps, domain_snaps = run_full_pipeline(session)
 
     # Both striking and grappling snapshots should exist
-    striking_count = (
-        session.query(EloSnapshot)
-        .filter(EloSnapshot.elo_type == "striking")
-        .count()
-    )
-    grappling_count = (
-        session.query(EloSnapshot)
-        .filter(EloSnapshot.elo_type == "grappling")
-        .count()
-    )
+    striking_count = session.query(EloSnapshot).filter(EloSnapshot.elo_type == "striking").count()
+    grappling_count = session.query(EloSnapshot).filter(EloSnapshot.elo_type == "grappling").count()
     assert striking_count > 0, "No striking snapshots in DB"
     assert grappling_count > 0, "No grappling snapshots in DB"
 
@@ -548,17 +565,27 @@ def test_both_fighters_stats_summed(session):
     session.flush()
 
     # Fighter A: sig_str=40, td=1, ctrl=10
-    session.add(RoundStats(
-        fight_id=fight.id, fighter_id=fighter_a.id,
-        round_number=1,
-        sig_strikes_landed=40, takedowns_landed=1, control_time_seconds=10,
-    ))
+    session.add(
+        RoundStats(
+            fight_id=fight.id,
+            fighter_id=fighter_a.id,
+            round_number=1,
+            sig_strikes_landed=40,
+            takedowns_landed=1,
+            control_time_seconds=10,
+        )
+    )
     # Fighter B: sig_str=30, td=3, ctrl=100
-    session.add(RoundStats(
-        fight_id=fight.id, fighter_id=fighter_b.id,
-        round_number=1,
-        sig_strikes_landed=30, takedowns_landed=3, control_time_seconds=100,
-    ))
+    session.add(
+        RoundStats(
+            fight_id=fight.id,
+            fighter_id=fighter_b.id,
+            round_number=1,
+            sig_strikes_landed=30,
+            takedowns_landed=3,
+            control_time_seconds=100,
+        )
+    )
     session.flush()
 
     # Total: striking=70, grappling=1+10+3+100=114, total=184
@@ -568,12 +595,10 @@ def test_both_fighters_stats_summed(session):
 
     # Both fighters should have domain snapshots
     domain_for_a = [
-        s for s in domain_snaps
-        if s.fighter_id == fighter_a.id and s.elo_type == "grappling"
+        s for s in domain_snaps if s.fighter_id == fighter_a.id and s.elo_type == "grappling"
     ]
     domain_for_b = [
-        s for s in domain_snaps
-        if s.fighter_id == fighter_b.id and s.elo_type == "grappling"
+        s for s in domain_snaps if s.fighter_id == fighter_b.id and s.elo_type == "grappling"
     ]
     assert len(domain_for_a) > 0, "Fighter A should have grappling domain snapshots"
     assert len(domain_for_b) > 0, "Fighter B should have grappling domain snapshots"
@@ -581,12 +606,10 @@ def test_both_fighters_stats_summed(session):
     # The grappling domain delta should be larger than striking delta
     # because grappling_ratio > striking_ratio (~0.62 vs ~0.38)
     striking_a = [
-        s for s in domain_snaps
-        if s.fighter_id == fighter_a.id and s.elo_type == "striking"
+        s for s in domain_snaps if s.fighter_id == fighter_a.id and s.elo_type == "striking"
     ]
     grappling_a = [
-        s for s in domain_snaps
-        if s.fighter_id == fighter_a.id and s.elo_type == "grappling"
+        s for s in domain_snaps if s.fighter_id == fighter_a.id and s.elo_type == "grappling"
     ]
 
     striking_delta = abs(striking_a[0].elo_after - striking_a[0].elo_before)

@@ -71,9 +71,7 @@ class BFOOddsRow(BaseModel):
         "ignored_types": (cached_property,),
     }
 
-    @field_validator(
-        "opening", "closing_range_min", "closing_range_max", mode="before"
-    )
+    @field_validator("opening", "closing_range_min", "closing_range_max", mode="before")
     @classmethod
     def _coerce_blank_ml(cls, v: object) -> object:
         return _blank_to_none(v)
@@ -100,14 +98,10 @@ class BFOOddsRow(BaseModel):
                 cannot kill the whole ingest.
         """
         if "|" not in self.fight_id:
-            raise ValueError(
-                f"BFO fight_id missing '|' separator: {self.fight_id!r}"
-            )
+            raise ValueError(f"BFO fight_id missing '|' separator: {self.fight_id!r}")
         head, _, _ = self.fight_id.partition("|")
         if not head:
-            raise ValueError(
-                f"BFO fight_id has empty date prefix: {self.fight_id!r}"
-            )
+            raise ValueError(f"BFO fight_id has empty date prefix: {self.fight_id!r}")
         return date.fromisoformat(head)
 
 

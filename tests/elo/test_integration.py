@@ -10,8 +10,6 @@ import random
 import time
 from datetime import date
 
-import pytest
-
 from ufc_prediction.elo.calibration import check_calibration, compute_calibration_buckets
 from ufc_prediction.elo.config import EloConfig
 from ufc_prediction.elo.engine import EloEngine, FightRecord
@@ -220,7 +218,7 @@ def test_calibration_on_seeded_data(session):
     num_fighters = 100
 
     for i in range(300):
-        fid += 1
+        fid += 1  # noqa: SIM113
         a = random.randint(1, num_fighters)
         b = random.randint(1, num_fighters)
         while b == a:

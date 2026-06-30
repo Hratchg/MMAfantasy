@@ -12,10 +12,8 @@ These tests RED on import (Wave 0) — `FEATURE_COLUMNS_NO_NET` does not yet
 exist in `config.py`; `self._include_net` does not yet exist on ModelPredictor.
 Goes GREEN at Wave 1 Task 11.
 """
-from __future__ import annotations
 
-import json
-from pathlib import Path
+from __future__ import annotations
 
 import numpy as np
 import pytest
@@ -38,8 +36,11 @@ def _build_calibrated_model(n_features: int) -> CalibratedClassifierCV:
     X = rng.randn(60, n_features)
     y = rng.randint(0, 2, size=60)
     base = XGBClassifier(
-        n_estimators=5, max_depth=2, objective="binary:logistic",
-        random_state=42, verbosity=0,
+        n_estimators=5,
+        max_depth=2,
+        objective="binary:logistic",
+        random_state=42,
+        verbosity=0,
     )
     base.fit(X[:48], y[:48])
     cal = CalibratedClassifierCV(FrozenEstimator(base), method="sigmoid")

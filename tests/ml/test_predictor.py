@@ -33,7 +33,7 @@ def _import_prefer_canonical():
 
     Today this raises ImportError (RED). Plan 02 turns it green.
     """
-    from ufc_prediction.ml.predictor import _prefer_canonical  # noqa: PLC0415
+    from ufc_prediction.ml.predictor import _prefer_canonical
 
     return _prefer_canonical
 

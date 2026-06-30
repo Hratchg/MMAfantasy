@@ -89,7 +89,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 # Direct import from scripts/ — Task 1 deliverable. Tests collect-fail with
 # ImportError until the script exists (RED phase contract).
-from retrain_xgb_v2_netd import (  # noqa: E402
+from retrain_xgb_v2_netd import (
     EXPECTED_META_V2_SHA256,
     EXPECTED_XGB_V2_SHA256,
     NET_V2_COLS,
@@ -101,7 +101,6 @@ from retrain_xgb_v2_netd import (  # noqa: E402
     assert_audit01_invariants,
     main,
 )
-
 
 # ── Cheap tier (always runs) ──────────────────────────────────────────────
 
@@ -135,8 +134,7 @@ def test_argparse_help_exits_zero() -> None:
 def test_expected_xgb_v2_sha256_matches_audit01() -> None:
     """The locked AUDIT-01 SHA constant matches the canonical hex (D-10)."""
     assert (
-        EXPECTED_XGB_V2_SHA256
-        == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+        EXPECTED_XGB_V2_SHA256 == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
     )
 
 
@@ -170,12 +168,12 @@ def test_frozen_date_is_phase_66_phase_start() -> None:
     frozen date (the cross-phase determinism check the v2.6.1 audit
     chain relies on).
     """
-    assert XGB_NETD_FROZEN_DATE == date(2026, 6, 6), (
+    assert date(2026, 6, 6) == XGB_NETD_FROZEN_DATE, (
         f"XGB_NETD_FROZEN_DATE drifted: {XGB_NETD_FROZEN_DATE!r}; "
         f"expected date(2026, 6, 6) per Phase 66 phase-start"
     )
     # Phase 65 used date(2026, 6, 4) — confirm the distinct-date discipline.
-    assert XGB_NETD_FROZEN_DATE != date(2026, 6, 4), (
+    assert date(2026, 6, 4) != XGB_NETD_FROZEN_DATE, (
         "XGB_NETD_FROZEN_DATE collides with Phase 65's date(2026, 6, 4); "
         "distinct frozen dates required so synthetic substrates are "
         "phase-distinguishable"
@@ -360,12 +358,8 @@ def test_compute_net_v2_columns_returns_pair_aligned_with_rows() -> None:
     assert len(pagerank_col) == 3
     assert len(sos_col) == 3
     # Row 0: debutant at as_of=2020-01-01 (graph empty for that as_of_date).
-    assert math.isnan(pagerank_col[0]), (
-        f"row 0 should be debutant (NaN); got {pagerank_col[0]!r}"
-    )
-    assert math.isnan(sos_col[0]), (
-        f"row 0 sos should be NaN (debutant); got {sos_col[0]!r}"
-    )
+    assert math.isnan(pagerank_col[0]), f"row 0 should be debutant (NaN); got {pagerank_col[0]!r}"
+    assert math.isnan(sos_col[0]), f"row 0 sos should be NaN (debutant); got {sos_col[0]!r}"
 
 
 # ── Heavy tier (GATED by RUN_HEAVY_TESTS=1) ───────────────────────────────
@@ -466,9 +460,7 @@ def test_dry_run_oof_parquet_schema(dry_run_built: Path) -> None:
 def test_audit01_invariants_unchanged_after_dry_run(dry_run_built: Path) -> None:
     """After running ``--dry-run``, the canonical SHAs are byte-identical."""
     assert dry_run_built is not None
-    sha_xgb = hashlib.sha256(
-        (REPO_ROOT / "models" / "xgb_v2.joblib").read_bytes()
-    ).hexdigest()
+    sha_xgb = hashlib.sha256((REPO_ROOT / "models" / "xgb_v2.joblib").read_bytes()).hexdigest()
     sha_meta = hashlib.sha256(
         (REPO_ROOT / "models" / "meta" / "meta_v2.joblib").read_bytes()
     ).hexdigest()

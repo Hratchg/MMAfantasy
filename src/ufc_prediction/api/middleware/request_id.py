@@ -21,9 +21,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 request_id_ctxvar: ContextVar[str] = ContextVar("request_id", default="-")
-partner_label_ctxvar: ContextVar[str | None] = ContextVar(
-    "partner_label", default=None
-)
+partner_label_ctxvar: ContextVar[str | None] = ContextVar("partner_label", default=None)
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
@@ -38,9 +36,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
       reuse doesn't leak ids between requests.
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         client_id = request.headers.get("X-Request-ID", "").strip()
         request_id = client_id or str(uuid.uuid4())
         token = request_id_ctxvar.set(request_id)

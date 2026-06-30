@@ -31,12 +31,8 @@ from ufc_prediction.scraper.bfo_models import BFOFighterName
 # ── Fixture loading ─────────────────────────────────────────────────────────
 
 _FIXTURE_DIR = Path(__file__).parent / "fixtures" / "bfo_disambiguation_v25"
-_ANOMALY_ROWS: list[dict[str, Any]] = json.loads(
-    (_FIXTURE_DIR / "anomaly_rows.json").read_text()
-)
-_CONTROL_ROWS: list[dict[str, Any]] = json.loads(
-    (_FIXTURE_DIR / "control_rows.json").read_text()
-)
+_ANOMALY_ROWS: list[dict[str, Any]] = json.loads((_FIXTURE_DIR / "anomaly_rows.json").read_text())
+_CONTROL_ROWS: list[dict[str, Any]] = json.loads((_FIXTURE_DIR / "control_rows.json").read_text())
 
 
 def _build_ingester_with_pool(
@@ -95,9 +91,7 @@ def test_anomaly_row_resolves_to_canonical_fighter_id(
 
     bfo_to_db = ingester._match_fighters(bfo_names, summary)
 
-    assert bfo_to_db.get(row["bfo_fighter_id"]) == row[
-        "expected_canonical_fighter_id"
-    ], (
+    assert bfo_to_db.get(row["bfo_fighter_id"]) == row["expected_canonical_fighter_id"], (
         f"Anomaly fixture year={row['year']} bfo_fighter_id={row['bfo_fighter_id']} "
         f"expected DB id={row['expected_canonical_fighter_id']} but got "
         f"{bfo_to_db.get(row['bfo_fighter_id'])!r}. Notes: {row['notes']}"
@@ -126,9 +120,7 @@ def test_control_row_resolves_identically_post_fix(
 
     bfo_to_db = ingester._match_fighters(bfo_names, summary)
 
-    assert bfo_to_db.get(row["bfo_fighter_id"]) == row[
-        "expected_canonical_fighter_id"
-    ], (
+    assert bfo_to_db.get(row["bfo_fighter_id"]) == row["expected_canonical_fighter_id"], (
         f"Control fixture year={row['year']} bfo_fighter_id={row['bfo_fighter_id']} "
         f"REGRESSED post-fix: expected DB id={row['expected_canonical_fighter_id']} "
         f"but got {bfo_to_db.get(row['bfo_fighter_id'])!r}. Notes: {row['notes']}"
@@ -150,9 +142,7 @@ def test_canonical_path_bypasses_fuzzy_matcher_when_database_id_present(
         call_counter["calls"] += 1
         return None
 
-    monkeypatch.setattr(
-        "ufc_prediction.scraper.bfo_ingest.match_bfo_name", _spy_match_bfo_name
-    )
+    monkeypatch.setattr("ufc_prediction.scraper.bfo_ingest.match_bfo_name", _spy_match_bfo_name)
 
     # Pick the first anomaly fixture with a non-null database_id.
     row = next(r for r in _ANOMALY_ROWS if r.get("database_id"))
@@ -188,9 +178,7 @@ def test_fallback_path_uses_fuzzy_matcher_when_database_id_blank(
             return candidates[0]
         return None
 
-    monkeypatch.setattr(
-        "ufc_prediction.scraper.bfo_ingest.match_bfo_name", _spy_match_bfo_name
-    )
+    monkeypatch.setattr("ufc_prediction.scraper.bfo_ingest.match_bfo_name", _spy_match_bfo_name)
 
     row = next(r for r in _ANOMALY_ROWS if r.get("database_id") is None)
     ingester = _build_ingester_with_pool(row["candidate_pool"])
@@ -230,12 +218,12 @@ def test_ingest_summary_tracks_canonical_vs_fuzzy_split() -> None:
         f"Expected 2 fighters matched; got {summary.fighters_matched}"
     )
     # Per Plan 41-01 contract: split canonical vs fuzzy counts.
-    assert hasattr(
-        summary, "fighters_matched_canonical"
-    ), "IngestSummary missing 'fighters_matched_canonical' counter (Plan 41-01 contract)"
-    assert hasattr(
-        summary, "fighters_matched_fuzzy"
-    ), "IngestSummary missing 'fighters_matched_fuzzy' counter (Plan 41-01 contract)"
+    assert hasattr(summary, "fighters_matched_canonical"), (
+        "IngestSummary missing 'fighters_matched_canonical' counter (Plan 41-01 contract)"
+    )
+    assert hasattr(summary, "fighters_matched_fuzzy"), (
+        "IngestSummary missing 'fighters_matched_fuzzy' counter (Plan 41-01 contract)"
+    )
     assert summary.fighters_matched_canonical == 1, (
         f"Expected 1 canonical-path match; got {summary.fighters_matched_canonical}"
     )

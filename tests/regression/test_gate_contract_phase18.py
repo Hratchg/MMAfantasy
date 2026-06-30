@@ -13,10 +13,9 @@ This is a RED test in the process-discipline sense: it ships passing at commit
 time (Phase 17 already produced the contract), but exists as a tripwire so any
 future drift is caught immediately.
 """
+
 import json
 import pathlib
-
-import pytest
 
 
 def test_gate_contract_thresholds_are_v2_1_not_v2_0():
@@ -27,13 +26,11 @@ def test_gate_contract_thresholds_are_v2_1_not_v2_0():
     narrative slip in PROJECT.md D-18 row; the JSON is the binding source.
     """
     contract_path = pathlib.Path(".planning/gate_contract.json")
-    assert contract_path.exists(), \
-        "gate_contract.json missing — Phase 17 not closed; halt Phase 18"
+    assert contract_path.exists(), "gate_contract.json missing — Phase 17 not closed; halt Phase 18"
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
 
     # Sanity: top-level fields wired by Phase 17
-    assert contract["version"] == "v2.1", \
-        f"contract.version != v2.1; got {contract['version']!r}"
+    assert contract["version"] == "v2.1", f"contract.version != v2.1; got {contract['version']!r}"
     assert contract["formula_hash"] == (
         "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
     ), "Phase 17 operator-approved formula_hash drifted"

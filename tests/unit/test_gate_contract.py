@@ -48,9 +48,7 @@ def _valid_v23_contract_dict() -> dict:
         "base_features_set": "FEATURE_COLUMNS_V22",
         "n_features": 90,
         "k_value": 1,
-        "formula_hash": (
-            "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
-        ),
+        "formula_hash": ("7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"),
         "cutoff_date": "2023-01-01",
         "per_slice": {
             "most_recent_12mo": dict(slice_payload),
@@ -135,16 +133,14 @@ class TestV23Dispatch:
         assert c21.version == "v2.1"
         # D-18 binding: formula hash preserved
         assert (
-            c21.formula_hash
-            == "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
+            c21.formula_hash == "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
         )
 
         load_gate_contract.cache_clear()
         c22 = load_gate_contract(version="v2.2")
         assert c22.version == "v2.2"
         assert (
-            c22.formula_hash
-            == "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
+            c22.formula_hash == "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
         )
         load_gate_contract.cache_clear()
 
@@ -189,9 +185,7 @@ class TestV23Dispatch:
 
         load_gate_contract.cache_clear()
         v23_path = tmp_path / "gate_contract_v2.3.json"
-        v23_path.write_text(
-            json.dumps(_valid_v23_contract_dict()), encoding="utf-8"
-        )
+        v23_path.write_text(json.dumps(_valid_v23_contract_dict()), encoding="utf-8")
         monkeypatch.setattr(gc_mod, "V23_CONTRACT_PATH", v23_path)
         load_gate_contract.cache_clear()  # bookend after monkeypatch
 

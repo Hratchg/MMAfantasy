@@ -64,9 +64,7 @@ import numpy as np
 
 # D-18 LOCKED — formula hash NO post-measurement renegotiation
 # (PROJECT.md + CONTEXT §AUDIT-01 invariant).
-FORMULA_HASH: str = (
-    "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
-)
+FORMULA_HASH: str = "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
 
 # CONTEXT D-18 floor — 0.70 verbatim. DELIBERATELY looser than per-slice
 # gate_contract_v2.3.json accuracy_min (0.7814 / 0.7627 / 0.7812). The
@@ -90,12 +88,8 @@ PER_SLICE_KEYS: tuple[str, ...] = (
 )
 
 # PROJECT.md byte-identity invariants (AUDIT-01).
-EXPECTED_XGB_V2_SHA256: str = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
-EXPECTED_META_V2_SHA256: str = (
-    "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
-)
+EXPECTED_XGB_V2_SHA256: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+EXPECTED_META_V2_SHA256: str = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
 EXPECTED_CUTOFF_DATE: str = "2023-01-01"
 SEEDS_DEFAULT: tuple[int, ...] = (42, 43, 44, 45, 46)
 SUBSTRATE_VERSION: str = "v2.5"
@@ -116,6 +110,7 @@ GATE_CONTRACT_V23_PATH: Path = Path(".planning/gate_contract_v2.3.json")
 
 
 # ────────────────── Pure decision functions (importable by tests) ──────────────
+
 
 def floor_clears(
     baseline: dict[str, float] | dict[str, dict[str, float]],
@@ -158,21 +153,15 @@ def floor_clears(
 
         # Brier-floor check (≤ baseline).
         if math.isnan(cand) or math.isnan(base):
-            failures.append(
-                f"{slc}: brier NaN (cand={cand!r}, base={base!r})"
-            )
+            failures.append(f"{slc}: brier NaN (cand={cand!r}, base={base!r})")
         elif cand > base:
-            failures.append(
-                f"{slc}: brier {cand:.4f} > baseline {base:.4f}"
-            )
+            failures.append(f"{slc}: brier {cand:.4f} > baseline {base:.4f}")
 
         # Accuracy-floor check (≥ floor_accuracy_min).
         if math.isnan(acc):
             failures.append(f"{slc}: accuracy NaN (acc={acc!r})")
         elif acc < floor_accuracy_min:
-            failures.append(
-                f"{slc}: accuracy {acc:.4f} < {floor_accuracy_min:.2f}"
-            )
+            failures.append(f"{slc}: accuracy {acc:.4f} < {floor_accuracy_min:.2f}")
     return (len(failures) == 0, failures)
 
 
@@ -218,25 +207,17 @@ def hurdle_clears(
             cand = float(cand_raw)
 
         if math.isnan(base) or math.isnan(cand):
-            per_slice_msgs.append(
-                f"{slc}: NaN delta (cand={cand!r}, base={base!r}) — not cleared"
-            )
+            per_slice_msgs.append(f"{slc}: NaN delta (cand={cand!r}, base={base!r}) — not cleared")
             continue
         delta = base - cand
         if math.isnan(delta):
-            per_slice_msgs.append(
-                f"{slc}: NaN delta — not cleared"
-            )
+            per_slice_msgs.append(f"{slc}: NaN delta — not cleared")
             continue
         if delta >= hurdle_min:
             n_cleared += 1
-            per_slice_msgs.append(
-                f"{slc}: Δ={delta:.4f} >= {hurdle_min:.3f} ✓"
-            )
+            per_slice_msgs.append(f"{slc}: Δ={delta:.4f} >= {hurdle_min:.3f} ✓")
         else:
-            per_slice_msgs.append(
-                f"{slc}: Δ={delta:.4f} < {hurdle_min:.3f} ✗"
-            )
+            per_slice_msgs.append(f"{slc}: Δ={delta:.4f} < {hurdle_min:.3f} ✗")
     return (n_cleared >= majority_threshold, per_slice_msgs)
 
 
@@ -322,7 +303,9 @@ def build_report(
     candidate_acc_flat = _unwrap_accuracy(candidate)
 
     floor_result = floor_clears(
-        baseline_brier_flat, candidate_brier_flat, candidate_acc_flat,
+        baseline_brier_flat,
+        candidate_brier_flat,
+        candidate_acc_flat,
     )
     hurdle_result = hurdle_clears(baseline_brier_flat, candidate_brier_flat)
     path = determine_path(floor_result, hurdle_result)
@@ -338,17 +321,11 @@ def build_report(
         else:
             delta = float(b - c)
         # Per-slice floor: candidate brier ≤ baseline brier AND candidate acc ≥ 0.70
-        slc_floor_brier_ok = (
-            (not math.isnan(b))
-            and (not math.isnan(c))
-            and c <= b
-        )
+        slc_floor_brier_ok = (not math.isnan(b)) and (not math.isnan(c)) and c <= b
         slc_floor_acc_ok = (not math.isnan(ca)) and ca >= FLOOR_ACCURACY_MIN
         slc_floor_ok = bool(slc_floor_brier_ok and slc_floor_acc_ok)
         # Per-slice hurdle: delta ≥ 0.003 (NaN delta fails)
-        slc_hurdle_ok = bool(
-            (not math.isnan(delta)) and delta >= HURDLE_BRIER_MIN
-        )
+        slc_hurdle_ok = bool((not math.isnan(delta)) and delta >= HURDLE_BRIER_MIN)
         per_slice_out[slc] = {
             "baseline_brier": float(b) if not math.isnan(b) else None,
             "candidate_brier": float(c) if not math.isnan(c) else None,
@@ -432,6 +409,7 @@ def _coerce_for_json(d: Any) -> Any:
 
 # ────────────────────── SHA helpers (AUDIT-01) ───────────────────────────────
 
+
 def _sha256_path(path: Path) -> str:
     """Compute SHA256 of a file's bytes."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -457,6 +435,7 @@ def _assert_canonical_shas() -> tuple[str, str]:
 
 
 # ────────────────────── Data loading helpers ─────────────────────────────────
+
 
 def _load_assembled_data_v25_travel(
     cutoff_date_iso: str = EXPECTED_CUTOFF_DATE,
@@ -496,21 +475,26 @@ def _load_assembled_data_v25_travel(
         session.close()
 
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
 
     config = MLConfig(cutoff_date=cutoff_date_iso)
     assembler = FeatureMatrixAssembler(config)
     X_v25, y, fight_dates = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
         feature_set="v2.5-travel",
     )
     assert X_v25.shape[1] == 92, (
-        f"v2.5-travel assembled matrix shape mismatch: "
-        f"got {X_v25.shape[1]} expected 92"
+        f"v2.5-travel assembled matrix shape mismatch: got {X_v25.shape[1]} expected 92"
     )
     return X_v25, y, fight_dates, fight_records
 
@@ -532,6 +516,7 @@ def _compute_elo_prob_for_fight(fight: dict, elo_features: dict) -> float:
 
 
 # ────────────────────── Multi-seed trainer ───────────────────────────────────
+
 
 def _train_candidate_multi_seed(
     *,
@@ -557,7 +542,10 @@ def _train_candidate_multi_seed(
     for seed in seeds:
         model = MetaLearnerLogistic(random_state=seed).fit(X_train, y_train)
         per_seed_results[seed] = evaluate_per_slice(
-            model, X_eval, y_eval, fight_dates_eval,
+            model,
+            X_eval,
+            y_eval,
+            fight_dates_eval,
         )
         per_seed_models[seed] = model
     median = median_metrics(list(per_seed_results.values()))
@@ -567,9 +555,10 @@ def _train_candidate_multi_seed(
 
 # ────────────────────── Baseline + candidate evaluators ──────────────────────
 
+
 def _evaluate_baseline_meta_v22_calib(
     *,
-    base_meta_v22: np.ndarray,    # 13-col META-V22 Level-1 substrate (eval slice)
+    base_meta_v22: np.ndarray,  # 13-col META-V22 Level-1 substrate (eval slice)
     y_eval: np.ndarray,
     fight_dates_eval: np.ndarray,
 ) -> dict[str, dict[str, float]]:
@@ -597,15 +586,20 @@ def _evaluate_baseline_meta_v22_calib(
         f"meta_v2.joblib expects 13 META-V22 cols; got {base_meta_v22.shape[1]}"
     )
     return evaluate_per_slice(
-        meta_v2_model, base_meta_v22, y_eval, fight_dates_eval,
+        meta_v2_model,
+        base_meta_v22,
+        y_eval,
+        fight_dates_eval,
     )
 
 
 # ────────────────────── Main pipeline ────────────────────────────────────────
 
+
 def _build_synthetic_v25(n: int = 600) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[dict]]:
     """Synthetic 92-col v2.5-travel fixture for --dry-run."""
     import datetime as _datetime
+
     rng = np.random.default_rng(42)
     X_v25 = rng.standard_normal((n, 92))
     y = rng.integers(0, 2, size=n)
@@ -633,14 +627,13 @@ def _build_synthetic_v25(n: int = 600) -> tuple[np.ndarray, np.ndarray, np.ndarr
     return X_v25, y, np.array(dates), fight_records
 
 
-def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
+def run_composition(args) -> dict:
     """Pipeline driver: AUDIT-01 preflight → load data → baseline+candidate →
     floor/hurdle → emit TRAVEL_COMPOSITION_V25_REPORT.json.
 
     Returns the full report dict. Per Plan 42-02 spec: does NOT persist the
     candidate blender (Plan 42-03 Path A conditional).
     """
-    from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
     from ufc_prediction.ml.gate_contract import load_gate_contract
     from ufc_prediction.ml.meta_features_v22 import (
         META_V22_FEATURE_COLUMNS,
@@ -668,13 +661,9 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     # ── Load gate contract (D-18 hash check internal) ──
     contract = load_gate_contract(version="v2.3")
     assert contract.formula_hash == FORMULA_HASH, (
-        f"D-18 formula hash drift: contract={contract.formula_hash} "
-        f"expected={FORMULA_HASH}"
+        f"D-18 formula hash drift: contract={contract.formula_hash} expected={FORMULA_HASH}"
     )
-    print(
-        f"[compose_v25] gate contract v2.3 loaded "
-        f"(formula_hash={contract.formula_hash[:12]}...)"
-    )
+    print(f"[compose_v25] gate contract v2.3 loaded (formula_hash={contract.formula_hash[:12]}...)")
 
     # ── Step 0: Load 92-col v2.5-travel feature matrix ──
     cached_fixtures_mode = bool(args.cached_fixtures_only)
@@ -682,14 +671,9 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
         print("[compose_v25] DRY-RUN: synthetic 92-col v2.5-travel fixture")
         X_v25, y, fight_dates, fight_records = _build_synthetic_v25()
     else:
-        print(
-            "[compose_v25] Loading 92-col v2.5-travel matrix from DB..."
-        )
+        print("[compose_v25] Loading 92-col v2.5-travel matrix from DB...")
         X_v25, y, fight_dates, fight_records = _load_assembled_data_v25_travel()
-    print(
-        f"[compose_v25] X_v25.shape={X_v25.shape}, "
-        f"n_records={len(fight_records)}"
-    )
+    print(f"[compose_v25] X_v25.shape={X_v25.shape}, n_records={len(fight_records)}")
 
     # The first 90 cols are the V22 substrate (xgb_v2 input shape preserved).
     X_v22 = X_v25[:, :90]
@@ -729,9 +713,7 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
 
     # ── OOF base XGB on 72-col view ──
     X_oof = X_v22[meta_train_idx][:, :72]
-    assert X_oof.shape[1] == 72, (
-        f"OOF base XGB requires 72-col view; got {X_oof.shape[1]}"
-    )
+    assert X_oof.shape[1] == 72, f"OOF base XGB requires 72-col view; got {X_oof.shape[1]}"
     use_cache = not args.no_cache_oof and not args.dry_run
     cache_path = META_OOF_PARQUET_PATH if use_cache else None
     xgb_oof_prob, _oof_meta = generate_oof_predictions(
@@ -755,19 +737,18 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     else:
         from ufc_prediction.db.session import SessionLocal
         from ufc_prediction.ml.queries import load_elo_features
+
         _session = SessionLocal()
         try:
             _elo_features = load_elo_features(_session)
         finally:
             _session.close()
-        elo_prob_train = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_train_idx
-        ])
-        elo_prob_eval = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_eval_idx
-        ])
+        elo_prob_train = np.array(
+            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_train_idx]
+        )
+        elo_prob_eval = np.array(
+            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_eval_idx]
+        )
 
     # ── Build base META-V22 Level-1 (13 cols) for both splits ──
     print("[compose_v25] Building base META-V22 Level-1 (1 base train + Elo lookups)...")
@@ -776,10 +757,14 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     xgb_eval_prob = base_estimator.predict_proba(X_v22[meta_eval_idx][:, :72])[:, 1]
 
     base_train_meta_v22 = build_meta_features_v22(
-        xgb_oof_aligned, elo_prob_train, X_v22[meta_train_idx],
+        xgb_oof_aligned,
+        elo_prob_train,
+        X_v22[meta_train_idx],
     )
     base_eval_meta_v22 = build_meta_features_v22(
-        xgb_eval_prob, elo_prob_eval, X_v22[meta_eval_idx],
+        xgb_eval_prob,
+        elo_prob_eval,
+        X_v22[meta_eval_idx],
     )
 
     seeds = list(args.seeds)
@@ -795,37 +780,46 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
 
     # Baseline NaN-drop (13-col META-V22 substrate).
     base_train_mask = apply_nan_drop_policy(
-        base_train_meta_v22, meta_feature_cols,
-        policy=NAN_DROP_POLICY, baseline_columns=BASELINE_COLS,
+        base_train_meta_v22,
+        meta_feature_cols,
+        policy=NAN_DROP_POLICY,
+        baseline_columns=BASELINE_COLS,
     )
     base_eval_mask = apply_nan_drop_policy(
-        base_eval_meta_v22, meta_feature_cols,
-        policy=NAN_DROP_POLICY, baseline_columns=BASELINE_COLS,
+        base_eval_meta_v22,
+        meta_feature_cols,
+        policy=NAN_DROP_POLICY,
+        baseline_columns=BASELINE_COLS,
     )
 
     # Candidate matrix (13 META + 2 TRAVEL-V25).
     cand_feature_cols = meta_feature_cols + [
-        "travel_distance_km", "tz_shift_hours",
+        "travel_distance_km",
+        "tz_shift_hours",
     ]
     cand_train_matrix = np.column_stack([base_train_meta_v22, travel_v25_train])
     cand_eval_matrix = np.column_stack([base_eval_meta_v22, travel_v25_eval])
     cand_train_mask = apply_nan_drop_policy(
-        cand_train_matrix, cand_feature_cols,
-        policy=NAN_DROP_POLICY, baseline_columns=BASELINE_COLS,
+        cand_train_matrix,
+        cand_feature_cols,
+        policy=NAN_DROP_POLICY,
+        baseline_columns=BASELINE_COLS,
     )
     cand_eval_mask = apply_nan_drop_policy(
-        cand_eval_matrix, cand_feature_cols,
-        policy=NAN_DROP_POLICY, baseline_columns=BASELINE_COLS,
+        cand_eval_matrix,
+        cand_feature_cols,
+        policy=NAN_DROP_POLICY,
+        baseline_columns=BASELINE_COLS,
     )
 
     # ── Median-impute non-baseline NaN cols on both matrices ──
     # (Phase 29 EVAL-V23-01 pattern — preserves apples-to-apples.)
-    def _impute_train_eval(X_train: np.ndarray, X_eval: np.ndarray, cols: list[str]) -> tuple[np.ndarray, np.ndarray]:
+    def _impute_train_eval(
+        X_train: np.ndarray, X_eval: np.ndarray, cols: list[str]
+    ) -> tuple[np.ndarray, np.ndarray]:
         Xt = X_train.copy()
         Xe = X_eval.copy()
-        non_baseline_idx = [
-            i for i, c in enumerate(cols) if c not in BASELINE_COLS
-        ]
+        non_baseline_idx = [i for i, c in enumerate(cols) if c not in BASELINE_COLS]
         for idx in non_baseline_idx:
             col_t = Xt[:, idx] if Xt.size else np.array([])
             finite = col_t[~np.isnan(col_t)] if col_t.size else np.array([])
@@ -841,12 +835,14 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
         return Xt, Xe
 
     X_base_train_clean = base_train_meta_v22[base_train_mask]
-    y_base_train_clean = y[meta_train_idx][base_train_mask]
+    _y_base_train_clean = y[meta_train_idx][base_train_mask]
     X_base_eval_clean = base_eval_meta_v22[base_eval_mask]
     y_base_eval_clean = y[meta_eval_idx][base_eval_mask]
     fight_dates_base_eval = fight_dates[meta_eval_idx][base_eval_mask]
     X_base_train_clean, X_base_eval_clean = _impute_train_eval(
-        X_base_train_clean, X_base_eval_clean, meta_feature_cols,
+        X_base_train_clean,
+        X_base_eval_clean,
+        meta_feature_cols,
     )
 
     X_cand_train_clean = cand_train_matrix[cand_train_mask]
@@ -855,7 +851,9 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
     y_cand_eval_clean = y[meta_eval_idx][cand_eval_mask]
     fight_dates_cand_eval = fight_dates[meta_eval_idx][cand_eval_mask]
     X_cand_train_clean, X_cand_eval_clean = _impute_train_eval(
-        X_cand_train_clean, X_cand_eval_clean, cand_feature_cols,
+        X_cand_train_clean,
+        X_cand_eval_clean,
+        cand_feature_cols,
     )
 
     n_base_eval = int(base_eval_mask.sum())
@@ -880,15 +878,11 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
         )
     else:
         baseline_per_slice = {
-            slc: {"brier_score": float("nan"), "accuracy": float("nan")}
-            for slc in PER_SLICE_KEYS
+            slc: {"brier_score": float("nan"), "accuracy": float("nan")} for slc in PER_SLICE_KEYS
         }
 
     # ── Train + evaluate candidate (META-V22 + CALIB + TRAVEL-V25) ──
-    print(
-        f"[compose_v25] Training candidate blender (15-col Level-1, "
-        f"seeds={seeds})..."
-    )
+    print(f"[compose_v25] Training candidate blender (15-col Level-1, seeds={seeds})...")
     candidate_per_slice: dict[str, dict[str, float]] = {}
     chosen_model: Any = None
     if X_cand_train_clean.shape[0] > 0 and X_cand_eval_clean.shape[0] > 0:
@@ -902,8 +896,7 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
         )
     else:
         candidate_per_slice = {
-            slc: {"brier_score": float("nan"), "accuracy": float("nan")}
-            for slc in PER_SLICE_KEYS
+            slc: {"brier_score": float("nan"), "accuracy": float("nan")} for slc in PER_SLICE_KEYS
         }
 
     # ── Annotate per-slice with effective n + nan_drop ratio ──
@@ -969,12 +962,8 @@ def run_composition(args) -> dict:  # noqa: C901, PLR0912, PLR0915
 
     # ── Re-verify AUDIT-01 byte-identity at write time ──
     xgb_sha_end, meta_sha_end = _assert_canonical_shas()
-    assert xgb_sha_end == xgb_sha, (
-        "xgb_v2 SHA drifted mid-pipeline (AUDIT-01 violation)"
-    )
-    assert meta_sha_end == meta_sha, (
-        "meta_v2 SHA drifted mid-pipeline (AUDIT-01 violation)"
-    )
+    assert xgb_sha_end == xgb_sha, "xgb_v2 SHA drifted mid-pipeline (AUDIT-01 violation)"
+    assert meta_sha_end == meta_sha, "meta_v2 SHA drifted mid-pipeline (AUDIT-01 violation)"
 
     _emit_report(report)
 
@@ -1137,6 +1126,7 @@ def _emit_report(report: dict) -> None:
 
 # ────────────────────── CLI entry ────────────────────────────────────────────
 
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
@@ -1145,11 +1135,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--seeds", nargs="+", type=int, default=list(SEEDS_DEFAULT),
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(SEEDS_DEFAULT),
         help="Random seeds for MetaLearnerLogistic (default: 42 43 44 45 46)",
     )
     parser.add_argument(
-        "--cached-fixtures-only", action="store_true",
+        "--cached-fixtures-only",
+        action="store_true",
         help=(
             "Reuse Phase 26 OOF parquet cache; flag report "
             "cached_fixtures_mode=true so Plan 42-03 can request a "
@@ -1157,19 +1151,24 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--no-cache-oof", action="store_true",
+        "--no-cache-oof",
+        action="store_true",
         help="Force OOF parquet rebuild (ignores cache_path)",
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Synthetic 92-col v2.5-travel smoke (no DB / no real xgb_v2 inference)",
     )
     parser.add_argument(
-        "--gate-contract-ref", type=str, default=str(GATE_CONTRACT_V23_PATH),
+        "--gate-contract-ref",
+        type=str,
+        default=str(GATE_CONTRACT_V23_PATH),
         help="Override gate_contract path (recorded in report; loader uses load_gate_contract(version='v2.3'))",
     )
     parser.add_argument(
-        "--persist-on-path-a", action="store_true",
+        "--persist-on-path-a",
+        action="store_true",
         help=(
             "Plan 42-03 conditional persistence: if the run produces "
             "path_a_eligible=True, write the candidate blender as "
@@ -1185,7 +1184,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    report = run_composition(args)
+    _report = run_composition(args)
     return 0
 
 

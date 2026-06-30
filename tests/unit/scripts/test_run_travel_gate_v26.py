@@ -42,13 +42,12 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 
-from run_travel_gate_v26 import (  # noqa: E402
+from run_travel_gate_v26 import (
     DEFAULT_V261_OUT,
     delegate_to_ufc_gate_verify,
     emit_provisional_path_b,
     main,
 )
-
 
 # ── delegate_to_ufc_gate_verify: argv-construction test ───────────────────
 
@@ -83,8 +82,7 @@ def test_delegate_builds_correct_argv(tmp_path: Path) -> None:
     # First positional arg is the argv list.
     argv = mock_run.call_args[0][0]
     assert argv[0:3] == ["ufc", "gate", "verify"], (
-        f"Expected argv to start with ['ufc', 'gate', 'verify'], "
-        f"got {argv[0:3]!r}"
+        f"Expected argv to start with ['ufc', 'gate', 'verify'], got {argv[0:3]!r}"
     )
     # All five flag names + their values are present (order-insensitive
     # over the flag/value pairs — only the head-3 order is contractual).
@@ -110,7 +108,8 @@ def test_delegate_builds_correct_argv(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("verifier_rc", [0, 1, 2, 42])
 def test_delegate_propagates_verifier_exit_code(
-    tmp_path: Path, verifier_rc: int,
+    tmp_path: Path,
+    verifier_rc: int,
 ) -> None:
     """``ufc gate verify`` rc N → shim returns N verbatim.
 
@@ -134,16 +133,15 @@ def test_delegate_propagates_verifier_exit_code(
             strategy="refit_baseline",
             out=out,
         )
-    assert rc == verifier_rc, (
-        f"Expected shim to propagate verifier rc {verifier_rc}, got {rc}"
-    )
+    assert rc == verifier_rc, f"Expected shim to propagate verifier rc {verifier_rc}, got {rc}"
 
 
 # ── CR-02: FileNotFoundError handling ─────────────────────────────────────
 
 
 def test_delegate_handles_ufc_not_found_returns_127(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """CR-02 regression: missing ``ufc`` on PATH → rc=127, NOT a traceback.
 
@@ -172,8 +170,7 @@ def test_delegate_handles_ufc_not_found_returns_127(
         )
 
     assert rc == 127, (
-        f"Expected rc=127 (POSIX 'command not found') on FileNotFoundError, "
-        f"got rc={rc}"
+        f"Expected rc=127 (POSIX 'command not found') on FileNotFoundError, got rc={rc}"
     )
     captured = capsys.readouterr()
     assert "ufc" in captured.err and "PATH" in captured.err, (
@@ -274,7 +271,8 @@ def test_emit_provisional_refuses_when_both_exist(tmp_path: Path) -> None:
 
 
 def test_main_no_substrate_with_existing_outputs_returns_rc1(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """CR-01 main()-level wrapper: RuntimeError from emit_provisional
@@ -303,8 +301,7 @@ def test_main_no_substrate_with_existing_outputs_returns_rc1(
     assert rc == 1, f"Expected rc=1 from CR-01 main()-level guard, got rc={rc}"
     captured = capsys.readouterr()
     assert "ERROR" in captured.err and "D-04/D-05" in captured.err, (
-        f"Expected stderr to surface the D-04/D-05 guard message, "
-        f"got stderr={captured.err!r}"
+        f"Expected stderr to surface the D-04/D-05 guard message, got stderr={captured.err!r}"
     )
     # Pre-existing files must NOT have been modified.
     assert fake_md.read_text(encoding="utf-8") == "pre-existing"
@@ -337,6 +334,5 @@ def test_main_substrate_path_uses_default_v261_out_when_out_omitted(
     argv = mock_run.call_args[0][0]
     out_idx = argv.index("--out")
     assert argv[out_idx + 1] == str(DEFAULT_V261_OUT), (
-        f"Expected --out to default to {DEFAULT_V261_OUT}, "
-        f"got {argv[out_idx + 1]!r}"
+        f"Expected --out to default to {DEFAULT_V261_OUT}, got {argv[out_idx + 1]!r}"
     )

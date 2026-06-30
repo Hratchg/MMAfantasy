@@ -18,6 +18,7 @@ The contract:
 Mocks ModelPredictor.predict() — mirrors tests/api/test_predict_v1.py's
 no-DB pattern so the suite runs in any environment without testcontainers.
 """
+
 from __future__ import annotations
 
 import json
@@ -40,28 +41,30 @@ SCHEMA_V100_PATH = CONTRACTS_DIR / "predictor.schema.v1.0.0.json"
 SCHEMA_V110_PATH = CONTRACTS_DIR / "predictor.schema.v1.1.0.json"
 
 # v1.0.0 field set (Phase 25 lock — must NEVER drift).
-V100_FIELDS: frozenset[str] = frozenset({
-    "schema_version",
-    "win_probability",
-    "fighter_a",
-    "fighter_b",
-    "event_date",
-    "base_prob",
-    "meta_prob",
-    "meta_learner_version",
-    "meta_skipped_reason",
-})
+V100_FIELDS: frozenset[str] = frozenset(
+    {
+        "schema_version",
+        "win_probability",
+        "fighter_a",
+        "fighter_b",
+        "event_date",
+        "base_prob",
+        "meta_prob",
+        "meta_learner_version",
+        "meta_skipped_reason",
+    }
+)
 
-V110_ADDITIVE_TRIO: frozenset[str] = frozenset({
-    "gate_contract_ref",
-    "model_candidates",
-    "phase_chain_audit_sha",
-})
+V110_ADDITIVE_TRIO: frozenset[str] = frozenset(
+    {
+        "gate_contract_ref",
+        "model_candidates",
+        "phase_chain_audit_sha",
+    }
+)
 
 # Canonical xgb_v2.joblib SHA — used in the populated-fields test.
-XGB_V2_CANONICAL_SHA = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
+XGB_V2_CANONICAL_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 
 
 _FAKE_PREDICT_RESULT = {
@@ -90,12 +93,12 @@ class _FakePredictor:
 
     def predict(
         self,
-        db,  # noqa: ARG002
+        db,
         fighter_a_name: str,
         fighter_b_name: str,
         *,
-        event_date=None,  # noqa: ARG002
-        refresh=False,    # noqa: ARG002
+        event_date=None,
+        refresh=False,
     ) -> dict:
         return {
             **_FAKE_PREDICT_RESULT,
@@ -164,8 +167,7 @@ def test_v100_response_shape_byte_identical(standalone_client: TestClient):
     body = _post_predict(standalone_client)
 
     # All v1.0.0 fields present + non-None where required.
-    for key in ("schema_version", "win_probability", "fighter_a",
-                "fighter_b", "event_date"):
+    for key in ("schema_version", "win_probability", "fighter_a", "fighter_b", "event_date"):
         assert key in body, f"v1.0.0 required field missing from response: {key}"
         assert body[key] is not None
 

@@ -17,15 +17,14 @@ class TestFighterRankings:
         assert "Khabib Nurmagomedov" in result.output
 
     def test_rankings_custom_top(self, patch_session):
-        result = runner.invoke(
-            app, ["fighter", "rankings", "Lightweight", "--top", "2"]
-        )
+        result = runner.invoke(app, ["fighter", "rankings", "Lightweight", "--top", "2"])
         assert result.exit_code == 0
         # Should show exactly 2 rows (Khabib and Dustin, not Conor)
         assert "Khabib Nurmagomedov" in result.output
         # Count occurrences of table row markers to verify limiting
         lines = [
-            line for line in result.output.splitlines()
+            line
+            for line in result.output.splitlines()
             if "Nurmagomedov" in line or "Poirier" in line or "McGregor" in line
         ]
         assert len(lines) <= 2

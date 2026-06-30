@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
-from ufc_prediction.scraper.parse_fighter import parse_fighter_profile
 from ufc_prediction.scraper.models import FighterProfile
+from ufc_prediction.scraper.parse_fighter import parse_fighter_profile
 
 
 class TestParseFighterProfile:

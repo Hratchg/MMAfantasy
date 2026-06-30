@@ -42,7 +42,6 @@ from ufc_prediction.ml.gate_verifier import (
     verify_candidate_vs_canonical,
 )
 
-
 # ── Synthetic fixtures ────────────────────────────────────────────────────
 
 
@@ -113,10 +112,16 @@ def test_width_mismatch_forces_confound_block(tmp_path: Path) -> None:
     verdict with raw_*=None and aligned_* populated via refit.
     """
     canonical_path = _make_pipeline_and_persist(
-        tmp_path, n_features=13, name="canon13", seed=0,
+        tmp_path,
+        n_features=13,
+        name="canon13",
+        seed=0,
     )
     candidate_path = _make_pipeline_and_persist(
-        tmp_path, n_features=15, name="cand15", seed=1,
+        tmp_path,
+        n_features=15,
+        name="cand15",
+        seed=1,
     )
     slices = _build_eval_slices(n_features=15, seed=2)
 
@@ -133,12 +138,8 @@ def test_width_mismatch_forces_confound_block(tmp_path: Path) -> None:
     assert all(verdict.raw_baseline_brier_per_slice[s] is None for s in slices)
     assert all(verdict.raw_delta_per_slice[s] is None for s in slices)
     # Refit_baseline path still populated the aligned numbers.
-    assert all(
-        verdict.aligned_baseline_brier_per_slice[s] is not None for s in slices
-    )
-    assert all(
-        verdict.aligned_candidate_brier_per_slice[s] is not None for s in slices
-    )
+    assert all(verdict.aligned_baseline_brier_per_slice[s] is not None for s in slices)
+    assert all(verdict.aligned_candidate_brier_per_slice[s] is not None for s in slices)
     # Rationale carries the literal width_mismatch marker + both widths.
     assert "width_mismatch" in verdict.rationale
     assert "13" in verdict.rationale
@@ -155,10 +156,16 @@ def test_width_match_path_unaffected(tmp_path: Path) -> None:
     and populates ``raw_baseline_brier_per_slice`` with real floats.
     """
     canonical_path = _make_pipeline_and_persist(
-        tmp_path, n_features=13, name="canon13b", seed=2,
+        tmp_path,
+        n_features=13,
+        name="canon13b",
+        seed=2,
     )
     candidate_path = _make_pipeline_and_persist(
-        tmp_path, n_features=13, name="cand13", seed=3,
+        tmp_path,
+        n_features=13,
+        name="cand13",
+        seed=3,
     )
     slices = _build_eval_slices(n_features=13, seed=4)
 
@@ -189,10 +196,16 @@ def test_width_mismatch_rationale_includes_concrete_widths(tmp_path: Path) -> No
     actual width values without spelunking confound_evidence.
     """
     canonical_path = _make_pipeline_and_persist(
-        tmp_path, n_features=13, name="canon13c", seed=5,
+        tmp_path,
+        n_features=13,
+        name="canon13c",
+        seed=5,
     )
     candidate_path = _make_pipeline_and_persist(
-        tmp_path, n_features=15, name="cand15c", seed=6,
+        tmp_path,
+        n_features=15,
+        name="cand15c",
+        seed=6,
     )
     slices = _build_eval_slices(n_features=15, seed=7)
 
@@ -228,10 +241,16 @@ def test_width_mismatch_aligned_numbers_still_populate_under_refit_baseline(
     The audit-trail SHA (refit_baseline_sha) must be a real sha256 hex.
     """
     canonical_path = _make_pipeline_and_persist(
-        tmp_path, n_features=13, name="canon13d", seed=8,
+        tmp_path,
+        n_features=13,
+        name="canon13d",
+        seed=8,
     )
     candidate_path = _make_pipeline_and_persist(
-        tmp_path, n_features=15, name="cand15d", seed=9,
+        tmp_path,
+        n_features=15,
+        name="cand15d",
+        seed=9,
     )
     slices = _build_eval_slices(n_features=15, seed=10)
 

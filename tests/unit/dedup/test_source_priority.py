@@ -20,11 +20,10 @@ from dataclasses import dataclass
 import pytest
 
 source_priority = pytest.importorskip("ufc_prediction.dedup.source_priority")
-from ufc_prediction.dedup.source_priority import (  # noqa: E402
+from ufc_prediction.dedup.source_priority import (
     SOURCE_PRIORITY,
     prefer_canonical,
 )
-
 
 # ── Test doubles ─────────────────────────────────────────────────────────
 
@@ -107,9 +106,7 @@ def test_source_priority_literal_matches_legacy_values():
 )
 def test_predictor_parity_lowest_id_wins(rows, expected_source):
     """Predictor.py call site uses tiebreak_key=lambda f: f.id."""
-    canonical = prefer_canonical(
-        rows, source_key=lambda f: f.source, tiebreak_key=lambda f: f.id
-    )
+    canonical = prefer_canonical(rows, source_key=lambda f: f.source, tiebreak_key=lambda f: f.id)
     assert canonical.source == expected_source
 
 
@@ -119,9 +116,7 @@ def test_predictor_parity_same_source_picks_lowest_id():
         _FighterRow(id=42, name="Joe", source="ufcstats"),
         _FighterRow(id=7, name="Joe", source="ufcstats"),
     ]
-    canonical = prefer_canonical(
-        rows, source_key=lambda f: f.source, tiebreak_key=lambda f: f.id
-    )
+    canonical = prefer_canonical(rows, source_key=lambda f: f.source, tiebreak_key=lambda f: f.id)
     assert canonical.id == 7
 
 
@@ -197,9 +192,7 @@ def test_substring_regression_cormier_dedups_to_ufcstats():
         _FighterRow(id=1, name="Daniel Cormier", source="ufcstats"),
         _FighterRow(id=2, name="Daniel Cormier", source="kaggle-rajeevw"),
     ]
-    canonical = prefer_canonical(
-        rows, source_key=lambda f: f.source, tiebreak_key=lambda f: f.id
-    )
+    canonical = prefer_canonical(rows, source_key=lambda f: f.source, tiebreak_key=lambda f: f.id)
     assert canonical.source == "ufcstats"
     assert canonical.name == "Daniel Cormier"
 
@@ -236,7 +229,9 @@ def test_substring_regression_bfo_2026_id_resolution():
     """
     rows = [
         _FighterRow(id=1, name="Conor McGregor", source="ufcstats", elo_after_shrinkage=1700.0),
-        _FighterRow(id=2, name="Conor McGregor", source="kaggle-rajeevw", elo_after_shrinkage=1700.0),
+        _FighterRow(
+            id=2, name="Conor McGregor", source="kaggle-rajeevw", elo_after_shrinkage=1700.0
+        ),
     ]
     canonical = prefer_canonical(
         rows,

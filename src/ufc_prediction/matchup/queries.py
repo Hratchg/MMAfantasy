@@ -122,7 +122,7 @@ def get_style_matchup_counts(
             cf_b,
             (cf_b.fight_id == Fight.id) & (cf_b.fighter_id == Fight.fighter_b_id),
         )
-        .where(Fight.winner_id != None)  # noqa: E711 -- Exclude draws/NC
+        .where(Fight.winner_id.is_not(None))
         .where(style_a_col != style_b_col)  # Only cross-style matchups
         .group_by(style_lo, style_hi)
     )

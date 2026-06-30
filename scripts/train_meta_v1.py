@@ -59,12 +59,8 @@ from ufc_prediction.ml.meta_persistence import (
 )
 
 # Module-level locked constants
-EXPECTED_XGB_V2_SHA256: str = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
-EXPECTED_FORMULA_HASH: str = (
-    "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
-)
+EXPECTED_XGB_V2_SHA256: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+EXPECTED_FORMULA_HASH: str = "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
 EXPECTED_XGB_V2_BEST_PARAMS: dict = {
     "n_estimators": 253,
     "max_depth": 7,
@@ -80,16 +76,14 @@ EXPECTED_XGB_V2_N_FEATURES: int = 72
 EXPECTED_CUTOFF_DATE: str = "2023-01-01"
 SEEDS_DEFAULT: tuple[int, ...] = (42, 43, 44, 45, 46)
 PER_SLICE_KEYS: tuple[str, ...] = (
-    "most_recent_12mo", "most_recent_24mo", "random_15pct",
+    "most_recent_12mo",
+    "most_recent_24mo",
+    "random_15pct",
 )
-META_OOF_PARQUET_PATH: Path = (
-    Path(".planning/phases/19-meta-learner/oof_predictions.parquet")
-)
+META_OOF_PARQUET_PATH: Path = Path(".planning/phases/19-meta-learner/oof_predictions.parquet")
 META_ARCHIVE_DIR: Path = Path(".planning/phases/19-meta-learner/archive")
 META_DIR: Path = Path("models/meta")
-META_LEARNER_REPORT_PATH: Path = (
-    Path(".planning/phases/19-meta-learner/19-META-LEARNER-REPORT.md")
-)
+META_LEARNER_REPORT_PATH: Path = Path(".planning/phases/19-meta-learner/19-META-LEARNER-REPORT.md")
 
 # META-01 logistic baseline hyperparams (mirrors meta_learner.MetaLearnerLogistic
 # defaults). Promoted to module-level so save_meta_model receives a stable dict
@@ -112,7 +106,7 @@ LAST_PER_SEED_RESULTS: dict[int, dict] = {}
 # Re-exported here so monkeypatching ``train_meta_v1.gate_verdict`` in Plan
 # 19-02 Task 1a tests redirects the gate decision without touching the
 # evaluator module's binding.
-from ufc_prediction.ml.evaluator import gate_verdict  # noqa: E402
+from ufc_prediction.ml.evaluator import gate_verdict
 
 
 def assert_phase19_invariants() -> None:
@@ -120,8 +114,7 @@ def assert_phase19_invariants() -> None:
     # AUDIT-01 — xgb_v2 byte-identity
     sha_actual = hashlib.sha256(Path("models/xgb_v2.joblib").read_bytes()).hexdigest()
     assert sha_actual == EXPECTED_XGB_V2_SHA256, (
-        f"AUDIT-01 violation: xgb_v2 SHA drift. got={sha_actual} "
-        f"expected={EXPECTED_XGB_V2_SHA256}"
+        f"AUDIT-01 violation: xgb_v2 SHA drift. got={sha_actual} expected={EXPECTED_XGB_V2_SHA256}"
     )
     meta = json.loads(Path("models/xgb_v2_meta.json").read_text(encoding="utf-8"))
     # Pitfall B — n_features dispatch
@@ -131,8 +124,7 @@ def assert_phase19_invariants() -> None:
     )
     # D-04(P16) cutoff parity
     assert meta["cutoff_date"] == EXPECTED_CUTOFF_DATE, (
-        f"D-04(P16) violation: cutoff_date={meta['cutoff_date']!r} "
-        f"expected={EXPECTED_CUTOFF_DATE}"
+        f"D-04(P16) violation: cutoff_date={meta['cutoff_date']!r} expected={EXPECTED_CUTOFF_DATE}"
     )
     # AF-1 — no hparam retuning
     assert meta["best_params"] == EXPECTED_XGB_V2_BEST_PARAMS, (
@@ -185,8 +177,9 @@ def _build_synthetic_demo_data(n: int = 600, n_features: int = 72, seed: int = 4
         elif i < 2 * n // 3:
             d = date(2024, 1 + (i % 12), 1 + (i % 28))  # post-cutoff, > 365d ago
         else:
-            d = today.replace(day=max(1, (i % 28))) - \
-                _datetime.timedelta(days=int(rng.integers(1, 364)))
+            d = today.replace(day=max(1, (i % 28))) - _datetime.timedelta(
+                days=int(rng.integers(1, 364))
+            )
         dates.append(d)
         fight_ids.append(i)
     return X, y, np.array(dates), fight_ids, base_cutoff, today
@@ -241,7 +234,9 @@ def _load_assembled_data() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[dic
         session.close()
 
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
 
     # include_net=False per D-19(v2.1, NET) — Phase 18 outcome neither_clears
@@ -249,8 +244,12 @@ def _load_assembled_data() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[dic
     config = MLConfig(cutoff_date=EXPECTED_CUTOFF_DATE)
     assembler = FeatureMatrixAssembler(config)
     X, y, fight_dates = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
         include_net=False,
@@ -291,7 +290,8 @@ def _compute_elo_prob_for_fight(fight: dict, elo_features: dict) -> float:
 
 def _build_meta_eval_xgb_probs(
     base_estimator,
-    X_meta_train: np.ndarray, y_meta_train: np.ndarray,
+    X_meta_train: np.ndarray,
+    y_meta_train: np.ndarray,
     X_meta_eval: np.ndarray,
 ) -> np.ndarray:
     """Train a single base XGB on the meta_train partition and return its
@@ -325,11 +325,15 @@ def _write_meta_learner_report(
     lines.append(f"_Generated: {datetime.now(tz=UTC).isoformat()}_\n")
     lines.append(f"_Gate contract formula_hash: `{EXPECTED_FORMULA_HASH}`_\n")
     lines.append("")
-    lines.append(f"**Partition sizes (D-01(P19) three-way split):** "
-                 f"meta_train={n_meta_train}, meta_eval={n_meta_eval}")
+    lines.append(
+        f"**Partition sizes (D-01(P19) three-way split):** "
+        f"meta_train={n_meta_train}, meta_eval={n_meta_eval}"
+    )
     lines.append("")
-    lines.append(f"**Verdict (D-13 ALL-pass discipline):** "
-                 f"{'PASS — META-01 ships' if passed else 'FAIL — META-01 does NOT clear gate'}")
+    lines.append(
+        f"**Verdict (D-13 ALL-pass discipline):** "
+        f"{'PASS — META-01 ships' if passed else 'FAIL — META-01 does NOT clear gate'}"
+    )
     if failures:
         lines.append("")
         lines.append("**Failed criteria:**")
@@ -359,24 +363,38 @@ def _write_meta_learner_report(
     lines.append("")
     lines.append("## MLP A/B (Plan 19-02b)")
     lines.append("")
-    lines.append("_Placeholder — populated by Plan 19-02b Task 1 if operator chooses option-escalate._")
+    lines.append(
+        "_Placeholder — populated by Plan 19-02b Task 1 if operator chooses option-escalate._"
+    )
     lines.append("")
     out_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Phase 19 META-01 spike")
-    parser.add_argument("--seeds", nargs="+", type=int,
-                        default=list(SEEDS_DEFAULT),
-                        help="Random seeds (default: 42 43 44 45 46)")
-    parser.add_argument("--no-cache-oof", action="store_true",
-                        help="Force OOF parquet rebuild (ignore cache invariants)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Synthetic smoke run (no DB, no real xgb_v2 inference)")
-    parser.add_argument("--meta-train-strategy",
-                        choices=["temporal_50_50", "ts_split_post_cutoff", "holdout_only"],
-                        default="ts_split_post_cutoff",
-                        help="Three-way split strategy (per D-01(P19) sub-decision OQ-1)")
+    parser.add_argument(
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(SEEDS_DEFAULT),
+        help="Random seeds (default: 42 43 44 45 46)",
+    )
+    parser.add_argument(
+        "--no-cache-oof",
+        action="store_true",
+        help="Force OOF parquet rebuild (ignore cache invariants)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Synthetic smoke run (no DB, no real xgb_v2 inference)",
+    )
+    parser.add_argument(
+        "--meta-train-strategy",
+        choices=["temporal_50_50", "ts_split_post_cutoff", "holdout_only"],
+        default="ts_split_post_cutoff",
+        help="Three-way split strategy (per D-01(P19) sub-decision OQ-1)",
+    )
     args = parser.parse_args(argv)
 
     print(f"[train_meta_v1] Phase 19 META-01 spike — args: {vars(args)}")
@@ -393,20 +411,32 @@ def main(argv: list[str] | None = None) -> int:
     # Step 2: data load + three-way split
     if args.dry_run:
         from ufc_prediction.ml.oof import make_three_way_split
+
         X, y, dates, fight_ids, base_cutoff, today = _build_synthetic_demo_data()
         # Build a "fights" list-of-dicts shape for make_three_way_split
-        fights = [{"fight_id": fight_ids[i], "event_date": dates[i].item()
-                   if hasattr(dates[i], "item") else dates[i]}
-                  for i in range(len(fight_ids))]
+        fights = [
+            {
+                "fight_id": fight_ids[i],
+                "event_date": dates[i].item() if hasattr(dates[i], "item") else dates[i],
+            }
+            for i in range(len(fight_ids))
+        ]
         base_train, meta_train, meta_eval = make_three_way_split(
-            fights, base_cutoff=base_cutoff, meta_eval_window_days=365, today=today,
+            fights,
+            base_cutoff=base_cutoff,
+            meta_eval_window_days=365,
+            today=today,
         )
-        print(f"[train_meta_v1] split sizes: base={len(base_train)} "
-              f"meta_train={len(meta_train)} meta_eval={len(meta_eval)}")
+        print(
+            f"[train_meta_v1] split sizes: base={len(base_train)} "
+            f"meta_train={len(meta_train)} meta_eval={len(meta_eval)}"
+        )
         print("[train_meta_v1] DRY-RUN complete (no real OOF / META fit / gate eval).")
         return 0
 
     # ── Step 3: Real-data wiring (Plan 19-02 Task 1a deliverable) ──
+    from ufc_prediction.ml.config import FEATURE_COLUMNS_NO_NET
+    from ufc_prediction.ml.evaluator import evaluate_per_slice
     from ufc_prediction.ml.gate_contract import load_gate_contract
     from ufc_prediction.ml.meta_learner import (
         META_FEATURE_COLUMNS,
@@ -418,8 +448,6 @@ def main(argv: list[str] | None = None) -> int:
         generate_oof_predictions,
         make_three_way_split,
     )
-    from ufc_prediction.ml.config import FEATURE_COLUMNS_NO_NET
-    from ufc_prediction.ml.evaluator import evaluate_per_slice
     from ufc_prediction.ml.trainer import median_metrics
 
     # (a) Load fights + assemble feature matrix (mockable via _load_assembled_data).
@@ -429,15 +457,22 @@ def main(argv: list[str] | None = None) -> int:
 
     # (b) Three-way disjoint split per D-01(P19).
     base_train_fights, meta_train_fights, meta_eval_fights = make_three_way_split(
-        fight_records, base_cutoff=date.fromisoformat(EXPECTED_CUTOFF_DATE),
-        meta_eval_window_days=365, today=date.today(),
+        fight_records,
+        base_cutoff=date.fromisoformat(EXPECTED_CUTOFF_DATE),
+        meta_eval_window_days=365,
+        today=date.today(),
     )
-    print(f"[train_meta_v1] split sizes: base={len(base_train_fights)} "
-          f"meta_train={len(meta_train_fights)} meta_eval={len(meta_eval_fights)}")
+    print(
+        f"[train_meta_v1] split sizes: base={len(base_train_fights)} "
+        f"meta_train={len(meta_train_fights)} meta_eval={len(meta_eval_fights)}"
+    )
 
     if len(meta_train_fights) == 0 or len(meta_eval_fights) == 0:
-        print("[train_meta_v1] FATAL: empty meta_train or meta_eval partition; "
-              "cannot run META-01 spike.", file=sys.stderr)
+        print(
+            "[train_meta_v1] FATAL: empty meta_train or meta_eval partition; "
+            "cannot run META-01 spike.",
+            file=sys.stderr,
+        )
         return 2
 
     # Index lookups by fight_id (avoid O(n^2) row-by-row searches).
@@ -455,7 +490,9 @@ def main(argv: list[str] | None = None) -> int:
 
     print("[train_meta_v1] Generating OOF predictions on meta_train (TimeSeriesSplit, n_jobs=1)...")
     xgb_oof_prob, oof_meta = generate_oof_predictions(
-        X[meta_train_idx], y[meta_train_idx], fight_dates[meta_train_idx],
+        X[meta_train_idx],
+        y[meta_train_idx],
+        fight_dates[meta_train_idx],
         base_trainer=None,  # uses xgb_v2 best_params from xgb_v2_meta.json (OQ-2)
         cache_path=META_OOF_PARQUET_PATH,
         force_rebuild=args.no_cache_oof,
@@ -466,18 +503,18 @@ def main(argv: list[str] | None = None) -> int:
     try:
         from ufc_prediction.db.session import SessionLocal
         from ufc_prediction.ml.queries import load_elo_features
+
         _session = SessionLocal()
         try:
             _elo_features = load_elo_features(_session)
         finally:
             _session.close()
-    except Exception:  # noqa: BLE001 — tests bypass via mocked _compute_elo_prob_for_fight
+    except Exception:
         _elo_features = {}
 
-    elo_prob_train = np.array([
-        _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-        for i in meta_train_idx
-    ])
+    elo_prob_train = np.array(
+        [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_train_idx]
+    )
     closing_prob_diff_train = X[meta_train_idx, closing_idx]
 
     # NOTE: generate_oof_predictions sorts internally by fight_dates, so
@@ -488,7 +525,9 @@ def main(argv: list[str] | None = None) -> int:
     xgb_oof_aligned[sort_idx] = xgb_oof_prob
 
     X_meta_train = build_meta_features(
-        xgb_oof_aligned, elo_prob_train, closing_prob_diff_train,
+        xgb_oof_aligned,
+        elo_prob_train,
+        closing_prob_diff_train,
     )
     y_meta_train = y[meta_train_idx]
 
@@ -497,16 +536,18 @@ def main(argv: list[str] | None = None) -> int:
     base_estimator = _make_oof_estimator(seed=42)
     xgb_eval_prob = _build_meta_eval_xgb_probs(
         base_estimator,
-        X[meta_train_idx], y[meta_train_idx],
+        X[meta_train_idx],
+        y[meta_train_idx],
         X[meta_eval_idx],
     )
-    elo_prob_eval = np.array([
-        _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-        for i in meta_eval_idx
-    ])
+    elo_prob_eval = np.array(
+        [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_eval_idx]
+    )
     closing_prob_diff_eval = X[meta_eval_idx, closing_idx]
     X_meta_eval = build_meta_features(
-        xgb_eval_prob, elo_prob_eval, closing_prob_diff_eval,
+        xgb_eval_prob,
+        elo_prob_eval,
+        closing_prob_diff_eval,
     )
     y_meta_eval = y[meta_eval_idx]
     fight_dates_eval = fight_dates[meta_eval_idx]
@@ -537,7 +578,10 @@ def main(argv: list[str] | None = None) -> int:
         # evaluate_per_slice expects a model with predict_proba + predict;
         # MetaLearnerLogistic provides both via the underlying Pipeline.
         per_seed_results[seed] = evaluate_per_slice(
-            meta, X_meta_eval, y_meta_eval, fight_dates_eval,
+            meta,
+            X_meta_eval,
+            y_meta_eval,
+            fight_dates_eval,
         )
         last_meta_for_save = meta
 
@@ -550,10 +594,8 @@ def main(argv: list[str] | None = None) -> int:
     contract = load_gate_contract()
     passed, failures = gate_verdict(median, contract)
 
-    METRIC_KEYS_FOR_OVERALL = ("brier_score",)
-    median_brier_overall = float(np.median([
-        median[s]["brier_score"] for s in PER_SLICE_KEYS
-    ]))
+    _METRIC_KEYS_FOR_OVERALL = ("brier_score",)
+    median_brier_overall = float(np.median([median[s]["brier_score"] for s in PER_SLICE_KEYS]))
 
     # (g) Persist + archive.
     META_DIR.mkdir(parents=True, exist_ok=True)
@@ -561,10 +603,13 @@ def main(argv: list[str] | None = None) -> int:
         # Hard-gate-then-save (D-07(P15)) — only persist on PASS.
         oof_parquet_sha256 = (
             hashlib.sha256(META_OOF_PARQUET_PATH.read_bytes()).hexdigest()
-            if META_OOF_PARQUET_PATH.exists() else "0" * 64
+            if META_OOF_PARQUET_PATH.exists()
+            else "0" * 64
         )
         meta_input_hash = compute_meta_input_distribution_hash(
-            X_meta_train, y_meta_train, xgb_oof_aligned,
+            X_meta_train,
+            y_meta_train,
+            xgb_oof_aligned,
         )
         model_path, meta_path = save_meta_model(
             last_meta_for_save,
@@ -590,23 +635,27 @@ def main(argv: list[str] | None = None) -> int:
         # FAIL path — write a candidate bundle to disk so AUDIT-03 can archive
         # it (Task 3 requirement: candidate exists REGARDLESS of ship outcome).
         import joblib as _joblib
+
         candidate_joblib = META_DIR / "meta_v1_candidate.joblib"
         candidate_meta = META_DIR / "meta_v1_candidate_meta.json"
         _joblib.dump(last_meta_for_save, candidate_joblib)
         candidate_meta.write_text(
-            json.dumps({
-                "meta_version": "v1_candidate",
-                "meta_kind": "logistic",
-                "meta_feature_columns": list(META_FEATURE_COLUMNS),
-                "base_model_version": "v2",
-                "base_model_sha256": EXPECTED_XGB_V2_SHA256,
-                "ship_outcome": "FAIL",
-                "failures": failures,
-                "metrics": {
-                    "per_slice": median,
-                    "median_brier_overall": median_brier_overall,
+            json.dumps(
+                {
+                    "meta_version": "v1_candidate",
+                    "meta_kind": "logistic",
+                    "meta_feature_columns": list(META_FEATURE_COLUMNS),
+                    "base_model_version": "v2",
+                    "base_model_sha256": EXPECTED_XGB_V2_SHA256,
+                    "ship_outcome": "FAIL",
+                    "failures": failures,
+                    "metrics": {
+                        "per_slice": median,
+                        "median_brier_overall": median_brier_overall,
+                    },
                 },
-            }, indent=2),
+                indent=2,
+            ),
             encoding="utf-8",
         )
         print(f"[train_meta_v1] FAIL — candidate written (not promoted): {candidate_joblib}")
@@ -618,20 +667,24 @@ def main(argv: list[str] | None = None) -> int:
     # tests (which rewrites the module attributes) is honored.
     try:
         sha = archive_meta_candidate(
-            "meta_v1", candidate_joblib, candidate_meta,
+            "meta_v1",
+            candidate_joblib,
+            candidate_meta,
             archive_dir=META_ARCHIVE_DIR,
         )
         print(f"[train_meta_v1] AUDIT-03 archived: meta_v1_<{sha[:8]}>.joblib")
-    except Exception as exc:  # noqa: BLE001 — Task 3 fallback path catches absent candidate
+    except Exception as exc:
         print(f"[train_meta_v1] AUDIT-03 archive failed (Task 3 fallback expected): {exc}")
 
     # (h) Write the markdown spike report. Pass META_LEARNER_REPORT_PATH
     # explicitly so monkeypatched test paths win over the function default.
     _write_meta_learner_report(
-        median=median, per_seed=per_seed_results,
-        passed=passed, failures=failures,
-        n_meta_train=int(len(meta_train_idx)),
-        n_meta_eval=int(len(meta_eval_idx)),
+        median=median,
+        per_seed=per_seed_results,
+        passed=passed,
+        failures=failures,
+        n_meta_train=len(meta_train_idx),
+        n_meta_eval=len(meta_eval_idx),
         out_path=META_LEARNER_REPORT_PATH,
     )
     print(f"[train_meta_v1] Report written: {META_LEARNER_REPORT_PATH}")

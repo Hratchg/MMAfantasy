@@ -58,8 +58,7 @@ def parse_event_list(html: str, min_events: int = 100) -> list[EventSummary]:
         # Check if upcoming via white link style
         link_classes_raw = link.get("class")
         is_upcoming = (
-            isinstance(link_classes_raw, list)
-            and "b-link_style_white" in link_classes_raw
+            isinstance(link_classes_raw, list) and "b-link_style_white" in link_classes_raw
         )
 
         # Extract date
@@ -82,10 +81,7 @@ def parse_event_list(html: str, min_events: int = 100) -> list[EventSummary]:
 
     # Cardinality check
     if len(events) < min_events:
-        msg = (
-            f"Event list cardinality check failed: "
-            f"expected >={min_events}, got {len(events)}"
-        )
+        msg = f"Event list cardinality check failed: expected >={min_events}, got {len(events)}"
         raise ValueError(msg)
 
     return events

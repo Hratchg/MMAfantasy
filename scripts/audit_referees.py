@@ -19,6 +19,7 @@ Usage:
     uv run python scripts/audit_referees.py \\
         --output-path .planning/phases/22-ref-travel-camp-schema-scrapers-and-migrations/REF_00_AUDIT.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,19 +29,18 @@ import random
 import sys
 import time
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from ufc_prediction.scraper.referee_normalize import normalize_referee_name
 
-
 # ── Locked constants (CONTEXT D-01..D-02 + REVISION-02) ──────────────────
 
-SAMPLE_SIZE: int = 200                          # CONTEXT REVISION-02 path 3
-RANDOM_STATE: int = 42                          # v2.x convention (Phase 20 precedent)
-REF_TOP30_COVERAGE_THRESHOLD: float = 0.60      # CONTEXT D-01 binary gate
-HTTP_DELAY_SECONDS: float = 1.2                 # UFCStats polite-delay (Phase 20 precedent)
+SAMPLE_SIZE: int = 200  # CONTEXT REVISION-02 path 3
+RANDOM_STATE: int = 42  # v2.x convention (Phase 20 precedent)
+REF_TOP30_COVERAGE_THRESHOLD: float = 0.60  # CONTEXT D-01 binary gate
+HTTP_DELAY_SECONDS: float = 1.2  # UFCStats polite-delay (Phase 20 precedent)
 HTTP_TIMEOUT_SECONDS: float = 10.0
 HTTP_MAX_RETRIES: int = 2
 
@@ -49,7 +49,7 @@ OUTPUT_PATH_DEFAULT: Path = Path(
     ".planning/phases/22-ref-travel-camp-schema-scrapers-and-migrations/REF_00_AUDIT.json"
 )
 AUDIT_VERSION: str = "v22.00"
-HIGH_FAILURE_RATE_THRESHOLD: float = 0.05        # >5% fetch-failures -> risk_flag
+HIGH_FAILURE_RATE_THRESHOLD: float = 0.05  # >5% fetch-failures -> risk_flag
 
 
 logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ def _sample_event_urls(
     Uses Python random.Random(random_state).sample for reproducibility (NOT SQL ORDER BY RANDOM()
     which is non-deterministic across Postgres versions).
     """
-    from sqlalchemy import text  # noqa: PLC0415 — lazy import; keeps test cost low
+    from sqlalchemy import text
 
     rows = session.execute(
         text(
@@ -103,10 +103,7 @@ def _sample_event_urls(
         return []
     rng = random.Random(random_state)
     sample = rng.sample(rows, k=min(sample_size, len(rows)))
-    return [
-        (int(r[0]), str(r[1] or ""), str(r[2] or ""), str(r[3] or ""))
-        for r in sample
-    ]
+    return [(int(r[0]), str(r[1] or ""), str(r[2] or ""), str(r[3] or "")) for r in sample]
 
 
 def _load_or_fetch_html(
@@ -134,7 +131,7 @@ def _load_or_fetch_html(
     """
     cache_dir.mkdir(parents=True, exist_ok=True)
     # Defensive cache-key validation: only allow [A-Za-z0-9_-]
-    import re  # noqa: PLC0415
+    import re
 
     if not re.fullmatch(r"[A-Za-z0-9_-]+", cache_key):
         logger.warning("[audit-referees] cache_key rejected (key=%r); skipping URL.", cache_key)
@@ -144,7 +141,7 @@ def _load_or_fetch_html(
         return cache_path.read_text(encoding="utf-8")
     try:
         html = client.get(source_url)
-    except Exception as exc:  # noqa: BLE001 — fetch failures are expected; log and bail
+    except Exception as exc:
         logger.warning("[audit-referees] fetch failed for %s: %s", source_url, exc)
         return None
     if html:
@@ -216,7 +213,7 @@ def main(argv: list[str] | None = None) -> int:
     output_path = Path(args.output_path)
     logging.basicConfig(level=logging.INFO, format="[audit-referees] %(message)s")
 
-    spike_started = datetime.now(timezone.utc)
+    spike_started = datetime.now(UTC)
 
     # ── AF startup assertions (locked-constants drift detection) ──────────
     expected = {
@@ -238,12 +235,12 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # ── Lazy imports for DB + scraper (skip cost for AF-only invocation) ──
-    from ufc_prediction.db.session import SessionLocal  # noqa: PLC0415
-    from ufc_prediction.scraper.client import ScraperClient  # noqa: PLC0415
-    from ufc_prediction.scraper.parse_event_detail import (  # noqa: PLC0415
+    from ufc_prediction.db.session import SessionLocal
+    from ufc_prediction.scraper.client import ScraperClient
+    from ufc_prediction.scraper.parse_event_detail import (
         parse_event_detail,
     )
-    from ufc_prediction.scraper.parse_fight_detail import (  # noqa: PLC0415
+    from ufc_prediction.scraper.parse_fight_detail import (
         parse_fight_detail,
     )
 
@@ -251,9 +248,7 @@ def main(argv: list[str] | None = None) -> int:
     t0 = time.time()
     session = SessionLocal()
     try:
-        sample = _sample_event_urls(
-            session, sample_size=SAMPLE_SIZE, random_state=RANDOM_STATE
-        )
+        sample = _sample_event_urls(session, sample_size=SAMPLE_SIZE, random_state=RANDOM_STATE)
     finally:
         session.close()
     print(
@@ -306,11 +301,9 @@ def main(argv: list[str] | None = None) -> int:
         n_fetched += 1
         try:
             event_detail = parse_event_detail(event_html, source_url)
-        except Exception as exc:  # noqa: BLE001 — audit driver tolerates parser drift
+        except Exception as exc:
             if len(unparseable_examples) < 5:
-                unparseable_examples.append(
-                    f"event_id={event_id} parse_event_detail failed: {exc}"
-                )
+                unparseable_examples.append(f"event_id={event_id} parse_event_detail failed: {exc}")
             continue
         # Per-fight referee extraction
         for fight in event_detail.fights:
@@ -332,7 +325,7 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             try:
                 fight_detail = parse_fight_detail(fight_html)
-            except Exception as exc:  # noqa: BLE001 — audit driver tolerates parser drift
+            except Exception as exc:
                 if len(unparseable_examples) < 5:
                     unparseable_examples.append(
                         f"event_id={event_id} fight_slug={fight_slug} "
@@ -392,7 +385,7 @@ def main(argv: list[str] | None = None) -> int:
         risk_flags=risk_flags,
         n_cache_write_failures=len(cache_write_failures),
     )
-    spike_finished = datetime.now(timezone.utc)
+    spike_finished = datetime.now(UTC)
 
     print(
         f"\n[audit-referees] Audit complete. Wrote:\n"

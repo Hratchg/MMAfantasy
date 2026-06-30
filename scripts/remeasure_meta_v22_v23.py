@@ -14,6 +14,7 @@ non-NaN Level-1 features.
 This script appends `v2_3_slice_metrics` to `models/meta/meta_v2_meta.json` ONLY — does NOT
 modify any other key, does NOT touch `meta_v2.joblib` bytes.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -47,7 +48,6 @@ from ufc_prediction.ml.queries import (
     load_round_stats_for_ml,
 )
 
-
 EXPECTED_XGB_V2_SHA256 = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 SLICES = list(PER_SLICE_KEYS)
 
@@ -66,9 +66,12 @@ def _sha256_file(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def _slice_masks(fight_dates: np.ndarray, today: date, random_seed: int = 42) -> dict[str, np.ndarray]:
+def _slice_masks(
+    fight_dates: np.ndarray, today: date, random_seed: int = 42
+) -> dict[str, np.ndarray]:
     """Mirror evaluator.evaluate_per_slice slice construction."""
     from datetime import timedelta
+
     cutoff_12mo = today - timedelta(days=365)
     cutoff_24mo = today - timedelta(days=730)
     mask_12mo = np.array([d >= cutoff_12mo for d in fight_dates])
@@ -129,28 +132,38 @@ def main() -> int:
 
     print("[remeasure] Assembling feature matrices (72-col xgb baseline + 90-col v2.2)...")
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
     config = MLConfig(cutoff_date=cutoff_str)
     assembler = FeatureMatrixAssembler(config)
     X72, y, fight_dates_full = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
-        pre_ufc_records=pre_ufc, fight_odds=fight_odds,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
+        pre_ufc_records=pre_ufc,
+        fight_odds=fight_odds,
         feature_set="v2.1-no-net",
     )
     assembler_v22 = FeatureMatrixAssembler(config)
     X_v22, y_v22, _ = assembler_v22.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
-        pre_ufc_records=pre_ufc, fight_odds=fight_odds,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
+        pre_ufc_records=pre_ufc,
+        fight_odds=fight_odds,
         feature_set="v2.2",
     )
 
     print("[remeasure] Temporal split at cutoff_date...")
-    X72_train, X72_test, _, y_test = split_temporal(
-        X72, y, fight_dates_full, cutoff_date_obj
-    )
+    X72_train, X72_test, _, y_test = split_temporal(X72, y, fight_dates_full, cutoff_date_obj)
     _, Xv22_test, _, _ = split_temporal(X_v22, y_v22, fight_dates_full, cutoff_date_obj)
     test_mask = np.array([d >= cutoff_date_obj for d in fight_dates_full])
     fight_dates_test = np.array(fight_dates_full)[test_mask]
@@ -240,9 +253,7 @@ def main() -> int:
     print("[remeasure] Appending v2_3_slice_metrics to meta_v2_meta.json (APPEND-ONLY)...")
     existing = json.loads(META_META_PATH.read_text())
     if "v2_3_slice_metrics" in existing:
-        print(
-            "  WARNING: v2_3_slice_metrics already present — overwriting (idempotent re-run)"
-        )
+        print("  WARNING: v2_3_slice_metrics already present — overwriting (idempotent re-run)")
     existing["v2_3_slice_metrics"] = new_metrics
     META_META_PATH.write_text(json.dumps(existing, indent=2))
 
@@ -270,7 +281,7 @@ def main() -> int:
                     file=sys.stderr,
                 )
                 return 2
-        print(f"  legacy-key value parity verified against git-fixture snapshot")
+        print("  legacy-key value parity verified against git-fixture snapshot")
 
     # meta_v2.joblib byte identity (script must never touch the .joblib)
     meta_sha_after = _sha256_file(MODELS_DIR / "meta" / "meta_v2.joblib")

@@ -74,11 +74,13 @@ class TestFindSimilarFighters:
 
     def test_identical_vectors_have_high_similarity(self) -> None:
         """Two identical fighter vectors should have similarity close to 1.0."""
-        embeddings = np.array([
-            [1.0, 2.0, 3.0],
-            [1.0, 2.0, 3.0],
-            [4.0, 5.0, 6.0],
-        ])
+        embeddings = np.array(
+            [
+                [1.0, 2.0, 3.0],
+                [1.0, 2.0, 3.0],
+                [4.0, 5.0, 6.0],
+            ]
+        )
         results = find_similar_fighters(embeddings, fighter_index=0, top_n=2)
         # First result should be fighter 1 (identical vector)
         top_idx, top_sim = results[0]
@@ -87,11 +89,13 @@ class TestFindSimilarFighters:
 
     def test_orthogonal_vectors_have_low_similarity(self) -> None:
         """Orthogonal vectors should have similarity close to 0.0."""
-        embeddings = np.array([
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 1.0],
-        ])
+        embeddings = np.array(
+            [
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+            ]
+        )
         results = find_similar_fighters(embeddings, fighter_index=0, top_n=2)
         for _, sim in results:
             assert sim == pytest.approx(0.0, abs=1e-6)

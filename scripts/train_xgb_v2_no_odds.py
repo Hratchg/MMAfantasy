@@ -14,6 +14,7 @@ Output artifacts:
     models/xgb_v2_no_odds_meta.json       (metadata + per_slice_metrics)
     models/xgb_v2_no_odds-contract.json   (partner-facing contract — promoted)
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -49,7 +50,6 @@ from ufc_prediction.ml.queries import (
     load_round_stats_for_ml,
 )
 
-
 EXPECTED_XGB_V2_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 ODDS_COLS = {
     "opening_prob_diff",
@@ -75,7 +75,10 @@ def _sha256_file(path: Path) -> str:
 
 
 def _train_with_fixed_params(
-    X_train: np.ndarray, y_train: np.ndarray, best_params: dict, seed: int,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    best_params: dict,
+    seed: int,
 ) -> CalibratedClassifierCV:
     """Single-seed train mirroring retrain_xgb_v3.py:_train_with_fixed_params.
 
@@ -139,15 +142,21 @@ def main() -> int:
 
     print("[no-odds] Computing division medians (training-set only)...")
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
 
     print("[no-odds] Assembling 75-col feature matrix (NET-* included)...")
     config = MLConfig(cutoff_date=cutoff_str)
     assembler = FeatureMatrixAssembler(config)
     X, y, fight_dates_full = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
     )
@@ -163,7 +172,10 @@ def main() -> int:
 
     print("[no-odds] Temporal split at cutoff_date...")
     X_train, X_test, y_train, y_test = split_temporal(
-        X, y, fight_dates_full, cutoff_date_obj,
+        X,
+        y,
+        fight_dates_full,
+        cutoff_date_obj,
     )
     test_mask = np.array([d >= cutoff_date_obj for d in fight_dates_full])
     fight_dates_test = np.array(fight_dates_full)[test_mask]
@@ -188,8 +200,12 @@ def main() -> int:
 
     print("[no-odds] Evaluating on 3 v2.3 widened slices...")
     per_slice = evaluate_per_slice(
-        model, X_test_no, y_test, fight_dates_test,
-        today=date.today(), random_seed=42,
+        model,
+        X_test_no,
+        y_test,
+        fight_dates_test,
+        today=date.today(),
+        random_seed=42,
     )
     for slice_name, metrics in per_slice.items():
         print(
@@ -249,9 +265,7 @@ def main() -> int:
         "min_partner_version_supported": parent_contract.get(
             "min_partner_version_supported", "1.0.0"
         ),
-        "deprecation_policy": parent_contract.get(
-            "deprecation_policy", "N >= 2 minor versions"
-        ),
+        "deprecation_policy": parent_contract.get("deprecation_policy", "N >= 2 minor versions"),
         "model_artifact_sha256": fallback_sha,
         "candidate_or_promoted": "promoted",
         "created_at": date.today().isoformat(),

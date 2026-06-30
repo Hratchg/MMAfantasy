@@ -26,6 +26,7 @@ def client() -> TestClient:
     os.environ.setdefault("UFC_API_KEYS", "test-key:test-partner")
     os.environ.setdefault("UFC_ENV", "dev")
     from ufc_prediction.api.app import create_app
+
     return TestClient(create_app())
 
 
@@ -80,6 +81,7 @@ def test_problem_json_accept_with_extra_quality_params(client: TestClient) -> No
 def test_problem_details_model_validates() -> None:
     """ProblemDetailsV13 Pydantic model accepts RFC 7807 member set."""
     from ufc_prediction.api.v1.models import ProblemDetailsV13
+
     p = ProblemDetailsV13(
         title="Not Found",
         status=404,
@@ -101,6 +103,7 @@ def test_problem_details_status_validation() -> None:
     from pydantic import ValidationError
 
     from ufc_prediction.api.v1.models import ProblemDetailsV13
+
     with pytest.raises(ValidationError):
         ProblemDetailsV13(title="x", status=99)
     with pytest.raises(ValidationError):
@@ -110,7 +113,10 @@ def test_problem_details_status_validation() -> None:
 def test_accept_schema_version_literal_includes_v130() -> None:
     """`accept_schema_version` Literal extended to admit '1.3.0'."""
     from ufc_prediction.api.v1.models import PredictMatchupRequestV1
+
     req = PredictMatchupRequestV1(
-        fighter_a="A", fighter_b="B", accept_schema_version="1.3.0",
+        fighter_a="A",
+        fighter_b="B",
+        accept_schema_version="1.3.0",
     )
     assert req.accept_schema_version == "1.3.0"

@@ -81,8 +81,7 @@ if str(_SCRIPTS_DIR) not in sys.path:
 # Module-level import of canonical META-V22 column contract so the import-time
 # assertion below catches accidental drift between this builder's col[0]
 # expectation and the canonical META-V22 source-of-truth.
-from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS  # noqa: E402
-
+from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
 
 # ── LOCKED constants (Phase 75 CONTEXT §D-01 / §D-02 / §D-06) ──────────────
 
@@ -95,8 +94,7 @@ from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS  # noqa
 # methodology triangulates (D-01).
 CANONICAL_FEATURE_COLUMNS: tuple[str, ...] = tuple(META_V22_FEATURE_COLUMNS)
 assert len(CANONICAL_FEATURE_COLUMNS) == 13, (
-    f"CANONICAL_FEATURE_COLUMNS width drift: expected 13, got "
-    f"{len(CANONICAL_FEATURE_COLUMNS)}"
+    f"CANONICAL_FEATURE_COLUMNS width drift: expected 13, got {len(CANONICAL_FEATURE_COLUMNS)}"
 )
 assert CANONICAL_FEATURE_COLUMNS[0] == "xgb_oof_prob", (
     f"CANONICAL_FEATURE_COLUMNS[0] should be 'xgb_oof_prob' (canonical OOF), "
@@ -142,11 +140,13 @@ SYNTHETIC_N_FIGHTS: int = 600
 # three v2.6.1 committed substrate paths (would corrupt the TRAVEL / REF /
 # NET audit trails per Plan 75-01 task spec). The canonical builder writes
 # a SIBLING substrate; it must never overwrite a candidate-substrate.
-PROTECTED_OUTPUTS: frozenset[Path] = frozenset({
-    Path("data/intermediate/travel_substrate_v261.parquet"),  # Phase 64
-    Path("data/intermediate/ref_substrate_v261.parquet"),     # Phase 65
-    Path("data/intermediate/net_substrate_v261.parquet"),     # Phase 66
-})
+PROTECTED_OUTPUTS: frozenset[Path] = frozenset(
+    {
+        Path("data/intermediate/travel_substrate_v261.parquet"),  # Phase 64
+        Path("data/intermediate/ref_substrate_v261.parquet"),  # Phase 65
+        Path("data/intermediate/net_substrate_v261.parquet"),  # Phase 66
+    }
+)
 
 # Canonical OOF parquet source (D-02). This is the Phase 26 training-time
 # ``xgb_oof_prob`` parquet, archived under .planning/milestones/v2.2-phases/.
@@ -174,9 +174,7 @@ CANONICAL_OOF_PATH: Path = Path(
 # methodology will actually consume) — this matches Plan 75-01's task spec
 # wording "Confirm oof_predictions_v22.parquet SHA matches …" against the
 # real on-disk file, not the stale meta JSON claim.
-EXPECTED_CANONICAL_OOF_SHA: str = (
-    "acb64b87533dce09980383540b5698217994bbc703b73221ebc56ec8054f9131"
-)
+EXPECTED_CANONICAL_OOF_SHA: str = "acb64b87533dce09980383540b5698217994bbc703b73221ebc56ec8054f9131"
 
 
 # ── SHA streaming helper (mirrors gate_verifier.py pattern) ────────────────
@@ -263,13 +261,9 @@ def _load_canonical_oof_map(
     missing = required_cols - set(df.columns)
     if missing:
         raise RuntimeError(
-            f"canonical OOF parquet schema drift: missing cols {missing}; "
-            f"got {sorted(df.columns)}"
+            f"canonical OOF parquet schema drift: missing cols {missing}; got {sorted(df.columns)}"
         )
-    return {
-        int(row.fight_id): float(row.xgb_oof_prob)
-        for row in df.itertuples(index=False)
-    }
+    return {int(row.fight_id): float(row.xgb_oof_prob) for row in df.itertuples(index=False)}
 
 
 # ── Paired candidate-substrate sidecar loader (D-02 cross-reference) ──────
@@ -302,15 +296,13 @@ def _load_paired_candidate_fight_ids(paired_substrate_path: Path) -> set[int]:
     # ``with_suffix``, which would replace ``.parquet`` with ``.fight_ids.json``
     # and lose the ``.parquet`` segment). The convention is:
     #   foo.parquet                    → foo.parquet.fight_ids.json
-    sidecar_path = paired_substrate_path.parent / (
-        paired_substrate_path.name + ".fight_ids.json"
-    )
+    sidecar_path = paired_substrate_path.parent / (paired_substrate_path.name + ".fight_ids.json")
     if not sidecar_path.exists():
         raise FileNotFoundError(
             f"missing paired-substrate fight-id sidecar {sidecar_path} — "
             f"Plan 75-01 requires <candidate_substrate>.fight_ids.json sidecar "
             f"listing the fight_ids backing that substrate (shape: "
-            f"{{\"fight_ids\": [int, ...]}}). Generate the sidecar from the "
+            f'{{"fight_ids": [int, ...]}}). Generate the sidecar from the '
             f"candidate builder, or pass --no-paired-substrate to skip the "
             f"cross-reference and use the full canonical OOF fight_id set."
         )
@@ -421,8 +413,7 @@ def build_eval_matrix(
         X_v25, y, fight_dates, fight_records = _load_assembled_data_v25_travel()
     else:
         raise ValueError(
-            f"build_eval_matrix: unknown source {source!r} "
-            f"(expected 'synthetic' or 'live')"
+            f"build_eval_matrix: unknown source {source!r} (expected 'synthetic' or 'live')"
         )
 
     # The 92-col v2.5-travel matrix layout (verified via
@@ -431,8 +422,7 @@ def build_eval_matrix(
     #   [:, 90]   → travel_distance_km   (Phase 64-only — discarded here)
     #   [:, 91]   → tz_shift_hours       (Phase 64-only — discarded here)
     assert X_v25.shape[1] == 92, (
-        f"build_eval_matrix: expected 92-col v2.5-travel matrix, "
-        f"got {X_v25.shape[1]} cols"
+        f"build_eval_matrix: expected 92-col v2.5-travel matrix, got {X_v25.shape[1]} cols"
     )
 
     # D-02 intersection: filter fight_records (and corresponding X_v25 / y /
@@ -440,24 +430,24 @@ def build_eval_matrix(
     # sidecar set is None (--no-paired-substrate), keep all rows.
     if paired_fight_ids is not None:
         keep_mask = np.array(
-            [int(rec.get("fight_id", i)) in paired_fight_ids
-             for i, rec in enumerate(fight_records)],
+            [
+                int(rec.get("fight_id", i)) in paired_fight_ids
+                for i, rec in enumerate(fight_records)
+            ],
             dtype=bool,
         )
         if not keep_mask.any():
             raise RuntimeError(
                 f"build_eval_matrix: paired-substrate intersection produced "
                 f"zero rows (paired_fight_ids size = {len(paired_fight_ids)}, "
-                f"synthetic fight_ids = 0..{len(fight_records)-1}). Cross-"
+                f"synthetic fight_ids = 0..{len(fight_records) - 1}). Cross-"
                 f"reference yields the empty set — would trip Phase 63 R5. "
                 f"Inspect the sidecar fight_ids."
             )
         X_v25 = X_v25[keep_mask]
         y = np.asarray(y)[keep_mask]
         fight_dates = np.asarray(fight_dates)[keep_mask]
-        fight_records = [
-            rec for i, rec in enumerate(fight_records) if keep_mask[i]
-        ]
+        fight_records = [rec for i, rec in enumerate(fight_records) if keep_mask[i]]
 
     X_v22 = X_v25[:, :90]
 
@@ -513,8 +503,7 @@ def build_eval_matrix(
     #   [xgb_oof_prob, elo_prob, *internal_meta_v22_cols (11)]
     X_13 = np.column_stack([xgb_oof_prob, elo_prob, *internal_cols])
     assert X_13.shape[1] == 13, (
-        f"build_eval_matrix: expected 13-wide output, "
-        f"got {X_13.shape[1]} cols"
+        f"build_eval_matrix: expected 13-wide output, got {X_13.shape[1]} cols"
     )
     assert X_13.shape[1] == len(CANONICAL_FEATURE_COLUMNS)
 
@@ -708,9 +697,7 @@ def build_canonical_substrate_parquet(
     seen_shas: set[str] = set()
     for slice_name in SLICE_NAMES:
         X_slice, y_slice = slices[slice_name]
-        fv_tuples: list[tuple[float, ...]] = [
-            tuple(float(v) for v in row) for row in X_slice
-        ]
+        fv_tuples: list[tuple[float, ...]] = [tuple(float(v) for v in row) for row in X_slice]
         outcome_list: list[int] = [int(o) for o in y_slice]
 
         slice_sha = compute_slice_sha(fv_tuples, outcome_list)
@@ -735,7 +722,8 @@ def build_canonical_substrate_parquet(
         {
             "slice_name": pa.array(flat_slice_names, type=pa.string()),
             "feature_vector": pa.array(
-                flat_feature_vectors, type=pa.list_(pa.float64()),
+                flat_feature_vectors,
+                type=pa.list_(pa.float64()),
             ),
             "outcome": pa.array(flat_outcomes, type=pa.int8()),
             "substrate_sha": pa.array(flat_substrate_shas, type=pa.string()),
@@ -857,14 +845,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if args.candidate_substrate is not None and args.no_paired_substrate:
         sys.stderr.write(
-            "ERROR: --candidate-substrate and --no-paired-substrate are "
-            "mutually exclusive.\n"
+            "ERROR: --candidate-substrate and --no-paired-substrate are mutually exclusive.\n"
         )
         return 1
 
-    candidate_substrate_path = (
-        None if args.no_paired_substrate else args.candidate_substrate
-    )
+    candidate_substrate_path = None if args.no_paired_substrate else args.candidate_substrate
 
     try:
         out_path = build_canonical_substrate_parquet(

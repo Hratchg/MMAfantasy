@@ -28,10 +28,10 @@ _NON_TRANSFER_DIVISIONS = frozenset({"Catch Weight", "Open Weight"})
 # Mapping: method -> (striking_ratio, grappling_ratio)
 # Includes scraper-format aliases "TKO" and "SUB" to match UFCStats method strings.
 _FINISH_RATIOS: dict[str, tuple[float, float]] = {
-    "KO/TKO": (1.0, 0.0),      # was (0.8, 0.2) [L]; backtest optimal: full striking
-    "TKO": (1.0, 0.0),          # scraper-format alias for KO/TKO
-    "Submission": (0.0, 1.0),   # was (0.2, 0.8) [L]; backtest optimal: full grappling
-    "SUB": (0.0, 1.0),          # scraper-format alias for Submission
+    "KO/TKO": (1.0, 0.0),  # was (0.8, 0.2) [L]; backtest optimal: full striking
+    "TKO": (1.0, 0.0),  # scraper-format alias for KO/TKO
+    "Submission": (0.0, 1.0),  # was (0.2, 0.8) [L]; backtest optimal: full grappling
+    "SUB": (0.0, 1.0),  # scraper-format alias for Submission
 }
 
 
@@ -164,7 +164,10 @@ class DomainEloComputer:
 
             # Process domain fight
             fight_snaps = self._process_domain_fight(
-                fight, snap_a, snap_b, attribution,
+                fight,
+                snap_a,
+                snap_b,
+                attribution,
             )
             domain_snapshots.extend(fight_snaps)
 
@@ -195,10 +198,14 @@ class DomainEloComputer:
             for fighter_id, overall_snap in fighter_snaps:
                 # Pre-fight adjustments
                 self._apply_domain_inactivity_regression(
-                    fighter_id, fight.event_date, ratings_dict,
+                    fighter_id,
+                    fight.event_date,
+                    ratings_dict,
                 )
                 self._check_domain_division_transfer(
-                    fighter_id, division, ratings_dict,
+                    fighter_id,
+                    division,
+                    ratings_dict,
                 )
 
                 # Get current domain rating (default 1500.0)

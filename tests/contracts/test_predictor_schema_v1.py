@@ -12,6 +12,7 @@ Four test classes:
 
 Per CONTEXT D-08 + D-09; RESEARCH Pattern 3 + Pitfall #5.
 """
+
 from __future__ import annotations
 
 import json
@@ -110,29 +111,31 @@ class TestRawDictFuzz:
     """
 
     @given(
-        payload=st.fixed_dictionaries({
-            "schema_version": st.just("1.0.0"),
-            "win_probability": st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
-            "fighter_a": _SAFE_TEXT,
-            "fighter_b": _SAFE_TEXT,
-            "event_date": st.dates().map(lambda d: d.isoformat()),
-            "base_prob": st.one_of(
-                st.none(),
-                st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
-            ),
-            "meta_prob": st.one_of(
-                st.none(),
-                st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
-            ),
-            "meta_learner_version": st.one_of(
-                st.none(),
-                _SAFE_TEXT_SHORT,
-            ),
-            "meta_skipped_reason": st.one_of(
-                st.none(),
-                _SAFE_TEXT_MEDIUM,
-            ),
-        }),
+        payload=st.fixed_dictionaries(
+            {
+                "schema_version": st.just("1.0.0"),
+                "win_probability": st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
+                "fighter_a": _SAFE_TEXT,
+                "fighter_b": _SAFE_TEXT,
+                "event_date": st.dates().map(lambda d: d.isoformat()),
+                "base_prob": st.one_of(
+                    st.none(),
+                    st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
+                ),
+                "meta_prob": st.one_of(
+                    st.none(),
+                    st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
+                ),
+                "meta_learner_version": st.one_of(
+                    st.none(),
+                    _SAFE_TEXT_SHORT,
+                ),
+                "meta_skipped_reason": st.one_of(
+                    st.none(),
+                    _SAFE_TEXT_MEDIUM,
+                ),
+            }
+        ),
     )
     @settings(max_examples=100, deadline=None)
     def test_validate_from_raw_dict(self, payload: dict):
@@ -202,7 +205,9 @@ class TestXgbV2OnlyMock:
     """Current production response (meta skipped, no meta artifact)."""
 
     def test_validates_against_committed_schema(
-        self, schema_validator, xgb_v2_only_mock,
+        self,
+        schema_validator,
+        xgb_v2_only_mock,
     ):
         """The committed schema file accepts the current production payload."""
         schema_validator.validate(xgb_v2_only_mock)
@@ -224,7 +229,9 @@ class TestMetaV22ActiveMock:
     """
 
     def test_validates_against_committed_schema(
-        self, schema_validator, meta_v22_active_mock,
+        self,
+        schema_validator,
+        meta_v22_active_mock,
     ):
         """The committed schema accepts the forward-compat META payload."""
         schema_validator.validate(meta_v22_active_mock)
@@ -237,13 +244,11 @@ class TestMetaV22ActiveMock:
         assert obj.base_prob != obj.win_probability
 
     def test_meta_active_payload_has_required_discriminators(
-        self, meta_v22_active_mock,
+        self,
+        meta_v22_active_mock,
     ):
         """Sanity — the mock encodes the meta-active scenario correctly."""
         assert meta_v22_active_mock["meta_learner_version"] == "v22.1"
         assert meta_v22_active_mock["meta_prob"] is not None
         assert meta_v22_active_mock["meta_skipped_reason"] is None
-        assert (
-            meta_v22_active_mock["base_prob"]
-            != meta_v22_active_mock["win_probability"]
-        )
+        assert meta_v22_active_mock["base_prob"] != meta_v22_active_mock["win_probability"]

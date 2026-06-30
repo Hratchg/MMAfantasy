@@ -86,14 +86,12 @@ def test_no_stacked_calibrators():
     src = Path("src/ufc_prediction/ml/trainer.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     ccv_calls = [
-        n for n in ast.walk(tree)
+        n
+        for n in ast.walk(tree)
         if isinstance(n, ast.Call)
         and (
             (isinstance(n.func, ast.Name) and n.func.id == "CalibratedClassifierCV")
-            or (
-                isinstance(n.func, ast.Attribute)
-                and n.func.attr == "CalibratedClassifierCV"
-            )
+            or (isinstance(n.func, ast.Attribute) and n.func.attr == "CalibratedClassifierCV")
         )
     ]
     assert len(ccv_calls) == 1, (
@@ -128,16 +126,11 @@ def test_calibration_method_explicit():
     (after stripping comments to avoid header-prose false positives).
     """
     src = Path("src/ufc_prediction/ml/trainer.py").read_text(encoding="utf-8")
-    non_comment_lines = [
-        line for line in src.splitlines()
-        if not line.strip().startswith("#")
-    ]
+    non_comment_lines = [line for line in src.splitlines() if not line.strip().startswith("#")]
     text = "\n".join(non_comment_lines)
     assert '"sigmoid"' in text or "'sigmoid'" in text, (
-        "CALIB-V22-01 explicit sigmoid wiring missing in trainer.py "
-        "(non-comment lines)"
+        "CALIB-V22-01 explicit sigmoid wiring missing in trainer.py (non-comment lines)"
     )
     assert '"isotonic"' in text or "'isotonic'" in text, (
-        "CALIB-V22-02 isotonic conditional missing in trainer.py "
-        "(non-comment lines)"
+        "CALIB-V22-02 isotonic conditional missing in trainer.py (non-comment lines)"
     )

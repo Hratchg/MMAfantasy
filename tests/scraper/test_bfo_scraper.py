@@ -42,9 +42,7 @@ def bfo():
 def test_parse_fighter_page_extracts_opening_closing(bfo) -> None:
     """Real BFO fighter HTML yields fights with integer opening/closing odds."""
     html = (FIXTURES / "bfo_fighter.html").read_text(encoding="utf-8")
-    page = bfo.parse_bfo_fighter_page(
-        html, "https://www.bestfightodds.com/fighters/Jon-Jones-819"
-    )
+    page = bfo.parse_bfo_fighter_page(html, "https://www.bestfightodds.com/fighters/Jon-Jones-819")
     assert page.name, "fighter name must be non-empty on a real BFO profile page"
     assert len(page.fights) > 0, "Jon Jones page must yield at least one fight"
     # At least one historical fight must have all three integer moneylines
@@ -67,9 +65,7 @@ def test_parse_fighter_page_handles_blank_moneylines(bfo) -> None:
     none_only = [
         f
         for f in page.fights
-        if f.opening is None
-        and f.closing_range_min is None
-        and f.closing_range_max is None
+        if f.opening is None and f.closing_range_min is None and f.closing_range_max is None
     ]
     assert len(none_only) >= 1, (
         "expected at least one blank-moneyline fight to be emitted with None odds"
@@ -88,14 +84,12 @@ def test_parse_fighter_page_raises_on_missing_table(bfo) -> None:
 def test_parse_fighter_page_detects_captcha(bfo) -> None:
     """An ``id="hfmr8"`` element must trigger a CAPTCHA-flavored BFOParseError."""
     captcha_html = (
-        '<html><body>'
+        "<html><body>"
         '<div id="hfmr8">Verify you are human by completing the action below.</div>'
         "</body></html>"
     )
     with pytest.raises(bfo.BFOParseError) as excinfo:
-        bfo.parse_bfo_fighter_page(
-            captcha_html, "https://www.bestfightodds.com/fighters/Anyone"
-        )
+        bfo.parse_bfo_fighter_page(captcha_html, "https://www.bestfightodds.com/fighters/Anyone")
     # Disposition T-15-01-02 — caller must be able to detect captcha vs structural
     assert "captcha" in str(excinfo.value).lower()
 
@@ -114,9 +108,7 @@ def test_search_match_returns_best_fuzz(bfo) -> None:
 def test_search_match_returns_none_below_threshold(bfo) -> None:
     """A garbage name well below the fuzz threshold returns None."""
     html = (FIXTURES / "bfo_search.html").read_text(encoding="utf-8")
-    url = bfo.find_bfo_fighter_url(
-        "Totally Different Name 9999", html, threshold=80
-    )
+    url = bfo.find_bfo_fighter_url("Totally Different Name 9999", html, threshold=80)
     assert url is None
 
 
@@ -153,7 +145,7 @@ def test_writes_correct_csv_format(bfo, tmp_path: Path) -> None:
             closing_range_max=None,
         ),
     ]
-    scraper._write_odds_csv(rows)  # noqa: SLF001 — exercising the helper directly
+    scraper._write_odds_csv(rows)
 
     out = tmp_path / "BestFightOdds_odds.csv"
     assert out.exists()
@@ -180,9 +172,6 @@ def test_writes_correct_csv_format(bfo, tmp_path: Path) -> None:
 
 def test_uses_thread_pool(bfo) -> None:
     """``scrape_all`` invokes ``client.map`` (thread pool) instead of multiprocessing."""
-    from sqlalchemy import select
-
-    from ufc_prediction.models.fighter import Fighter
 
     client = MagicMock()
     # Two map calls: search stage (returns search HTMLs), profile stage (returns
@@ -205,7 +194,7 @@ def test_uses_thread_pool(bfo) -> None:
     )
     # We call scrape_all but don't assert on its return — only on map usage.
     # If scrape_all branches to multiprocessing, client.map would not be called.
-    try:
+    try:  # noqa: SIM105
         scraper.scrape_all()
     except Exception:
         # Errors downstream of `client.map` are fine — we only care that map was hit.
@@ -230,9 +219,7 @@ def test_no_multiprocessing() -> None:
         pytest.skip("bfo_scraper.py not yet created (Wave 0)")
     src = src_path.read_text(encoding="utf-8")
     assert "import multiprocessing" not in src, "bfo_scraper must not import multiprocessing"
-    assert "from multiprocessing" not in src, (
-        "bfo_scraper must not import from multiprocessing"
-    )
+    assert "from multiprocessing" not in src, "bfo_scraper must not import from multiprocessing"
 
 
 def test_canonical_fight_id_is_pair_symmetric(bfo) -> None:
@@ -247,9 +234,7 @@ def test_canonical_fight_id_is_pair_symmetric(bfo) -> None:
 
     a_pov = bfo._canonical_fight_id(date(2021, 9, 17), "3227", "8697")
     b_pov = bfo._canonical_fight_id(date(2021, 9, 17), "8697", "3227")
-    assert a_pov == b_pov, (
-        f"Pair symmetry broken: A-POV={a_pov!r} B-POV={b_pov!r}"
-    )
+    assert a_pov == b_pov, f"Pair symmetry broken: A-POV={a_pov!r} B-POV={b_pov!r}"
     # Lexicographic min-then-max (sorted as strings; numeric strings still
     # sort correctly when same length, and length is BFO-internal so we
     # tolerate either ordering as long as it's stable).
@@ -272,9 +257,7 @@ def test_scrape_all_drops_date_max_sentinel(bfo) -> None:
     if not src_path.exists():
         pytest.skip("bfo_scraper.py not yet created (Wave 0)")
     src = src_path.read_text(encoding="utf-8")
-    assert "date.max" in src, (
-        "scrape_all must reference date.max to drop sentinel rows"
-    )
+    assert "date.max" in src, "scrape_all must reference date.max to drop sentinel rows"
     # Specifically: somewhere in the file, there's a guard like
     # `if fight.event_date == date.max: continue` (or equivalent)
     assert "== date.max" in src, (
@@ -324,16 +307,14 @@ class TestScrapeEventUrls:
         return scraper, client
 
     def test_scrape_event_urls_writes_csv_in_ufcscraper_format(
-        self, bfo, tmp_path: Path,
+        self,
+        bfo,
+        tmp_path: Path,
     ) -> None:
         """One event URL → CSV with 5 columns + ≥2 rows per matchup."""
-        event_html = (
-            FIXTURES / "bfo_event.html"
-        ).read_text(encoding="utf-8")
+        event_html = (FIXTURES / "bfo_event.html").read_text(encoding="utf-8")
         url = "https://www.bestfightodds.com/events/cage-warriors-205-4161"
-        scraper, _client = self._make_scraper(
-            bfo, tmp_path, {url: event_html}
-        )
+        scraper, _client = self._make_scraper(bfo, tmp_path, {url: event_html})
 
         out_path = tmp_path / "url_list_odds.csv"
         result = scraper.scrape_event_urls([url], out_path)
@@ -351,12 +332,12 @@ class TestScrapeEventUrls:
             "closing_range_max",
         ]
         # At least one matchup parsed → ≥2 fighter rows.
-        assert len(reader) >= 3, (
-            f"Expected header + ≥2 fighter rows; got {len(reader)} rows"
-        )
+        assert len(reader) >= 3, f"Expected header + ≥2 fighter rows; got {len(reader)} rows"
 
     def test_scrape_event_urls_composite_fight_id_parses_via_bfo_models(
-        self, bfo, tmp_path: Path,
+        self,
+        bfo,
+        tmp_path: Path,
     ) -> None:
         """Each emitted ``fight_id`` round-trips via ``BFOOddsRow.event_date``.
 
@@ -366,13 +347,9 @@ class TestScrapeEventUrls:
         """
         from ufc_prediction.scraper.bfo_models import BFOOddsRow
 
-        event_html = (
-            FIXTURES / "bfo_event.html"
-        ).read_text(encoding="utf-8")
+        event_html = (FIXTURES / "bfo_event.html").read_text(encoding="utf-8")
         url = "https://www.bestfightodds.com/events/cage-warriors-205-4161"
-        scraper, _client = self._make_scraper(
-            bfo, tmp_path, {url: event_html}
-        )
+        scraper, _client = self._make_scraper(bfo, tmp_path, {url: event_html})
 
         out_path = tmp_path / "url_list_odds.csv"
         scraper.scrape_event_urls([url], out_path)
@@ -393,12 +370,15 @@ class TestScrapeEventUrls:
         # (Cage Warriors 205 is dated 2026-04-26 in the fixture's meta
         # description).
         from datetime import date
+
         assert isinstance(sample.event_date, date), (
             "Composite fight_id must round-trip through BFOOddsRow.event_date"
         )
 
     def test_scrape_event_urls_handles_captcha(
-        self, bfo, tmp_path: Path,
+        self,
+        bfo,
+        tmp_path: Path,
     ) -> None:
         """Captcha-gated event page must NOT emit any rows for that URL.
 
@@ -406,15 +386,9 @@ class TestScrapeEventUrls:
         signals Cloudflare gate; the scraper logs and skips that event,
         but other URLs in the batch continue.
         """
-        captcha_html = (
-            '<html><body>'
-            '<div id="hfmr8">Verify you are human.</div>'
-            "</body></html>"
-        )
+        captcha_html = '<html><body><div id="hfmr8">Verify you are human.</div></body></html>'
         url = "https://www.bestfightodds.com/events/some-captcha-event-9999"
-        scraper, _client = self._make_scraper(
-            bfo, tmp_path, {url: captcha_html}
-        )
+        scraper, _client = self._make_scraper(bfo, tmp_path, {url: captcha_html})
 
         out_path = tmp_path / "captcha_only.csv"
         scraper.scrape_event_urls([url], out_path)
@@ -423,12 +397,12 @@ class TestScrapeEventUrls:
         assert out_path.exists()
         with out_path.open(newline="") as fh:
             reader = list(csv.reader(fh))
-        assert len(reader) == 1, (
-            f"Captcha URL must yield 0 data rows; got {len(reader) - 1}"
-        )
+        assert len(reader) == 1, f"Captcha URL must yield 0 data rows; got {len(reader) - 1}"
 
     def test_scrape_event_urls_skips_invalid_html(
-        self, bfo, tmp_path: Path,
+        self,
+        bfo,
+        tmp_path: Path,
     ) -> None:
         """Homepage-fallback HTML (no event content) is logged + skipped."""
         from ufc_prediction.scraper.bfo_classify import BFO_HOMEPAGE_TITLE
@@ -438,9 +412,7 @@ class TestScrapeEventUrls:
             "<body>UFC &amp; MMA Odds &amp; Betting Lines</body></html>"
         )
         url = "https://www.bestfightodds.com/events/nonexistent-99999"
-        scraper, _client = self._make_scraper(
-            bfo, tmp_path, {url: homepage_html}
-        )
+        scraper, _client = self._make_scraper(bfo, tmp_path, {url: homepage_html})
 
         out_path = tmp_path / "homepage_skip.csv"
         scraper.scrape_event_urls([url], out_path)
@@ -449,12 +421,12 @@ class TestScrapeEventUrls:
         with out_path.open(newline="") as fh:
             reader = list(csv.reader(fh))
         # Header only — no rows for the homepage-fallback URL.
-        assert len(reader) == 1, (
-            f"Homepage-fallback URL must yield 0 rows; got {len(reader) - 1}"
-        )
+        assert len(reader) == 1, f"Homepage-fallback URL must yield 0 rows; got {len(reader) - 1}"
 
     def test_scrape_event_urls_csv_consumable_by_ingester(
-        self, bfo, tmp_path: Path,
+        self,
+        bfo,
+        tmp_path: Path,
     ) -> None:
         """Output CSV is loadable via ``BFOOddsIngester._load_odds_rows``.
 
@@ -467,13 +439,9 @@ class TestScrapeEventUrls:
 
         from ufc_prediction.scraper.bfo_ingest import BFOOddsIngester
 
-        event_html = (
-            FIXTURES / "bfo_event.html"
-        ).read_text(encoding="utf-8")
+        event_html = (FIXTURES / "bfo_event.html").read_text(encoding="utf-8")
         url = "https://www.bestfightodds.com/events/cage-warriors-205-4161"
-        scraper, _client = self._make_scraper(
-            bfo, tmp_path, {url: event_html}
-        )
+        scraper, _client = self._make_scraper(bfo, tmp_path, {url: event_html})
 
         # Write CSV to the data_folder under the canonical ufcscraper name
         # so the ingester's _resolve_csv() finds it on the primary path.
@@ -490,8 +458,7 @@ class TestScrapeEventUrls:
         )
         odds_by_fight = ingester._load_odds_rows(out_path)
         assert odds_by_fight, (
-            "Ingester _load_odds_rows produced 0 fights from "
-            "scrape_event_urls output"
+            "Ingester _load_odds_rows produced 0 fights from scrape_event_urls output"
         )
         # Every loaded fight must have exactly 2 fighter rows (the
         # 2-rows-per-fight invariant the ingester enforces in ingest_all).
@@ -502,7 +469,9 @@ class TestScrapeEventUrls:
             )
 
     def test_scrape_event_urls_csv_fighter_ids_resolve_through_match_fighters(
-        self, bfo, tmp_path: Path,
+        self,
+        bfo,
+        tmp_path: Path,
     ) -> None:
         """REGRESSION TRIPWIRE (REVIEW.md CR-01) — slug-vs-numeric keyspace drift.
 
@@ -535,21 +504,17 @@ class TestScrapeEventUrls:
         """
         from unittest.mock import MagicMock
 
-        from ufc_prediction.scraper.bfo_ingest import (  # noqa: PLC0415
+        from ufc_prediction.scraper.bfo_ingest import (
             BFOOddsIngester,
             IngestSummary,
         )
-        from ufc_prediction.scraper.bfo_models import (  # noqa: PLC0415
+        from ufc_prediction.scraper.bfo_models import (
             BFOFighterName,
         )
 
-        event_html = (
-            FIXTURES / "bfo_event.html"
-        ).read_text(encoding="utf-8")
+        event_html = (FIXTURES / "bfo_event.html").read_text(encoding="utf-8")
         url = "https://www.bestfightodds.com/events/cage-warriors-205-4161"
-        scraper, _client = self._make_scraper(
-            bfo, tmp_path, {url: event_html}
-        )
+        scraper, _client = self._make_scraper(bfo, tmp_path, {url: event_html})
 
         out_path = tmp_path / "BestFightOdds_odds.csv"
         scraper.scrape_event_urls([url], out_path)
@@ -633,9 +598,7 @@ class TestScrapeEventUrls:
         # Keyspace assertion: the ingester's ``bfo_to_db`` is keyed by
         # numeric IDs (from bfo_names). The CSV's fighter_id column holds
         # slugs. They share NO common keys. This documents the defect.
-        resolved_via_slug = sum(
-            1 for slug in slug_keyspace if slug in bfo_to_db
-        )
+        resolved_via_slug = sum(1 for slug in slug_keyspace if slug in bfo_to_db)
         assert resolved_via_slug == 0, (
             "CR-01 tripwire flipped: scrape_event_urls slug fighter_ids "
             "now resolve through _match_fighters. The v2.3+ source fix "

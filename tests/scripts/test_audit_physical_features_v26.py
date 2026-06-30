@@ -16,7 +16,8 @@ SCRIPT_PATH = PROJECT_ROOT / "scripts" / "audit_physical_features_v26.py"
 @pytest.fixture(scope="module")
 def mod():
     spec = importlib.util.spec_from_file_location(
-        "audit_physical_features_v26", SCRIPT_PATH,
+        "audit_physical_features_v26",
+        SCRIPT_PATH,
     )
     assert spec is not None and spec.loader is not None
     m = importlib.util.module_from_spec(spec)
@@ -34,6 +35,7 @@ def test_era_bucket_assignment(mod) -> None:
 
 def test_is_missing_handles_none_and_nan(mod) -> None:
     import math
+
     assert mod._is_missing(None) is True
     assert mod._is_missing(float("nan")) is True
     assert mod._is_missing(math.nan) is True
@@ -44,12 +46,24 @@ def test_is_missing_handles_none_and_nan(mod) -> None:
 def test_audit_missingness_synthetic(mod) -> None:
     cohort = mod.CohortBucket(division="Heavy", era="2020-2026")
     fighters = [
-        {"height_inches": 72.0, "reach_inches": 72.0, "leg_reach_inches": None,
-         "date_of_birth": date(1990, 1, 1)},
-        {"height_inches": 73.0, "reach_inches": 73.0, "leg_reach_inches": 40.0,
-         "date_of_birth": None},
-        {"height_inches": None, "reach_inches": 71.0, "leg_reach_inches": 39.0,
-         "date_of_birth": date(1985, 1, 1)},
+        {
+            "height_inches": 72.0,
+            "reach_inches": 72.0,
+            "leg_reach_inches": None,
+            "date_of_birth": date(1990, 1, 1),
+        },
+        {
+            "height_inches": 73.0,
+            "reach_inches": 73.0,
+            "leg_reach_inches": 40.0,
+            "date_of_birth": None,
+        },
+        {
+            "height_inches": None,
+            "reach_inches": 71.0,
+            "leg_reach_inches": 39.0,
+            "date_of_birth": date(1985, 1, 1),
+        },
     ]
     result = mod.audit_missingness({cohort: fighters})
     assert result.n_fighters_total == 3
@@ -72,8 +86,10 @@ def test_detect_systematic_bias_threshold_logic(mod) -> None:
         n_missing = 8 if i < 3 else 1  # 80% missing in first 3, 10% in last 2
         rows.append(
             mod.ColumnMissingnessRow(
-                cohort=cohort, column="leg_reach_inches",
-                n_fighters=n, n_missing=n_missing,
+                cohort=cohort,
+                column="leg_reach_inches",
+                n_fighters=n,
+                n_missing=n_missing,
                 pct_missing=n_missing / n,
             )
         )

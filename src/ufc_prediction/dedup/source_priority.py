@@ -15,7 +15,8 @@ A naive merge that hardcodes one tiebreak silently regresses the other consumer.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Sequence, TypeVar
+from collections.abc import Callable, Sequence
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -30,7 +31,7 @@ SOURCE_PRIORITY: dict[str, int] = {
 }
 
 
-def prefer_canonical(
+def prefer_canonical(  # noqa: UP047
     rows: Sequence[T],
     *,
     source_key: Callable[[T], str],

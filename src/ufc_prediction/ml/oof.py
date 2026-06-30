@@ -43,11 +43,12 @@ from xgboost import XGBClassifier
 
 DEFAULT_OOF_CACHE = (
     Path(__file__).resolve().parents[3]
-    / ".planning" / "phases" / "19-meta-learner" / "oof_predictions.parquet"
+    / ".planning"
+    / "phases"
+    / "19-meta-learner"
+    / "oof_predictions.parquet"
 )
-EXPECTED_XGB_V2_SHA256: str = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
+EXPECTED_XGB_V2_SHA256: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 EXPECTED_N_FEATURES: int = 72
 EXPECTED_CUTOFF_DATE: str = "2023-01-01"
 DEFAULT_N_SPLITS: int = 5
@@ -112,8 +113,7 @@ def apply_nan_drop_policy(
     """
     if policy not in _VALID_NAN_DROP_POLICIES:
         raise ValueError(
-            f"unknown nan_drop_policy={policy!r}; "
-            f"expected one of {_VALID_NAN_DROP_POLICIES}"
+            f"unknown nan_drop_policy={policy!r}; expected one of {_VALID_NAN_DROP_POLICIES}"
         )
 
     if policy == "symmetric":
@@ -152,7 +152,7 @@ def _check_cache_invariants(meta: dict, *, fight_dates: np.ndarray) -> None:
     actual_sha = _read_xgb_v2_sha256()
     if meta.get("xgb_v2_sha256") != actual_sha:
         raise InvariantCheckError(
-            f"OOF cache xgb_v2_sha256 drift: cached={meta.get('xgb_v2_sha256','?')[:12]} "
+            f"OOF cache xgb_v2_sha256 drift: cached={meta.get('xgb_v2_sha256', '?')[:12]} "
             f"actual={actual_sha[:12]}; rebuild required (--no-cache-oof)"
         )
     if meta.get("n_features") != EXPECTED_N_FEATURES:
@@ -189,9 +189,7 @@ def _make_oof_estimator(seed: int = 42) -> XGBClassifier:
     """
     meta_path = Path("models/xgb_v2_meta.json")
     if not meta_path.exists():
-        raise InvariantCheckError(
-            "models/xgb_v2_meta.json missing — cannot inherit best_params"
-        )
+        raise InvariantCheckError("models/xgb_v2_meta.json missing — cannot inherit best_params")
     xgb_meta = json.loads(meta_path.read_text(encoding="utf-8"))
     return XGBClassifier(
         **xgb_meta["best_params"],
@@ -272,7 +270,8 @@ def generate_oof_predictions(
     try:
         proba = cross_val_predict(
             estimator=estimator,
-            X=X_sorted, y=y_sorted,
+            X=X_sorted,
+            y=y_sorted,
             cv=TimeSeriesSplit(n_splits=n_splits),
             method="predict_proba",
             n_jobs=1,  # NON-NEGOTIABLE — Py 3.14 spawn pickling (D-15(P16))
@@ -292,9 +291,7 @@ def generate_oof_predictions(
     # Pitfall #11 sanity check (NaN-aware: ignore warm-up rows that have no OOF prediction)
     valid_mask = ~np.isnan(xgb_proba_oof)
     if int(valid_mask.sum()) == 0:
-        raise OOFLeakageError(
-            "OOF predictions all NaN — TimeSeriesSplit produced no test folds"
-        )
+        raise OOFLeakageError("OOF predictions all NaN — TimeSeriesSplit produced no test folds")
     training_accuracy = float(
         ((xgb_proba_oof[valid_mask] >= 0.5).astype(int) == y_sorted[valid_mask]).mean()
     )
@@ -321,17 +318,18 @@ def generate_oof_predictions(
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         sorted_fight_ids = (
             [fight_ids[int(i)] for i in sort_idx]
-            if fight_ids is not None else list(range(len(xgb_proba_oof)))
+            if fight_ids is not None
+            else list(range(len(xgb_proba_oof)))
         )
-        df = pd.DataFrame({
-            "fight_id": sorted_fight_ids,
-            "event_date": [str(d) for d in dates_sorted],
-            "xgb_oof_prob": xgb_proba_oof,
-        })
+        df = pd.DataFrame(
+            {
+                "fight_id": sorted_fight_ids,
+                "event_date": [str(d) for d in dates_sorted],
+                "xgb_oof_prob": xgb_proba_oof,
+            }
+        )
         df.to_parquet(cache_path, index=False)
-        _meta_sidecar_path(cache_path).write_text(
-            json.dumps(metadata, indent=2), encoding="utf-8"
-        )
+        _meta_sidecar_path(cache_path).write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
     return xgb_proba_oof, metadata
 
@@ -363,10 +361,14 @@ def make_three_way_split(
     base_ids = {f["fight_id"] for f in base_train}
     meta_train_ids = {f["fight_id"] for f in meta_train}
     meta_eval_ids = {f["fight_id"] for f in meta_eval}
-    assert base_ids.isdisjoint(meta_train_ids), \
+    assert base_ids.isdisjoint(meta_train_ids), (
         f"D-01(P19) violation: base ∩ meta_train non-empty (size={len(base_ids & meta_train_ids)})"
-    assert base_ids.isdisjoint(meta_eval_ids), \
+    )
+    assert base_ids.isdisjoint(meta_eval_ids), (
         f"D-01(P19) violation: base ∩ meta_eval non-empty (size={len(base_ids & meta_eval_ids)})"
-    assert meta_train_ids.isdisjoint(meta_eval_ids), \
-        f"D-01(P19) violation: meta_train ∩ meta_eval non-empty (size={len(meta_train_ids & meta_eval_ids)})"
+    )
+    assert meta_train_ids.isdisjoint(meta_eval_ids), (
+        "D-01(P19) violation: meta_train ∩ meta_eval non-empty "
+        f"(size={len(meta_train_ids & meta_eval_ids)})"
+    )
     return base_train, meta_train, meta_eval

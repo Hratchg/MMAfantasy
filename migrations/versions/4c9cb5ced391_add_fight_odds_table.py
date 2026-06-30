@@ -18,14 +18,15 @@ Schema rationale:
   closing_implied_prob) are vig-removed via D-02 proportional normalization.
 - Missing odds (pre-2007, D-07) stored as SQL NULL — never zero.
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '4c9cb5ced391'
-down_revision: Union[str, Sequence[str], None] = 'e7a2cf1b9d01'
+revision: str = "4c9cb5ced391"
+down_revision: Union[str, Sequence[str], None] = "e7a2cf1b9d01"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -54,12 +55,14 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["fight_id"], ["fights.id"],
+            ["fight_id"],
+            ["fights.id"],
             name=op.f("fk_fight_odds_fight_id_fights"),
             ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
-            ["fighter_id"], ["fighters.id"],
+            ["fighter_id"],
+            ["fighters.id"],
             name=op.f("fk_fight_odds_fighter_id_fighters"),
             ondelete="CASCADE",
         ),

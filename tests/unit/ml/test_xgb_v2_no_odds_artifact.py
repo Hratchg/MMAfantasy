@@ -14,7 +14,6 @@ import joblib
 import numpy as np
 import pytest
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 MODELS_DIR = PROJECT_ROOT / "models"
 

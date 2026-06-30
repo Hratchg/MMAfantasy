@@ -107,7 +107,7 @@ if str(_SCRIPTS_DIR) not in sys.path:
 # col[0] is candidate-OOF (``xgb_v2_netd_oof``), which IS the substrate-drift
 # signal the GATE-V26-02 ``refit_baseline`` path detects.
 NET_FEATURE_COLUMNS: tuple[str, ...] = (
-    "xgb_v2_netd_oof",           # col[0] — candidate-aligned (Plan 66-01 OOF)
+    "xgb_v2_netd_oof",  # col[0] — candidate-aligned (Plan 66-01 OOF)
     "elo_prob",
     "closing_prob_diff",
     "stance_matchup",
@@ -164,10 +164,12 @@ DEBUTANT_NAN_MAX_PROPORTION: float = 0.20
 # Phase 64 committed TRAVEL substrate path AND the Phase 65 committed
 # REF substrate path (would corrupt the v2.6.1 TRAVEL or REF audit trail).
 # Stored as a set of paths so resolved-path comparison is robust.
-PROTECTED_OUTPUTS: frozenset[Path] = frozenset({
-    Path("data/intermediate/travel_substrate_v261.parquet"),
-    Path("data/intermediate/ref_substrate_v261.parquet"),
-})
+PROTECTED_OUTPUTS: frozenset[Path] = frozenset(
+    {
+        Path("data/intermediate/travel_substrate_v261.parquet"),
+        Path("data/intermediate/ref_substrate_v261.parquet"),
+    }
+)
 
 # Plan 66-01's OOF parquet (col[0] source). CR-02 FileNotFoundError fires
 # if this is missing.
@@ -220,7 +222,8 @@ def _load_xgb_v2_netd_oof_map() -> dict[int, float]:
 
 
 def build_eval_matrix(
-    *, source: str = "synthetic",
+    *,
+    source: str = "synthetic",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Build the 13-wide NET eval matrix + outcomes + event dates + debutant indicator.
 

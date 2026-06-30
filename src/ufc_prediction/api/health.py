@@ -54,12 +54,12 @@ async def readiness() -> JSONResponse:
                 content={"status": "db_unavailable", "error": "no_result"},
             )
         return JSONResponse(status_code=200, content={"status": "ready"})
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return JSONResponse(
             status_code=503,
             content={"status": "db_unavailable", "error": "timeout"},
         )
-    except Exception as exc:  # noqa: BLE001 — probe must classify all errors as 503
+    except Exception as exc:
         return JSONResponse(
             status_code=503,
             content={"status": "db_unavailable", "error": str(exc)},

@@ -71,9 +71,7 @@ def _build_round_stats_by_fight(
     for fight_id, fighter_id, overrides in entries:
         if fight_id not in result:
             result[fight_id] = []
-        result[fight_id].extend(
-            _round_stats_for(fight_id, fighter_id, overrides, rounds)
-        )
+        result[fight_id].extend(_round_stats_for(fight_id, fighter_id, overrides, rounds))
     return result
 
 
@@ -104,16 +102,40 @@ class TestTemporalIntegrity:
         # Different stats per fight to verify temporal isolation
         rs = _build_round_stats_by_fight(
             # Fight 100: A has sig_str_landed=10 per round, B has defaults
-            (100, FIGHTER_A, {"sig_strikes_landed": 10, "head_strikes_landed": 5,
-                              "body_strikes_landed": 3, "leg_strikes_landed": 2}),
+            (
+                100,
+                FIGHTER_A,
+                {
+                    "sig_strikes_landed": 10,
+                    "head_strikes_landed": 5,
+                    "body_strikes_landed": 3,
+                    "leg_strikes_landed": 2,
+                },
+            ),
             (100, FIGHTER_B, None),
             # Fight 101: A has sig_str_landed=20 per round, C has defaults
-            (101, FIGHTER_A, {"sig_strikes_landed": 20, "head_strikes_landed": 10,
-                              "body_strikes_landed": 5, "leg_strikes_landed": 5}),
+            (
+                101,
+                FIGHTER_A,
+                {
+                    "sig_strikes_landed": 20,
+                    "head_strikes_landed": 10,
+                    "body_strikes_landed": 5,
+                    "leg_strikes_landed": 5,
+                },
+            ),
             (101, FIGHTER_C, None),
             # Fight 102: A has sig_str_landed=30 per round, D has defaults
-            (102, FIGHTER_A, {"sig_strikes_landed": 30, "head_strikes_landed": 15,
-                              "body_strikes_landed": 8, "leg_strikes_landed": 7}),
+            (
+                102,
+                FIGHTER_A,
+                {
+                    "sig_strikes_landed": 30,
+                    "head_strikes_landed": 15,
+                    "body_strikes_landed": 8,
+                    "leg_strikes_landed": 7,
+                },
+            ),
             (102, FIGHTER_D, None),
         )
 
@@ -197,14 +219,38 @@ class TestEwmaDiffersFromCareerAvg:
             _make_fight(103, date(2020, 4, 1), FIGHTER_A, 5),  # Fighter 5
         ]
         rs = _build_round_stats_by_fight(
-            (100, FIGHTER_A, {"sig_strikes_landed": 6, "head_strikes_landed": 3,
-                              "body_strikes_landed": 2, "leg_strikes_landed": 1}),
+            (
+                100,
+                FIGHTER_A,
+                {
+                    "sig_strikes_landed": 6,
+                    "head_strikes_landed": 3,
+                    "body_strikes_landed": 2,
+                    "leg_strikes_landed": 1,
+                },
+            ),
             (100, FIGHTER_B, None),
-            (101, FIGHTER_A, {"sig_strikes_landed": 12, "head_strikes_landed": 6,
-                              "body_strikes_landed": 3, "leg_strikes_landed": 3}),
+            (
+                101,
+                FIGHTER_A,
+                {
+                    "sig_strikes_landed": 12,
+                    "head_strikes_landed": 6,
+                    "body_strikes_landed": 3,
+                    "leg_strikes_landed": 3,
+                },
+            ),
             (101, FIGHTER_C, None),
-            (102, FIGHTER_A, {"sig_strikes_landed": 18, "head_strikes_landed": 9,
-                              "body_strikes_landed": 5, "leg_strikes_landed": 4}),
+            (
+                102,
+                FIGHTER_A,
+                {
+                    "sig_strikes_landed": 18,
+                    "head_strikes_landed": 9,
+                    "body_strikes_landed": 5,
+                    "leg_strikes_landed": 4,
+                },
+            ),
             (102, FIGHTER_D, None),
             (103, FIGHTER_A, None),
             (103, 5, None),
@@ -323,8 +369,16 @@ class TestShrinkage:
         ]
         rs = _build_round_stats_by_fight(
             # Fighter A: high sig strikes
-            (100, FIGHTER_A, {"sig_strikes_landed": 20, "head_strikes_landed": 10,
-                              "body_strikes_landed": 5, "leg_strikes_landed": 5}),
+            (
+                100,
+                FIGHTER_A,
+                {
+                    "sig_strikes_landed": 20,
+                    "head_strikes_landed": 10,
+                    "body_strikes_landed": 5,
+                    "leg_strikes_landed": 5,
+                },
+            ),
             (100, FIGHTER_B, None),
             (101, FIGHTER_A, None),
             (101, FIGHTER_C, None),
@@ -360,8 +414,16 @@ class TestNoRoundStats:
         ]
         # Only provide round stats for fight 100, not 101
         rs = _build_round_stats_by_fight(
-            (100, FIGHTER_A, {"sig_strikes_landed": 10, "head_strikes_landed": 5,
-                              "body_strikes_landed": 3, "leg_strikes_landed": 2}),
+            (
+                100,
+                FIGHTER_A,
+                {
+                    "sig_strikes_landed": 10,
+                    "head_strikes_landed": 5,
+                    "body_strikes_landed": 3,
+                    "leg_strikes_landed": 2,
+                },
+            ),
             (100, FIGHTER_B, None),
         )
 

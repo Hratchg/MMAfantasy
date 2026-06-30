@@ -30,7 +30,6 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +101,7 @@ def _is_missing(value: object) -> bool:
         return True
     if isinstance(value, float):
         import math
+
         return math.isnan(value)
     return False
 
@@ -171,16 +171,10 @@ def detect_systematic_bias(
         if not cohorts:
             continue
         n_cohorts = len(cohorts)
-        n_above_threshold = sum(
-            1 for pct in cohorts.values() if pct > pct_threshold
-        )
+        n_above_threshold = sum(1 for pct in cohorts.values() if pct > pct_threshold)
         cohort_share = n_above_threshold / n_cohorts if n_cohorts > 0 else 0.0
         bias_detected = cohort_share > cohort_share_threshold
-        max_missing_cohort = (
-            max(cohorts.items(), key=lambda kv: kv[1])
-            if cohorts
-            else (None, 0.0)
-        )
+        max_missing_cohort = max(cohorts.items(), key=lambda kv: kv[1]) if cohorts else (None, 0.0)
         findings[col] = {
             "bias_detected": bias_detected,
             "n_cohorts_total": n_cohorts,
@@ -228,8 +222,7 @@ def emit_findings_md(
         "",
         "## Per-Column Findings",
         "",
-        "| Column | Bias detected | N cohorts | Cohorts >25% missing | "
-        "Worst cohort | Worst pct |",
+        "| Column | Bias detected | N cohorts | Cohorts >25% missing | Worst cohort | Worst pct |",
         "|---|---|---|---|---|---|",
     ]
     for col in PHYSICAL_COLUMNS:
@@ -256,18 +249,14 @@ def emit_findings_md(
     )
     if any_bias:
         biased = [c for c, f in findings.items() if f["bias_detected"]]
-        lines.append(
-            f"- Biased columns: {', '.join(f'`{c}`' for c in biased)}"
-        )
+        lines.append(f"- Biased columns: {', '.join(f'`{c}`' for c in biased)}")
         lines.append(
             "- Recommended fix: per-cohort imputation OR cohort-stratified "
             "feature engineering (FEAT-V26-03; v2.7+ scope per Phase 57 "
             "CONTEXT.md backlog decision)."
         )
     else:
-        lines.append(
-            "- Closed as documented negative result; no FEAT-V26-03 action."
-        )
+        lines.append("- Closed as documented negative result; no FEAT-V26-03 action.")
 
     if mode_label == "dry-run":
         lines.extend(
@@ -358,7 +347,7 @@ def _load_db_fighter_cohorts(
 def run(
     *,
     dry_run: bool,
-    database_url: Optional[str] = None,
+    database_url: str | None = None,
     out_path: Path = RESULTS_PATH,
 ) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -368,10 +357,7 @@ def run(
         audit = audit_missingness(fixture)
         findings = detect_systematic_bias(audit)
         emit_findings_md(audit, findings, out_path=out_path, mode_label="dry-run")
-        sys.stdout.write(
-            f"Audit complete (dry-run). "
-            f"Findings written to {out_path}.\n"
-        )
+        sys.stdout.write(f"Audit complete (dry-run). Findings written to {out_path}.\n")
         return 0
 
     if database_url is None:
@@ -382,13 +368,11 @@ def run(
     audit = audit_missingness(cohorts)
     findings = detect_systematic_bias(audit)
     emit_findings_md(audit, findings, out_path=out_path, mode_label="live-db")
-    sys.stdout.write(
-        f"Audit complete (live-db). Findings written to {out_path}.\n"
-    )
+    sys.stdout.write(f"Audit complete (live-db). Findings written to {out_path}.\n")
     return 0
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     grp = parser.add_mutually_exclusive_group(required=True)
     grp.add_argument("--dry-run", action="store_true")

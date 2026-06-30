@@ -51,16 +51,16 @@ _SCRIPTS_DIR = REPO_ROOT / "scripts"
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
-from build_canonical_substrate_v27 import (  # type: ignore[import-not-found]  # noqa: E402
+from build_canonical_substrate_v27 import (  # type: ignore[import-not-found]
     build_canonical_substrate_parquet,
 )
-from build_net_substrate_v261 import (  # type: ignore[import-not-found]  # noqa: E402
+from build_net_substrate_v261 import (  # type: ignore[import-not-found]
     build_substrate_parquet as build_net_substrate,
 )
-from build_ref_substrate_v261 import (  # type: ignore[import-not-found]  # noqa: E402
+from build_ref_substrate_v261 import (  # type: ignore[import-not-found]
     build_substrate_parquet as build_ref_substrate,
 )
-from build_travel_substrate_v261 import (  # type: ignore[import-not-found]  # noqa: E402
+from build_travel_substrate_v261 import (  # type: ignore[import-not-found]
     build_substrate_parquet as build_travel_substrate,
 )
 
@@ -69,12 +69,8 @@ from build_travel_substrate_v261 import (  # type: ignore[import-not-found]  # n
 # AUDIT-01 D-06 anchors — must remain byte-identical end-to-end.
 CANONICAL_META = REPO_ROOT / "models/meta/meta_v2.joblib"
 XGB_V2 = REPO_ROOT / "models/xgb_v2.joblib"
-EXPECTED_CANONICAL_META_SHA = (
-    "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
-)
-EXPECTED_XGB_V2_SHA = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
+EXPECTED_CANONICAL_META_SHA = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
+EXPECTED_XGB_V2_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 
 # v2.6.1 case candidates (real on-disk joblibs).
 TRAVEL_CANDIDATE = REPO_ROOT / "models/meta/meta_v22_travel.joblib"
@@ -139,13 +135,19 @@ def _run_dual_cli(
     fixture failure points at the real error rather than the assertion.
     """
     argv = [
-        "gate", "verify",
-        "--candidate", str(candidate),
-        "--canonical", str(CANONICAL_META),
+        "gate",
+        "verify",
+        "--candidate",
+        str(candidate),
+        "--canonical",
+        str(CANONICAL_META),
         "--dual-substrate",
-        "--candidate-substrate", str(candidate_substrate),
-        "--canonical-substrate", str(canonical_substrate),
-        "--out", str(out_json),
+        "--candidate-substrate",
+        str(candidate_substrate),
+        "--canonical-substrate",
+        str(canonical_substrate),
+        "--out",
+        str(out_json),
     ]
     result = cli_runner.invoke(app, argv)
     if result.exit_code != 0:
@@ -194,9 +196,7 @@ def travel_dual_verdict_dict(
         source="synthetic",
     )
     out_json = tmp_dir / "travel_dual_verdict.json"
-    return _run_dual_cli(
-        cli_runner, TRAVEL_CANDIDATE, cand_substrate, canon_substrate, out_json
-    )
+    return _run_dual_cli(cli_runner, TRAVEL_CANDIDATE, cand_substrate, canon_substrate, out_json)
 
 
 def test_travel_dual_verdict_is_width_mismatch_dual(
@@ -232,7 +232,7 @@ def test_travel_dual_rationale_carries_width_mismatch_evidence(
     assert "width_mismatch" in rationale.lower(), (
         f"rationale missing 'width_mismatch' evidence: {rationale!r}"
     )
-    assert ("test_1" in rationale.lower() or "test_2" in rationale.lower()), (
+    assert "test_1" in rationale.lower() or "test_2" in rationale.lower(), (
         f"rationale should name which test fired the width-guard: {rationale!r}"
     )
 
@@ -254,9 +254,7 @@ def ref_dual_verdict_dict(
         source="synthetic",
     )
     out_json = tmp_dir / "ref_dual_verdict.json"
-    return _run_dual_cli(
-        cli_runner, REF_CANDIDATE, cand_substrate, canon_substrate, out_json
-    )
+    return _run_dual_cli(cli_runner, REF_CANDIDATE, cand_substrate, canon_substrate, out_json)
 
 
 def test_ref_dual_verdict_is_non_auto_confound(
@@ -316,8 +314,7 @@ def test_ref_dual_verdict_test_1_and_test_2_both_well_formed(
         )
         for slice_name, val in ab.items():
             assert val is not None, (
-                f"REF {sub} {slice_name} aligned_baseline is None — "
-                f"refit failed silently"
+                f"REF {sub} {slice_name} aligned_baseline is None — refit failed silently"
             )
 
 
@@ -338,9 +335,7 @@ def net_dual_verdict_dict(
         source="synthetic",
     )
     out_json = tmp_dir / "net_dual_verdict.json"
-    return _run_dual_cli(
-        cli_runner, NET_CANDIDATE, cand_substrate, canon_substrate, out_json
-    )
+    return _run_dual_cli(cli_runner, NET_CANDIDATE, cand_substrate, canon_substrate, out_json)
 
 
 def test_net_dual_verdict_is_non_auto_confound(
@@ -390,8 +385,7 @@ def test_net_dual_verdict_test_1_and_test_2_both_well_formed(
         )
         for slice_name, val in ab.items():
             assert val is not None, (
-                f"NET {sub} {slice_name} aligned_baseline is None — "
-                f"refit failed silently"
+                f"NET {sub} {slice_name} aligned_baseline is None — refit failed silently"
             )
 
 
@@ -441,6 +435,4 @@ def test_v261_sibling_artifacts_untouched_post_regression_suite(
     cascade.
     """
     missing = [p for p in V261_SIBLINGS if not p.exists()]
-    assert not missing, (
-        f"v2.6.1 SIBLING artifacts missing post-regression-suite: {missing}"
-    )
+    assert not missing, f"v2.6.1 SIBLING artifacts missing post-regression-suite: {missing}"

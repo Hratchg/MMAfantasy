@@ -9,8 +9,10 @@ parameter (StratifiedKFold instead of TimeSeriesSplit). Until Wave 2 builds
 the parquet, individual tests skip via pytest.skip; the test file is RED-as-
 tripwire, ship-passing at commit but firing if cache is regenerated incorrectly.
 """
+
 import json
 import pathlib
+
 import pytest
 
 pytest.importorskip("ufc_prediction.ml.oof")
@@ -66,8 +68,10 @@ def test_disjoint_train_meta_train_ids():
     base_ids = set(xgb_meta.get("base_training_fight_ids", []))
     meta_ids = set(meta["meta_train_fight_ids"])
     if not base_ids:
-        pytest.skip("xgb_v2_meta.json does not record base_training_fight_ids "
-                    "(Phase 19 may add this in Wave 2 — currently skip)")
+        pytest.skip(
+            "xgb_v2_meta.json does not record base_training_fight_ids "
+            "(Phase 19 may add this in Wave 2 — currently skip)"
+        )
     overlap = base_ids & meta_ids
     assert not overlap, (
         f"D-01(P19) violated: {len(overlap)} fight_ids appear in both base_train "

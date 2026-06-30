@@ -11,8 +11,6 @@ import optuna
 import sklearn.base
 from catboost import CatBoostClassifier
 from lightgbm import LGBMClassifier
-from sklearn.calibration import CalibratedClassifierCV
-from sklearn.frozen import FrozenEstimator
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss
@@ -34,9 +32,13 @@ class EnsembleTrainer:
         self.config = config or MLConfig()
 
     def _tune_xgboost(
-        self, X: np.ndarray, y: np.ndarray, n_trials: int,
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        n_trials: int,
     ) -> dict:
         """Find best XGBoost params via Optuna."""
+
         def objective(trial: optuna.Trial) -> float:
             params = {
                 "n_estimators": trial.suggest_int("n_estimators", 100, 500),
@@ -53,8 +55,10 @@ class EnsembleTrainer:
             scores = []
             for train_idx, val_idx in tscv.split(X):
                 model = XGBClassifier(
-                    **params, objective="binary:logistic",
-                    eval_metric="logloss", random_state=self.config.random_seed,
+                    **params,
+                    objective="binary:logistic",
+                    eval_metric="logloss",
+                    random_state=self.config.random_seed,
                     verbosity=0,
                 )
                 model.fit(X[train_idx], y[train_idx])
@@ -68,9 +72,13 @@ class EnsembleTrainer:
         return study.best_params
 
     def _tune_lightgbm(
-        self, X: np.ndarray, y: np.ndarray, n_trials: int,
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        n_trials: int,
     ) -> dict:
         """Find best LightGBM params via Optuna."""
+
         def objective(trial: optuna.Trial) -> float:
             params = {
                 "n_estimators": trial.suggest_int("n_estimators", 100, 500),
@@ -87,8 +95,10 @@ class EnsembleTrainer:
             scores = []
             for train_idx, val_idx in tscv.split(X):
                 model = LGBMClassifier(
-                    **params, objective="binary",
-                    random_state=self.config.random_seed, verbosity=-1,
+                    **params,
+                    objective="binary",
+                    random_state=self.config.random_seed,
+                    verbosity=-1,
                 )
                 model.fit(X[train_idx], y[train_idx])
                 probs = model.predict_proba(X[val_idx])[:, 1]
@@ -101,9 +111,13 @@ class EnsembleTrainer:
         return study.best_params
 
     def _tune_catboost(
-        self, X: np.ndarray, y: np.ndarray, n_trials: int,
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        n_trials: int,
     ) -> dict:
         """Find best CatBoost params via Optuna."""
+
         def objective(trial: optuna.Trial) -> float:
             params = {
                 "iterations": trial.suggest_int("iterations", 100, 500),
@@ -117,8 +131,10 @@ class EnsembleTrainer:
             scores = []
             for train_idx, val_idx in tscv.split(X):
                 model = CatBoostClassifier(
-                    **params, loss_function="Logloss",
-                    random_seed=self.config.random_seed, verbose=0,
+                    **params,
+                    loss_function="Logloss",
+                    random_seed=self.config.random_seed,
+                    verbose=0,
                 )
                 model.fit(X[train_idx], y[train_idx])
                 probs = model.predict_proba(X[val_idx])[:, 1]
@@ -131,8 +147,12 @@ class EnsembleTrainer:
         return study.best_params
 
     def train(
-        self, X_train: np.ndarray, y_train: np.ndarray,
-        xgb_trials: int = 50, lgbm_trials: int = 50, cb_trials: int = 50,
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        xgb_trials: int = 50,
+        lgbm_trials: int = 50,
+        cb_trials: int = 50,
     ) -> tuple[object, dict]:
         """Train ensemble with Optuna-tuned base models.
 
@@ -151,13 +171,15 @@ class EnsembleTrainer:
         split2 = int(n * 0.85)
         X_proper, y_proper = X_train[:split1], y_train[:split1]
         X_blend, y_blend = X_train[split1:split2], y_train[split1:split2]
-        X_calib, y_calib = X_train[split2:], y_train[split2:]
+        _X_calib, _y_calib = X_train[split2:], y_train[split2:]
 
         # Step 2: Tune and train XGBoost
         xgb_params = self._tune_xgboost(X_proper, y_proper, xgb_trials)
         xgb_model = XGBClassifier(
-            **xgb_params, objective="binary:logistic",
-            eval_metric="logloss", random_state=self.config.random_seed,
+            **xgb_params,
+            objective="binary:logistic",
+            eval_metric="logloss",
+            random_state=self.config.random_seed,
             verbosity=0,
         )
         xgb_model.fit(X_proper, y_proper)
@@ -165,16 +187,20 @@ class EnsembleTrainer:
         # Tune and train LightGBM
         lgbm_params = self._tune_lightgbm(X_proper, y_proper, lgbm_trials)
         lgbm_model = LGBMClassifier(
-            **lgbm_params, objective="binary",
-            random_state=self.config.random_seed, verbosity=-1,
+            **lgbm_params,
+            objective="binary",
+            random_state=self.config.random_seed,
+            verbosity=-1,
         )
         lgbm_model.fit(X_proper, y_proper)
 
         # Tune and train CatBoost
         cb_params = self._tune_catboost(X_proper, y_proper, cb_trials)
         cb_model = CatBoostClassifier(
-            **cb_params, loss_function="Logloss",
-            random_seed=self.config.random_seed, verbose=0,
+            **cb_params,
+            loss_function="Logloss",
+            random_seed=self.config.random_seed,
+            verbose=0,
         )
         cb_model.fit(X_proper, y_proper)
 
@@ -182,23 +208,27 @@ class EnsembleTrainer:
         lr_model = make_pipeline(
             SimpleImputer(strategy="median"),
             LogisticRegression(
-                max_iter=1000, solver="lbfgs",
+                max_iter=1000,
+                solver="lbfgs",
                 random_state=self.config.random_seed,
             ),
         )
         lr_model.fit(X_proper, y_proper)
 
         # Step 4: Generate blend predictions
-        blend_preds = np.column_stack([
-            xgb_model.predict_proba(X_blend)[:, 1],
-            lgbm_model.predict_proba(X_blend)[:, 1],
-            cb_model.predict_proba(X_blend)[:, 1],
-            lr_model.predict_proba(X_blend)[:, 1],
-        ])
+        blend_preds = np.column_stack(
+            [
+                xgb_model.predict_proba(X_blend)[:, 1],
+                lgbm_model.predict_proba(X_blend)[:, 1],
+                cb_model.predict_proba(X_blend)[:, 1],
+                lr_model.predict_proba(X_blend)[:, 1],
+            ]
+        )
 
         # Step 5: Train meta-model
         meta_model = LogisticRegression(
-            max_iter=1000, solver="lbfgs",
+            max_iter=1000,
+            solver="lbfgs",
             random_state=self.config.random_seed,
         )
         meta_model.fit(blend_preds, y_blend)  # blend_preds are probabilities, no NaN
@@ -230,12 +260,14 @@ class _EnsembleModel(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin):
         self.classes_ = np.array([0, 1])
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        stacked = np.column_stack([
-            self.xgb.predict_proba(X)[:, 1],
-            self.lgbm.predict_proba(X)[:, 1],
-            self.cb.predict_proba(X)[:, 1],
-            self.lr.predict_proba(X)[:, 1],
-        ])
+        stacked = np.column_stack(
+            [
+                self.xgb.predict_proba(X)[:, 1],
+                self.lgbm.predict_proba(X)[:, 1],
+                self.cb.predict_proba(X)[:, 1],
+                self.lr.predict_proba(X)[:, 1],
+            ]
+        )
         meta_probs = self.meta.predict_proba(stacked)
         return meta_probs
 
@@ -245,10 +277,13 @@ class _EnsembleModel(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin):
 
     def get_params(self, deep: bool = True) -> dict:
         return {
-            "xgb": self.xgb, "lgbm": self.lgbm, "cb": self.cb,
-            "lr": self.lr, "meta": self.meta,
+            "xgb": self.xgb,
+            "lgbm": self.lgbm,
+            "cb": self.cb,
+            "lr": self.lr,
+            "meta": self.meta,
         }
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> "_EnsembleModel":
+    def fit(self, X: np.ndarray, y: np.ndarray) -> _EnsembleModel:
         # No-op — FrozenEstimator calls this but we're already trained
         return self

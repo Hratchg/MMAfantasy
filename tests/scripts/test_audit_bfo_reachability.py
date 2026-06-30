@@ -23,12 +23,11 @@ Design refinements from Task 1 findings (operator-curated CSV):
     ``target_rate = max(0.80, n_reachable_post2007 / n_total_post2007)``
     where post-2007 excludes the 2007 boundary anchor.
 """
+
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock
 
-import httpx
 import pytest
 
 
@@ -71,7 +70,10 @@ class TestAFStartupAsserts:
     """Drift in any locked constant must halt main() before any live HTTP."""
 
     def test_af_startup_asserts_fire_on_drift(
-        self, audit_bfo, monkeypatch, capsys,
+        self,
+        audit_bfo,
+        monkeypatch,
+        capsys,
     ) -> None:
         """Mutating a locked constant at runtime triggers a fatal exit.
 
@@ -86,9 +88,7 @@ class TestAFStartupAsserts:
         # a helper named ``_assert_locked_constants`` for unit-testability
         # so this test does NOT trigger any HTTP work.
         rc = audit_bfo._assert_locked_constants()
-        assert rc == 2, (
-            f"_assert_locked_constants should return non-zero on drift, got {rc}"
-        )
+        assert rc == 2, f"_assert_locked_constants should return non-zero on drift, got {rc}"
         captured = capsys.readouterr()
         assert "FATAL" in captured.err or "FATAL" in captured.out, (
             "AF assert failure must surface a FATAL marker on stderr/stdout"
@@ -108,15 +108,15 @@ class TestProbeClassifyReachable:
         # Synthetic event-page HTML with a distinguishing title that is
         # NOT the BFO homepage title.
         client.get.return_value = (
-            '<html><head>'
-            '<title>UFC 77: Hostile Territory Odds | Best Fight Odds</title>'
-            '</head><body>'
+            "<html><head>"
+            "<title>UFC 77: Hostile Territory Odds | Best Fight Odds</title>"
+            "</head><body>"
             '<div class="event-header">UFC 77</div>'
             '<table class="odds-table"><tr class="fight-row">'
-            '<td>Anderson Silva</td><td>-300</td>'
-            '<td>Rich Franklin</td><td>+250</td>'
-            '</tr></table>'
-            '</body></html>'
+            "<td>Anderson Silva</td><td>-300</td>"
+            "<td>Rich Franklin</td><td>+250</td>"
+            "</tr></table>"
+            "</body></html>"
         )
         row = audit_bfo._probe(
             client,
@@ -150,9 +150,9 @@ class TestProbeClassifyHomepageFallback:
         # The actual BFO homepage title observed during Task 1 curation.
         # Note the literal ``&amp;`` entity in the served HTML.
         client.get.return_value = (
-            '<html><head>'
-            '<title>UFC &amp; MMA Odds &amp; Betting Lines | Best Fight Odds</title>'
-            '</head><body><p>Welcome to BestFightOdds</p></body></html>'
+            "<html><head>"
+            "<title>UFC &amp; MMA Odds &amp; Betting Lines | Best Fight Odds</title>"
+            "</head><body><p>Welcome to BestFightOdds</p></body></html>"
         )
         row = audit_bfo._probe(
             client,
@@ -161,8 +161,7 @@ class TestProbeClassifyHomepageFallback:
             event_label="bogus",
         )
         assert row["status"] == "homepage_fallback", (
-            f"generic homepage <title> must NOT count as reachable; "
-            f"got status={row['status']!r}"
+            f"generic homepage <title> must NOT count as reachable; got status={row['status']!r}"
         )
         assert row["captcha_hit"] is False
 
@@ -183,9 +182,9 @@ class TestProbeClassifyCaptcha:
         """
         client = MagicMock()
         client.get.return_value = (
-            '<html><body>'
+            "<html><body>"
             '<div id="hfmr8">Verify you are human by completing the action below.</div>'
-            '</body></html>'
+            "</body></html>"
         )
         row = audit_bfo._probe(
             client,
@@ -241,9 +240,9 @@ class TestEarlyStop:
         # homepage_fallback. With 10 candidate URLs and an early-stop
         # threshold of 5, the inner loop should record exactly 5 rows.
         client.get.return_value = (
-            '<html><head>'
-            '<title>UFC &amp; MMA Odds &amp; Betting Lines | Best Fight Odds</title>'
-            '</head><body></body></html>'
+            "<html><head>"
+            "<title>UFC &amp; MMA Odds &amp; Betting Lines | Best Fight Odds</title>"
+            "</head><body></body></html>"
         )
         candidates = [
             (
@@ -256,8 +255,7 @@ class TestEarlyStop:
         # Exactly 5 probes (the early-stop budget) — the remaining 5
         # candidates are skipped without issuing HTTP.
         assert len(rows) == 5, (
-            f"early-stop on 5 consecutive non-reachable rows: "
-            f"expected len=5, got {len(rows)}"
+            f"early-stop on 5 consecutive non-reachable rows: expected len=5, got {len(rows)}"
         )
         # client.get was called at most 5 times (sentinel rows don't
         # call HTTP; all 10 candidates are real URLs here).
@@ -300,8 +298,7 @@ class TestPost2007TargetDerivation:
         }
         target_high, _ = audit_bfo._derive_post2007_target(per_year_high)
         assert target_high >= 0.80, (
-            f"22/25 = 0.88 measured post-2007 → target should be ≥ 0.80, "
-            f"got {target_high}"
+            f"22/25 = 0.88 measured post-2007 → target should be ≥ 0.80, got {target_high}"
         )
 
         # Case B: LOW reachability — 10/25 = 0.40 → target FLOORS at 0.80.
@@ -315,6 +312,5 @@ class TestPost2007TargetDerivation:
         }
         target_low, _ = audit_bfo._derive_post2007_target(per_year_low)
         assert target_low >= 0.80, (
-            f"10/25 = 0.40 measured post-2007 → target must FLOOR at 0.80, "
-            f"got {target_low}"
+            f"10/25 = 0.40 measured post-2007 → target must FLOOR at 0.80, got {target_low}"
         )

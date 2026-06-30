@@ -13,7 +13,6 @@ gate_methodology_v2.6.md §7.3:
 from __future__ import annotations
 
 import importlib.util
-import os
 import sys
 from pathlib import Path
 
@@ -26,7 +25,8 @@ SCRIPT_PATH = PROJECT_ROOT / "scripts" / "check_audit01_protected_files.py"
 @pytest.fixture(scope="module")
 def mod():
     spec = importlib.util.spec_from_file_location(
-        "check_audit01_protected_files_soft", SCRIPT_PATH,
+        "check_audit01_protected_files_soft",
+        SCRIPT_PATH,
     )
     assert spec is not None and spec.loader is not None
     m = importlib.util.module_from_spec(spec)
@@ -68,10 +68,10 @@ def test_soft_protect_patterns_do_not_match_canonical(mod) -> None:
     """Canonical meta_v2 + Phase 65 refv2 candidate are NOT soft-protect matches."""
     matches = mod.find_soft_violations(
         [
-            "models/meta/meta_v2.joblib",         # canonical
-            "models/meta/meta_v2_meta.json",      # canonical sidecar
-            "models/meta/meta_v2_refv2.joblib",   # Phase 65 candidate
-            "models/meta/meta_v22_travel.joblib", # Phase 42 advisory sibling
+            "models/meta/meta_v2.joblib",  # canonical
+            "models/meta/meta_v2_meta.json",  # canonical sidecar
+            "models/meta/meta_v2_refv2.joblib",  # Phase 65 candidate
+            "models/meta/meta_v22_travel.joblib",  # Phase 42 advisory sibling
             "README.md",
             "scripts/refit_meta_v22_v2.6.py",
         ]
@@ -197,8 +197,8 @@ def test_mixed_hard_and_soft_blocks_when_hard_unauthorized(
 
     rc = mod.main(
         [
-            "models/meta/meta_v2.joblib",            # hard-protect
-            "models/meta/meta_v2_refit_v2.6.joblib", # soft-protect
+            "models/meta/meta_v2.joblib",  # hard-protect
+            "models/meta/meta_v2_refit_v2.6.joblib",  # soft-protect
         ]
     )
     assert rc == 1, "hard-protect block must fire even with soft opt-in active"

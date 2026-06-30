@@ -64,15 +64,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # D-18 LOCKED constants (PROJECT.md cross-cutting invariant #3; NO
 # post-measurement renegotiation).
 # ─────────────────────────────────────────────────────────────────────────────
 
-FORMULA_HASH: str = (
-    "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
-)
+FORMULA_HASH: str = "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
 FLOOR_ACCURACY_MIN: float = 0.70
 HURDLE_BRIER_MIN: float = 0.003
 HURDLE_MAJORITY_THRESHOLD: int = 2  # ≥2/3 slices
@@ -84,12 +81,8 @@ PER_SLICE_KEYS: tuple[str, str, str] = (
 )
 
 # PROJECT.md cross-cutting invariants #1 + #2 (AUDIT-01).
-EXPECTED_XGB_V2_SHA256: str = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
-EXPECTED_META_V2_SHA256: str = (
-    "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
-)
+EXPECTED_XGB_V2_SHA256: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+EXPECTED_META_V2_SHA256: str = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
 EXPECTED_CUTOFF_DATE: str = "2023-01-01"
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
@@ -98,9 +91,7 @@ META_V2_PATH: Path = PROJECT_ROOT / "models" / "meta" / "meta_v2.joblib"
 XGB_V3_PATH: Path = PROJECT_ROOT / "models" / "xgb_v3.joblib"
 META_V3_PATH: Path = PROJECT_ROOT / "models" / "meta" / "meta_v3.joblib"
 XGB_V3_CONTRACT_PATH: Path = PROJECT_ROOT / "models" / "xgb_v3-contract.json"
-META_V3_CONTRACT_PATH: Path = (
-    PROJECT_ROOT / "models" / "meta" / "meta_v3-contract.json"
-)
+META_V3_CONTRACT_PATH: Path = PROJECT_ROOT / "models" / "meta" / "meta_v3-contract.json"
 GATE_CONTRACT_REF: str = ".planning/gate_contract_v2.3.json"
 DEFAULT_OOF_PARQUET: Path = (
     PROJECT_ROOT
@@ -278,24 +269,36 @@ def _load_v25_substrate(
         session.close()
 
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
     config = MLConfig(cutoff_date=cutoff_date_iso)
 
     # 72-col v2.1-no-net for xgb_v2 inference (same as Phase 34 TRUST-V24-02).
     assembler72 = FeatureMatrixAssembler(config)
     X72, y, fight_dates = assembler72.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
-        pre_ufc_records=pre_ufc, fight_odds=fight_odds,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
+        pre_ufc_records=pre_ufc,
+        fight_odds=fight_odds,
         feature_set="v2.1-no-net",
     )
     # 90-col v2.2 for META-V22 Level-1 substrate.
     assembler_v22 = FeatureMatrixAssembler(config)
     X_v22, _y_v22, _fd_v22 = assembler_v22.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
-        pre_ufc_records=pre_ufc, fight_odds=fight_odds,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
+        pre_ufc_records=pre_ufc,
+        fight_odds=fight_odds,
         feature_set="v2.2",
     )
     return X72, X_v22, y, fight_dates, fight_records
@@ -327,12 +330,14 @@ def _compute_elo_prob_per_fight(
         fb_id = f["fighter_b_id"]
         ra = float(
             elo_features.get(
-                (fa_id, fid), {"elo_overall": 1500.0},
+                (fa_id, fid),
+                {"elo_overall": 1500.0},
             ).get("elo_overall", 1500.0)
         )
         rb = float(
             elo_features.get(
-                (fb_id, fid), {"elo_overall": 1500.0},
+                (fb_id, fid),
+                {"elo_overall": 1500.0},
             ).get("elo_overall", 1500.0)
         )
         out.append(float(engine.expected_win_probability(ra, rb)))
@@ -353,12 +358,14 @@ def _build_level1_df(
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
     from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
 
-    df = pd.DataFrame({
-        "fight_id": [f["fight_id"] for f in fight_records],
-        "event_date": [f["event_date"] for f in fight_records],
-        "y": y.astype(int),
-        "elo_prob": elo_prob,
-    })
+    df = pd.DataFrame(
+        {
+            "fight_id": [f["fight_id"] for f in fight_records],
+            "event_date": [f["event_date"] for f in fight_records],
+            "y": y.astype(int),
+            "elo_prob": elo_prob,
+        }
+    )
     for col in META_V22_FEATURE_COLUMNS[2:]:  # skip xgb_oof_prob + elo_prob
         idx = FEATURE_COLUMNS_V22.index(col)
         df[col] = X_v22[:, idx]
@@ -392,17 +399,12 @@ def _assemble_level1_input(
     # Drop rows where the base prob is NOT provided.
     df = df[df["xgb_oof_prob"].notna()].reset_index(drop=True)
 
-    cols = [
-        df[meta_col].to_numpy(dtype=float)
-        for meta_col in META_V22_FEATURE_COLUMNS
-    ]
+    cols = [df[meta_col].to_numpy(dtype=float) for meta_col in META_V22_FEATURE_COLUMNS]
     X_meta = np.column_stack(cols)
     y = df["y"].to_numpy(dtype=int)
     event_dates = df["event_date"].to_numpy()
 
-    assert X_meta.shape[1] == 13, (
-        f"Level-1 shape drift: got {X_meta.shape[1]} cols, expected 13"
-    )
+    assert X_meta.shape[1] == 13, f"Level-1 shape drift: got {X_meta.shape[1]} cols, expected 13"
     assert X_meta.shape[0] == y.shape[0]
     return X_meta, y, event_dates
 
@@ -414,7 +416,12 @@ def _per_feature_strict_baseline_clean(
     y_eval: np.ndarray,
     eval_dates: np.ndarray,
 ) -> tuple[
-    np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, float],
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    dict[str, float],
 ]:
     """Apply per_feature_strict_baseline NaN policy + train-median imputation.
 
@@ -429,13 +436,8 @@ def _per_feature_strict_baseline_clean(
     from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
 
     BASELINE_COLS = ("xgb_oof_prob", "elo_prob")
-    baseline_idx = [
-        i for i, c in enumerate(META_V22_FEATURE_COLUMNS) if c in BASELINE_COLS
-    ]
-    non_baseline_idx = [
-        i for i, c in enumerate(META_V22_FEATURE_COLUMNS)
-        if c not in BASELINE_COLS
-    ]
+    baseline_idx = [i for i, c in enumerate(META_V22_FEATURE_COLUMNS) if c in BASELINE_COLS]
+    non_baseline_idx = [i for i, c in enumerate(META_V22_FEATURE_COLUMNS) if c not in BASELINE_COLS]
 
     def _strict_baseline_mask(X: np.ndarray) -> np.ndarray:
         baseline_nan = np.isnan(X[:, baseline_idx]).any(axis=1)
@@ -492,9 +494,7 @@ def evaluate_per_slice(
     cutoff_12mo = today - timedelta(days=365)
     cutoff_24mo = today - timedelta(days=730)
 
-    fd_iter = [
-        d.date() if hasattr(d, "date") else d for d in fight_dates_eval
-    ]
+    fd_iter = [d.date() if hasattr(d, "date") else d for d in fight_dates_eval]
     mask_12mo = np.array([d >= cutoff_12mo for d in fd_iter])
     mask_24mo = np.array([d >= cutoff_24mo for d in fd_iter])
     rng = np.random.RandomState(random_seed)
@@ -552,10 +552,12 @@ def _build_verdict_json(
 ) -> dict[str, Any]:
     """Compose machine-readable verdict dict."""
     floor_clears = floor_clears_all_three(
-        per_slice_candidate, per_slice_baseline,
+        per_slice_candidate,
+        per_slice_baseline,
     )
     hurdle_clears = hurdle_clears_majority(
-        per_slice_candidate, per_slice_baseline,
+        per_slice_candidate,
+        per_slice_baseline,
     )
     verdict = path_determination(floor_clears, hurdle_clears)
     path_a_eligible = verdict == "path_a"
@@ -573,9 +575,7 @@ def _build_verdict_json(
         slc_hurdle = delta >= HURDLE_BRIER_MIN
         per_slice_out[slc] = {
             "slice_name": slc,
-            "n": int(per_slice_candidate[slc].get("n",
-                                                   per_slice_baseline[slc].get(
-                                                       "n", 0))),
+            "n": int(per_slice_candidate[slc].get("n", per_slice_baseline[slc].get("n", 0))),
             "baseline_brier": base_b,
             "candidate_brier": cand_b,
             "delta_brier": delta,
@@ -623,12 +623,8 @@ def _build_verdict_md(verdict: dict[str, Any]) -> str:
     """Compose partner-facing MD writeup from the verdict JSON."""
     verdict_str = verdict["verdict"]
     verdict_label = "Path A" if verdict_str == "path_a" else "Path B"
-    floor_status = (
-        "PASSED" if verdict["floor_clears_all_three"] else "FAILED"
-    )
-    hurdle_status = (
-        "PASSED" if verdict["hurdle_clears_majority"] else "FAILED"
-    )
+    floor_status = "PASSED" if verdict["floor_clears_all_three"] else "FAILED"
+    hurdle_status = "PASSED" if verdict["hurdle_clears_majority"] else "FAILED"
 
     lines: list[str] = []
     lines.append("# meta_v3 Gate Verdict — v2.5 (D-18 LOCKED)")
@@ -648,9 +644,7 @@ def _build_verdict_md(verdict: dict[str, Any]) -> str:
     # D-18 LOCKED formula hash quoted verbatim.
     lines.append("## D-18 LOCKED Gate Contract")
     lines.append("")
-    lines.append(
-        f"- **gate_contract_ref:** `{verdict['gate_contract_ref']}`"
-    )
+    lines.append(f"- **gate_contract_ref:** `{verdict['gate_contract_ref']}`")
     lines.append(f"- **formula_hash:** `{verdict['formula_hash']}`")
     lines.append(
         "- **Locked:** per PROJECT.md cross-cutting invariant #3 — "
@@ -659,17 +653,13 @@ def _build_verdict_md(verdict: dict[str, Any]) -> str:
     lines.append("")
 
     # Per-slice table.
-    lines.append(
-        "## Per-Slice Results (META-V22 baseline vs meta_v3 candidate)"
-    )
+    lines.append("## Per-Slice Results (META-V22 baseline vs meta_v3 candidate)")
     lines.append("")
     lines.append(
         "| slice | n | META-V22 Brier | meta_v3 Brier | "
         "Δ Brier | META-V22 Acc | meta_v3 Acc | Floor | Hurdle |"
     )
-    lines.append(
-        "|---|---:|---:|---:|---:|---:|---:|:---:|:---:|"
-    )
+    lines.append("|---|---:|---:|---:|---:|---:|---:|:---:|:---:|")
     for slc in PER_SLICE_KEYS:
         e = verdict["per_slice"][slc]
         floor_glyph = "PASS" if e["floor_clears"] else "FAIL"
@@ -685,9 +675,7 @@ def _build_verdict_md(verdict: dict[str, Any]) -> str:
     # AUDIT-01 SHAs.
     lines.append("## AUDIT-01 Model SHA-256 Manifest")
     lines.append("")
-    lines.append(
-        "| Artifact | SHA-256 | Source |"
-    )
+    lines.append("| Artifact | SHA-256 | Source |")
     lines.append("|---|---|---|")
     lines.append(
         f"| `models/xgb_v2.joblib` | `{verdict['xgb_v2_sha256']}` | "
@@ -698,8 +686,7 @@ def _build_verdict_md(verdict: dict[str, Any]) -> str:
         f"PROJECT.md invariant #2 (BYTE-IDENTICAL) |"
     )
     lines.append(
-        f"| `models/xgb_v3.joblib` | `{verdict['xgb_v3_sha256']}` | "
-        f"Plan 45-02 candidate base |"
+        f"| `models/xgb_v3.joblib` | `{verdict['xgb_v3_sha256']}` | Plan 45-02 candidate base |"
     )
     lines.append(
         f"| `models/meta/meta_v3.joblib` | `{verdict['meta_v3_sha256']}` | "
@@ -733,7 +720,7 @@ def _build_verdict_md(verdict: dict[str, Any]) -> str:
         )
         lines.append(
             "- meta_v3 candidate triad remains on disk under `models/meta/` "
-            "with `candidate_or_promoted: \"candidate\"` for v2.6+ reference."
+            'with `candidate_or_promoted: "candidate"` for v2.6+ reference.'
         )
     lines.append("")
 
@@ -832,8 +819,7 @@ def _build_verdict_md(verdict: dict[str, Any]) -> str:
     lines.append("## Verification")
     lines.append("")
     lines.append(
-        f"- D-18 formula hash matches gate_contract_v2.3.json: "
-        f"`{verdict['formula_hash']}` ✓"
+        f"- D-18 formula hash matches gate_contract_v2.3.json: `{verdict['formula_hash']}` ✓"
     )
     lines.append(
         f"- Path A XOR Path B invariant holds: "
@@ -858,25 +844,28 @@ def _build_verdict_md(verdict: dict[str, Any]) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Phase 45 Plan 45-04 — meta_v3 gate verification on v2.5 "
-            "substrate (META3-V25-03)"
+            "Phase 45 Plan 45-04 — meta_v3 gate verification on v2.5 substrate (META3-V25-03)"
         ),
     )
     parser.add_argument(
-        "--out-json", type=Path,
+        "--out-json",
+        type=Path,
         default=PROJECT_ROOT / "results" / "meta_v3_gate_verdict_v25.json",
         help="Output path for machine-readable verdict JSON",
     )
     parser.add_argument(
-        "--out-md", type=Path,
+        "--out-md",
+        type=Path,
         default=PROJECT_ROOT / "results" / "meta_v3_gate_verdict_v25.md",
         help="Output path for partner-facing MD writeup",
     )
     parser.add_argument(
-        "--oof-parquet", type=Path, default=DEFAULT_OOF_PARQUET,
+        "--oof-parquet",
+        type=Path,
+        default=DEFAULT_OOF_PARQUET,
         help="Path to xgb_v3 OOF parquet (Plan 45-02 output)",
     )
     args = parser.parse_args(argv)
@@ -907,15 +896,13 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
     # ── Load model artifacts ──
     if not META_V3_PATH.is_file():
         print(
-            f"[verify_meta_v3_gate] FATAL: {META_V3_PATH} missing "
-            f"(Plan 45-03 dep)",
+            f"[verify_meta_v3_gate] FATAL: {META_V3_PATH} missing (Plan 45-03 dep)",
             file=sys.stderr,
         )
         return 2
     if not XGB_V3_PATH.is_file():
         print(
-            f"[verify_meta_v3_gate] FATAL: {XGB_V3_PATH} missing "
-            f"(Plan 45-02 dep)",
+            f"[verify_meta_v3_gate] FATAL: {XGB_V3_PATH} missing (Plan 45-02 dep)",
             file=sys.stderr,
         )
         return 2
@@ -929,12 +916,10 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
 
     xgb_v3_sha = _sha256_file(XGB_V3_PATH)
     meta_v3_sha = _sha256_file(META_V3_PATH)
-    print(
-        f"[verify_meta_v3_gate] xgb_v3={xgb_v3_sha[:12]}... "
-        f"meta_v3={meta_v3_sha[:12]}..."
-    )
+    print(f"[verify_meta_v3_gate] xgb_v3={xgb_v3_sha[:12]}... meta_v3={meta_v3_sha[:12]}...")
 
     import joblib
+
     xgb_v2 = joblib.load(XGB_V2_PATH)
     meta_v2 = joblib.load(META_V2_PATH)
     meta_v3 = joblib.load(META_V3_PATH)
@@ -942,20 +927,22 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
     # ── Load OOF parquet (Plan 45-02) — partition is canonical ──
     oof_df = pd.read_parquet(args.oof_parquet)
     required_oof_cols = {
-        "fight_id", "xgb_v3_oof_prob", "train_or_test", "event_date",
+        "fight_id",
+        "xgb_v3_oof_prob",
+        "train_or_test",
+        "event_date",
     }
     missing = required_oof_cols - set(oof_df.columns)
     if missing:
         print(
-            f"[verify_meta_v3_gate] FATAL: OOF parquet missing cols: "
-            f"{missing}",
+            f"[verify_meta_v3_gate] FATAL: OOF parquet missing cols: {missing}",
             file=sys.stderr,
         )
         return 2
     print(
         f"[verify_meta_v3_gate] OOF parquet: {len(oof_df)} rows, "
-        f"train={int((oof_df['train_or_test']=='train').sum())}, "
-        f"test={int((oof_df['train_or_test']=='test').sum())}"
+        f"train={int((oof_df['train_or_test'] == 'train').sum())}, "
+        f"test={int((oof_df['train_or_test'] == 'test').sum())}"
     )
 
     # ── Load v2.5 substrate from DB ──
@@ -989,9 +976,7 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
     )
     xgb_v2_proba_all = xgb_v2.predict_proba(X72)[:, 1]
     fight_ids_all = [f["fight_id"] for f in fight_records]
-    xgb_v2_prob_by_fid: dict[int, float] = dict(
-        zip(fight_ids_all, xgb_v2_proba_all)
-    )
+    xgb_v2_prob_by_fid: dict[int, float] = dict(zip(fight_ids_all, xgb_v2_proba_all))
 
     # ── Build xgb_v3 prob lookup from OOF parquet ──
     xgb_v3_prob_by_fid: dict[int, float] = dict(
@@ -1000,7 +985,8 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
     # Filter to non-NaN values only (NaN OOF preds = rows xgb_v3 couldn't
     # score; per Plan 45-02 these are the TimeSeriesSplit warm-up region).
     xgb_v3_prob_by_fid = {
-        k: v for k, v in xgb_v3_prob_by_fid.items()
+        k: v
+        for k, v in xgb_v3_prob_by_fid.items()
         if v is not None and not (isinstance(v, float) and math.isnan(v))
     }
     print(
@@ -1010,12 +996,8 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
     )
 
     # ── Partition fight_ids by train/test from OOF parquet ──
-    train_fids: set[int] = set(
-        oof_df[oof_df["train_or_test"] == "train"]["fight_id"].tolist()
-    )
-    test_fids: set[int] = set(
-        oof_df[oof_df["train_or_test"] == "test"]["fight_id"].tolist()
-    )
+    train_fids: set[int] = set(oof_df[oof_df["train_or_test"] == "train"]["fight_id"].tolist())
+    test_fids: set[int] = set(oof_df[oof_df["train_or_test"] == "test"]["fight_id"].tolist())
     train_level1 = level1_df[level1_df["fight_id"].isin(train_fids)].copy()
     eval_level1 = level1_df[level1_df["fight_id"].isin(test_fids)].copy()
     print(
@@ -1026,18 +1008,18 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
     # ── Assemble Level-1 inputs (xgb_v2 base for META-V22; xgb_v3 OOF for
     # meta_v3) for BOTH train + eval partitions ──
     # META-V22 (baseline): xgb_v2.predict_proba at xgb_oof_prob slot.
-    X_meta_train_v22, y_meta_train_v22, _dates_train_v22 = (
-        _assemble_level1_input(xgb_v2_prob_by_fid, train_level1)
+    X_meta_train_v22, y_meta_train_v22, _dates_train_v22 = _assemble_level1_input(
+        xgb_v2_prob_by_fid, train_level1
     )
-    X_meta_eval_v22, y_meta_eval_v22, dates_eval_v22 = (
-        _assemble_level1_input(xgb_v2_prob_by_fid, eval_level1)
+    X_meta_eval_v22, y_meta_eval_v22, dates_eval_v22 = _assemble_level1_input(
+        xgb_v2_prob_by_fid, eval_level1
     )
     # meta_v3 (candidate): xgb_v3 OOF at xgb_oof_prob slot.
-    X_meta_train_v3, y_meta_train_v3, _dates_train_v3 = (
-        _assemble_level1_input(xgb_v3_prob_by_fid, train_level1)
+    X_meta_train_v3, y_meta_train_v3, _dates_train_v3 = _assemble_level1_input(
+        xgb_v3_prob_by_fid, train_level1
     )
-    X_meta_eval_v3, y_meta_eval_v3, dates_eval_v3 = (
-        _assemble_level1_input(xgb_v3_prob_by_fid, eval_level1)
+    X_meta_eval_v3, y_meta_eval_v3, dates_eval_v3 = _assemble_level1_input(
+        xgb_v3_prob_by_fid, eval_level1
     )
     print(
         f"[verify_meta_v3_gate] assembled Level-1: "
@@ -1051,20 +1033,32 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
     # IMPORTANT: train-median imputation uses each model's OWN train partition.
     # This matches the policy meta_v3 was trained under (Plan 45-03).
     (
-        X_tr_v22_clean, y_tr_v22_clean,
-        X_ev_v22_clean, y_ev_v22_clean,
-        dates_ev_v22_clean, medians_v22,
+        X_tr_v22_clean,
+        y_tr_v22_clean,
+        X_ev_v22_clean,
+        y_ev_v22_clean,
+        dates_ev_v22_clean,
+        medians_v22,
     ) = _per_feature_strict_baseline_clean(
-        X_meta_train_v22, y_meta_train_v22,
-        X_meta_eval_v22, y_meta_eval_v22, dates_eval_v22,
+        X_meta_train_v22,
+        y_meta_train_v22,
+        X_meta_eval_v22,
+        y_meta_eval_v22,
+        dates_eval_v22,
     )
     (
-        X_tr_v3_clean, y_tr_v3_clean,
-        X_ev_v3_clean, y_ev_v3_clean,
-        dates_ev_v3_clean, medians_v3,
+        X_tr_v3_clean,
+        y_tr_v3_clean,
+        X_ev_v3_clean,
+        y_ev_v3_clean,
+        dates_ev_v3_clean,
+        medians_v3,
     ) = _per_feature_strict_baseline_clean(
-        X_meta_train_v3, y_meta_train_v3,
-        X_meta_eval_v3, y_meta_eval_v3, dates_eval_v3,
+        X_meta_train_v3,
+        y_meta_train_v3,
+        X_meta_eval_v3,
+        y_meta_eval_v3,
+        dates_eval_v3,
     )
     print(
         f"[verify_meta_v3_gate] post NaN-clean: "
@@ -1080,10 +1074,16 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
         "candidate on 3 v2.3 widened slices..."
     )
     per_slice_baseline = evaluate_per_slice(
-        meta_v2, X_ev_v22_clean, y_ev_v22_clean, dates_ev_v22_clean,
+        meta_v2,
+        X_ev_v22_clean,
+        y_ev_v22_clean,
+        dates_ev_v22_clean,
     )
     per_slice_candidate = evaluate_per_slice(
-        meta_v3, X_ev_v3_clean, y_ev_v3_clean, dates_ev_v3_clean,
+        meta_v3,
+        X_ev_v3_clean,
+        y_ev_v3_clean,
+        dates_ev_v3_clean,
     )
 
     # ── Print per-slice numbers for operator review ──
@@ -1161,10 +1161,7 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
     xgb_v2_sha_post, meta_v2_sha_post = _assert_canonical_shas()
     assert xgb_v2_sha_post == xgb_v2_sha, "xgb_v2 SHA drifted mid-pipeline"
     assert meta_v2_sha_post == meta_v2_sha, "meta_v2 SHA drifted mid-pipeline"
-    print(
-        "[verify_meta_v3_gate] AUDIT-01 post-flight OK — "
-        "xgb_v2 + meta_v2 BYTE-IDENTICAL."
-    )
+    print("[verify_meta_v3_gate] AUDIT-01 post-flight OK — xgb_v2 + meta_v2 BYTE-IDENTICAL.")
 
     # ── Final verdict line ──
     floor_str = "PASS" if verdict["floor_clears_all_three"] else "FAIL"

@@ -18,7 +18,7 @@ import hashlib
 import json
 import subprocess
 import sys
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import numpy as np
@@ -62,28 +62,19 @@ console = Console()
 _REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 
 PHASE_31_DIR: Path = (
-    _REPO_ROOT
-    / ".planning"
-    / "phases"
-    / "31-gate-v23-re-derivation-on-populated-substrate"
+    _REPO_ROOT / ".planning" / "phases" / "31-gate-v23-re-derivation-on-populated-substrate"
 )
-V23_CONTRACT_PATH_DEFAULT: Path = (
-    _REPO_ROOT / ".planning" / "gate_contract_v2.3.json"
-)
+V23_CONTRACT_PATH_DEFAULT: Path = _REPO_ROOT / ".planning" / "gate_contract_v2.3.json"
 
 # CONTEXT D-01 Path A — operator empirical floor pre-committed BEFORE spike runs.
 OPERATOR_FLOOR_V23: float = 0.70
 
 # AUDIT-01 baseline SHA — models/xgb_v2.joblib MUST stay byte-identical end-to-end.
-EXPECTED_XGB_V2_SHA: str = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
+EXPECTED_XGB_V2_SHA: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 
 # D-18 formula hash binding — carried forward from v2.1 + v2.2; no post-measurement
 # renegotiation.
-EXPECTED_FORMULA_HASH: str = (
-    "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
-)
+EXPECTED_FORMULA_HASH: str = "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
 
 # Phase 21 BFO backfill commit timestamp — carry-forward from v2.2 contract verbatim.
 _BFO_COMMIT_AT_FALLBACK: str = "2026-05-15T15:06:49-07:00"
@@ -122,7 +113,8 @@ def _spike_main(argv):
     side effects until the gate-spike subcommand actually fires.
     """
     _ensure_scripts_on_path()
-    from spike_noise_floor_v23 import main as spike_main  # noqa: E402
+    from spike_noise_floor_v23 import main as spike_main
+
     return spike_main(argv)
 
 
@@ -133,7 +125,8 @@ def _assert_xgb_v2_sha(label: str) -> str:
     drift. Module-level seam so unit tests can stub without touching disk.
     """
     _ensure_scripts_on_path()
-    from spike_noise_floor_v23 import _assert_xgb_v2_sha as spike_assert  # noqa: E402
+    from spike_noise_floor_v23 import _assert_xgb_v2_sha as spike_assert
+
     return spike_assert(label)
 
 
@@ -154,11 +147,12 @@ def _compute_v23_variance_dict(
     avoid the live DB / META load.
     """
     _ensure_scripts_on_path()
-    from spike_noise_floor_v23 import (  # noqa: E402
+    from spike_noise_floor_v23 import (
         _load_meta_train_eval_matrices,
         _meta_fit_fn,
         _no_bootstrap_metrics,
     )
+
     from ufc_prediction.ml.variance import (
         aggregate_variance,
         bootstrap_resample,
@@ -166,8 +160,11 @@ def _compute_v23_variance_dict(
     )
 
     (
-        X_meta_train, y_meta_train,
-        X_meta_eval, y_meta_eval, fight_dates_eval,
+        X_meta_train,
+        y_meta_train,
+        X_meta_eval,
+        y_meta_eval,
+        fight_dates_eval,
     ) = _load_meta_train_eval_matrices(dry_run=False)
 
     # WR-01 fix: honor --no-bootstrap. The CLI's outer spike subprocess
@@ -177,31 +174,43 @@ def _compute_v23_variance_dict(
     # the two runs silently drifts the contract from the report.
     if bootstrap:
         per_seed = multi_seed_metrics(
-            X_meta_train, y_meta_train,
-            X_meta_eval, y_meta_eval, fight_dates_eval,
-            seeds=seed_list, fit_fn=_meta_fit_fn,
+            X_meta_train,
+            y_meta_train,
+            X_meta_eval,
+            y_meta_eval,
+            fight_dates_eval,
+            seeds=seed_list,
+            fit_fn=_meta_fit_fn,
         )
         # Representative model: first-seed bootstrap fit (mirrors v22 spike line 1100).
         Xb, yb = bootstrap_resample(
-            X_meta_train, y_meta_train, seed=seed_list[0],
+            X_meta_train,
+            y_meta_train,
+            seed=seed_list[0],
         )
         representative = _meta_fit_fn(Xb, yb, seed_list[0])
     else:
         # Deterministic single-fit path (ResearchQ10 lineage anchor); fits
         # _meta_fit_fn on the RAW (X_meta_train, y_meta_train) per seed.
         per_seed = _no_bootstrap_metrics(
-            X_meta_train, y_meta_train,
-            X_meta_eval, y_meta_eval, fight_dates_eval,
+            X_meta_train,
+            y_meta_train,
+            X_meta_eval,
+            y_meta_eval,
+            fight_dates_eval,
             seeds=seed_list,
         )
         # Representative model: first-seed deterministic fit (no resample).
         representative = _meta_fit_fn(
-            X_meta_train, y_meta_train, seed_list[0],
+            X_meta_train,
+            y_meta_train,
+            seed_list[0],
         )
     aggregated, warnings = aggregate_variance(
         per_seed,
         representative_model=representative,
-        X_eval=X_meta_eval, y_eval=y_meta_eval,
+        X_eval=X_meta_eval,
+        y_eval=y_meta_eval,
         fight_dates_eval=fight_dates_eval,
     )
     # Add per-slice median Brier + accuracy across seeds (needed for formula).
@@ -240,10 +249,12 @@ def _compute_per_seed_medians(
     out: dict[str, dict[str, float]] = {}
     for slc in ("most_recent_12mo", "most_recent_24mo", "random_15pct"):
         briers = np.array(
-            [per_seed[s][slc]["brier_score"] for s in seeds], dtype=np.float64,
+            [per_seed[s][slc]["brier_score"] for s in seeds],
+            dtype=np.float64,
         )
         accs = np.array(
-            [per_seed[s][slc]["accuracy"] for s in seeds], dtype=np.float64,
+            [per_seed[s][slc]["accuracy"] for s in seeds],
+            dtype=np.float64,
         )
         out[slc] = {
             "median_brier": float(np.median(briers)),
@@ -271,7 +282,7 @@ def _build_per_slice_thresholds_v23(
     """
     from ufc_prediction.ml.gate_contract import PerSliceThresholds
 
-    per_slice: dict[str, "PerSliceThresholds"] = {}
+    per_slice: dict[str, PerSliceThresholds] = {}
     for slc in ("most_recent_12mo", "most_recent_24mo", "random_15pct"):
         a = aggregated[slc]
         median_brier = float(a["median_brier"])
@@ -316,7 +327,7 @@ def _apply_operator_floor_and_detect_breach(
     """
     from ufc_prediction.ml.gate_contract import PerSliceThresholds
 
-    floored: dict[str, "PerSliceThresholds"] = {}
+    floored: dict[str, PerSliceThresholds] = {}
     breach: dict[str, dict] = {}
     for slc, ts in per_slice.items():
         pre = float(ts.accuracy_min)
@@ -330,10 +341,7 @@ def _apply_operator_floor_and_detect_breach(
             #         floor NOT applied on breach (HALT triggers; contract not emitted).
             operator_floor_applied=(not is_breach),
             operator_floor_value=floor,
-            operator_decision=(
-                "path_a_floor_applied" if not is_breach
-                else "path_a_breach_halt"
-            ),
+            operator_decision=("path_a_floor_applied" if not is_breach else "path_a_breach_halt"),
         )
         breach[slc] = {
             "pre_floor_accuracy_min": pre,
@@ -349,7 +357,9 @@ def _git_log_first_iso(path: str, fallback: str) -> str:
     try:
         out = subprocess.run(
             ["git", "log", "--format=%aI", "-1", "--", path],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout.strip()
         return out or fallback
     except (FileNotFoundError, subprocess.CalledProcessError):
@@ -383,6 +393,7 @@ def _emit_v23_contract(
     the dropped name would silently regress the audit lineage.
     """
     from dataclasses import asdict
+
     from ufc_prediction.ml.config import get_feature_columns
     from ufc_prediction.ml.gate_contract import GateContract
 
@@ -397,7 +408,8 @@ def _emit_v23_contract(
 
     bfo_ts = _git_log_first_iso(_PHASE_21_BFO_DIR, _BFO_COMMIT_AT_FALLBACK)
     ingest_ts = _git_log_first_iso(
-        _PHASE_28_INGEST_COVERAGE_PATH, _INGEST_COMMIT_AT_FALLBACK,
+        _PHASE_28_INGEST_COVERAGE_PATH,
+        _INGEST_COMMIT_AT_FALLBACK,
     )
 
     contract = GateContract(
@@ -447,7 +459,8 @@ def _emit_v23_contract(
     )
     contract_path.parent.mkdir(parents=True, exist_ok=True)
     contract_path.write_text(
-        json.dumps(asdict(contract), indent=2) + "\n", encoding="utf-8",
+        json.dumps(asdict(contract), indent=2) + "\n",
+        encoding="utf-8",
     )
 
 
@@ -484,7 +497,7 @@ def _render_31_halt_and_decide(
         ' internal-only milestone"',
         "  - id: v23_substrate_fills_but_gate_lt_floor_path_d_accept_lower_floor",
         '    description: "Accept lower empirical floor with explicit'
-        ' governance amendment (D-18 override; requires operator-signed'
+        " governance amendment (D-18 override; requires operator-signed"
         ' amendment)"',
         "---",
         "",
@@ -511,41 +524,41 @@ def _render_31_halt_and_decide(
         # render rather than crash.
         d = breach_diagnostic.get(slc)
         if d is None:
-            lines.append(
-                f"| {slc} | (missing) | (missing) | n/a | UNKNOWN |"
-            )
+            lines.append(f"| {slc} | (missing) | (missing) | n/a | UNKNOWN |")
             continue
         is_breach = "YES" if d["breach"] else "NO"
         lines.append(
             f"| {slc} | {d['pre_floor_accuracy_min']:.4f} | "
             f"{d['post_floor_accuracy_min']:.4f} | {d['gap']:.4f} | {is_breach} |"
         )
-    lines.extend([
-        "",
-        "## Pre-Templated Outcome Paths (Path D materialization)",
-        "",
-        "- **v23_substrate_fills_but_gate_lt_floor_path_d_delay_ship:** Hold v2.3 "
-        "public ship. Re-open partner-readiness gate. Either widen substrate "
-        "(additional ingestion / corpus growth) OR re-derive on a longer eval window.",
-        "",
-        "- **v23_substrate_fills_but_gate_lt_floor_path_d_ship_v22_publicly:** Ship "
-        "v2.2 publicly (already gate-validated at v2.2 Phase 26 close). Tag v2.3 as "
-        "internal-only milestone. v2.4+ continues the partner pitch.",
-        "",
-        "- **v23_substrate_fills_but_gate_lt_floor_path_d_accept_lower_floor:** "
-        "Operator-signed amendment overriding D-18; accept empirical truth as new "
-        "public floor; SIGN GOVERNANCE AMENDMENT before contract emit.",
-        "",
-        "## Operator Action Required",
-        "",
-        "Set `actual_outcome` in `31-SUMMARY.md` frontmatter to one of:",
-        "- `v23_substrate_fills_but_gate_lt_floor_path_d_delay_ship`",
-        "- `v23_substrate_fills_but_gate_lt_floor_path_d_ship_v22_publicly`",
-        "- `v23_substrate_fills_but_gate_lt_floor_path_d_accept_lower_floor`",
-        "",
-        "Then run `/gsd-execute-phase 31` resumption.",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Pre-Templated Outcome Paths (Path D materialization)",
+            "",
+            "- **v23_substrate_fills_but_gate_lt_floor_path_d_delay_ship:** Hold v2.3 "
+            "public ship. Re-open partner-readiness gate. Either widen substrate "
+            "(additional ingestion / corpus growth) OR re-derive on a longer eval window.",
+            "",
+            "- **v23_substrate_fills_but_gate_lt_floor_path_d_ship_v22_publicly:** Ship "
+            "v2.2 publicly (already gate-validated at v2.2 Phase 26 close). Tag v2.3 as "
+            "internal-only milestone. v2.4+ continues the partner pitch.",
+            "",
+            "- **v23_substrate_fills_but_gate_lt_floor_path_d_accept_lower_floor:** "
+            "Operator-signed amendment overriding D-18; accept empirical truth as new "
+            "public floor; SIGN GOVERNANCE AMENDMENT before contract emit.",
+            "",
+            "## Operator Action Required",
+            "",
+            "Set `actual_outcome` in `31-SUMMARY.md` frontmatter to one of:",
+            "- `v23_substrate_fills_but_gate_lt_floor_path_d_delay_ship`",
+            "- `v23_substrate_fills_but_gate_lt_floor_path_d_ship_v22_publicly`",
+            "- `v23_substrate_fills_but_gate_lt_floor_path_d_accept_lower_floor`",
+            "",
+            "Then run `/gsd-execute-phase 31` resumption.",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -620,9 +633,7 @@ def predict_gate_spike(
 
     # ── 2. AUDIT-01 STARTUP SHA check ────────────────────────────────
     xgb_v2_sha_start = _assert_xgb_v2_sha("PHASE-31-STARTUP")
-    console.print(
-        f"[green]AUDIT-01 STARTUP SHA OK: {xgb_v2_sha_start[:16]}...[/green]"
-    )
+    console.print(f"[green]AUDIT-01 STARTUP SHA OK: {xgb_v2_sha_start[:16]}...[/green]")
 
     # ── 3. Translate --seeds N → seed-list [42..41+N] (Pitfall 2) ────
     seed_list = list(range(42, 42 + int(seeds)))
@@ -633,8 +644,10 @@ def predict_gate_spike(
     if not bootstrap:
         spike_argv.append("--no-bootstrap")
     spike_argv += [
-        "--report-path", str(PHASE_31_DIR / "31-VARIANCE-REPORT.md"),
-        "--halt-path", str(PHASE_31_DIR / "31-VARIANCE-HALT.md"),
+        "--report-path",
+        str(PHASE_31_DIR / "31-VARIANCE-REPORT.md"),
+        "--halt-path",
+        str(PHASE_31_DIR / "31-VARIANCE-HALT.md"),
         "--sha-end-path",
         str(PHASE_31_DIR / "31-XGB-V2-SHA-PHASE-31-END-SPIKE.txt"),
     ]
@@ -652,7 +665,8 @@ def predict_gate_spike(
 
     # ── 5. Re-compute variance dict in-process (Pattern 4) ───────────
     aggregated, warnings = _compute_v23_variance_dict(
-        seed_list, bootstrap=bootstrap,
+        seed_list,
+        bootstrap=bootstrap,
     )
     for w in warnings:
         console.print(f"[yellow]variance warning: {w}[/yellow]")
@@ -660,7 +674,8 @@ def predict_gate_spike(
     # ── 6. Apply formula + operator floor (Pattern 6) ────────────────
     per_slice_raw = _build_per_slice_thresholds_v23(aggregated)
     per_slice_floored, diagnostic = _apply_operator_floor_and_detect_breach(
-        per_slice_raw, floor=OPERATOR_FLOOR_V23,
+        per_slice_raw,
+        floor=OPERATOR_FLOOR_V23,
     )
     for slc, d in diagnostic.items():
         marker = " (BREACH)" if d["breach"] else ""
@@ -676,7 +691,7 @@ def predict_gate_spike(
     if halt_required:
         halt_body = _render_31_halt_and_decide(
             diagnostic,
-            triggered_at=datetime.now(timezone.utc).isoformat(),
+            triggered_at=datetime.now(UTC).isoformat(),
         )
         halt_path = PHASE_31_DIR / "31-HALT-AND-DECIDE.md"
         halt_path.parent.mkdir(parents=True, exist_ok=True)
@@ -691,7 +706,8 @@ def predict_gate_spike(
 
     # Path A: emit contract + END SHA artifact + clear loader cache (Pitfall 6).
     _emit_v23_contract(
-        per_slice_floored, seed_list,
+        per_slice_floored,
+        seed_list,
         contract_path=Path(contract_path),
     )
     xgb_v2_sha_end = _assert_xgb_v2_sha("PHASE-31-END")
@@ -700,6 +716,7 @@ def predict_gate_spike(
     sha_end_path.write_text(xgb_v2_sha_end + "\n", encoding="utf-8")
 
     from ufc_prediction.ml.gate_contract import load_gate_contract
+
     load_gate_contract.cache_clear()  # Pitfall 6
 
     console.print(
@@ -730,13 +747,11 @@ def _enforce_accuracy_gate(
     failures: list[str] = []
     if brier > brier_max:
         failures.append(
-            f"Brier {brier:.4f} > target {brier_max:.4f} "
-            f"(missed by {brier - brier_max:+.4f})"
+            f"Brier {brier:.4f} > target {brier_max:.4f} (missed by {brier - brier_max:+.4f})"
         )
     if acc < acc_min:
         failures.append(
-            f"Accuracy {acc:.4f} < target {acc_min:.4f} "
-            f"(missed by {acc - acc_min:+.4f})"
+            f"Accuracy {acc:.4f} < target {acc_min:.4f} (missed by {acc - acc_min:+.4f})"
         )
 
     if failures:
@@ -842,9 +857,7 @@ def predict_relax_gate(
     config = MLConfig()
     cutoff = date.fromisoformat(config.cutoff_date)
 
-    console.print(
-        "[bold]Loading data for v1 re-evaluation (D-11(P15.1) anchor)...[/bold]"
-    )
+    console.print("[bold]Loading data for v1 re-evaluation (D-11(P15.1) anchor)...[/bold]")
     session = SessionLocal()
     try:
         fight_records = load_fight_records(session)
@@ -858,13 +871,20 @@ def predict_relax_gate(
         session.close()
 
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff,
+        fighter_physicals,
+        fight_records,
+        cutoff,
     )
     assembler = FeatureMatrixAssembler(config)
     X, y, fight_dates = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
-        pre_ufc_records=pre_ufc, fight_odds=fight_odds,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
+        pre_ufc_records=pre_ufc,
+        fight_odds=fight_odds,
     )
     # No train_lower — Path B uses the EXISTING Phase 15 test fold (CRITICAL CONTEXT #2)
     _, X_test, _, y_test = split_temporal(X, y, fight_dates, cutoff)
@@ -923,13 +943,13 @@ def predict_relax_gate(
     )
     # (b) Typer Option brier_max
     new_text = new_text.replace(
-        "    brier_max: float = typer.Option(\n        0.21,\n        \"--brier-max\",\n        help=\"Hard upper bound for Brier score (D-07).\",\n    ),",
-        f"    brier_max: float = typer.Option(\n        {new_brier_max:.4f},\n        \"--brier-max\",\n        help=\"Hard upper bound for Brier score (Phase 15.1 D-04 supersedes D-07).\",\n    ),",
+        '    brier_max: float = typer.Option(\n        0.21,\n        "--brier-max",\n        help="Hard upper bound for Brier score (D-07).",\n    ),',
+        f'    brier_max: float = typer.Option(\n        {new_brier_max:.4f},\n        "--brier-max",\n        help="Hard upper bound for Brier score (Phase 15.1 D-04 supersedes D-07).",\n    ),',
     )
     # (c) Typer Option acc_min
     new_text = new_text.replace(
-        "    acc_min: float = typer.Option(\n        0.65,\n        \"--acc-min\",\n        help=\"Hard lower bound for accuracy (D-07).\",\n    ),",
-        f"    acc_min: float = typer.Option(\n        {new_acc_min:.4f},\n        \"--acc-min\",\n        help=\"Hard lower bound for accuracy (Phase 15.1 D-04 supersedes D-07).\",\n    ),",
+        '    acc_min: float = typer.Option(\n        0.65,\n        "--acc-min",\n        help="Hard lower bound for accuracy (D-07).",\n    ),',
+        f'    acc_min: float = typer.Option(\n        {new_acc_min:.4f},\n        "--acc-min",\n        help="Hard lower bound for accuracy (Phase 15.1 D-04 supersedes D-07).",\n    ),',
     )
     # (d) Docstring (Warning 6 fix) — must include literal new threshold values
     new_text = new_text.replace(
@@ -951,9 +971,7 @@ def predict_relax_gate(
     )
 
     # Step 7: Append derivation to RUN-LOG
-    runlog_path = Path(
-        ".planning/phases/15.1-odds-03-coverage-closure/15.1-RUN-LOG.md"
-    )
+    runlog_path = Path(".planning/phases/15.1-odds-03-coverage-closure/15.1-RUN-LOG.md")
     runlog = runlog_path.read_text(encoding="utf-8")
     ts = datetime.now().isoformat(timespec="seconds")
     addendum = (
@@ -971,7 +989,8 @@ def predict_relax_gate(
     runlog_path.write_text(
         runlog.replace(
             "### Task 4: Relaxed-gate derivation + operator confirmation (D-04(P15.1), D-10(P15.1))",
-            "### Task 4: Relaxed-gate derivation + operator confirmation (D-04(P15.1), D-10(P15.1))" + addendum,
+            "### Task 4: Relaxed-gate derivation + operator confirmation (D-04(P15.1), D-10(P15.1))"
+            + addendum,
         ),
         encoding="utf-8",
     )
@@ -1000,9 +1019,9 @@ def predict_train(
         None,
         "--train-lower",
         help="ISO date (YYYY-MM-DD) lower bound for train fold "
-             "(Phase 15.1 D-05/D-06/D-07). Overrides MLConfig.train_lower_bound_date "
-             "if provided. Fights before this date are DROPPED from train and "
-             "never appear in test.",
+        "(Phase 15.1 D-05/D-06/D-07). Overrides MLConfig.train_lower_bound_date "
+        "if provided. Fights before this date are DROPPED from train and "
+        "never appear in test.",
     ),
 ) -> None:
     """Train XGBoost model with Optuna hyperparameter tuning (D-11).
@@ -1019,8 +1038,7 @@ def predict_train(
     # Phase 15.1 D-05/D-06/D-07: --train-lower CLI flag overrides MLConfig field if set.
     effective_train_lower_str = train_lower or config.train_lower_bound_date
     train_lower_obj: date | None = (
-        date.fromisoformat(effective_train_lower_str)
-        if effective_train_lower_str else None
+        date.fromisoformat(effective_train_lower_str) if effective_train_lower_str else None
     )
     if train_lower_obj is not None:
         console.print(
@@ -1049,14 +1067,12 @@ def predict_train(
     # Phase 15 (Claude's discretion): training-set odds coverage check.
     # Bypass with --force.
     cutoff_date_obj = date.fromisoformat(config.cutoff_date)
-    fights_with_odds = {fid for (_fighter_id, fid) in fight_odds.keys()}
-    training_total = sum(
-        1 for f in fight_records if f["event_date"] < cutoff_date_obj
-    )
+    fights_with_odds = {fid for (_fighter_id, fid) in fight_odds}
+    training_total = sum(1 for f in fight_records if f["event_date"] < cutoff_date_obj)
     training_with_odds = sum(
-        1 for f in fight_records
-        if f["event_date"] < cutoff_date_obj
-        and f["fight_id"] in fights_with_odds
+        1
+        for f in fight_records
+        if f["event_date"] < cutoff_date_obj and f["fight_id"] in fights_with_odds
     )
     coverage = training_with_odds / max(training_total, 1)
     console.print(f"  Odds coverage on training set: {coverage:.1%}")
@@ -1071,15 +1087,21 @@ def predict_train(
     # Compute division medians using only training data
     cutoff = date.fromisoformat(config.cutoff_date)
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff,
+        fighter_physicals,
+        fight_records,
+        cutoff,
     )
 
     # Assemble feature matrix
     console.print("[bold]Assembling feature matrix...[/bold]")
     assembler = FeatureMatrixAssembler(config)
     X, y, fight_dates = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
     )
@@ -1089,14 +1111,10 @@ def predict_train(
     X_train, X_test, y_train, y_test = split_temporal(
         X, y, fight_dates, cutoff, train_lower=train_lower_obj
     )
-    console.print(
-        f"  Training: {len(X_train)} fights, Test: {len(X_test)} fights"
-    )
+    console.print(f"  Training: {len(X_train)} fights, Test: {len(X_test)} fights")
 
     # Train
-    console.print(
-        f"[bold]Training XGBoost with {trials} Optuna trials...[/bold]"
-    )
+    console.print(f"[bold]Training XGBoost with {trials} Optuna trials...[/bold]")
     trainer = ModelTrainer(config)
     calibrated_model, best_params, importances = trainer.train(X_train, y_train)
 
@@ -1156,13 +1174,19 @@ def predict_evaluate(
 
     cutoff = date.fromisoformat(config.cutoff_date)
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff,
+        fighter_physicals,
+        fight_records,
+        cutoff,
     )
 
     assembler = FeatureMatrixAssembler(config)
     X, y, fight_dates = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
     )
@@ -1205,10 +1229,8 @@ def predict_coverage(
     finally:
         session.close()
 
-    fights_with_odds = {fid for (_fighter_id, fid) in fight_odds.keys()}
-    by_year: dict[int, dict[str, int]] = defaultdict(
-        lambda: {"total": 0, "with_odds": 0}
-    )
+    fights_with_odds = {fid for (_fighter_id, fid) in fight_odds}
+    by_year: dict[int, dict[str, int]] = defaultdict(lambda: {"total": 0, "with_odds": 0})
     for fight in fight_records:
         year = fight["event_date"].year
         by_year[year]["total"] += 1
@@ -1258,16 +1280,14 @@ def predict_matchup(
     version: str = typer.Option("v2", help="Model version"),
     model_dir: str = typer.Option("models", help="Model directory"),
     no_use_meta: bool = typer.Option(
-        False, "--no-use-meta",
-        help="Disable meta-learner blender; return base XGBoost prob "
-             "(D-05(P19) kill switch).",
+        False,
+        "--no-use-meta",
+        help="Disable meta-learner blender; return base XGBoost prob (D-05(P19) kill switch).",
     ),
 ) -> None:
     """Predict fight outcome: ufc predict matchup 'Fighter A' vs 'Fighter B' (D-10)."""
     if vs.lower() != "vs":
-        console.print(
-            f"[red]Expected 'vs' between fighter names, got '{vs}'[/red]"
-        )
+        console.print(f"[red]Expected 'vs' between fighter names, got '{vs}'[/red]")
         raise typer.Exit(code=1)
 
     try:
@@ -1277,9 +1297,7 @@ def predict_matchup(
             meta_dir=None if no_use_meta else "models/meta",
         )
     except FileNotFoundError:
-        console.print(
-            "[red]No trained model found. Run 'ufc predict train' first.[/red]"
-        )
+        console.print("[red]No trained model found. Run 'ufc predict train' first.[/red]")
         raise typer.Exit(code=1) from None
 
     session = SessionLocal()
@@ -1387,15 +1405,8 @@ def _display_prediction(result: dict) -> None:
 def _extract_importances(model) -> dict[str, float]:
     """Extract feature importances from a calibrated model."""
     try:
-        base_estimator = (
-            model
-            .calibrated_classifiers_[0]
-            .estimator
-            .estimator
-        )
+        base_estimator = model.calibrated_classifiers_[0].estimator.estimator
         raw = base_estimator.feature_importances_
-        return dict(
-            zip(FEATURE_COLUMNS, [float(v) for v in raw], strict=True)
-        )
+        return dict(zip(FEATURE_COLUMNS, [float(v) for v in raw], strict=True))
     except (AttributeError, IndexError):
         return {col: 0.0 for col in FEATURE_COLUMNS}

@@ -10,6 +10,7 @@ Per CONTEXT D-TRUST-V24-03 + RESEARCH Pattern 1/2/3 + Pitfall 1/4:
 Revision M1 — Process isolation: run as a separate `uv run python` process from
 calibration_v24.py.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -29,7 +30,6 @@ from sklearn.model_selection import train_test_split
 
 from ufc_prediction.db.session import SessionLocal
 from ufc_prediction.ml.config import FEATURE_COLUMNS_NO_NET, FEATURE_COLUMNS_V22, MLConfig
-from ufc_prediction.ml.evaluator import PER_SLICE_KEYS
 from ufc_prediction.ml.feature_matrix import (
     FeatureMatrixAssembler,
     compute_division_medians,
@@ -67,8 +67,11 @@ def _sha256_file(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def _slice_masks(fight_dates: np.ndarray, today: date, random_seed: int = 42) -> dict[str, np.ndarray]:
+def _slice_masks(
+    fight_dates: np.ndarray, today: date, random_seed: int = 42
+) -> dict[str, np.ndarray]:
     from datetime import timedelta
+
     cutoff_12mo = today - timedelta(days=365)
     cutoff_24mo = today - timedelta(days=730)
     mask_12mo = np.array([d >= cutoff_12mo for d in fight_dates])
@@ -89,7 +92,7 @@ def main() -> int:
     meta_sha_anchor = META_SHA_START_PATH.read_text().strip()
     meta_sha = _sha256_file(MODELS_DIR / "meta" / "meta_v2.joblib")
     assert meta_sha == meta_sha_anchor, f"meta_v2 SHA drift: {meta_sha}"
-    assert sklearn.__version__ == "1.8.0", sklearn.__version__   # Pitfall 7 guard
+    assert sklearn.__version__ == "1.8.0", sklearn.__version__  # Pitfall 7 guard
     print(f"  xgb_v2 OK / meta_v2 OK / sklearn={sklearn.__version__} / shap={shap.__version__}")
 
     np.random.seed(42)
@@ -119,20 +122,32 @@ def main() -> int:
     cutoff_str: str = xgb_v2_meta["cutoff_date"]
     cutoff_date_obj: date = date.fromisoformat(cutoff_str)
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
     config = MLConfig(cutoff_date=cutoff_str)
     assembler = FeatureMatrixAssembler(config)
     X72, y, fight_dates_full = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
-        pre_ufc_records=pre_ufc, fight_odds=fight_odds,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
+        pre_ufc_records=pre_ufc,
+        fight_odds=fight_odds,
         feature_set="v2.1-no-net",
     )
     X_v22, _, _ = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
-        pre_ufc_records=pre_ufc, fight_odds=fight_odds,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
+        pre_ufc_records=pre_ufc,
+        fight_odds=fight_odds,
         feature_set="v2.2",
     )
     _, X72_test, _, y_test = split_temporal(X72, y, fight_dates_full, cutoff_date_obj)
@@ -152,14 +167,16 @@ def main() -> int:
     else:
         X72_sample = X72_test
         Xv22_sample = Xv22_test
-        y_sample = y_test
+        _y_sample = y_test
         n_actual = X72_test.shape[0]
     print(f"  SHAP stratified sample: target={n_target} actual={n_actual}")
 
     # ── xgb_v2 Tree SHAP ────────────────────────────────────────────────
     print("[importance] Computing Tree SHAP on xgb_v2 (raw output)...")
     explainer_xgb = shap.TreeExplainer(
-        inner_xgb, feature_perturbation="tree_path_dependent", model_output="raw",
+        inner_xgb,
+        feature_perturbation="tree_path_dependent",
+        model_output="raw",
     )
     shap_xgb = explainer_xgb.shap_values(X72_sample)
     if isinstance(shap_xgb, list):
@@ -168,7 +185,11 @@ def main() -> int:
     mean_abs_xgb = np.abs(shap_xgb).mean(axis=0)
     xgb_shap_top20 = sorted(
         [
-            {"rank": int(i + 1), "feature": FEATURE_COLUMNS_NO_NET[idx], "mean_abs_shap": float(mean_abs_xgb[idx])}
+            {
+                "rank": int(i + 1),
+                "feature": FEATURE_COLUMNS_NO_NET[idx],
+                "mean_abs_shap": float(mean_abs_xgb[idx]),
+            }
             for i, idx in enumerate(np.argsort(mean_abs_xgb)[::-1][:20])
         ],
         key=lambda r: r["rank"],
@@ -178,11 +199,15 @@ def main() -> int:
     xgb_rank_order = np.argsort(mean_abs_xgb)[::-1]
     xgb_cpd_rank = int(np.where(xgb_rank_order == cpd_idx)[0][0]) + 1
 
-    print(f"[importance] Plotting xgb_v2 SHAP summary...")
+    print("[importance] Plotting xgb_v2 SHAP summary...")
     plt.figure()
     shap.summary_plot(
-        shap_xgb, X72_sample, feature_names=FEATURE_COLUMNS_NO_NET,
-        plot_type="bar", max_display=15, show=False,
+        shap_xgb,
+        X72_sample,
+        feature_names=FEATURE_COLUMNS_NO_NET,
+        plot_type="bar",
+        max_display=15,
+        show=False,
     )
     plt.tight_layout()
     out_xgb_png = RESULTS_DIR / "feature_importance_v24_xgb_v2.png"
@@ -217,14 +242,18 @@ def main() -> int:
         # Write explanatory placeholder PNG so downstream tests find a non-empty PNG file
         plt.figure(figsize=(8, 4))
         plt.text(
-            0.5, 0.5,
+            0.5,
+            0.5,
             f"META-V22 Linear SHAP not computable.\n\n"
             f"Sample after NaN-drop on Level-1 features: {n_meta_shap}/{n_actual} rows.\n"
             f"Root cause: post-cutoff ufcstats-source fights have 99.5% NaN "
             f"`closing_prob_diff`\n(pre-existing data-coverage gap; see 34-03 SUMMARY).\n\n"
             f"xgb_v2 SHAP (which does not require BFO) IS available — see\n"
             f"feature_importance_v24_xgb_v2.png.",
-            ha="center", va="center", fontsize=10, wrap=True,
+            ha="center",
+            va="center",
+            fontsize=10,
+            wrap=True,
         )
         plt.axis("off")
         out_meta_png = RESULTS_DIR / "feature_importance_v24_meta_v22.png"
@@ -237,12 +266,13 @@ def main() -> int:
             META_V22_FEATURE_COLUMNS
         )
         explainer_meta = shap.LinearExplainer(
-            meta_v2.pipeline.named_steps["clf"], X_poly_scaled,
+            meta_v2.pipeline.named_steps["clf"],
+            X_poly_scaled,
             feature_perturbation="interventional",
         )
         shap_meta = explainer_meta.shap_values(X_poly_scaled)
         # Aggregate by base feature: sum |shap| across all expanded names containing base
-        mean_abs_meta = np.abs(shap_meta).mean(axis=0)   # shape (91,)
+        mean_abs_meta = np.abs(shap_meta).mean(axis=0)  # shape (91,)
         meta_aggregated: dict[str, float] = {}
         for base in META_V22_FEATURE_COLUMNS:
             # Match expanded names that include `base` as a token (' ' separator in poly names)
@@ -274,9 +304,12 @@ def main() -> int:
 
         plt.figure()
         shap.summary_plot(
-            agg_shap_matrix, level1_clean,
-            feature_names=META_V22_FEATURE_COLUMNS, plot_type="bar",
-            max_display=13, show=False,
+            agg_shap_matrix,
+            level1_clean,
+            feature_names=META_V22_FEATURE_COLUMNS,
+            plot_type="bar",
+            max_display=13,
+            show=False,
         )
         plt.tight_layout()
         out_meta_png = RESULTS_DIR / "feature_importance_v24_meta_v22.png"
@@ -294,14 +327,22 @@ def main() -> int:
     y_24mo = y_test[mask_24mo]
 
     perm_xgb = permutation_importance(
-        xgb_v2, X72_24mo, y_24mo, n_repeats=10, random_state=42,
-        scoring="neg_brier_score", n_jobs=-1,
+        xgb_v2,
+        X72_24mo,
+        y_24mo,
+        n_repeats=10,
+        random_state=42,
+        scoring="neg_brier_score",
+        n_jobs=-1,
     )
     perm_xgb_top20 = sorted(
         [
-            {"rank": int(i + 1), "feature": FEATURE_COLUMNS_NO_NET[idx],
-             "importance_mean": float(perm_xgb.importances_mean[idx]),
-             "importance_std": float(perm_xgb.importances_std[idx])}
+            {
+                "rank": int(i + 1),
+                "feature": FEATURE_COLUMNS_NO_NET[idx],
+                "importance_mean": float(perm_xgb.importances_mean[idx]),
+                "importance_std": float(perm_xgb.importances_std[idx]),
+            }
             for i, idx in enumerate(np.argsort(perm_xgb.importances_mean)[::-1][:20])
         ],
         key=lambda r: r["rank"],
@@ -312,25 +353,37 @@ def main() -> int:
     xgb_oof_24mo = xgb_v2.predict_proba(X72_24mo)[:, 1]
     elo_diff_24mo = Xv22_24mo[:, elo_diff_idx_v22]
     elo_prob_24mo = 1.0 / (1.0 + 10.0 ** (-elo_diff_24mo / 400.0))
-    level1_24mo = build_meta_features_v22(xgb_oof_prob=xgb_oof_24mo, elo_prob=elo_prob_24mo, X_v22=Xv22_24mo)
+    level1_24mo = build_meta_features_v22(
+        xgb_oof_prob=xgb_oof_24mo, elo_prob=elo_prob_24mo, X_v22=Xv22_24mo
+    )
     nan_mask_24 = np.isnan(level1_24mo).any(axis=1)
     level1_clean_24 = level1_24mo[~nan_mask_24]
     y_clean_24 = y_24mo[~nan_mask_24]
-    print(f"  META permutation sample post-NaN-drop: {level1_clean_24.shape[0]}/{X72_24mo.shape[0]}")
+    print(
+        f"  META permutation sample post-NaN-drop: {level1_clean_24.shape[0]}/{X72_24mo.shape[0]}"
+    )
 
     if level1_clean_24.shape[0] < 10:
         print("[importance] WARNING: meta permutation sample too small; skipping.")
         perm_meta_top13 = []
     else:
         perm_meta = permutation_importance(
-            meta_v2.pipeline, level1_clean_24, y_clean_24, n_repeats=10,
-            random_state=42, scoring="neg_brier_score", n_jobs=-1,
+            meta_v2.pipeline,
+            level1_clean_24,
+            y_clean_24,
+            n_repeats=10,
+            random_state=42,
+            scoring="neg_brier_score",
+            n_jobs=-1,
         )
         perm_meta_top13 = sorted(
             [
-                {"rank": int(i + 1), "feature": META_V22_FEATURE_COLUMNS[idx],
-                 "importance_mean": float(perm_meta.importances_mean[idx]),
-                 "importance_std": float(perm_meta.importances_std[idx])}
+                {
+                    "rank": int(i + 1),
+                    "feature": META_V22_FEATURE_COLUMNS[idx],
+                    "importance_mean": float(perm_meta.importances_mean[idx]),
+                    "importance_std": float(perm_meta.importances_std[idx]),
+                }
                 for i, idx in enumerate(np.argsort(perm_meta.importances_mean)[::-1])
             ],
             key=lambda r: r["rank"],
@@ -395,7 +448,10 @@ def _stratified_sample(X, y, n_target, random_state=42):
     test_size = n_target / n_total
     indices = np.arange(n_total)
     train_idx, sample_idx = train_test_split(
-        indices, test_size=test_size, stratify=y, random_state=random_state,
+        indices,
+        test_size=test_size,
+        stratify=y,
+        random_state=random_state,
     )
     return X[train_idx], X[sample_idx], y[train_idx], y[sample_idx], sample_idx
 

@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
 import pytest
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RESULTS_DIR = PROJECT_ROOT / "results"
@@ -31,10 +29,18 @@ def doc() -> dict:
 
 def test_json_top_level_keys_present(doc: dict) -> None:
     for k in [
-        "created_at", "xgb_v2_sha256", "meta_v2_sha256",
-        "shap_sample_target", "shap_sample_n_actual", "shap_sample_strategy",
-        "perm_slice", "perm_n_repeats", "perm_scoring",
-        "xgb_v2", "meta_v22", "closing_prob_diff_claim_verdict",
+        "created_at",
+        "xgb_v2_sha256",
+        "meta_v2_sha256",
+        "shap_sample_target",
+        "shap_sample_n_actual",
+        "shap_sample_strategy",
+        "perm_slice",
+        "perm_n_repeats",
+        "perm_scoring",
+        "xgb_v2",
+        "meta_v22",
+        "closing_prob_diff_claim_verdict",
     ]:
         assert k in doc, f"missing top-level key: {k}"
 

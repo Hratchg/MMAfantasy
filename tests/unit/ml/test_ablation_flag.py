@@ -10,6 +10,7 @@ These tests RED on import (Wave 0) — `FEATURE_COLUMNS_NO_NET` and
 `get_feature_columns` do not exist in `config.py` yet. Goes GREEN at
 Wave 1 Task 9.
 """
+
 from ufc_prediction.ml.config import (
     FEATURE_COLUMNS,
     FEATURE_COLUMNS_NO_NET,
@@ -23,7 +24,7 @@ def test_feature_columns_no_net_is_72_cols():
 
 
 def test_feature_columns_no_net_drops_trailing_3_net():
-    assert FEATURE_COLUMNS_NO_NET == FEATURE_COLUMNS[:-3]
+    assert FEATURE_COLUMNS[:-3] == FEATURE_COLUMNS_NO_NET
     assert "pagerank_diff" not in FEATURE_COLUMNS_NO_NET
     assert "sos_2hop_diff" not in FEATURE_COLUMNS_NO_NET
     assert "is_debutant_in_graph_diff" not in FEATURE_COLUMNS_NO_NET

@@ -197,9 +197,7 @@ class TestComputeDivisionMedians:
         # Both fighter 1 and 2 have complete data for Lightweight
         assert medians["Lightweight"]["height_inches"] is not None
 
-    def test_does_not_overwrite_existing_values(
-        self, fighter_physicals: dict
-    ) -> None:
+    def test_does_not_overwrite_existing_values(self, fighter_physicals: dict) -> None:
         """Imputation must NOT overwrite non-None values -- this is tested via the assembler."""
         # Fighter 1 has height 72.0; imputation should not change it
         assert fighter_physicals[1]["height_inches"] == 72.0
@@ -256,8 +254,12 @@ class TestQueryReturnTypes:
 
     def test_fight_records_have_required_keys(self, fight_records: list) -> None:
         required_keys = {
-            "fight_id", "event_date", "fighter_a_id",
-            "fighter_b_id", "winner_id", "weight_class",
+            "fight_id",
+            "event_date",
+            "fighter_a_id",
+            "fighter_b_id",
+            "winner_id",
+            "weight_class",
         }
         for record in fight_records:
             assert required_keys.issubset(record.keys())
@@ -280,8 +282,11 @@ class TestFeatureMatrixAssembler:
 
         assembler = FeatureMatrixAssembler()
         X, y, fight_dates = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
         assert X.shape == (5, 72)
@@ -302,8 +307,11 @@ class TestFeatureMatrixAssembler:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
         # Verify by checking known values at known positions
@@ -325,8 +333,11 @@ class TestFeatureMatrixAssembler:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
         # Fight 101: A=1, B=2
@@ -354,8 +365,11 @@ class TestFeatureMatrixAssembler:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
         # Fight 101: A=1 (base: sig_str=4.5), B=2 (alt: sig_str=3.5)
@@ -377,8 +391,11 @@ class TestFeatureMatrixAssembler:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
         # Fight 101: A=1 (height 72), B=2 (height 70)
@@ -415,8 +432,11 @@ class TestFeatureMatrixAssembler:
         ]
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_recs, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_recs,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
         # Fighter 3: height=None -> imputed to 72.0 (Welterweight median)
@@ -445,8 +465,11 @@ class TestFeatureMatrixAssembler:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
         idx = FEATURE_COLUMNS.index("stance_matchup")
@@ -470,8 +493,11 @@ class TestFeatureMatrixAssembler:
 
         assembler = FeatureMatrixAssembler()
         _, y, _ = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
         # Fight 101: winner_id=1, fighter_a_id=1 -> y=1
@@ -498,8 +524,11 @@ class TestFeatureMatrixAssembler:
 
         assembler = FeatureMatrixAssembler()
         _, _, fight_dates = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
         for i in range(1, len(fight_dates)):
@@ -530,8 +559,11 @@ class TestFeatureMatrixAssembler:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_recs, empty_elo, computed_features,
-            fighter_physicals, division_medians,
+            fight_recs,
+            empty_elo,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
         # Both default to 1500, so diff = 0
@@ -563,8 +595,11 @@ class TestFeatureMatrixAssembler:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_recs, elo_features, empty_feats,
-            fighter_physicals, division_medians,
+            fight_recs,
+            elo_features,
+            empty_feats,
+            fighter_physicals,
+            division_medians,
         )
 
         idx = FEATURE_COLUMNS.index("sig_str_per_minute_diff")
@@ -593,8 +628,11 @@ class TestFeatureMatrixAssembler:
         ]
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_recs, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_recs,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
         # Fighter 1: DOB 1990-01-01, fight date 2020-01-15 -> age ~30.04
@@ -623,13 +661,14 @@ class TestSplitTemporal:
 
         assembler = FeatureMatrixAssembler()
         X, y, fight_dates = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
-        X_train, X_test, y_train, y_test = split_temporal(
-            X, y, fight_dates, date(2023, 1, 1)
-        )
+        X_train, X_test, y_train, y_test = split_temporal(X, y, fight_dates, date(2023, 1, 1))
 
         # Fights 101, 102, 103 are pre-2023 (train)
         assert X_train.shape[0] == 3
@@ -651,8 +690,11 @@ class TestSplitTemporal:
 
         assembler = FeatureMatrixAssembler()
         X, y, fight_dates = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
         X_train, X_test, _, _ = split_temporal(X, y, fight_dates, date(2023, 1, 1))
@@ -684,8 +726,11 @@ class TestEloAsInput:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
         )
 
         # Verify Elo features are present as columns (3 Elo diff columns)
@@ -805,9 +850,7 @@ class TestFeatureColumnsV22:
             get_feature_columns,
         )
 
-        assert get_feature_columns(feature_set="v2.1-no-net") == list(
-            FEATURE_COLUMNS_NO_NET
-        )
+        assert get_feature_columns(feature_set="v2.1-no-net") == list(FEATURE_COLUMNS_NO_NET)
 
     def test_get_feature_columns_dispatch_v10(self) -> None:
         """Test 17: feature_set='v1.0' returns full FEATURE_COLUMNS list."""
@@ -819,9 +862,7 @@ class TestFeatureColumnsV22:
         """Test 18: include_net=True back-compat shim → v1.0."""
         from ufc_prediction.ml.config import get_feature_columns
 
-        assert get_feature_columns(include_net=True) == get_feature_columns(
-            feature_set="v1.0"
-        )
+        assert get_feature_columns(include_net=True) == get_feature_columns(feature_set="v1.0")
 
     def test_get_feature_columns_include_net_backcompat_false(self) -> None:
         """Test 19: include_net=False back-compat shim → v2.1-no-net."""
@@ -868,11 +909,11 @@ def v22_fight_records(fight_records: list) -> list[dict]:
     have non-trivial values.
     """
     method_map = {
-        101: ("KO/TKO", 1),                      # finish, ref=1
-        102: ("Decision - Unanimous", 2),         # decision, ref=2
-        103: ("Submission", 1),                   # finish, ref=1
-        104: ("Decision - Split", 2),             # decision, ref=2
-        105: ("Decision - Unanimous", 1),         # decision, ref=1
+        101: ("KO/TKO", 1),  # finish, ref=1
+        102: ("Decision - Unanimous", 2),  # decision, ref=2
+        103: ("Submission", 1),  # finish, ref=1
+        104: ("Decision - Split", 2),  # decision, ref=2
+        105: ("Decision - Unanimous", 1),  # decision, ref=1
     }
     out: list[dict] = []
     for fight in fight_records:
@@ -910,8 +951,11 @@ class TestV22Dispatch:
 
         assembler = FeatureMatrixAssembler()
         X, y, fight_dates = assembler.assemble(
-            v22_fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            v22_fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             feature_set="v2.2",
         )
 
@@ -933,8 +977,11 @@ class TestV22Dispatch:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            v22_fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            v22_fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             feature_set="v2.1-no-net",
         )
 
@@ -953,8 +1000,11 @@ class TestV22Dispatch:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            v22_fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            v22_fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             include_net=False,
         )
 
@@ -990,13 +1040,19 @@ class TestV22Dispatch:
         event_refs, ref_history = _build_referee_lookup(sorted_records)
 
         expected_first = compute_ref_rates_shrunk(
-            event_refs.get(101), date(2020, 1, 15), ref_history, global_rates,
+            event_refs.get(101),
+            date(2020, 1, 15),
+            ref_history,
+            global_rates,
         )
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            v22_fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            v22_fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             feature_set="v2.2",
         )
 
@@ -1020,16 +1076,17 @@ class TestV22Dispatch:
         )
 
         # Strip referee_id from ALL fights → every row falls back to globals.
-        no_ref_records = [
-            {**f, "referee_id": None} for f in v22_fight_records
-        ]
+        no_ref_records = [{**f, "referee_id": None} for f in v22_fight_records]
         sorted_records = sorted(no_ref_records, key=lambda f: f["event_date"])
         global_rates = _compute_ref_global_rates(sorted_records)
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            no_ref_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            no_ref_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             feature_set="v2.2",
         )
 
@@ -1077,7 +1134,10 @@ class TestV22Dispatch:
 
         # Sanity: compute_ref_rates_shrunk agrees with our manual calc.
         helper_out = compute_ref_rates_shrunk(
-            1, date(2022, 11, 5), ref_history, global_rates,
+            1,
+            date(2022, 11, 5),
+            ref_history,
+            global_rates,
         )
         assert helper_out["ref_finish_rate_shrunk"] == pytest.approx(exp_finish)
         assert helper_out["ref_decision_rate_shrunk"] == pytest.approx(exp_decision)
@@ -1086,15 +1146,16 @@ class TestV22Dispatch:
         # Now run the assembler and check fight 103's row matches.
         assembler = FeatureMatrixAssembler()
         X, _, fight_dates = assembler.assemble(
-            v22_fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            v22_fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             feature_set="v2.2",
         )
 
         # Find the index of fight 103 in v22_fight_records.
-        idx_103 = next(
-            i for i, f in enumerate(v22_fight_records) if f["fight_id"] == 103
-        )
+        idx_103 = next(i for i, f in enumerate(v22_fight_records) if f["fight_id"] == 103)
         assert X[idx_103, 72] == pytest.approx(exp_finish)
         assert X[idx_103, 73] == pytest.approx(exp_decision)
         assert X[idx_103, 74] == pytest.approx(exp_no_action)
@@ -1124,8 +1185,11 @@ class TestV22Dispatch:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            v22_fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            v22_fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             feature_set="v2.2",
         )
 
@@ -1164,7 +1228,7 @@ class TestV22Dispatch:
         from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
         from ufc_prediction.ml.feature_matrix import _EXPECTED_V22_NCOLS
 
-        assert _EXPECTED_V22_NCOLS == len(FEATURE_COLUMNS_V22)
+        assert len(FEATURE_COLUMNS_V22) == _EXPECTED_V22_NCOLS
         assert _EXPECTED_V22_NCOLS == 90
 
 
@@ -1234,8 +1298,11 @@ class TestV22Travel:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            v22_travel_fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            v22_travel_fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             feature_set="v2.2",
         )
 
@@ -1264,16 +1331,16 @@ class TestV22Travel:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            v22_travel_fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            v22_travel_fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             feature_set="v2.2",
         )
 
         # Find the row corresponding to fight 101 (chronologically first).
-        idx_101 = next(
-            i for i, f in enumerate(v22_travel_fight_records)
-            if f["fight_id"] == 101
-        )
+        idx_101 = next(i for i, f in enumerate(v22_travel_fight_records) if f["fight_id"] == 101)
         # red + blue travel_distance + diff + tz_shift_red + tz_shift_blue
         # + tz_shift_diff — all 0 because both fighters are debutants.
         assert X[idx_101, 75] == 0.0, "travel_distance_miles_red debut"
@@ -1297,8 +1364,11 @@ class TestV22Travel:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            v22_travel_fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            v22_travel_fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             feature_set="v2.2",
         )
 
@@ -1332,28 +1402,23 @@ class TestV22Travel:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            v22_travel_fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            v22_travel_fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             feature_set="v2.2",
         )
 
-        idx_103 = next(
-            i for i, f in enumerate(v22_travel_fight_records)
-            if f["fight_id"] == 103
-        )
+        idx_103 = next(i for i, f in enumerate(v22_travel_fight_records) if f["fight_id"] == 103)
         red_dist = X[idx_103, 75]
         blue_dist = X[idx_103, 76]
         # One side ≈ 2451 mi (NYC→LA for fighter 1); other side = 0 (debut
         # fighter 5). Order depends on deterministic A/B swap.
-        traveler = (
-            red_dist if abs(red_dist - 2451) < 15 else blue_dist
-        )
-        debut = (
-            blue_dist if abs(red_dist - 2451) < 15 else red_dist
-        )
+        traveler = red_dist if abs(red_dist - 2451) < 15 else blue_dist
+        debut = blue_dist if abs(red_dist - 2451) < 15 else red_dist
         assert abs(traveler - 2451) < 15, (
-            f"Expected NYC→LA ≈ 2451 mi for fighter 1; "
-            f"got red={red_dist}, blue={blue_dist}"
+            f"Expected NYC→LA ≈ 2451 mi for fighter 1; got red={red_dist}, blue={blue_dist}"
         )
         assert debut == 0.0, (
             f"Expected 0 sentinel for debut fighter 5 at fight 103; "
@@ -1378,7 +1443,8 @@ class TestV22Travel:
         )
 
         sorted_records = sorted(
-            v22_travel_fight_records, key=lambda f: f["event_date"],
+            v22_travel_fight_records,
+            key=lambda f: f["event_date"],
         )
         reversed_records = list(reversed(sorted_records))
 
@@ -1390,7 +1456,8 @@ class TestV22Travel:
         # Demonstrate that the caller-sorted reversed input (after re-sort)
         # produces identical results.
         re_sorted = sorted(
-            reversed_records, key=lambda f: f["event_date"],
+            reversed_records,
+            key=lambda f: f["event_date"],
         )
         ev_venues_r = _build_event_venue_lookup(re_sorted)
         prior_r = _build_fighter_prior_venues(re_sorted, ev_venues_r)
@@ -1406,8 +1473,10 @@ class TestV22Travel:
         # The assembler's v2.2 pre-pass calls these helpers ONLY after the
         # `sorted(fight_records, key=...)` line — verify that line exists
         # in the source as a static contract.
-        import ufc_prediction.ml.feature_matrix as fm_module
         import inspect
+
+        import ufc_prediction.ml.feature_matrix as fm_module
+
         src = inspect.getsource(fm_module.FeatureMatrixAssembler.assemble)
         assert "sorted(" in src and "event_date" in src, (
             "v2.2 pre-pass MUST defensively sort by event_date before "
@@ -1442,15 +1511,15 @@ class TestV22Travel:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             feature_set="v2.2",
         )
 
-        idx_102 = next(
-            i for i, f in enumerate(records) if f["fight_id"] == 102
-        )
+        idx_102 = next(i for i, f in enumerate(records) if f["fight_id"] == 102)
         assert np.all(np.isnan(X[idx_102, 75:81])), (
-            "Stripped venue → TRAVEL cols must be NaN (Pattern D), "
-            "not sentinel 0."
+            "Stripped venue → TRAVEL cols must be NaN (Pattern D), not sentinel 0."
         )

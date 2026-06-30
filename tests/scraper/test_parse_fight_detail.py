@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import re
 
-import pytest
-
-from ufc_prediction.scraper.parse_fight_detail import parse_fight_detail
 from ufc_prediction.scraper.models import FightDetailPage, RoundStatsRaw, SigStrikesRaw
-
+from ufc_prediction.scraper.parse_fight_detail import parse_fight_detail
 
 # -- 1-round KO/TKO fixture tests -------------------------------------------
 

@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Module-level constant assertions (no CLI invocation needed)
 # ---------------------------------------------------------------------------
@@ -30,8 +29,7 @@ def test_cli_formula_hash_constant_matches_d18():
     from ufc_prediction.cli.predict import EXPECTED_FORMULA_HASH
 
     assert (
-        EXPECTED_FORMULA_HASH
-        == "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
+        EXPECTED_FORMULA_HASH == "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
     )
 
 
@@ -39,10 +37,7 @@ def test_cli_xgb_v2_sha_constant_matches_audit_01_baseline():
     """predict.EXPECTED_XGB_V2_SHA equals the AUDIT-01 baseline SHA."""
     from ufc_prediction.cli.predict import EXPECTED_XGB_V2_SHA
 
-    assert (
-        EXPECTED_XGB_V2_SHA
-        == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-    )
+    assert EXPECTED_XGB_V2_SHA == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 
 
 def test_cli_operator_floor_constant_is_path_a_0_70():
@@ -92,14 +87,23 @@ def _patch_spike_environment(
     from ufc_prediction.cli import predict as pred_mod
 
     monkeypatch.setattr(
-        pred_mod, "_spike_main", fake_spike_main, raising=False,
+        pred_mod,
+        "_spike_main",
+        fake_spike_main,
+        raising=False,
     )
     monkeypatch.setattr(
-        pred_mod, "_assert_xgb_v2_sha", fake_assert_xgb_v2_sha, raising=False,
+        pred_mod,
+        "_assert_xgb_v2_sha",
+        fake_assert_xgb_v2_sha,
+        raising=False,
     )
     if isolated_phase_dir is not None:
         monkeypatch.setattr(
-            pred_mod, "PHASE_31_DIR", isolated_phase_dir, raising=False,
+            pred_mod,
+            "PHASE_31_DIR",
+            isolated_phase_dir,
+            raising=False,
         )
 
     # Stub the variance + contract emission so we don't need DB / live state.
@@ -109,25 +113,34 @@ def _patch_spike_environment(
         lambda seed_list, bootstrap=True: (
             {
                 "most_recent_12mo": {
-                    "seed_std_brier": 0.003, "seed_std_acc": 0.005,
+                    "seed_std_brier": 0.003,
+                    "seed_std_acc": 0.005,
                     "bootstrap_ci_half_brier": 0.004,
                     "bootstrap_ci_half_acc": 0.006,
-                    "std_brier_used": 0.004, "std_acc_used": 0.006,
-                    "median_brier": 0.18, "median_acc": 0.75,
+                    "std_brier_used": 0.004,
+                    "std_acc_used": 0.006,
+                    "median_brier": 0.18,
+                    "median_acc": 0.75,
                 },
                 "most_recent_24mo": {
-                    "seed_std_brier": 0.003, "seed_std_acc": 0.005,
+                    "seed_std_brier": 0.003,
+                    "seed_std_acc": 0.005,
                     "bootstrap_ci_half_brier": 0.004,
                     "bootstrap_ci_half_acc": 0.006,
-                    "std_brier_used": 0.004, "std_acc_used": 0.006,
-                    "median_brier": 0.19, "median_acc": 0.74,
+                    "std_brier_used": 0.004,
+                    "std_acc_used": 0.006,
+                    "median_brier": 0.19,
+                    "median_acc": 0.74,
                 },
                 "random_15pct": {
-                    "seed_std_brier": 0.003, "seed_std_acc": 0.005,
+                    "seed_std_brier": 0.003,
+                    "seed_std_acc": 0.005,
                     "bootstrap_ci_half_brier": 0.004,
                     "bootstrap_ci_half_acc": 0.006,
-                    "std_brier_used": 0.004, "std_acc_used": 0.006,
-                    "median_brier": 0.17, "median_acc": 0.76,
+                    "std_brier_used": 0.004,
+                    "std_acc_used": 0.006,
+                    "median_brier": 0.17,
+                    "median_acc": 0.76,
                 },
             },
             [],
@@ -135,7 +148,10 @@ def _patch_spike_environment(
         raising=False,
     )
     monkeypatch.setattr(
-        pred_mod, "_emit_v23_contract", lambda *a, **kw: None, raising=False,
+        pred_mod,
+        "_emit_v23_contract",
+        lambda *a, **kw: None,
+        raising=False,
     )
     monkeypatch.setattr(
         pred_mod,
@@ -163,9 +179,18 @@ def test_cli_flag_translation_seeds_10(monkeypatch, tmp_path):
     argv = captured[0]
     assert "--seeds" in argv
     seeds_idx = argv.index("--seeds")
-    seed_strings = argv[seeds_idx + 1: seeds_idx + 11]
+    seed_strings = argv[seeds_idx + 1 : seeds_idx + 11]
     assert seed_strings == [
-        "42", "43", "44", "45", "46", "47", "48", "49", "50", "51",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "49",
+        "50",
+        "51",
     ]
 
 
@@ -183,7 +208,7 @@ def test_cli_flag_translation_seeds_3(monkeypatch, tmp_path):
 
     argv = captured[0]
     seeds_idx = argv.index("--seeds")
-    seed_strings = argv[seeds_idx + 1: seeds_idx + 4]
+    seed_strings = argv[seeds_idx + 1 : seeds_idx + 4]
     assert seed_strings == ["42", "43", "44"]
 
 
@@ -234,9 +259,7 @@ def test_cli_artifact_paths_route_to_phase_31(monkeypatch, tmp_path):
 
     assert "--sha-end-path" in argv
     sha_idx = argv.index("--sha-end-path")
-    assert argv[sha_idx + 1].endswith(
-        "31-XGB-V2-SHA-PHASE-31-END-SPIKE.txt"
-    )
+    assert argv[sha_idx + 1].endswith("31-XGB-V2-SHA-PHASE-31-END-SPIKE.txt")
 
 
 # ---------------------------------------------------------------------------
@@ -265,7 +288,8 @@ def test_cli_d24_precondition_fails_without_row(monkeypatch, tmp_path):
 
 
 def test_cli_d24_precondition_rejects_bare_substring_false_positive(
-    monkeypatch, tmp_path,
+    monkeypatch,
+    tmp_path,
 ):
     """WR-06: a bare 'D-24(v2.3, GATE)' substring in narrative or a commented-
     out line must NOT satisfy the precondition. The check requires the
@@ -304,6 +328,7 @@ def test_cli_helpers_exist():
         _emit_v23_contract,
         _render_31_halt_and_decide,
     )
+
     # If imports succeed, helpers are registered.
     assert callable(_apply_operator_floor_and_detect_breach)
     assert callable(_build_per_slice_thresholds_v23)

@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
-from tests.features.conftest import make_fighter_round_stats, make_round_stats
+from tests.features.conftest import make_fighter_round_stats
 from ufc_prediction.features.rates import (
     compute_rate_features,
     estimate_fight_duration_seconds,
@@ -100,7 +98,9 @@ class TestComputeRateFeatures:
     def test_td_accuracy_none_when_zero_attempted(self) -> None:
         """td_accuracy returns None when takedowns_attempted == 0."""
         fighter_stats = make_fighter_round_stats(
-            1, 100, rounds=3,
+            1,
+            100,
+            rounds=3,
             overrides={"takedowns_landed": 0, "takedowns_attempted": 0},
         )
         opponent_stats = make_fighter_round_stats(2, 100, rounds=3)
@@ -112,7 +112,9 @@ class TestComputeRateFeatures:
         """td_defense returns None when opponent_takedowns_attempted == 0."""
         fighter_stats = make_fighter_round_stats(1, 100, rounds=3)
         opponent_stats = make_fighter_round_stats(
-            2, 100, rounds=3,
+            2,
+            100,
+            rounds=3,
             overrides={"takedowns_attempted": 0, "takedowns_landed": 0},
         )
         result = compute_rate_features(fighter_stats, opponent_stats, 900)
@@ -123,7 +125,9 @@ class TestComputeRateFeatures:
         """strike_defense = 1.0 - (opp_sig_str_landed / opp_sig_str_attempted)."""
         fighter_stats = make_fighter_round_stats(1, 100, rounds=1)
         opponent_stats = make_fighter_round_stats(
-            2, 100, rounds=1,
+            2,
+            100,
+            rounds=1,
             overrides={"sig_strikes_landed": 3, "sig_strikes_attempted": 10},
         )
         result = compute_rate_features(fighter_stats, opponent_stats, 300)
@@ -134,7 +138,9 @@ class TestComputeRateFeatures:
     def test_total_str_per_minute_from_positional(self) -> None:
         """total_str_per_minute derived from head+body+leg (not a separate column)."""
         fighter_stats = make_fighter_round_stats(
-            1, 100, rounds=1,
+            1,
+            100,
+            rounds=1,
             overrides={
                 "head_strikes_landed": 10,
                 "body_strikes_landed": 5,
@@ -151,7 +157,9 @@ class TestComputeRateFeatures:
     def test_sig_str_per_minute_computation(self) -> None:
         """sig_str_per_minute = sig_strikes_landed / fight_minutes."""
         fighter_stats = make_fighter_round_stats(
-            1, 100, rounds=1,
+            1,
+            100,
+            rounds=1,
             overrides={"sig_strikes_landed": 15},
         )
         opponent_stats = make_fighter_round_stats(2, 100, rounds=1)

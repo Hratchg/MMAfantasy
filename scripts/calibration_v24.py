@@ -7,6 +7,7 @@ Per CONTEXT D-TRUST-V24-04 + RESEARCH Pattern 4/5/6 + Pitfall 5 + revision M4 Op
 Revision M1 — Process isolation: run as a separate `uv run python` process from
 feature_importance_v24.py.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -41,7 +42,6 @@ from ufc_prediction.ml.queries import (
     load_round_stats_for_ml,
 )
 
-
 EXPECTED_XGB_V2_SHA256 = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MODELS_DIR = PROJECT_ROOT / "models"
@@ -62,8 +62,11 @@ def _sha256_file(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def _slice_masks(fight_dates: np.ndarray, today: date, random_seed: int = 42) -> dict[str, np.ndarray]:
+def _slice_masks(
+    fight_dates: np.ndarray, today: date, random_seed: int = 42
+) -> dict[str, np.ndarray]:
     from datetime import timedelta
+
     cutoff_12mo = today - timedelta(days=365)
     cutoff_24mo = today - timedelta(days=730)
     mask_12mo = np.array([d >= cutoff_12mo for d in fight_dates])
@@ -78,8 +81,12 @@ def _slice_masks(fight_dates: np.ndarray, today: date, random_seed: int = 42) ->
 
 
 def _bootstrap_ci_per_bin(
-    y_true: np.ndarray, y_prob: np.ndarray, n_bootstrap: int = 1000,
-    n_bins: int = 10, min_n_for_ci: int = 10, seed: int = 42,
+    y_true: np.ndarray,
+    y_prob: np.ndarray,
+    n_bootstrap: int = 1000,
+    n_bins: int = 10,
+    min_n_for_ci: int = 10,
+    seed: int = 42,
 ):
     """Returns (ci_lo[10], ci_hi[10], bin_n[10]). NaN where bin has < min_n_for_ci."""
     rng = np.random.default_rng(seed)
@@ -107,8 +114,14 @@ def _bootstrap_ci_per_bin(
 
 
 def _plot_reliability(
-    slice_name: str, y_true: np.ndarray, y_prob: np.ndarray, ece: float,
-    ci_lo: np.ndarray, ci_hi: np.ndarray, bin_n: np.ndarray, out_path: Path,
+    slice_name: str,
+    y_true: np.ndarray,
+    y_prob: np.ndarray,
+    ece: float,
+    ci_lo: np.ndarray,
+    ci_hi: np.ndarray,
+    bin_n: np.ndarray,
+    out_path: Path,
     min_n_for_ci: int = 10,
 ) -> None:
     n_bins = len(bin_n)
@@ -127,16 +140,27 @@ def _plot_reliability(
     for b in range(n_bins):
         if bin_n[b] >= min_n_for_ci and not np.isnan(ci_lo[b]):
             ax.vlines(
-                bin_centers[b], ci_lo[b], ci_hi[b],
-                color="C0", alpha=0.4, linewidth=2,
+                bin_centers[b],
+                ci_lo[b],
+                ci_hi[b],
+                color="C0",
+                alpha=0.4,
+                linewidth=2,
             )
         elif bin_n[b] > 0:
             ax.scatter(
-                [bin_centers[b]], [0.05], marker="x", color="red", s=50,
+                [bin_centers[b]],
+                [0.05],
+                marker="x",
+                color="red",
+                s=50,
             )
             ax.annotate(
-                f"n={bin_n[b]}", (bin_centers[b], 0.05), fontsize=7,
-                xytext=(2, 6), textcoords="offset points",
+                f"n={bin_n[b]}",
+                (bin_centers[b], 0.05),
+                fontsize=7,
+                xytext=(2, 6),
+                textcoords="offset points",
             )
 
     ax.set_xlabel("Mean predicted probability (bin)")
@@ -176,7 +200,7 @@ def main() -> int:
     meta_sha_anchor = META_SHA_START_PATH.read_text().strip()
     meta_sha = _sha256_file(MODELS_DIR / "meta" / "meta_v2.joblib")
     assert meta_sha == meta_sha_anchor, f"meta_v2 SHA drift: {meta_sha}"
-    assert sklearn.__version__ == "1.8.0", sklearn.__version__   # Pitfall 7 guard
+    assert sklearn.__version__ == "1.8.0", sklearn.__version__  # Pitfall 7 guard
     print("  SHAs OK")
 
     # ── Revision M4 Option B: hardcoded Phase 32 CALIB path with stop semantics ────
@@ -217,20 +241,32 @@ def main() -> int:
     cutoff_str: str = xgb_v2_meta["cutoff_date"]
     cutoff_date_obj: date = date.fromisoformat(cutoff_str)
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
     config = MLConfig(cutoff_date=cutoff_str)
     assembler = FeatureMatrixAssembler(config)
     X72, y, fight_dates_full = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
-        pre_ufc_records=pre_ufc, fight_odds=fight_odds,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
+        pre_ufc_records=pre_ufc,
+        fight_odds=fight_odds,
         feature_set="v2.1-no-net",
     )
     X_v22, _, _ = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
-        pre_ufc_records=pre_ufc, fight_odds=fight_odds,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
+        pre_ufc_records=pre_ufc,
+        fight_odds=fight_odds,
         feature_set="v2.2",
     )
     X72_train, X72_test, y_train, y_test = split_temporal(X72, y, fight_dates_full, cutoff_date_obj)
@@ -243,14 +279,14 @@ def main() -> int:
     print("[calibration] Computing meta_v22 probs on test + train...")
     elo_idx_v22 = FEATURE_COLUMNS_V22.index("elo_overall_diff")
 
-    def _compute_meta_probs(X72_in: np.ndarray, Xv22_in: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def _compute_meta_probs(
+        X72_in: np.ndarray, Xv22_in: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Returns (proba_full_len_NaN_aware, valid_mask)."""
         xgb_oof = xgb_v2.predict_proba(X72_in)[:, 1]
         elo_diff = Xv22_in[:, elo_idx_v22]
         elo_prob = 1.0 / (1.0 + 10.0 ** (-elo_diff / 400.0))
-        level1 = build_meta_features_v22(
-            xgb_oof_prob=xgb_oof, elo_prob=elo_prob, X_v22=Xv22_in
-        )
+        level1 = build_meta_features_v22(xgb_oof_prob=xgb_oof, elo_prob=elo_prob, X_v22=Xv22_in)
         nan_mask = np.isnan(level1).any(axis=1)
         proba = np.full(len(X72_in), np.nan)
         if (~nan_mask).sum() > 0:
@@ -263,6 +299,7 @@ def main() -> int:
     # ── Fit Platt fresh on the same training set ──────────────────────
     print("[calibration] Fitting Platt (sigmoid 2-param) on training meta_v22 probs...")
     from sklearn.linear_model import LogisticRegression
+
     proba_train_valid = proba_train[valid_train]
     y_train_valid = y_train[valid_train]
     print(f"  Platt fit input: {len(y_train_valid)} rows after NaN-drop")
@@ -310,17 +347,24 @@ def main() -> int:
                 "note": f"n_after_nan_drop={n} too small for calibration analysis",
             }
             # Still emit a placeholder PNG
-            short = {"most_recent_12mo": "12mo", "most_recent_24mo": "24mo",
-                     "random_15pct": "random_15pct"}[sl]
+            short = {
+                "most_recent_12mo": "12mo",
+                "most_recent_24mo": "24mo",
+                "random_15pct": "random_15pct",
+            }[sl]
             out_path = RESULTS_DIR / f"calibration_v24_{short}.png"
             plt.figure(figsize=(8, 4))
             plt.text(
-                0.5, 0.5,
+                0.5,
+                0.5,
                 f"Calibration not computable for slice {sl}.\n\n"
                 f"Sample after NaN-drop on Level-1 features: {n} rows.\n"
                 f"Root cause: post-cutoff ufcstats-source fights have 99.5% NaN "
                 f"closing_prob_diff\n(see 34-03 SUMMARY).",
-                ha="center", va="center", fontsize=10, wrap=True,
+                ha="center",
+                va="center",
+                fontsize=10,
+                wrap=True,
             )
             plt.axis("off")
             plt.savefig(out_path, dpi=120, bbox_inches="tight")
@@ -332,7 +376,11 @@ def main() -> int:
         ece = _ece_uniform_10bin(y_sl, p_sl)
         # bootstrap CI per bin
         ci_lo, ci_hi, bin_n = _bootstrap_ci_per_bin(
-            y_sl, p_sl, n_bootstrap=1000, n_bins=10, min_n_for_ci=10,
+            y_sl,
+            p_sl,
+            n_bootstrap=1000,
+            n_bins=10,
+            min_n_for_ci=10,
         )
         # calibration curve arrays
         try:
@@ -362,8 +410,11 @@ def main() -> int:
         overall_winner_votes[winner] += 1
 
         # Plot
-        short = {"most_recent_12mo": "12mo", "most_recent_24mo": "24mo",
-                 "random_15pct": "random_15pct"}[sl]
+        short = {
+            "most_recent_12mo": "12mo",
+            "most_recent_24mo": "24mo",
+            "random_15pct": "random_15pct",
+        }[sl]
         out_path = RESULTS_DIR / f"calibration_v24_{short}.png"
         _plot_reliability(sl, y_sl, p_sl, ece, ci_lo, ci_hi, bin_n, out_path)
         print(f"  wrote {out_path}")

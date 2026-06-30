@@ -26,22 +26,24 @@ from ufc_prediction.models.fighter import Fighter, FighterAlias
 
 # All 14 valid UFC weight classes (defined locally per RESEARCH anti-pattern
 # advice to avoid coupling elo module to data.schemas)
-_ALL_DIVISIONS: frozenset[str] = frozenset({
-    "Flyweight",
-    "Bantamweight",
-    "Featherweight",
-    "Lightweight",
-    "Welterweight",
-    "Middleweight",
-    "Light Heavyweight",
-    "Heavyweight",
-    "Women's Strawweight",
-    "Women's Flyweight",
-    "Women's Bantamweight",
-    "Women's Featherweight",
-    "Catch Weight",
-    "Open Weight",
-})
+_ALL_DIVISIONS: frozenset[str] = frozenset(
+    {
+        "Flyweight",
+        "Bantamweight",
+        "Featherweight",
+        "Lightweight",
+        "Welterweight",
+        "Middleweight",
+        "Light Heavyweight",
+        "Heavyweight",
+        "Women's Strawweight",
+        "Women's Flyweight",
+        "Women's Bantamweight",
+        "Women's Featherweight",
+        "Catch Weight",
+        "Open Weight",
+    }
+)
 
 # Rankable divisions exclude Catch Weight and Open Weight.
 # Sorted longest-first for greedy substring matching.
@@ -130,7 +132,7 @@ def get_fighter_detail(
         select(func.count())
         .select_from(Fight)
         .where(fight_filter)
-        .where(Fight.winner_id != None)  # noqa: E711
+        .where(Fight.winner_id.is_not(None))
         .where(Fight.winner_id != fighter_id)
     )
     losses = session.scalar(losses_stmt) or 0
@@ -340,15 +342,17 @@ def get_all_fighters_with_ratings(session: Session) -> list[dict[str, Any]]:
     results = []
     for row in rows:
         domain = get_fighter_domain_elo(session, row.id, row.division)
-        results.append({
-            "name": row.name,
-            "fighter_id": row.id,
-            "division": row.division,
-            "elo": row.elo,
-            "striking_elo": domain["striking_elo"],
-            "grappling_elo": domain["grappling_elo"],
-            "last_fight_date": str(row.last_fight_date) if row.last_fight_date else "",
-        })
+        results.append(
+            {
+                "name": row.name,
+                "fighter_id": row.id,
+                "division": row.division,
+                "elo": row.elo,
+                "striking_elo": domain["striking_elo"],
+                "grappling_elo": domain["grappling_elo"],
+                "last_fight_date": str(row.last_fight_date) if row.last_fight_date else "",
+            }
+        )
     return results
 
 

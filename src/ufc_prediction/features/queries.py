@@ -52,24 +52,26 @@ def load_all_round_stats(session: Session) -> dict[int, list[dict[str, object]]]
         fight_id = row[0]
         if fight_id not in result:
             result[fight_id] = []
-        result[fight_id].append({
-            "fighter_id": row[1],
-            "round_number": row[2],
-            "sig_strikes_landed": row[3],
-            "sig_strikes_attempted": row[4],
-            "head_strikes_landed": row[5],
-            "body_strikes_landed": row[6],
-            "leg_strikes_landed": row[7],
-            "distance_strikes_landed": row[8],
-            "clinch_strikes_landed": row[9],
-            "ground_strikes_landed": row[10],
-            "takedowns_landed": row[11],
-            "takedowns_attempted": row[12],
-            "submission_attempts": row[13],
-            "reversals": row[14],
-            "control_time_seconds": row[15],
-            "knockdowns": row[16],
-        })
+        result[fight_id].append(
+            {
+                "fighter_id": row[1],
+                "round_number": row[2],
+                "sig_strikes_landed": row[3],
+                "sig_strikes_attempted": row[4],
+                "head_strikes_landed": row[5],
+                "body_strikes_landed": row[6],
+                "leg_strikes_landed": row[7],
+                "distance_strikes_landed": row[8],
+                "clinch_strikes_landed": row[9],
+                "ground_strikes_landed": row[10],
+                "takedowns_landed": row[11],
+                "takedowns_attempted": row[12],
+                "submission_attempts": row[13],
+                "reversals": row[14],
+                "control_time_seconds": row[15],
+                "knockdowns": row[16],
+            }
+        )
     return result
 
 

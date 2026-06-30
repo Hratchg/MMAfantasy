@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from ufc_prediction.features.regularize import (
     apply_shrinkage,
     apply_shrinkage_to_features,
@@ -16,7 +14,10 @@ class TestApplyShrinkage:
     def test_at_min_fights_no_shrinkage(self) -> None:
         """fight_count == min_fights -> factor = 1.0, no shrinkage."""
         result = apply_shrinkage(
-            value=10.0, league_mean=5.0, fight_count=5, min_fights=5,
+            value=10.0,
+            league_mean=5.0,
+            fight_count=5,
+            min_fights=5,
         )
         assert result == 10.0
 
@@ -25,21 +26,30 @@ class TestApplyShrinkage:
         Result = 5.0 + (10.0 - 5.0) * 0.2 = 6.0
         """
         result = apply_shrinkage(
-            value=10.0, league_mean=5.0, fight_count=1, min_fights=5,
+            value=10.0,
+            league_mean=5.0,
+            fight_count=1,
+            min_fights=5,
         )
         assert abs(result - 6.0) < 0.001
 
     def test_zero_fights_full_shrinkage(self) -> None:
         """fight_count=0 -> factor=0.0, fully shrunk to league mean."""
         result = apply_shrinkage(
-            value=10.0, league_mean=5.0, fight_count=0, min_fights=5,
+            value=10.0,
+            league_mean=5.0,
+            fight_count=0,
+            min_fights=5,
         )
         assert result == 5.0
 
     def test_above_min_fights_capped(self) -> None:
         """fight_count > min_fights -> factor capped at 1.0."""
         result = apply_shrinkage(
-            value=10.0, league_mean=5.0, fight_count=10, min_fights=5,
+            value=10.0,
+            league_mean=5.0,
+            fight_count=10,
+            min_fights=5,
         )
         assert result == 10.0
 
@@ -48,7 +58,10 @@ class TestApplyShrinkage:
         Result = 5.0 + (10.0 - 5.0) * 0.6 = 8.0
         """
         result = apply_shrinkage(
-            value=10.0, league_mean=5.0, fight_count=3, min_fights=5,
+            value=10.0,
+            league_mean=5.0,
+            fight_count=3,
+            min_fights=5,
         )
         assert abs(result - 8.0) < 0.001
 
@@ -67,7 +80,10 @@ class TestApplyShrinkageToFeatures:
             "td_rate": 2.0,
         }
         result = apply_shrinkage_to_features(
-            features, league_means, fight_count=1, min_fights=5,
+            features,
+            league_means,
+            fight_count=1,
+            min_fights=5,
         )
         # factor = 0.2
         # sig_str: 5.0 + (10.0 - 5.0) * 0.2 = 6.0
@@ -86,7 +102,10 @@ class TestApplyShrinkageToFeatures:
             "td_rate": 2.0,
         }
         result = apply_shrinkage_to_features(
-            features, league_means, fight_count=1, min_fights=5,
+            features,
+            league_means,
+            fight_count=1,
+            min_fights=5,
         )
         assert result["sig_str_per_minute"] is None
         assert abs(result["td_rate"] - 2.4) < 0.001
@@ -101,7 +120,10 @@ class TestApplyShrinkageToFeatures:
             "sig_str_per_minute": 5.0,
         }
         result = apply_shrinkage_to_features(
-            features, league_means, fight_count=1, min_fights=5,
+            features,
+            league_means,
+            fight_count=1,
+            min_fights=5,
         )
         assert result["unknown_stat"] == 99.0
 
@@ -115,7 +137,10 @@ class TestApplyShrinkageToFeatures:
             "td_rate": 2.0,
         }
         result = apply_shrinkage_to_features(
-            features, league_means, fight_count=1, min_fights=5,
+            features,
+            league_means,
+            fight_count=1,
+            min_fights=5,
         )
         assert result["style_tag"] == "striker"
         assert abs(result["td_rate"] - 2.4) < 0.001
@@ -131,7 +156,10 @@ class TestApplyShrinkageToFeatures:
             "td_rate": 2.0,
         }
         result = apply_shrinkage_to_features(
-            features, league_means, fight_count=5, min_fights=5,
+            features,
+            league_means,
+            fight_count=5,
+            min_fights=5,
         )
         assert result["sig_str_per_minute"] == 10.0
         assert result["td_rate"] == 4.0

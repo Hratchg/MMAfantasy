@@ -3,6 +3,7 @@
 Audience: business stakeholders. Lighter, cleaner styling than the technical handoff —
 larger body text, more whitespace, less code-block emphasis, table-friendly.
 """
+
 import os
 import subprocess
 import sys
@@ -108,8 +109,14 @@ def generate():
         return False
 
     pandoc_html = subprocess.run(
-        ["pandoc", MD_PATH, "--to=html5", "--standalone",
-         "--metadata", "title=UFC Fight Prediction — Business Handoff"],
+        [
+            "pandoc",
+            MD_PATH,
+            "--to=html5",
+            "--standalone",
+            "--metadata",
+            "title=UFC Fight Prediction — Business Handoff",
+        ],
         capture_output=True,
         text=True,
         check=True,

@@ -29,9 +29,7 @@ from pathlib import Path
 
 import pytest
 
-FIXTURE_PATH = (
-    Path(__file__).parent / "fixtures" / "event_urls_2024.json"
-)
+FIXTURE_PATH = Path(__file__).parent / "fixtures" / "event_urls_2024.json"
 
 
 @pytest.fixture(scope="module")
@@ -45,17 +43,15 @@ def test_fixture_exists_and_has_required_keys(fixture: dict) -> None:
     assert "events" in fixture, fixture.keys()
     assert "drift_negative_cases" in fixture, fixture.keys()
     assert fixture["events"], "fixture.events must contain ≥1 record"
-    assert (
-        len(fixture["events"]) >= 5
-    ), f"fixture.events must hold ≥5 records (got {len(fixture['events'])})"
+    assert len(fixture["events"]) >= 5, (
+        f"fixture.events must hold ≥5 records (got {len(fixture['events'])})"
+    )
 
 
 def test_fixture_covers_2024_minimum(fixture: dict) -> None:
     """Year-coverage gate — 2024 sample REQUIRED; 2025/2026 included when present."""
     years = {rec["event_date"][:4] for rec in fixture["events"]}
-    assert "2024" in years, (
-        f"fixture must include a 2024 event (got {sorted(years)!r})"
-    )
+    assert "2024" in years, f"fixture must include a 2024 event (got {sorted(years)!r})"
     # 2025/2026 included opportunistically — sanity-check that if the
     # fixture claims those years, the dates are well-formed.
     for rec in fixture["events"]:
@@ -89,8 +85,7 @@ def test_scrape_event_urls_matches_golden_fixture(fixture: dict) -> None:
             )
 
     assert not drift, (
-        "scrape_event_urls URL generator drifted from frozen fixture:\n  - "
-        + "\n  - ".join(drift)
+        "scrape_event_urls URL generator drifted from frozen fixture:\n  - " + "\n  - ".join(drift)
     )
 
 
@@ -107,9 +102,7 @@ def test_drift_negative_cases_fall_back(fixture: dict) -> None:
 
     drift = []
     for record in fixture["drift_negative_cases"]:
-        actual = canonicalize_event_url(
-            record["bfo_href"], fallback=record["fallback"]
-        )
+        actual = canonicalize_event_url(record["bfo_href"], fallback=record["fallback"])
         expected = record["expected_url"]
         if actual != expected:
             drift.append(
@@ -120,8 +113,7 @@ def test_drift_negative_cases_fall_back(fixture: dict) -> None:
 
     assert not drift, (
         "Drift negative case(s) no longer fall back as expected — the "
-        "URL canonicalizer regex may have been loosened:\n  - "
-        + "\n  - ".join(drift)
+        "URL canonicalizer regex may have been loosened:\n  - " + "\n  - ".join(drift)
     )
 
 

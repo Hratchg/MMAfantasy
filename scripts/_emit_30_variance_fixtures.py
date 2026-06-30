@@ -44,6 +44,7 @@ fixtures".
 Run:
     uv run python scripts/_emit_30_variance_fixtures.py
 """
+
 from __future__ import annotations
 
 import json
@@ -100,7 +101,9 @@ def _build_synthetic_xy(
 
 
 def _build_eval_fight_dates(
-    n: int, today: date | None = None, seed: int = SYNTHETIC_SEED,
+    n: int,
+    today: date | None = None,
+    seed: int = SYNTHETIC_SEED,
 ) -> np.ndarray:
     """Generate deterministic fight_dates spanning ~3 years for slice masking.
 
@@ -115,7 +118,8 @@ def _build_eval_fight_dates(
 
 
 def _compute_slice_masks(
-    fight_dates: np.ndarray, today: date | None = None,
+    fight_dates: np.ndarray,
+    today: date | None = None,
 ) -> dict[str, np.ndarray]:
     """Reproduce evaluator.evaluate_per_slice mask semantics exactly.
 
@@ -212,7 +216,7 @@ def emit() -> int:
     print(f"[emit-30] wrote {SLICES_PATH}")
     print(f"[emit-30] wrote {META_PATH}")
     print(
-        f"[emit-30] per-slice counts: "
+        "[emit-30] per-slice counts: "
         + ", ".join(f"{k}={int(masks[k].sum())}" for k in PER_SLICE_KEYS)
     )
     return 0

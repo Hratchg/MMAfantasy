@@ -165,14 +165,10 @@ class BFOOddsIngester:
             try:
                 bfo_event_date = row_a.event_date
             except ValueError as exc:
-                logger.warning(
-                    "Skipping BFO fight %s: %s", bfo_fight_id, exc
-                )
+                logger.warning("Skipping BFO fight %s: %s", bfo_fight_id, exc)
                 continue
 
-            db_fight_id = self._resolve_fight(
-                db_fighter_a, db_fighter_b, bfo_event_date
-            )
+            db_fight_id = self._resolve_fight(db_fighter_a, db_fighter_b, bfo_event_date)
             if db_fight_id is None:
                 logger.debug(
                     "No DB fight for fighter pair (%s, %s) within %s of "
@@ -203,22 +199,16 @@ class BFOOddsIngester:
         fixture = self._data_folder / fallback
         if fixture.exists():
             return fixture
-        raise FileNotFoundError(
-            f"Neither {primary} nor {fallback} found in {self._data_folder}"
-        )
+        raise FileNotFoundError(f"Neither {primary} nor {fallback} found in {self._data_folder}")
 
-    def _load_fighter_names(
-        self, names_csv: Path
-    ) -> dict[str, list[BFOFighterName]]:
+    def _load_fighter_names(self, names_csv: Path) -> dict[str, list[BFOFighterName]]:
         bfo_names: dict[str, list[BFOFighterName]] = {}
         with names_csv.open() as fh:
             for raw in csv.DictReader(fh):
                 try:
                     name_row = BFOFighterName(**raw)
                 except Exception as exc:
-                    logger.warning(
-                        "Invalid row in %s: %r (%s)", names_csv, raw, exc
-                    )
+                    logger.warning("Invalid row in %s: %r (%s)", names_csv, raw, exc)
                     continue
                 bfo_names.setdefault(name_row.fighter_id, []).append(name_row)
         return bfo_names
@@ -230,13 +220,9 @@ class BFOOddsIngester:
                 try:
                     odds_row = BFOOddsRow(**raw)  # type: ignore[arg-type]
                 except Exception as exc:
-                    logger.warning(
-                        "Invalid row in %s: %r (%s)", odds_csv, raw, exc
-                    )
+                    logger.warning("Invalid row in %s: %r (%s)", odds_csv, raw, exc)
                     continue
-                odds_by_fight.setdefault(odds_row.fight_id, []).append(
-                    odds_row
-                )
+                odds_by_fight.setdefault(odds_row.fight_id, []).append(odds_row)
         return odds_by_fight
 
     def _match_fighters(
@@ -255,9 +241,7 @@ class BFOOddsIngester:
         """
         db_candidates: list[tuple[int, str]] = [
             (row.id, row.name)
-            for row in self._session.execute(
-                select(Fighter.id, Fighter.name)
-            ).all()
+            for row in self._session.execute(select(Fighter.id, Fighter.name)).all()
         ]
 
         bfo_to_db: dict[str, int] = {}
@@ -292,9 +276,7 @@ class BFOOddsIngester:
             if match is None:
                 summary.fighters_unmatched += 1
                 summary.unmatched_bfo_names.append(preferred_row.name)
-                logger.warning(
-                    "No DB match for BFO fighter: %s", preferred_row.name
-                )
+                logger.warning("No DB match for BFO fighter: %s", preferred_row.name)
                 continue
             bfo_to_db[bfo_id] = match[0]
             summary.fighters_matched += 1
@@ -335,14 +317,8 @@ class BFOOddsIngester:
             select(Fight.id, Event.date)
             .join(Event, Fight.event_id == Event.id)
             .where(
-                (
-                    (Fight.fighter_a_id == db_fighter_a)
-                    & (Fight.fighter_b_id == db_fighter_b)
-                )
-                | (
-                    (Fight.fighter_a_id == db_fighter_b)
-                    & (Fight.fighter_b_id == db_fighter_a)
-                )
+                ((Fight.fighter_a_id == db_fighter_a) & (Fight.fighter_b_id == db_fighter_b))
+                | ((Fight.fighter_a_id == db_fighter_b) & (Fight.fighter_b_id == db_fighter_a))
             )
         )
         candidates = list(self._session.execute(stmt).all())
@@ -355,8 +331,7 @@ class BFOOddsIngester:
         )
         if abs(best_dt - event_date) > self._date_window:
             logger.debug(
-                "No DB fight within %s of BFO event_date %s for pair "
-                "(%s, %s); closest was %s",
+                "No DB fight within %s of BFO event_date %s for pair (%s, %s); closest was %s",
                 self._date_window,
                 event_date,
                 db_fighter_a,
@@ -388,9 +363,7 @@ class BFOOddsIngester:
             and other_row.closing_range_min is not None
             and other_row.closing_range_max is not None
         ):
-            this_mid = closing_ml_consensus(
-                this_row.closing_range_min, this_row.closing_range_max
-            )
+            this_mid = closing_ml_consensus(this_row.closing_range_min, this_row.closing_range_max)
             other_mid = closing_ml_consensus(
                 other_row.closing_range_min, other_row.closing_range_max
             )

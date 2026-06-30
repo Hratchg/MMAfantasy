@@ -132,9 +132,7 @@ def test_round_stats_are_round_zero(
     stats = session.query(RoundStats).all()
     assert len(stats) > 0
     for stat in stats:
-        assert stat.round_number == 0, (
-            f"Expected round_number=0 but got {stat.round_number}"
-        )
+        assert stat.round_number == 0, f"Expected round_number=0 but got {stat.round_number}"
 
 
 def test_round_stats_have_correct_values(
@@ -218,9 +216,11 @@ def test_ingest_mdabbert_supplements_existing(
     ingest_rajeevw_fighters(rajeevw_fighters_csv, session)
 
     # Verify Jon Jones has all data from rajeevw
-    jones_before = session.query(Fighter).filter(
-        Fighter.name == "Jon Jones", Fighter.source == "kaggle-rajeevw"
-    ).first()
+    jones_before = (
+        session.query(Fighter)
+        .filter(Fighter.name == "Jon Jones", Fighter.source == "kaggle-rajeevw")
+        .first()
+    )
     assert jones_before is not None
     original_height = jones_before.height_inches
     original_reach = jones_before.reach_inches
@@ -229,9 +229,11 @@ def test_ingest_mdabbert_supplements_existing(
     ingest_mdabbert(mdabbert_csv, session)
 
     # Jones's height/reach should remain unchanged (rajeevw data preserved)
-    jones_after = session.query(Fighter).filter(
-        Fighter.name == "Jon Jones", Fighter.source == "kaggle-rajeevw"
-    ).first()
+    jones_after = (
+        session.query(Fighter)
+        .filter(Fighter.name == "Jon Jones", Fighter.source == "kaggle-rajeevw")
+        .first()
+    )
     assert jones_after.height_inches == original_height
     assert jones_after.reach_inches == original_reach
 
@@ -259,8 +261,6 @@ def test_ingest_mdabbert_skips_existing_fights(
     # Only 1 new fight should be added (the 2023 fight with New Fighter)
     final_fight_count = session.query(Fight).count()
     new_fights = final_fight_count - rajeevw_fight_count
-    assert new_fights == 1, (
-        f"Expected 1 new fight from mdabbert, got {new_fights}"
-    )
+    assert new_fights == 1, f"Expected 1 new fight from mdabbert, got {new_fights}"
     assert mdabbert_result.accepted == 1
     assert mdabbert_result.updated >= 1  # The duplicate was detected

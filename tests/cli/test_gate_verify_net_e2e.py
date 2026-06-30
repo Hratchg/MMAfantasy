@@ -63,7 +63,7 @@ _SCRIPTS_DIR = REPO_ROOT / "scripts"
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
-from build_net_substrate_v261 import (  # type: ignore[import-not-found]  # noqa: E402
+from build_net_substrate_v261 import (  # type: ignore[import-not-found]
     build_substrate_parquet,
 )
 
@@ -79,9 +79,7 @@ CANONICAL = REPO_ROOT / "models/meta/meta_v2.joblib"
 # Asserting this in the test propagated-through-verifier path proves the
 # verifier read the right canonical file and the file was not tampered
 # with between this test's start and the verdict JSON emission.
-EXPECTED_CANONICAL_SHA = (
-    "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
-)
+EXPECTED_CANONICAL_SHA = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
 
 # Phase 66 Plan 66-03 locked slice names (= Phase 64 Plan 64-02 + Phase 65
 # Plan 65-04 locked slice names; all three substrates use the same 3-slice
@@ -172,10 +170,14 @@ def verdict_dict(
     argv = [
         "gate",
         "verify",
-        "--candidate", str(CANDIDATE),
-        "--substrate-parquet", str(built_substrate),
-        "--canonical", str(CANONICAL),
-        "--out", str(out_json),
+        "--candidate",
+        str(CANDIDATE),
+        "--substrate-parquet",
+        str(built_substrate),
+        "--canonical",
+        str(CANONICAL),
+        "--out",
+        str(out_json),
     ]
     result = cli_runner.invoke(app, argv)
     if result.exit_code != 0:
@@ -184,8 +186,7 @@ def verdict_dict(
         print("STDOUT:", result.stdout)
         print("EXCEPTION:", result.exception)
     assert result.exit_code == 0, (
-        f"ufc gate verify failed: exit={result.exit_code}, "
-        f"exception={result.exception!r}"
+        f"ufc gate verify failed: exit={result.exit_code}, exception={result.exception!r}"
     )
     assert out_json.exists(), (
         f"Verdict sidecar not written at {out_json}. "
@@ -229,8 +230,7 @@ def test_gate_verify_net_e2e_emits_valid_verdict_shape(
 
     # Boolean confound flag — populated regardless of verdict literal.
     assert isinstance(verdict_dict["confound_detected"], bool), (
-        f"Expected confound_detected to be bool, got "
-        f"{type(verdict_dict['confound_detected'])}"
+        f"Expected confound_detected to be bool, got {type(verdict_dict['confound_detected'])}"
     )
 
     # Rationale is a non-empty string for operator-readable audit context.
@@ -250,8 +250,7 @@ def test_gate_verify_net_e2e_emits_valid_verdict_shape(
         "aligned_candidate_brier_per_slice",
     ):
         assert field in verdict_dict, (
-            f"Verdict JSON missing required field {field!r}; "
-            f"keys: {sorted(verdict_dict.keys())}"
+            f"Verdict JSON missing required field {field!r}; keys: {sorted(verdict_dict.keys())}"
         )
         assert isinstance(verdict_dict[field], dict), (
             f"Expected {field!r} to be dict, got {type(verdict_dict[field])}"

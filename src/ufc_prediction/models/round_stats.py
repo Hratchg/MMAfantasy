@@ -44,6 +44,4 @@ class RoundStats(Base):
     fight: Mapped[Fight] = relationship(back_populates="rounds")
     fighter: Mapped[Fighter] = relationship()
 
-    __table_args__ = (
-        CheckConstraint("round_number BETWEEN 0 AND 5", name="valid_round_number"),
-    )
+    __table_args__ = (CheckConstraint("round_number BETWEEN 0 AND 5", name="valid_round_number"),)

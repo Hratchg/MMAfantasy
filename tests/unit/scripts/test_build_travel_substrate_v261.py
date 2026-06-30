@@ -61,15 +61,15 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 # Direct import from scripts/ — Task 1 deliverable. Tests collect-fail with
 # ImportError until the script exists (RED phase contract).
-from build_travel_substrate_v261 import (  # noqa: E402
+from build_travel_substrate_v261 import (
     RANDOM_15PCT_SEED,
     SLICE_NAMES,
     TRAVEL_FEATURE_COLUMNS,
     build_substrate_parquet,
 )
 
-from ufc_prediction.ml.gate_verifier import EvalSlice  # noqa: E402
-from ufc_prediction.ml.substrate_loader import load_substrate_snapshot  # noqa: E402
+from ufc_prediction.ml.gate_verifier import EvalSlice
+from ufc_prediction.ml.substrate_loader import load_substrate_snapshot
 
 # ── Shared fixture ────────────────────────────────────────────────────────
 
@@ -210,7 +210,8 @@ def test_builder_is_deterministic_across_reruns(tmp_path: Path) -> None:
 
 
 def test_builder_is_deterministic_across_simulated_calendar_drift(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """CR-03 regression: builder stays byte-deterministic across calendar days.
 
@@ -230,8 +231,9 @@ def test_builder_is_deterministic_across_simulated_calendar_drift(
     the CR-03 guard regresses (e.g., is removed or bypassed), the second
     build's bytes diverge and the assertion fires.
     """
-    import compose_v25_travel as _cv  # type: ignore[import-not-found]
     from datetime import date as _date
+
+    import compose_v25_travel as _cv  # type: ignore[import-not-found]
 
     # First build: monkeypatch ``date`` so .today() returns 2025-01-15.
     class _Today2025_01_15(_date):

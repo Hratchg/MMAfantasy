@@ -33,28 +33,20 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
-PRE_PATH = Path(
-    ".planning/phases/40-corpus-growth-scraper-hygiene/"
-    "40-CORPUS-PRE-SCRAPE-STATS.json"
-)
+PRE_PATH = Path(".planning/phases/40-corpus-growth-scraper-hygiene/40-CORPUS-PRE-SCRAPE-STATS.json")
 POST_PATH = Path(
-    ".planning/phases/40-corpus-growth-scraper-hygiene/"
-    "40-CORPUS-POST-SCRAPE-STATS.json"
+    ".planning/phases/40-corpus-growth-scraper-hygiene/40-CORPUS-POST-SCRAPE-STATS.json"
 )
 OUT_JSON = Path("results/corpus_v25_delta.json")
 OUT_MD = Path("results/corpus_v25_delta.md")
 
 # AUDIT-01 canonical anchors (PROJECT.md cross-cutting invariants 1+2).
-CANON_XGB_V2_SHA = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
-CANON_META_V2_SHA = (
-    "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
-)
+CANON_XGB_V2_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+CANON_META_V2_SHA = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
 
 DEBUTANT_SAMPLE_SIZE = 20  # per CONTEXT specifics: "sample list of 20"
 
@@ -138,31 +130,25 @@ def query_new_debutants(pre_max_date: str, post_max_date: str) -> list[dict]:
         # Empty window — no debutants possible by construction.
         return []
 
-    from sqlalchemy import func, union_all  # noqa: PLC0415
+    from sqlalchemy import func, union_all
 
-    from ufc_prediction.db.session import SessionLocal  # noqa: PLC0415
-    from ufc_prediction.models.event import Event  # noqa: PLC0415
-    from ufc_prediction.models.fight import Fight  # noqa: PLC0415
-    from ufc_prediction.models.fighter import Fighter  # noqa: PLC0415
+    from ufc_prediction.db.session import SessionLocal
+    from ufc_prediction.models.event import Event
+    from ufc_prediction.models.fight import Fight
+    from ufc_prediction.models.fighter import Fighter
 
     session = SessionLocal()
     try:
         # Per-fighter min(Event.date) via UNION ALL across fighter_a + fighter_b
         # sides. Group by fighter_id, filter to first_date in (pre_d, post_d].
-        a_side = (
-            session.query(
-                Fight.fighter_a_id.label("fighter_id"),
-                Event.date.label("event_date"),
-            )
-            .join(Event, Fight.event_id == Event.id)
-        )
-        b_side = (
-            session.query(
-                Fight.fighter_b_id.label("fighter_id"),
-                Event.date.label("event_date"),
-            )
-            .join(Event, Fight.event_id == Event.id)
-        )
+        a_side = session.query(
+            Fight.fighter_a_id.label("fighter_id"),
+            Event.date.label("event_date"),
+        ).join(Event, Fight.event_id == Event.id)
+        b_side = session.query(
+            Fight.fighter_b_id.label("fighter_id"),
+            Event.date.label("event_date"),
+        ).join(Event, Fight.event_id == Event.id)
         union_subq = union_all(a_side, b_side).subquery()
         first_subq = (
             session.query(
@@ -204,13 +190,13 @@ def query_per_year_bfo(years: list[str]) -> dict[str, dict[str, float | int]]:
     The query joins two FightOdds aliases — one per fighter side — and
     counts fights for which both aliases resolve to a non-null implied prob.
     """
-    from sqlalchemy import Integer, and_, case, func  # noqa: PLC0415
-    from sqlalchemy.orm import aliased  # noqa: PLC0415
+    from sqlalchemy import Integer, and_, case, func
+    from sqlalchemy.orm import aliased
 
-    from ufc_prediction.db.session import SessionLocal  # noqa: PLC0415
-    from ufc_prediction.models.event import Event  # noqa: PLC0415
-    from ufc_prediction.models.fight import Fight  # noqa: PLC0415
-    from ufc_prediction.models.fight_odds import FightOdds  # noqa: PLC0415
+    from ufc_prediction.db.session import SessionLocal
+    from ufc_prediction.models.event import Event
+    from ufc_prediction.models.fight import Fight
+    from ufc_prediction.models.fight_odds import FightOdds
 
     session = SessionLocal()
     try:
@@ -334,10 +320,7 @@ def _criterion_verdicts(post: dict, debutants_added: int) -> dict[str, dict]:
             ),
         },
         "criterion_5": {
-            "label": (
-                "AUDIT-01 chain extends 39-of-N → 40-of-N "
-                "(xgb_v2 + meta_v2 byte-identical)"
-            ),
+            "label": ("AUDIT-01 chain extends 39-of-N → 40-of-N (xgb_v2 + meta_v2 byte-identical)"),
             "verdict": "PASS",
             "evidence": (
                 "Phase 40 START anchors (Plan 40-01 commit 4776c4d) and "
@@ -360,7 +343,7 @@ def render_json(
 ) -> str:
     verdicts = _criterion_verdicts(post, debutants_added=len(debutants))
     report = {
-        "report_iso": datetime.now(timezone.utc).isoformat(),
+        "report_iso": datetime.now(UTC).isoformat(),
         "phase": "40-corpus-growth-scraper-hygiene",
         "requirement": "CORPUS-V25-04",
         "phase_disposition": "Option A — no-growth close-out",
@@ -488,10 +471,7 @@ def render_markdown(
         ("UFCStats-source events", "ufcstats_source_events"),
         ("Distinct fighters", "distinct_fighters"),
     ]:
-        lines.append(
-            f"| {label} | {pre[key]:,} | {post[key]:,} | "
-            f"{_fmt_int_delta(delta[key])} |"
-        )
+        lines.append(f"| {label} | {pre[key]:,} | {post[key]:,} | {_fmt_int_delta(delta[key])} |")
     lines.append("")
 
     # ── BFO coverage ────────────────────────────────────────────────────────
@@ -525,8 +505,7 @@ def render_markdown(
     for y in sorted(per_year_bfo.keys()):
         row = per_year_bfo[y]
         lines.append(
-            f"| {y} | {row['total']:,} | {row['populated']:,} | "
-            f"{_fmt_pct(float(row['pct']))} |"
+            f"| {y} | {row['total']:,} | {row['populated']:,} | {_fmt_pct(float(row['pct']))} |"
         )
     lines.append("")
 
@@ -578,8 +557,7 @@ def render_markdown(
         p = pre_py.get(y, 0)
         q = post_py.get(y, 0)
         lines.append(
-            f"| {y} | {p:,} | {q:,} | "
-            f"{_fmt_int_delta(delta['fights_per_year_2010_2026'][y])} |"
+            f"| {y} | {p:,} | {q:,} | {_fmt_int_delta(delta['fights_per_year_2010_2026'][y])} |"
         )
     lines.append("")
 
@@ -671,12 +649,8 @@ def render_markdown(
     for n in range(1, 6):
         v = verdicts[f"criterion_{n}"]
         evidence = v.get("evidence") or v.get("note") or ""
-        actual = (
-            f" (actual: {v['actual']:,})" if "actual" in v else ""
-        )
-        lines.append(
-            f"- **Criterion {n} — {v['label']}:** {v['verdict']}{actual}"
-        )
+        actual = f" (actual: {v['actual']:,})" if "actual" in v else ""
+        lines.append(f"- **Criterion {n} — {v['label']}:** {v['verdict']}{actual}")
         if evidence:
             lines.append(f"  - {evidence}")
     lines.append("")
@@ -716,8 +690,7 @@ def main() -> int:
         "--no-db",
         action="store_true",
         help=(
-            "Skip live DB queries (per-year BFO falls back to zeros; "
-            "new-debutants list is empty)."
+            "Skip live DB queries (per-year BFO falls back to zeros; new-debutants list is empty)."
         ),
     )
     args = parser.parse_args()
@@ -733,22 +706,16 @@ def main() -> int:
         }
         db_queried = False
     else:
-        debutants = query_new_debutants(
-            pre["max_event_date"], post["max_event_date"]
-        )
+        debutants = query_new_debutants(pre["max_event_date"], post["max_event_date"])
         per_year_bfo = query_per_year_bfo(years_2010_2026)
         db_queried = True
 
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(
-        render_json(
-            pre, post, delta, debutants, per_year_bfo, db_queried=db_queried
-        )
+        render_json(pre, post, delta, debutants, per_year_bfo, db_queried=db_queried)
     )
     OUT_MD.write_text(
-        render_markdown(
-            pre, post, delta, debutants, per_year_bfo, db_queried=db_queried
-        )
+        render_markdown(pre, post, delta, debutants, per_year_bfo, db_queried=db_queried)
     )
 
     print(f"Wrote {OUT_JSON}")

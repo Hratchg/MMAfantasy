@@ -30,6 +30,7 @@ def _ephemeral_port() -> int:
         s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
 
+
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.skipif(
@@ -69,12 +70,10 @@ def _wait_for_pg(
             conn = psycopg.connect(url, connect_timeout=2)
             conn.close()
             return
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             last_exc = exc
             time.sleep(0.5)
-    raise RuntimeError(
-        f"postgres at {host}:{port} not reachable within {timeout_s}s: {last_exc}"
-    )
+    raise RuntimeError(f"postgres at {host}:{port} not reachable within {timeout_s}s: {last_exc}")
 
 
 @pytest.mark.skipif(
@@ -114,9 +113,7 @@ def test_round_trip_seed_against_disposable_postgres():
             **os.environ,
             # Canonical scheme: SQLAlchemy's create_engine (used by the seed
             # command's empty-target check) rejects a bare `postgres://` URL.
-            "DATABASE_URL": (
-                f"postgresql+psycopg://ufc:ufc@localhost:{port}/ufc_prediction"
-            ),
+            "DATABASE_URL": (f"postgresql+psycopg://ufc:ufc@localhost:{port}/ufc_prediction"),
         }
         result = subprocess.run(
             [
@@ -134,9 +131,7 @@ def test_round_trip_seed_against_disposable_postgres():
             capture_output=True,
             text=True,
         )
-        assert result.returncode == 0, (
-            f"ufc db seed failed:\n{result.stdout}\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"ufc db seed failed:\n{result.stdout}\n{result.stderr}"
 
         import psycopg
 
@@ -150,12 +145,8 @@ def test_round_trip_seed_against_disposable_postgres():
                 for table, expected in EXPECTED_ROW_COUNTS.items():
                     cur.execute(f"SELECT COUNT(*) FROM {table}")
                     got = cur.fetchone()[0]
-                    assert got == expected, (
-                        f"{table}: expected {expected}, got {got}"
-                    )
+                    assert got == expected, f"{table}: expected {expected}, got {got}"
         finally:
             conn.close()
     finally:
-        subprocess.run(
-            ["docker", "rm", "-f", container], capture_output=True, text=True
-        )
+        subprocess.run(["docker", "rm", "-f", container], capture_output=True, text=True)

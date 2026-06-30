@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 
 persistence = pytest.importorskip("ufc_prediction.ml.persistence")
-from ufc_prediction.ml.config import FEATURE_COLUMNS  # noqa: E402
+from ufc_prediction.ml.config import FEATURE_COLUMNS
 
 
 @pytest.fixture()

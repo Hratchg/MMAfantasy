@@ -36,6 +36,7 @@ Usage:
         --oof-parquet .planning/phases/45-meta-v3-candidate-retrain/45-XGB-V3-OOF-PREDICTIONS.parquet \
         --out-dir models/meta
 """
+
 from __future__ import annotations
 
 import argparse
@@ -50,19 +51,14 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Phase 45 constants — AUDIT-01 anchor SHAs (PROJECT.md cross-cutting invariants
 # #1 and #2). Pre-flight + post-flight checks against these are SystemExit hard
 # stops.
 # ─────────────────────────────────────────────────────────────────────────────
 
-EXPECTED_XGB_V2_SHA256: str = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
-EXPECTED_META_V2_SHA256: str = (
-    "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
-)
+EXPECTED_XGB_V2_SHA256: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+EXPECTED_META_V2_SHA256: str = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
 EXPECTED_CUTOFF_DATE: str = "2023-01-01"
 
 # Phase 26 best_params verbatim — MetaLearnerLogistic uses these defaults; we
@@ -167,7 +163,9 @@ def assemble_level1_input(
     # Inner join on fight_id ensures row alignment between the OOF parquet
     # and the Level-1 substrate.
     merged = oof_df[["fight_id", "xgb_v3_oof_prob"]].merge(
-        level1_df, on="fight_id", how="inner",
+        level1_df,
+        on="fight_id",
+        how="inner",
     )
 
     # Map META_V22_FEATURE_COLUMNS names → source column in `merged`.
@@ -178,9 +176,7 @@ def assemble_level1_input(
         source_by_meta_col[col] = col
 
     missing = [
-        meta_col
-        for meta_col, src in source_by_meta_col.items()
-        if src not in merged.columns
+        meta_col for meta_col, src in source_by_meta_col.items() if src not in merged.columns
     ]
     if missing:
         raise ValueError(
@@ -246,20 +242,17 @@ def _audit01_postflight(xgb_v2_sha_pre: str, meta_v2_sha_pre: str) -> None:
     meta_v2_sha_post = _sha256_file(META_V2_PATH)
     if xgb_v2_sha_post != xgb_v2_sha_pre:
         print(
-            f"[train_meta_v3_v25] FATAL AUDIT-01 postflight: xgb_v2 SHA drift!",
+            "[train_meta_v3_v25] FATAL AUDIT-01 postflight: xgb_v2 SHA drift!",
             file=sys.stderr,
         )
         sys.exit(2)
     if meta_v2_sha_post != meta_v2_sha_pre:
         print(
-            f"[train_meta_v3_v25] FATAL AUDIT-01 postflight: meta_v2 SHA drift!",
+            "[train_meta_v3_v25] FATAL AUDIT-01 postflight: meta_v2 SHA drift!",
             file=sys.stderr,
         )
         sys.exit(2)
-    print(
-        f"[train_meta_v3_v25] AUDIT-01 postflight OK — "
-        f"xgb_v2+meta_v2 byte-identical."
-    )
+    print("[train_meta_v3_v25] AUDIT-01 postflight OK — xgb_v2+meta_v2 byte-identical.")
 
 
 def _load_level1_substrate_from_db() -> pd.DataFrame:
@@ -305,14 +298,21 @@ def _load_level1_substrate_from_db() -> pd.DataFrame:
         session.close()
 
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
     config = MLConfig(cutoff_date=EXPECTED_CUTOFF_DATE)
     assembler = FeatureMatrixAssembler(config)
     X_v22, y, fight_dates = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
-        pre_ufc_records=pre_ufc, fight_odds=fight_odds,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
+        pre_ufc_records=pre_ufc,
+        fight_odds=fight_odds,
         feature_set="v2.2",
     )
     assert X_v22.shape[1] == 90, f"v2.2 expected 90 cols, got {X_v22.shape[1]}"
@@ -327,24 +327,28 @@ def _load_level1_substrate_from_db() -> pd.DataFrame:
         fid = f["fight_id"]
         ra = float(
             elo_features.get((fa_id, fid), {"elo_overall": 1500.0}).get(
-                "elo_overall", 1500.0,
+                "elo_overall",
+                1500.0,
             )
         )
         rb = float(
             elo_features.get((fb_id, fid), {"elo_overall": 1500.0}).get(
-                "elo_overall", 1500.0,
+                "elo_overall",
+                1500.0,
             )
         )
         elo_probs.append(float(engine.expected_win_probability(ra, rb)))
 
     # Pull the 11 v2.2-substrate cols by NAME via FEATURE_COLUMNS_V22.index()
     # (Pitfall #1 guard from meta_features_v22 — no hardcoded indices).
-    df = pd.DataFrame({
-        "fight_id": [f["fight_id"] for f in fight_records],
-        "event_date": [f["event_date"] for f in fight_records],
-        "y": y.astype(int),
-        "elo_prob": np.asarray(elo_probs, dtype=float),
-    })
+    df = pd.DataFrame(
+        {
+            "fight_id": [f["fight_id"] for f in fight_records],
+            "event_date": [f["event_date"] for f in fight_records],
+            "y": y.astype(int),
+            "elo_prob": np.asarray(elo_probs, dtype=float),
+        }
+    )
     for col in META_V22_FEATURE_COLUMNS[2:]:  # skip xgb_oof_prob + elo_prob
         idx = FEATURE_COLUMNS_V22.index(col)
         df[col] = X_v22[:, idx]
@@ -352,7 +356,9 @@ def _load_level1_substrate_from_db() -> pd.DataFrame:
 
 
 def _compute_input_distribution_hash(
-    X: np.ndarray, y: np.ndarray, oof: np.ndarray,
+    X: np.ndarray,
+    y: np.ndarray,
+    oof: np.ndarray,
 ) -> str:
     """sha256 over (X, y, oof) — invariant across parquet writer versions."""
     buf = io.BytesIO()
@@ -399,7 +405,10 @@ def _compute_per_slice_metrics(
         n = int(mask.sum())
         if n == 0:
             out[slc] = {
-                "brier_score": None, "accuracy": None, "auc_roc": None, "n": 0,
+                "brier_score": None,
+                "accuracy": None,
+                "auc_roc": None,
+                "n": 0,
             }
             continue
         proba = model.predict_proba(X_sl)[:, 1]
@@ -425,20 +434,25 @@ def _compute_per_slice_metrics(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Phase 45 meta_v3 candidate META blender trainer "
-                    "(META3-V25-02)",
+        description="Phase 45 meta_v3 candidate META blender trainer (META3-V25-02)",
     )
     parser.add_argument(
-        "--oof-parquet", type=Path, required=True,
-        help="Path to xgb_v3 OOF parquet (Plan 45-02 output: "
-             "45-XGB-V3-OOF-PREDICTIONS.parquet)",
+        "--oof-parquet",
+        type=Path,
+        required=True,
+        help="Path to xgb_v3 OOF parquet (Plan 45-02 output: 45-XGB-V3-OOF-PREDICTIONS.parquet)",
     )
     parser.add_argument(
-        "--out-dir", type=Path, default=META_DIR,
+        "--out-dir",
+        type=Path,
+        default=META_DIR,
         help="Output directory for meta_v3 candidate triad",
     )
     parser.add_argument(
-        "--seeds", type=int, nargs="+", default=list(SEEDS_DEFAULT),
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=list(SEEDS_DEFAULT),
         help="Random seeds for the 5-seed harness (default: 42-46)",
     )
     args = parser.parse_args(argv)
@@ -468,7 +482,11 @@ def main(argv: list[str] | None = None) -> int:
     # ── Step 1: Load xgb_v3 OOF parquet ──
     oof_df = pd.read_parquet(args.oof_parquet)
     required_oof_cols = {
-        "fight_id", "xgb_v3_oof_prob", "split", "train_or_test", "event_date",
+        "fight_id",
+        "xgb_v3_oof_prob",
+        "split",
+        "train_or_test",
+        "event_date",
     }
     missing = required_oof_cols - set(oof_df.columns)
     if missing:
@@ -480,8 +498,8 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"[train_meta_v3_v25] OOF parquet loaded: {len(oof_df)} rows, "
         f"NaN(xgb_v3_oof_prob)={int(oof_df['xgb_v3_oof_prob'].isna().sum())}, "
-        f"train={int((oof_df['train_or_test']=='train').sum())}, "
-        f"test={int((oof_df['train_or_test']=='test').sum())}"
+        f"train={int((oof_df['train_or_test'] == 'train').sum())}, "
+        f"test={int((oof_df['train_or_test'] == 'test').sum())}"
     )
 
     # ── Step 2: Load Level-1 substrate from DB ──
@@ -507,13 +525,10 @@ def main(argv: list[str] | None = None) -> int:
     # Baseline cols (xgb_oof_prob, elo_prob) MUST be non-NaN. Non-baseline cols
     # are imputed with train-set medians. Mirrors compose_v23_meta exactly.
     from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
+
     BASELINE_COLS = ("xgb_oof_prob", "elo_prob")
-    baseline_idx = [
-        i for i, c in enumerate(META_V22_FEATURE_COLUMNS) if c in BASELINE_COLS
-    ]
-    non_baseline_idx = [
-        i for i, c in enumerate(META_V22_FEATURE_COLUMNS) if c not in BASELINE_COLS
-    ]
+    baseline_idx = [i for i, c in enumerate(META_V22_FEATURE_COLUMNS) if c in BASELINE_COLS]
+    non_baseline_idx = [i for i, c in enumerate(META_V22_FEATURE_COLUMNS) if c not in BASELINE_COLS]
 
     def _strict_baseline_mask(X: np.ndarray) -> np.ndarray:
         baseline_nan = np.isnan(X[:, baseline_idx]).any(axis=1)
@@ -535,7 +550,9 @@ def main(argv: list[str] | None = None) -> int:
 
     # Align event_date for eval slicing
     merged_eval = test_oof[["fight_id", "event_date"]].merge(
-        level1_df[["fight_id"]], on="fight_id", how="inner",
+        level1_df[["fight_id"]],
+        on="fight_id",
+        how="inner",
     )
     eval_dates = pd.to_datetime(
         merged_eval["event_date"].to_numpy(),
@@ -567,11 +584,15 @@ def main(argv: list[str] | None = None) -> int:
     per_seed_models: dict[int, MetaLearnerLogistic] = {}
     for seed in args.seeds:
         m = MetaLearnerLogistic(random_state=seed).fit(
-            X_meta_train_clean, y_meta_train_clean,
+            X_meta_train_clean,
+            y_meta_train_clean,
         )
         per_seed_models[seed] = m
         per_seed_slice[seed] = _compute_per_slice_metrics(
-            m, X_meta_eval_clean, y_meta_eval_clean, eval_dates_arr,
+            m,
+            X_meta_eval_clean,
+            y_meta_eval_clean,
+            eval_dates_arr,
         )
 
     # ── Step 6: Median per-slice metrics across seeds ──
@@ -586,9 +607,7 @@ def main(argv: list[str] | None = None) -> int:
             if not vals:
                 median_per_slice.setdefault(slc, {})[metric_key] = None
                 continue
-            median_per_slice.setdefault(slc, {})[metric_key] = float(
-                np.median(vals)
-            )
+            median_per_slice.setdefault(slc, {})[metric_key] = float(np.median(vals))
 
     # ── Step 7: Persist meta_v3 triad ──
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -599,10 +618,13 @@ def main(argv: list[str] | None = None) -> int:
 
     meta_v3_joblib_path = args.out_dir / "meta_v3.joblib"
     import joblib
+
     joblib.dump(ship_model, meta_v3_joblib_path)
 
     input_dist_hash = _compute_input_distribution_hash(
-        X_meta_train_clean, y_meta_train_clean, X_meta_train_clean[:, 0],
+        X_meta_train_clean,
+        y_meta_train_clean,
+        X_meta_train_clean[:, 0],
     )
 
     metadata = build_meta_v3_metadata(
@@ -613,18 +635,17 @@ def main(argv: list[str] | None = None) -> int:
     )
     # Enrich metadata with additional fields (mirrors meta_v2_meta.json shape)
     metadata["meta_learner_brier_delta_vs_logistic"] = 0.0
-    metadata["per_seed_metrics"] = {
-        str(seed): per_seed_slice[seed] for seed in args.seeds
-    }
+    metadata["per_seed_metrics"] = {str(seed): per_seed_slice[seed] for seed in args.seeds}
     metadata["seeds"] = list(args.seeds)
     metadata["canonical_seed"] = canonical_seed
-    metadata["n_meta_train_rows"] = int(len(X_meta_train_clean))
-    metadata["n_meta_eval_rows"] = int(len(X_meta_eval_clean))
+    metadata["n_meta_train_rows"] = len(X_meta_train_clean)
+    metadata["n_meta_eval_rows"] = len(X_meta_eval_clean)
     metadata["nan_drop_policy"] = "per_feature_strict_baseline"
     metadata["nan_imputation_medians"] = nan_imputation_medians
     metadata["trained_at"] = datetime.now(tz=UTC).isoformat()
 
     import sklearn
+
     metadata["sklearn_version"] = sklearn.__version__
     metadata["python_version"] = sys.version
 
@@ -634,6 +655,7 @@ def main(argv: list[str] | None = None) -> int:
     # Contract sibling — partner-facing schema
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
     from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
+
     meta_v3_artifact_sha = _sha256_file(meta_v3_joblib_path)
     meta_feature_columns_hash = hashlib.sha256(
         json.dumps(list(META_V22_FEATURE_COLUMNS), sort_keys=True).encode("utf-8"),
@@ -688,10 +710,7 @@ def main(argv: list[str] | None = None) -> int:
         v3_a_s = "n/a" if v3_a is None else f"{v3_a:.4f}"
         delta_s = "n/a" if delta is None else f"{delta:+.4f}"
         n_s = "n/a" if v3_n is None else f"{int(v3_n)}"
-        print(
-            f"{slc:<22} | {v3_b_s:>10} | {v22_b:>10.4f} | {delta_s:>10} "
-            f"| {v3_a_s:>8} | {n_s:>6}"
-        )
+        print(f"{slc:<22} | {v3_b_s:>10} | {v22_b:>10.4f} | {delta_s:>10} | {v3_a_s:>8} | {n_s:>6}")
 
     # ── AUDIT-01 post-flight ──
     _audit01_postflight(xgb_v2_sha, meta_v2_sha)

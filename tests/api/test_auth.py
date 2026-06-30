@@ -83,7 +83,7 @@ def test_valid_bare_key_gets_anon_label(auth_client):
     assert label.startswith("anon-")
     # SHA-prefix is 6 hex chars after "anon-".
     assert len(label) == len("anon-") + 6
-    assert all(c in "0123456789abcdef" for c in label[len("anon-"):])
+    assert all(c in "0123456789abcdef" for c in label[len("anon-") :])
 
 
 def test_compare_digest_present_in_source():

@@ -42,9 +42,7 @@ def parse_fighter_profile(html: str) -> FighterProfile:
             nickname = nick_text
 
     # Info box
-    info_box = soup.select_one(
-        "div.b-list__info-box_style_small-width"
-    )
+    info_box = soup.select_one("div.b-list__info-box_style_small-width")
     if info_box is None:
         msg = "Fighter profile cardinality check failed: info box not found"
         raise ValueError(msg)

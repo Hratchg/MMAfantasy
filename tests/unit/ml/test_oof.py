@@ -6,6 +6,7 @@ does not yet exist. They go GREEN at Wave 1 when oof.py lands.
 Per CONTEXT.md D-06(P19): n_jobs=1 NON-NEGOTIABLE (Py 3.14 spawn pickling).
 Per RESEARCH.md OQ-2: raw XGBClassifier per fold (META-01 absorbs recalibration).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -18,8 +19,6 @@ import pytest
 from sklearn.model_selection import TimeSeriesSplit
 from xgboost import XGBClassifier
 
-from ufc_prediction.ml.config import FEATURE_COLUMNS_NO_NET
-
 oof = pytest.importorskip("ufc_prediction.ml.oof")
 
 
@@ -27,19 +26,22 @@ def _make_synthetic_data(n: int = 200, n_features: int = 72, seed: int = 42):
     rng = np.random.default_rng(seed)
     X = rng.standard_normal((n, n_features))
     y = rng.integers(0, 2, size=n)
-    fight_dates = np.array([
-        np.datetime64("2023-01-01") + np.timedelta64(i, "D") for i in range(n)
-    ])
+    fight_dates = np.array([np.datetime64("2023-01-01") + np.timedelta64(i, "D") for i in range(n)])
     return X, y, fight_dates
 
 
 def _make_base_trainer():
     """Tiny stub trainer exposing _make_estimator() returning XGBClassifier."""
     trainer = MagicMock()
-    trainer._make_estimator = MagicMock(return_value=XGBClassifier(
-        n_estimators=10, max_depth=2, objective="binary:logistic",
-        random_state=42, verbosity=0,
-    ))
+    trainer._make_estimator = MagicMock(
+        return_value=XGBClassifier(
+            n_estimators=10,
+            max_depth=2,
+            objective="binary:logistic",
+            random_state=42,
+            verbosity=0,
+        )
+    )
     return trainer
 
 
@@ -83,20 +85,34 @@ def test_oof_cache_invariant_check_xgb_sha(tmp_path):
     sidecar = tmp_path / "oof_predictions.meta.json"
     # Write a fake parquet + sidecar with stale SHA
     import pandas as pd
+
     pd.DataFrame({"fight_id": [1], "xgb_oof_prob": [0.5]}).to_parquet(cache_path)
-    sidecar.write_text(json.dumps({
-        "xgb_v2_sha256": "deadbeef" * 8,  # stale
-        "n_features": 72, "cutoff_date": "2023-01-01",
-        "event_date_min": "2023-01-01", "event_date_max": "2024-01-01",
-        "n_splits": 5, "training_accuracy": 0.65,
-        "trained_at": "2026-05-09", "cv_kind": "TimeSeriesSplit",
-    }))
+    sidecar.write_text(
+        json.dumps(
+            {
+                "xgb_v2_sha256": "deadbeef" * 8,  # stale
+                "n_features": 72,
+                "cutoff_date": "2023-01-01",
+                "event_date_min": "2023-01-01",
+                "event_date_max": "2024-01-01",
+                "n_splits": 5,
+                "training_accuracy": 0.65,
+                "trained_at": "2026-05-09",
+                "cv_kind": "TimeSeriesSplit",
+            }
+        )
+    )
     X, y, dates = _make_synthetic_data(n=120)
     trainer = _make_base_trainer()
     with pytest.raises(oof.InvariantCheckError, match="xgb_v2_sha256"):
         oof.generate_oof_predictions(
-            X, y, dates, trainer, n_splits=5,
-            cache_path=cache_path, force_rebuild=False,
+            X,
+            y,
+            dates,
+            trainer,
+            n_splits=5,
+            cache_path=cache_path,
+            force_rebuild=False,
         )
 
 
@@ -105,23 +121,36 @@ def test_oof_cache_invariant_check_n_features(tmp_path):
     cache_path = tmp_path / "oof_predictions.parquet"
     sidecar = tmp_path / "oof_predictions.meta.json"
     import pandas as pd
+
     pd.DataFrame({"fight_id": [1], "xgb_oof_prob": [0.5]}).to_parquet(cache_path)
     # Write the LIVE xgb_v2 SHA so the SHA check passes; n_features mismatch fires
     actual_sha = hashlib.sha256(Path("models/xgb_v2.joblib").read_bytes()).hexdigest()
-    sidecar.write_text(json.dumps({
-        "xgb_v2_sha256": actual_sha,
-        "n_features": 75,  # mismatch — code expects 72
-        "cutoff_date": "2023-01-01",
-        "event_date_min": "2023-01-01", "event_date_max": "2024-01-01",
-        "n_splits": 5, "training_accuracy": 0.65,
-        "trained_at": "2026-05-09", "cv_kind": "TimeSeriesSplit",
-    }))
+    sidecar.write_text(
+        json.dumps(
+            {
+                "xgb_v2_sha256": actual_sha,
+                "n_features": 75,  # mismatch — code expects 72
+                "cutoff_date": "2023-01-01",
+                "event_date_min": "2023-01-01",
+                "event_date_max": "2024-01-01",
+                "n_splits": 5,
+                "training_accuracy": 0.65,
+                "trained_at": "2026-05-09",
+                "cv_kind": "TimeSeriesSplit",
+            }
+        )
+    )
     X, y, dates = _make_synthetic_data(n=120)
     trainer = _make_base_trainer()
     with pytest.raises(oof.InvariantCheckError, match="n_features"):
         oof.generate_oof_predictions(
-            X, y, dates, trainer, n_splits=5,
-            cache_path=cache_path, force_rebuild=False,
+            X,
+            y,
+            dates,
+            trainer,
+            n_splits=5,
+            cache_path=cache_path,
+            force_rebuild=False,
         )
 
 

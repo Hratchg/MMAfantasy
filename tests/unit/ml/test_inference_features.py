@@ -12,7 +12,7 @@ Per Pitfall #12: column ordering is locked by FEATURE_COLUMNS.
 from __future__ import annotations
 
 import math
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -58,22 +58,38 @@ def _patch_session_with_snapshots(
     """Patch the four DB-reading helpers in inference_features so we don't
     need a real SQLAlchemy session.
     """
-    perf_a_default = {key: 1.0 for key in (
-        "sig_str_per_minute", "sig_str_per_minute_ewma",
-        "total_str_per_minute", "total_str_per_minute_ewma",
-        "td_rate", "td_rate_ewma", "td_accuracy", "td_accuracy_ewma",
-        "td_defense", "td_defense_ewma", "strike_defense", "strike_defense_ewma",
-        "ctrl_time_per_fight", "ctrl_time_per_fight_ewma",
-        "sub_att_per_fight", "sub_att_per_fight_ewma",
-        "opp_adj_sig_str", "opp_adj_td", "opp_adj_strike_def", "opp_adj_ctrl_time",
-    )}
+    perf_a_default = {
+        key: 1.0
+        for key in (
+            "sig_str_per_minute",
+            "sig_str_per_minute_ewma",
+            "total_str_per_minute",
+            "total_str_per_minute_ewma",
+            "td_rate",
+            "td_rate_ewma",
+            "td_accuracy",
+            "td_accuracy_ewma",
+            "td_defense",
+            "td_defense_ewma",
+            "strike_defense",
+            "strike_defense_ewma",
+            "ctrl_time_per_fight",
+            "ctrl_time_per_fight_ewma",
+            "sub_att_per_fight",
+            "sub_att_per_fight_ewma",
+            "opp_adj_sig_str",
+            "opp_adj_td",
+            "opp_adj_strike_def",
+            "opp_adj_ctrl_time",
+        )
+    }
     perf_b_default = {k: 0.5 for k in perf_a_default}
 
     pa = perf_a if perf_a is not None else perf_a_default
     pb = perf_b if perf_b is not None else perf_b_default
 
     def fake_get_elo(session, fighter_id, elo_type):
-        is_a = (fighter_id == 1)
+        is_a = fighter_id == 1
         if elo_type == "overall":
             return elo_a if is_a else elo_b
         if elo_type == "striking":
@@ -89,12 +105,8 @@ def _patch_session_with_snapshots(
         return cached_odds_a, cached_odds_b
 
     monkeypatch.setattr(inference_features, "_get_latest_elo", fake_get_elo)
-    monkeypatch.setattr(
-        inference_features, "_get_latest_computed_features", fake_get_perf
-    )
-    monkeypatch.setattr(
-        inference_features, "_get_cached_odds", fake_get_cached_odds
-    )
+    monkeypatch.setattr(inference_features, "_get_latest_computed_features", fake_get_perf)
+    monkeypatch.setattr(inference_features, "_get_cached_odds", fake_get_cached_odds)
     return MagicMock()
 
 
@@ -143,9 +155,15 @@ def test_inference_features_nan_tolerance_under_full_snapshot(monkeypatch):
     vec = inference_features.build(session, fa, fb, date(2026, 6, 14))
     # Critical features MUST be non-NaN
     for col in (
-        "elo_overall_diff", "elo_striking_diff", "elo_grappling_diff",
-        "stance_matchup", "height_diff", "reach_diff", "age_diff",
-        "closing_prob_diff", "opening_prob_diff",
+        "elo_overall_diff",
+        "elo_striking_diff",
+        "elo_grappling_diff",
+        "stance_matchup",
+        "height_diff",
+        "reach_diff",
+        "age_diff",
+        "closing_prob_diff",
+        "opening_prob_diff",
         "sig_str_per_minute_diff",
     ):
         idx = FEATURE_COLUMNS.index(col)
@@ -165,7 +183,8 @@ def test_odds_block_parity_with_cache(monkeypatch):
 
     session = _patch_session_with_snapshots(
         monkeypatch,
-        elo_a=elo_a, elo_b=elo_b,
+        elo_a=elo_a,
+        elo_b=elo_b,
         cached_odds_a={
             "opening_implied_prob": op_a,
             "closing_implied_prob": cl_a,
@@ -191,23 +210,28 @@ def test_odds_block_parity_with_cache(monkeypatch):
 
     assert math.isclose(
         vec[FEATURE_COLUMNS.index("opening_prob_diff")],
-        expected_opening, abs_tol=1e-9,
+        expected_opening,
+        abs_tol=1e-9,
     )
     assert math.isclose(
         vec[FEATURE_COLUMNS.index("closing_prob_diff")],
-        expected_closing, abs_tol=1e-9,
+        expected_closing,
+        abs_tol=1e-9,
     )
     assert math.isclose(
         vec[FEATURE_COLUMNS.index("line_movement_diff")],
-        expected_line_move, abs_tol=1e-9,
+        expected_line_move,
+        abs_tol=1e-9,
     )
     assert math.isclose(
         vec[FEATURE_COLUMNS.index("sharp_money_signal")],
-        expected_sharp, abs_tol=1e-9,
+        expected_sharp,
+        abs_tol=1e-9,
     )
     assert math.isclose(
         vec[FEATURE_COLUMNS.index("odds_elo_divergence")],
-        expected_divergence, abs_tol=1e-9,
+        expected_divergence,
+        abs_tol=1e-9,
     )
 
 
@@ -227,7 +251,7 @@ def test_odds_block_parity_with_live(monkeypatch):
         fighter_b_opening=170,
         fighter_b_closing_min=150,
         fighter_b_closing_max=190,
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=datetime.now(UTC),
         source="live",
     )
     session = _patch_session_with_snapshots(monkeypatch)
@@ -235,7 +259,11 @@ def test_odds_block_parity_with_live(monkeypatch):
     fb = _stub_fighter(2)
 
     vec = inference_features.build(
-        session, fa, fb, date(2026, 6, 14), live_odds=live,
+        session,
+        fa,
+        fb,
+        date(2026, 6, 14),
+        live_odds=live,
     )[0]
 
     op_idx = FEATURE_COLUMNS.index("opening_prob_diff")
@@ -275,12 +303,18 @@ def test_no_odds_fallback_is_nan_not_zero(monkeypatch):
     fb = _stub_fighter(2)
 
     vec = inference_features.build(
-        session, fa, fb, date(2026, 6, 14), live_odds=None,
+        session,
+        fa,
+        fb,
+        date(2026, 6, 14),
+        live_odds=None,
     )[0]
 
     for col in (
-        "opening_prob_diff", "closing_prob_diff",
-        "line_movement_diff", "sharp_money_signal",
+        "opening_prob_diff",
+        "closing_prob_diff",
+        "line_movement_diff",
+        "sharp_money_signal",
         "odds_elo_divergence",
     ):
         idx = FEATURE_COLUMNS.index(col)
@@ -318,15 +352,15 @@ def test_debutant_with_no_snapshot_data_still_returns_shape(monkeypatch):
     """Test 7: both fighters have NO prior snapshots (debutants on both sides)
     → vector shape preserved; mostly NaN; no exception.
     """
+    monkeypatch.setattr(inference_features, "_get_latest_elo", lambda *a, **kw: 1500.0)
     monkeypatch.setattr(
-        inference_features, "_get_latest_elo", lambda *a, **kw: 1500.0
-    )
-    monkeypatch.setattr(
-        inference_features, "_get_latest_computed_features",
+        inference_features,
+        "_get_latest_computed_features",
         lambda *a, **kw: {},
     )
     monkeypatch.setattr(
-        inference_features, "_get_cached_odds",
+        inference_features,
+        "_get_cached_odds",
         lambda *a, **kw: (None, None),
     )
 
@@ -421,7 +455,10 @@ class TestV22Dispatch:
         fb = _stub_fighter(2)
 
         vec = inference_features.build(
-            session, fa, fb, date(2026, 6, 14),
+            session,
+            fa,
+            fb,
+            date(2026, 6, 14),
             feature_set="v2.2",
         )
 
@@ -435,13 +472,17 @@ class TestV22Dispatch:
         fb = _stub_fighter(2)
 
         vec = inference_features.build(
-            session, fa, fb, date(2026, 6, 14),
+            session,
+            fa,
+            fb,
+            date(2026, 6, 14),
             include_net=False,
         )
         assert vec.shape == (1, 72)
 
     def test_inference_v22_ref_cols_unknown_referee_collapses(
-        self, monkeypatch,
+        self,
+        monkeypatch,
     ) -> None:
         """referee_id=None → all 3 REF cols == global_rates."""
         from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
@@ -458,7 +499,10 @@ class TestV22Dispatch:
         fb = _stub_fighter(2)
 
         vec = inference_features.build(
-            session, fa, fb, date(2026, 6, 14),
+            session,
+            fa,
+            fb,
+            date(2026, 6, 14),
             feature_set="v2.2",
             referee_id=None,
         )[0]
@@ -496,29 +540,42 @@ class TestV22Dispatch:
         fb = _stub_fighter(2)
 
         vec = inference_features.build(
-            session, fa, fb, date(2026, 6, 14),
+            session,
+            fa,
+            fb,
+            date(2026, 6, 14),
             feature_set="v2.2",
             referee_id=7,
         )[0]
 
         expected = compute_ref_rates_shrunk(
-            7, date(2026, 6, 14), ref_history, global_rates,
+            7,
+            date(2026, 6, 14),
+            ref_history,
+            global_rates,
         )
         idx_finish = FEATURE_COLUMNS_V22.index("ref_finish_rate_shrunk")
         idx_decision = FEATURE_COLUMNS_V22.index("ref_decision_rate_shrunk")
         idx_no_action = FEATURE_COLUMNS_V22.index("ref_no_action_rate_shrunk")
         assert math.isclose(
-            vec[idx_finish], expected["ref_finish_rate_shrunk"], abs_tol=1e-12,
+            vec[idx_finish],
+            expected["ref_finish_rate_shrunk"],
+            abs_tol=1e-12,
         )
         assert math.isclose(
-            vec[idx_decision], expected["ref_decision_rate_shrunk"], abs_tol=1e-12,
+            vec[idx_decision],
+            expected["ref_decision_rate_shrunk"],
+            abs_tol=1e-12,
         )
         assert math.isclose(
-            vec[idx_no_action], expected["ref_no_action_rate_shrunk"], abs_tol=1e-12,
+            vec[idx_no_action],
+            expected["ref_no_action_rate_shrunk"],
+            abs_tol=1e-12,
         )
 
     def test_inference_v22_meta_cols_populated_debutant_fighters(
-        self, monkeypatch,
+        self,
+        monkeypatch,
     ) -> None:
         """Phase 23 Plan 23-03: META cols (81-89) NOW POPULATED.
 
@@ -545,7 +602,10 @@ class TestV22Dispatch:
         fb = _stub_fighter(2)
 
         vec = inference_features.build(
-            session, fa, fb, date(2026, 6, 14),
+            session,
+            fa,
+            fb,
+            date(2026, 6, 14),
             feature_set="v2.2",
         )[0]
 
@@ -553,8 +613,7 @@ class TestV22Dispatch:
         idx_layoff_red = FEATURE_COLUMNS_V22.index("layoff_days_red")
         idx_layoff_blue = FEATURE_COLUMNS_V22.index("layoff_days_blue")
         assert vec[idx_layoff_red] == 0.0, (
-            f"layoff_days_red should be 0.0 sentinel for debutant; "
-            f"got {vec[idx_layoff_red]}"
+            f"layoff_days_red should be 0.0 sentinel for debutant; got {vec[idx_layoff_red]}"
         )
         assert vec[idx_layoff_blue] == 0.0
 
@@ -562,7 +621,7 @@ class TestV22Dispatch:
         idx_age_red = FEATURE_COLUMNS_V22.index("age_at_fight_red")
         idx_age_blue = FEATURE_COLUMNS_V22.index("age_at_fight_blue")
         assert not np.isnan(vec[idx_age_red]), (
-            f"age_at_fight_red unexpectedly NaN; DoB stub is 1990-01-01"
+            "age_at_fight_red unexpectedly NaN; DoB stub is 1990-01-01"
         )
         assert not np.isnan(vec[idx_age_blue])
 
@@ -574,30 +633,27 @@ class TestV22Dispatch:
         ):
             idx = FEATURE_COLUMNS_V22.index(col)
             assert np.isnan(vec[idx]), (
-                f"{col} should be NaN for debutant (insufficient history); "
-                f"got {vec[idx]}"
+                f"{col} should be NaN for debutant (insufficient history); got {vec[idx]}"
             )
 
         # Reach normalized (89): NaN because mean_reach=0 (no division data).
         idx_reach = FEATURE_COLUMNS_V22.index("reach_diff_normalized")
         assert np.isnan(vec[idx_reach]), (
-            f"reach_diff_normalized should NaN when division mean reach "
-            f"is 0; got {vec[idx_reach]}"
+            f"reach_diff_normalized should NaN when division mean reach is 0; got {vec[idx_reach]}"
         )
 
         # cols 75..80 are TRAVEL — NaN here because event_id is None
         # (graceful degradation, NOT sentinel 0).
         for idx in range(75, 81):
             assert np.isnan(vec[idx]), (
-                f"col {idx} should NaN-degrade when event_id is None; "
-                f"got {vec[idx]}"
+                f"col {idx} should NaN-degrade when event_id is None; got {vec[idx]}"
             )
 
     def test_load_time_assert_v22_columns(self) -> None:
         """Test 9: inference_features defines _EXPECTED_V22_NCOLS == 90 (D-10)."""
         from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
 
-        assert inference_features._EXPECTED_V22_NCOLS == len(FEATURE_COLUMNS_V22)
+        assert len(FEATURE_COLUMNS_V22) == inference_features._EXPECTED_V22_NCOLS
         assert inference_features._EXPECTED_V22_NCOLS == 90
 
 
@@ -669,16 +725,19 @@ class TestV22Travel:
 
         session = _patch_session_with_snapshots(monkeypatch)
         curr_venue = {
-            "lat": 34.0522, "lon": -118.2437,
+            "lat": 34.0522,
+            "lon": -118.2437,
             "timezone_iana": "America/Los_Angeles",
         }
         prior_a = {
-            "lat": 40.7128, "lon": -74.0060,
+            "lat": 40.7128,
+            "lon": -74.0060,
             "timezone_iana": "America/New_York",
             "event_date": date(2026, 1, 1),
         }
         prior_b = {
-            "lat": 34.0522, "lon": -118.2437,
+            "lat": 34.0522,
+            "lon": -118.2437,
             "timezone_iana": "America/Los_Angeles",
             "event_date": date(2026, 2, 1),
         }
@@ -687,7 +746,10 @@ class TestV22Travel:
         fa = _stub_fighter(1)
         fb = _stub_fighter(2)
         vec = inference_features.build(
-            session, fa, fb, date(2026, 6, 14),
+            session,
+            fa,
+            fb,
+            date(2026, 6, 14),
             feature_set="v2.2",
             event_id=42,
         )[0]
@@ -721,7 +783,8 @@ class TestV22Travel:
 
         session = _patch_session_with_snapshots(monkeypatch)
         curr_venue = {
-            "lat": 34.0522, "lon": -118.2437,
+            "lat": 34.0522,
+            "lon": -118.2437,
             "timezone_iana": "America/Los_Angeles",
         }
         # Both fighters are debuting (no prior).
@@ -730,7 +793,10 @@ class TestV22Travel:
         fa = _stub_fighter(1)
         fb = _stub_fighter(2)
         vec = inference_features.build(
-            session, fa, fb, date(2026, 6, 14),
+            session,
+            fa,
+            fb,
+            date(2026, 6, 14),
             feature_set="v2.2",
             event_id=42,
         )[0]
@@ -741,7 +807,8 @@ class TestV22Travel:
         assert vec[idx_red_tz] == 0.0
 
     def test_inference_v22_travel_null_venue_propagates_nan(
-        self, monkeypatch,
+        self,
+        monkeypatch,
     ) -> None:
         """Test 7: Event.venue_id resolves to None → all 6 TRAVEL cols NaN.
 
@@ -755,15 +822,17 @@ class TestV22Travel:
         fa = _stub_fighter(1)
         fb = _stub_fighter(2)
         vec = inference_features.build(
-            session, fa, fb, date(2026, 6, 14),
+            session,
+            fa,
+            fb,
+            date(2026, 6, 14),
             feature_set="v2.2",
             event_id=42,
         )[0]
 
         for idx in range(75, 81):
             assert np.isnan(vec[idx]), (
-                f"col {idx} should NaN-degrade when curr_venue is None; "
-                f"got {vec[idx]}"
+                f"col {idx} should NaN-degrade when curr_venue is None; got {vec[idx]}"
             )
 
     def test_inference_v22_travel_no_event_id(self, monkeypatch) -> None:
@@ -784,41 +853,54 @@ class TestV22Travel:
             return None
 
         monkeypatch.setattr(
-            inference_features, "_query_current_venue", _track_curr,
+            inference_features,
+            "_query_current_venue",
+            _track_curr,
         )
         monkeypatch.setattr(
-            inference_features, "_query_fighter_prior_venue", _track_prior,
+            inference_features,
+            "_query_fighter_prior_venue",
+            _track_prior,
         )
         monkeypatch.setattr(
-            inference_features, "_query_ref_state",
+            inference_features,
+            "_query_ref_state",
             lambda s, r, d: ({}, {"finish": 0.5, "decision": 0.4, "no_action": 0.1}),
         )
         # META stubs (Plan 23-03) so MagicMock session is safe.
         monkeypatch.setattr(
-            inference_features, "_query_fighter_prior_fight_date",
+            inference_features,
+            "_query_fighter_prior_fight_date",
             lambda s, fid, bd: None,
         )
         monkeypatch.setattr(
-            inference_features, "_query_elo_history",
+            inference_features,
+            "_query_elo_history",
             lambda s, fid, bd, limit=6: [],
         )
         monkeypatch.setattr(
-            inference_features, "_query_division_state",
+            inference_features,
+            "_query_division_state",
             lambda s, wc, bd: ({}, 0.0),
         )
         monkeypatch.setattr(
-            inference_features, "_query_division_mean_reach",
+            inference_features,
+            "_query_division_mean_reach",
             lambda s, wc: None,
         )
         monkeypatch.setattr(
-            inference_features, "_query_fighter_division",
+            inference_features,
+            "_query_fighter_division",
             lambda s, fid: None,
         )
 
         fa = _stub_fighter(1)
         fb = _stub_fighter(2)
         vec = inference_features.build(
-            session, fa, fb, date(2026, 6, 14),
+            session,
+            fa,
+            fb,
+            date(2026, 6, 14),
             feature_set="v2.2",
             event_id=None,
         )[0]
@@ -860,7 +942,10 @@ class TestAgeBugRegression:
         fb = _stub_fighter(2, date_of_birth=date(1995, 1, 1))
 
         vec = inference_features.build(
-            session, fa, fb, date(2020, 1, 1),
+            session,
+            fa,
+            fb,
+            date(2020, 1, 1),
         )[0]
 
         idx_age = FEATURE_COLUMNS.index("age_diff")
@@ -895,9 +980,9 @@ class TestAgeBugRegression:
 
         # The exact buggy pattern: `today = date.today()` followed by age math.
         result = subprocess.run(
-            ["grep", "-n", "today = date.today()",
-             "src/ufc_prediction/ml/inference_features.py"],
-            capture_output=True, text=True,
+            ["grep", "-n", "today = date.today()", "src/ufc_prediction/ml/inference_features.py"],
+            capture_output=True,
+            text=True,
         )
         # grep returncode 1 = no matches (desired state post-fix).
         assert result.returncode == 1, (

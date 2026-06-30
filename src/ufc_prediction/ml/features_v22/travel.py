@@ -23,6 +23,7 @@ resolved per-event. Cross-DST fights (e.g. an October LA fight following
 a March LA fight) produce a non-zero ``tz_shift_signed`` because the UTC
 offset of the same venue can differ across calendar dates.
 """
+
 from __future__ import annotations
 
 import math
@@ -48,10 +49,7 @@ def haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> float
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlam = math.radians(lon2 - lon1)
-    a = (
-        math.sin(dphi / 2) ** 2
-        + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
-    )
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
     return 2 * EARTH_RADIUS_MILES * math.asin(math.sqrt(a))
 
 
@@ -66,9 +64,7 @@ def tz_offset_hours(tz_iana: str, event_date: date) -> float:
     naive_midnight = datetime.combine(event_date, datetime.min.time())
     offset = ZoneInfo(tz_iana).utcoffset(naive_midnight)
     if offset is None:  # pragma: no cover — closed-set venue tz_iana
-        raise ValueError(
-            f"ZoneInfo({tz_iana!r}) has no utcoffset for {event_date}"
-        )
+        raise ValueError(f"ZoneInfo({tz_iana!r}) has no utcoffset for {event_date}")
     return offset.total_seconds() / 3600.0
 
 
@@ -120,8 +116,10 @@ def compute_travel_features(
         return {"travel_distance_miles": 0.0, "tz_shift_signed": 0.0}
     return {
         "travel_distance_miles": haversine_miles(
-            prior_venue["lat"], prior_venue["lon"],
-            current_venue["lat"], current_venue["lon"],
+            prior_venue["lat"],
+            prior_venue["lon"],
+            current_venue["lat"],
+            current_venue["lon"],
         ),
         "tz_shift_signed": compute_tz_shift_signed(
             prior_venue.get("timezone_iana"),
@@ -164,10 +162,7 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlam = math.radians(lon2 - lon1)
-    a = (
-        math.sin(dphi / 2) ** 2
-        + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
-    )
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
     return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(a))
 
 
@@ -229,8 +224,10 @@ def compute_travel_v25_features(
         }
     return {
         "travel_distance_km": haversine_km(
-            prior_venue["lat"], prior_venue["lon"],
-            current_venue["lat"], current_venue["lon"],
+            prior_venue["lat"],
+            prior_venue["lon"],
+            current_venue["lat"],
+            current_venue["lon"],
         ),
         "tz_shift_hours": compute_tz_shift_hours_clipped(
             prior_venue.get("timezone_iana"),

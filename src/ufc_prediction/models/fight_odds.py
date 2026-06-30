@@ -49,13 +49,9 @@ class FightOdds(Base):
     opening_implied_prob: Mapped[float | None] = mapped_column(Float, nullable=True)
     closing_implied_prob: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    source: Mapped[str] = mapped_column(
-        String(50), nullable=False, server_default="bestfightodds"
-    )
+    source: Mapped[str] = mapped_column(String(50), nullable=False, server_default="bestfightodds")
     scraped_at: Mapped[datetime] = mapped_column(
         DateTime(), nullable=False, server_default=func.now()
     )
 
-    __table_args__ = (
-        PrimaryKeyConstraint("fight_id", "fighter_id", name="pk_fight_odds"),
-    )
+    __table_args__ = (PrimaryKeyConstraint("fight_id", "fighter_id", name="pk_fight_odds"),)

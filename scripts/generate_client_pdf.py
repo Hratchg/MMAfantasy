@@ -1,5 +1,7 @@
 """Generate client-facing PDF from METHODOLOGY_CLIENT.md."""
+
 import os
+
 import markdown
 from xhtml2pdf import pisa
 
@@ -183,6 +185,7 @@ a {
 }
 """
 
+
 def generate():
     with open(MD_PATH, encoding="utf-8") as f:
         md_text = f.read()
@@ -213,6 +216,7 @@ def generate():
     size_kb = os.path.getsize(PDF_PATH) / 1024
     print(f"PDF generated: {PDF_PATH} ({size_kb:.0f} KB)")
     return True
+
 
 if __name__ == "__main__":
     generate()

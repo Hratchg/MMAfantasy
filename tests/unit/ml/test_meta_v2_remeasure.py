@@ -16,13 +16,10 @@ from pathlib import Path
 
 import pytest
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 META_META_PATH = PROJECT_ROOT / "models" / "meta" / "meta_v2_meta.json"
 META_JOBLIB_PATH = PROJECT_ROOT / "models" / "meta" / "meta_v2.joblib"
-FIXTURE_PATH = (
-    PROJECT_ROOT / "tests" / "fixtures" / "meta_v2_meta_pre_phase_34_t2_snapshot.json"
-)
+FIXTURE_PATH = PROJECT_ROOT / "tests" / "fixtures" / "meta_v2_meta_pre_phase_34_t2_snapshot.json"
 SHA_START_PATH = (
     PROJECT_ROOT
     / ".planning"

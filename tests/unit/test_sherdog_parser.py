@@ -130,16 +130,28 @@ class TestFilterPreUFCFights:
     def test_filters_fights_before_first_ufc_date(self) -> None:
         fights = [
             SherdogFight(
-                result="win", opponent_name="A", method="KO/TKO",
-                event_name="Local Show 1", event_date=date(2005, 1, 1), round_finished=1,
+                result="win",
+                opponent_name="A",
+                method="KO/TKO",
+                event_name="Local Show 1",
+                event_date=date(2005, 1, 1),
+                round_finished=1,
             ),
             SherdogFight(
-                result="win", opponent_name="B", method="Decision",
-                event_name="UFC 100", event_date=date(2009, 7, 11), round_finished=3,
+                result="win",
+                opponent_name="B",
+                method="Decision",
+                event_name="UFC 100",
+                event_date=date(2009, 7, 11),
+                round_finished=3,
             ),
             SherdogFight(
-                result="loss", opponent_name="C", method="Submission",
-                event_name="Cage Warriors 42", event_date=date(2004, 6, 15), round_finished=2,
+                result="loss",
+                opponent_name="C",
+                method="Submission",
+                event_name="Cage Warriors 42",
+                event_date=date(2004, 6, 15),
+                round_finished=2,
             ),
         ]
         pre_ufc = filter_pre_ufc_fights(fights, first_ufc_date=date(2009, 7, 11))
@@ -149,12 +161,20 @@ class TestFilterPreUFCFights:
     def test_excludes_ufc_events_even_before_cutoff(self) -> None:
         fights = [
             SherdogFight(
-                result="win", opponent_name="A", method="KO/TKO",
-                event_name="UFC Fight Night 10", event_date=date(2005, 1, 1), round_finished=1,
+                result="win",
+                opponent_name="A",
+                method="KO/TKO",
+                event_name="UFC Fight Night 10",
+                event_date=date(2005, 1, 1),
+                round_finished=1,
             ),
             SherdogFight(
-                result="win", opponent_name="B", method="Decision",
-                event_name="Local Show", event_date=date(2004, 6, 15), round_finished=3,
+                result="win",
+                opponent_name="B",
+                method="Decision",
+                event_name="Local Show",
+                event_date=date(2004, 6, 15),
+                round_finished=3,
             ),
         ]
         pre_ufc = filter_pre_ufc_fights(fights, first_ufc_date=date(2010, 1, 1))
@@ -164,8 +184,12 @@ class TestFilterPreUFCFights:
     def test_handles_none_event_date(self) -> None:
         fights = [
             SherdogFight(
-                result="win", opponent_name="A", method="KO/TKO",
-                event_name="Local Show", event_date=None, round_finished=1,
+                result="win",
+                opponent_name="A",
+                method="KO/TKO",
+                event_name="Local Show",
+                event_date=None,
+                round_finished=1,
             ),
         ]
         pre_ufc = filter_pre_ufc_fights(fights, first_ufc_date=date(2010, 1, 1))
@@ -179,20 +203,36 @@ class TestComputePreUFCStats:
     def test_computes_correct_stats(self) -> None:
         fights = [
             SherdogFight(
-                result="win", opponent_name="A", method="KO/TKO",
-                event_name="Show 1", event_date=date(2002, 1, 1), round_finished=1,
+                result="win",
+                opponent_name="A",
+                method="KO/TKO",
+                event_name="Show 1",
+                event_date=date(2002, 1, 1),
+                round_finished=1,
             ),
             SherdogFight(
-                result="win", opponent_name="B", method="Submission",
-                event_name="Show 2", event_date=date(2003, 1, 1), round_finished=2,
+                result="win",
+                opponent_name="B",
+                method="Submission",
+                event_name="Show 2",
+                event_date=date(2003, 1, 1),
+                round_finished=2,
             ),
             SherdogFight(
-                result="win", opponent_name="C", method="Decision",
-                event_name="Show 3", event_date=date(2004, 1, 1), round_finished=3,
+                result="win",
+                opponent_name="C",
+                method="Decision",
+                event_name="Show 3",
+                event_date=date(2004, 1, 1),
+                round_finished=3,
             ),
             SherdogFight(
-                result="loss", opponent_name="D", method="KO/TKO",
-                event_name="Show 4", event_date=date(2005, 1, 1), round_finished=1,
+                result="loss",
+                opponent_name="D",
+                method="KO/TKO",
+                event_name="Show 4",
+                event_date=date(2005, 1, 1),
+                round_finished=1,
             ),
         ]
         stats = compute_pre_ufc_stats(fights)
@@ -227,12 +267,20 @@ class TestComputePreUFCStats:
     def test_handles_all_draws(self) -> None:
         fights = [
             SherdogFight(
-                result="draw", opponent_name="A", method="Decision",
-                event_name="Show 1", event_date=date(2003, 6, 1), round_finished=3,
+                result="draw",
+                opponent_name="A",
+                method="Decision",
+                event_name="Show 1",
+                event_date=date(2003, 6, 1),
+                round_finished=3,
             ),
             SherdogFight(
-                result="draw", opponent_name="B", method="Decision",
-                event_name="Show 2", event_date=date(2004, 6, 1), round_finished=3,
+                result="draw",
+                opponent_name="B",
+                method="Decision",
+                event_name="Show 2",
+                event_date=date(2004, 6, 1),
+                round_finished=3,
             ),
         ]
         stats = compute_pre_ufc_stats(fights)
@@ -259,11 +307,7 @@ class TestParseAssociationFromHtml:
 
     def test_extracts_itemprop_memberOf(self) -> None:
         """Layer 1: Schema.org microdata selector returns the camp text."""
-        html = (
-            '<html><body>'
-            '<span itemprop="memberOf">American Top Team</span>'
-            '</body></html>'
-        )
+        html = '<html><body><span itemprop="memberOf">American Top Team</span></body></html>'
         assert parse_association_from_html(html) == "American Top Team"
 
     def test_extracts_from_saved_fixture(self) -> None:
@@ -287,9 +331,7 @@ class TestParseAssociationFromHtml:
     def test_label_fallback(self) -> None:
         """Layer 2: <strong>Association:</strong> label + sibling anchor."""
         html = (
-            '<html><body>'
-            '<strong>Association:</strong> <a href="/team/atss">ATSS</a>'
-            '</body></html>'
+            '<html><body><strong>Association:</strong> <a href="/team/atss">ATSS</a></body></html>'
         )
         assert parse_association_from_html(html) == "ATSS"
 
@@ -311,9 +353,5 @@ class TestParseAssociationFromHtml:
 
     def test_empty_itemprop_falls_through_to_none(self) -> None:
         """An empty itemprop element does not falsely succeed."""
-        html = (
-            '<html><body>'
-            '<span itemprop="memberOf">   </span>'
-            '</body></html>'
-        )
+        html = '<html><body><span itemprop="memberOf">   </span></body></html>'
         assert parse_association_from_html(html) is None

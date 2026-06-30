@@ -27,7 +27,6 @@ from xgboost import XGBClassifier
 
 from ufc_prediction.ml.config import FEATURE_COLUMNS, MLConfig
 
-
 # Phase 26 CALIB-V22-02 isotonic-vs-sigmoid threshold (D-14(v2.0)). Exported as a
 # module-level constant so unit tests can monkey-patch and dispatch helpers can
 # import without circular imports.
@@ -89,7 +88,9 @@ class ModelTrainer:
         return float(np.mean(brier_scores))
 
     def train(
-        self, X_train: np.ndarray, y_train: np.ndarray,
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
     ) -> tuple[CalibratedClassifierCV, dict, dict]:
         """Train model with Optuna tuning and Platt calibration.
 

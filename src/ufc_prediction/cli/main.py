@@ -195,17 +195,13 @@ def _run_mdabbert_pipeline(
     skip_download: bool,
 ) -> dict[str, IngestResult]:
     """Run mdabbert ingestion pipeline and return results."""
-    mdabbert_path = _resolve_dataset(
-        "mdabbert/ultimate-ufc-dataset", data_dir, skip_download
-    )
+    mdabbert_path = _resolve_dataset("mdabbert/ultimate-ufc-dataset", data_dir, skip_download)
 
     results: dict[str, IngestResult] = {}
     session = SessionLocal()
     try:
         console.print("[bold]Ingesting mdabbert supplement...[/bold]")
-        results["Mdabbert Supplement"] = ingest_mdabbert(
-            mdabbert_path / "ufc-master.csv", session
-        )
+        results["Mdabbert Supplement"] = ingest_mdabbert(mdabbert_path / "ufc-master.csv", session)
         console.print(f"  {results['Mdabbert Supplement'].summary()}")
     except Exception:
         session.rollback()
@@ -218,9 +214,9 @@ def _run_mdabbert_pipeline(
 
 @ingest_app.command("all")
 def ingest_all(
-    data_dir: Annotated[
-        Path, typer.Option(help="Directory containing dataset files")
-    ] = Path("data"),
+    data_dir: Annotated[Path, typer.Option(help="Directory containing dataset files")] = Path(
+        "data"
+    ),
     skip_download: Annotated[
         bool, typer.Option(help="Skip kagglehub download, use local files only")
     ] = False,
@@ -244,9 +240,9 @@ def ingest_all(
 
 @ingest_app.command("rajeevw")
 def ingest_rajeevw_cmd(
-    data_dir: Annotated[
-        Path, typer.Option(help="Directory containing dataset files")
-    ] = Path("data"),
+    data_dir: Annotated[Path, typer.Option(help="Directory containing dataset files")] = Path(
+        "data"
+    ),
     skip_download: Annotated[
         bool, typer.Option(help="Skip kagglehub download, use local files only")
     ] = False,
@@ -266,9 +262,9 @@ def ingest_rajeevw_cmd(
 
 @ingest_app.command("mdabbert")
 def ingest_mdabbert_cmd(
-    data_dir: Annotated[
-        Path, typer.Option(help="Directory containing dataset files")
-    ] = Path("data"),
+    data_dir: Annotated[Path, typer.Option(help="Directory containing dataset files")] = Path(
+        "data"
+    ),
     skip_download: Annotated[
         bool, typer.Option(help="Skip kagglehub download, use local files only")
     ] = False,
@@ -290,9 +286,7 @@ def ingest_mdabbert_cmd(
 
 @scrape_app.command("all")
 def scrape_all(
-    delay: Annotated[
-        float, typer.Option(help="Delay between requests in seconds")
-    ] = 1.5,
+    delay: Annotated[float, typer.Option(help="Delay between requests in seconds")] = 1.5,
     after: Annotated[
         str | None, typer.Option(help="Only scrape events after this date (YYYY-MM-DD)")
     ] = None,
@@ -310,15 +304,14 @@ def scrape_all(
     Use --after YYYY-MM-DD to resume from a specific date.
     Estimated time: 2-3 hours with default 1.5s delay and workers=4.
     """
-    logging.basicConfig(
-        level=logging.INFO, format="%(levelname)s: %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     from ufc_prediction.scraper.client import ScraperClient
 
     after_date = None
     if after:
         from datetime import date as dt_date
+
         after_date = dt_date.fromisoformat(after)
         console.print(f"[bold]Resuming UFCStats scrape after {after}...[/bold]")
     else:
@@ -355,9 +348,7 @@ def scrape_all(
 
 @scrape_app.command("latest")
 def scrape_latest(
-    delay: Annotated[
-        float, typer.Option(help="Delay between requests in seconds")
-    ] = 1.5,
+    delay: Annotated[float, typer.Option(help="Delay between requests in seconds")] = 1.5,
     workers: Annotated[
         int,
         typer.Option(
@@ -370,9 +361,7 @@ def scrape_latest(
     Compares UFCStats event listing against database and only downloads
     events not yet scraped. Fast way to update after a UFC event.
     """
-    logging.basicConfig(
-        level=logging.INFO, format="%(levelname)s: %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     from ufc_prediction.scraper.client import ScraperClient
 
@@ -385,9 +374,7 @@ def scrape_latest(
             result = scrape_latest_events(session, client, workers=workers)
 
         if result.accepted == 0 and result.rejected == 0:
-            console.print(
-                "[green]Database is up to date. No new events found.[/green]"
-            )
+            console.print("[green]Database is up to date. No new events found.[/green]")
         else:
             table = Table(title="Incremental Scrape Summary")
             table.add_column("Metric", style="cyan")
@@ -413,9 +400,7 @@ def _scrape_progress(current: int, total: int) -> None:
 
 @scrape_app.command("sherdog")
 def scrape_sherdog(
-    delay: Annotated[
-        float, typer.Option(help="Seconds between requests (min 2.0 per D-04)")
-    ] = 2.0,
+    delay: Annotated[float, typer.Option(help="Seconds between requests (min 2.0 per D-04)")] = 2.0,
     dry_run: Annotated[
         bool, typer.Option(help="Search and match only, don't fetch profiles")
     ] = False,
@@ -444,27 +429,21 @@ def scrape_sherdog(
     fetches their full fight history, filters pre-UFC fights, and stores
     computed career stats as JSON on the Fighter model.
     """
-    logging.basicConfig(
-        level=logging.INFO, format="%(levelname)s: %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     from ufc_prediction.scraper.client import ScraperClient
 
     # Enforce minimum delay per D-04
     effective_delay = max(delay, 2.0)
     if delay < 2.0:
-        console.print(
-            f"[yellow]Delay {delay}s below minimum 2.0s, using 2.0s[/yellow]"
-        )
+        console.print(f"[yellow]Delay {delay}s below minimum 2.0s, using 2.0s[/yellow]")
 
     mode = "DRY RUN" if dry_run else "full scrape"
     console.print(f"[bold]Starting Sherdog {mode}...[/bold]")
     console.print(f"Request delay: {effective_delay}s")
     console.print(f"Workers: {workers}")
     if since_year is not None:
-        console.print(
-            f"Fighter filter: UFC fight on or after {since_year}-01-01"
-        )
+        console.print(f"Fighter filter: UFC fight on or after {since_year}-01-01")
 
     session = SessionLocal()
     try:
@@ -488,9 +467,7 @@ def scrape_sherdog(
         # Print unmatched fighters for manual review (D-08)
         unmatched_names = result.get("unmatched_names", [])
         if unmatched_names:
-            console.print(
-                f"\n[yellow]Unmatched fighters ({len(unmatched_names)}):[/yellow]"
-            )
+            console.print(f"\n[yellow]Unmatched fighters ({len(unmatched_names)}):[/yellow]")
             for name in unmatched_names:
                 console.print(f"  - {name}")
 
@@ -528,21 +505,15 @@ def _validate_bfo_data_folder(data_folder: Path) -> Path:
     Raises ``SystemExit(1)`` on paths under the forbidden prefixes.
     """
     resolved = data_folder.expanduser().resolve()
-    if any(
-        str(resolved).startswith(str(fp)) for fp in _BFO_FORBIDDEN_PATH_PREFIXES
-    ):
-        console.print(
-            f"[red]Refusing to use unsafe data folder: {resolved}[/red]"
-        )
+    if any(str(resolved).startswith(str(fp)) for fp in _BFO_FORBIDDEN_PATH_PREFIXES):
+        console.print(f"[red]Refusing to use unsafe data folder: {resolved}[/red]")
         raise SystemExit(1)
     return resolved
 
 
 @scrape_app.command("odds")
 def scrape_odds(
-    delay: Annotated[
-        float, typer.Option(help="Seconds between BFO requests per session")
-    ] = 2.0,
+    delay: Annotated[float, typer.Option(help="Seconds between BFO requests per session")] = 2.0,
     n_sessions: Annotated[
         int,
         typer.Option(
@@ -552,25 +523,17 @@ def scrape_odds(
             )
         ),
     ] = 2,
-    min_date: Annotated[
-        str, typer.Option(help="Earliest event date YYYY-MM-DD")
-    ] = "2007-08-01",
+    min_date: Annotated[str, typer.Option(help="Earliest event date YYYY-MM-DD")] = "2007-08-01",
     data_folder: Annotated[
         Path,
         typer.Option(
-            help=(
-                "Where the BFOScraper writes CSVs (and where the "
-                "ingester reads)."
-            ),
+            help=("Where the BFOScraper writes CSVs (and where the ingester reads)."),
         ),
     ] = Path("data/bfo"),
     skip_scrape: Annotated[
         bool,
         typer.Option(
-            help=(
-                "Skip the BFOScraper network scrape; only ingest "
-                "existing CSVs."
-            ),
+            help=("Skip the BFOScraper network scrape; only ingest existing CSVs."),
         ),
     ] = False,
 ) -> None:
@@ -603,15 +566,11 @@ def scrape_odds(
         try:
             parsed_min_date = _dt.datetime.strptime(min_date, "%Y-%m-%d").date()
         except ValueError as exc:
-            console.print(
-                f"[red]Invalid --min-date {min_date!r}: {exc}[/red]"
-            )
+            console.print(f"[red]Invalid --min-date {min_date!r}: {exc}[/red]")
             raise SystemExit(1) from exc
 
         console.print(f"[bold]Scraping BestFightOdds to {resolved}...[/bold]")
-        console.print(
-            f"  Delay: {delay}s · Workers: 4 · Min date: {min_date}"
-        )
+        console.print(f"  Delay: {delay}s · Workers: 4 · Min date: {min_date}")
         client = ScraperClient(delay=delay, workers=4)
         scrape_session = SessionLocal()
         try:
@@ -639,10 +598,7 @@ def scrape_odds(
                 "before next run.[/yellow]"
             )
     else:
-        console.print(
-            f"[yellow]--skip-scrape[/yellow] — reading existing CSVs from "
-            f"{resolved}"
-        )
+        console.print(f"[yellow]--skip-scrape[/yellow] — reading existing CSVs from {resolved}")
 
     from ufc_prediction.scraper.bfo_ingest import BFOOddsIngester
 
@@ -677,15 +633,12 @@ def scrape_odds(
 
     if summary.unmatched_bfo_names:
         console.print(
-            f"\n[yellow]Unmatched BFO fighters "
-            f"({len(summary.unmatched_bfo_names)}):[/yellow]"
+            f"\n[yellow]Unmatched BFO fighters ({len(summary.unmatched_bfo_names)}):[/yellow]"
         )
         for name in summary.unmatched_bfo_names[:20]:
             console.print(f"  - {name}")
         if len(summary.unmatched_bfo_names) > 20:
-            console.print(
-                f"  ... and {len(summary.unmatched_bfo_names) - 20} more"
-            )
+            console.print(f"  ... and {len(summary.unmatched_bfo_names) - 20} more")
 
 
 # ── Phase 28 INGEST-V23 Commands (referee + venue backfill) ─────────────────
@@ -697,6 +650,7 @@ def scrape_odds(
 # audit drivers there.
 def _ensure_scripts_on_path() -> None:
     import sys as _sys
+
     scripts_dir = Path(__file__).resolve().parents[3] / "scripts"
     if str(scripts_dir) not in _sys.path:
         _sys.path.insert(0, str(scripts_dir))
@@ -706,7 +660,7 @@ _ensure_scripts_on_path()
 # Module-level import so unittest.mock.patch("...scripts.scrape_referees_full.main")
 # can resolve and substitute the driver entry-point during tests.
 # Use importlib because `scripts/` lacks __init__.py and isn't a real package.
-import importlib as _importlib  # noqa: E402
+import importlib as _importlib
 
 _scrape_referees_full = _importlib.import_module("scrape_referees_full")
 
@@ -816,12 +770,16 @@ def scrape_venues_cmd(
     session = SessionLocal()
     try:
         # SELECT events WHERE venue_id IS NULL AND location IS NOT NULL.
-        events = session.execute(
-            select(Event)
-            .where(Event.venue_id.is_(None))
-            .where(Event.location.isnot(None))
-            .order_by(Event.id)
-        ).scalars().all()
+        events = (
+            session.execute(
+                select(Event)
+                .where(Event.venue_id.is_(None))
+                .where(Event.location.isnot(None))
+                .order_by(Event.id)
+            )
+            .scalars()
+            .all()
+        )
         events_to_process = len(events)
 
         # Pre-flight: count unresolvable distinct strings (dry-run pass).
@@ -964,8 +922,7 @@ def compute_elo(
             else "empty -- falling back to flat 1500 default"
         )
         console.print(
-            f"Loaded {n_seeded} debutant Elo seeds from "
-            f"{_SHERDOG_PRE_UFC_CSV} ({dispatch_note})"
+            f"Loaded {n_seeded} debutant Elo seeds from {_SHERDOG_PRE_UFC_CSV} ({dispatch_note})"
         )
         engine = EloEngine(EloConfig(), seeds=seeds)
         start = time.perf_counter()
@@ -1103,9 +1060,10 @@ def _print_backtest_results(
 @elo_app.command("backtest-params")
 def backtest_params(
     cutoff_date: Annotated[str, typer.Option(help="YYYY-MM-DD temporal split date")],
-    group: Annotated[str, typer.Option(
-        help="Parameter group: mov, transfer, inactivity, ewma, domain, joint, all"
-    )] = "all",
+    group: Annotated[
+        str,
+        typer.Option(help="Parameter group: mov, transfer, inactivity, ewma, domain, joint, all"),
+    ] = "all",
     top: Annotated[int, typer.Option(help="Number of top results to display")] = 10,
     output_dir: Annotated[str, typer.Option(help="Directory for JSON results")] = "results",
 ) -> None:
@@ -1137,7 +1095,9 @@ def backtest_params(
                 results = run_backtest(fights, configs, parsed_date)
                 independent_results["mov"] = results
                 _print_backtest_results(
-                    "MOV Multipliers", results, top,
+                    "MOV Multipliers",
+                    results,
+                    top,
                     cols=["KO/TKO", "Submission", "Split"],
                     extractors=[
                         lambda c: f"{c.mov_ko_tko:.1f}",
@@ -1146,33 +1106,46 @@ def backtest_params(
                     ],
                 )
                 save_backtest_results(
-                    "mov_multipliers", results, parsed_date,
+                    "mov_multipliers",
+                    results,
+                    parsed_date,
                     {"ko_tko": "1.2-1.8", "submission": "1.1-1.7", "split": "0.5-1.0"},
                     output_dir=results_path,
                 )
 
             elif grp == "transfer":
                 configs = generate_transfer_grid()
-                console.print(f"\n[bold]Division Transfer Backtest ({len(configs)} configs)...[/bold]")
+                console.print(
+                    f"\n[bold]Division Transfer Backtest ({len(configs)} configs)...[/bold]"
+                )
                 results = run_backtest(fights, configs, parsed_date)
                 independent_results["transfer"] = results
                 _print_backtest_results(
-                    "Division Transfer", results, top,
+                    "Division Transfer",
+                    results,
+                    top,
                     cols=["Transfer %"],
                     extractors=[lambda c: f"{c.division_transfer_pct:.0%}"],
                 )
                 save_backtest_results(
-                    "transfer", results, parsed_date,
-                    {"transfer_pct": "0.50-1.00"}, output_dir=results_path,
+                    "transfer",
+                    results,
+                    parsed_date,
+                    {"transfer_pct": "0.50-1.00"},
+                    output_dir=results_path,
                 )
 
             elif grp == "inactivity":
                 configs = generate_inactivity_grid()
-                console.print(f"\n[bold]Inactivity Regression Backtest ({len(configs)} configs)...[/bold]")
+                console.print(
+                    f"\n[bold]Inactivity Regression Backtest ({len(configs)} configs)...[/bold]"
+                )
                 results = run_backtest(fights, configs, parsed_date)
                 independent_results["inactivity"] = results
                 _print_backtest_results(
-                    "Inactivity Regression", results, top,
+                    "Inactivity Regression",
+                    results,
+                    top,
                     cols=["Threshold (days)", "Rate", "Cap"],
                     extractors=[
                         lambda c: str(c.inactivity_threshold_days),
@@ -1181,7 +1154,9 @@ def backtest_params(
                     ],
                 )
                 save_backtest_results(
-                    "inactivity", results, parsed_date,
+                    "inactivity",
+                    results,
+                    parsed_date,
                     {"threshold_days": "270-548", "rate": "0.05-0.20", "cap": "0.30-0.75"},
                     output_dir=results_path,
                 )
@@ -1191,6 +1166,7 @@ def backtest_params(
                 console.print("\n[bold]EWMA Half-Life Backtest (4 configs)...[/bold]")
 
                 from ufc_prediction.features.queries import load_all_domain_elo
+
                 domain_elo = load_all_domain_elo(session)
 
                 ewma_configs = generate_ewma_grid()
@@ -1198,8 +1174,12 @@ def backtest_params(
                 for ec in ewma_configs:
                     console.print(f"  Evaluating half_life={ec['half_life']}...")
                     result = evaluate_ewma_brier(
-                        ec["half_life"], ec["alpha"],
-                        fights, round_stats, domain_elo, parsed_date,
+                        ec["half_life"],
+                        ec["alpha"],
+                        fights,
+                        round_stats,
+                        domain_elo,
+                        parsed_date,
                     )
                     ewma_results.append(result)
                 ewma_results.sort(key=lambda r: r["brier_score"])
@@ -1212,22 +1192,27 @@ def backtest_params(
                 table.add_column("N Test", justify="right")
                 for i, r in enumerate(ewma_results[:top], 1):
                     table.add_row(
-                        str(i), str(r["half_life"]),
-                        f"{r['alpha']:.4f}", f"{r['brier_score']:.6f}",
+                        str(i),
+                        str(r["half_life"]),
+                        f"{r['alpha']:.4f}",
+                        f"{r['brier_score']:.6f}",
                         str(r["n_test_fights"]),
                     )
                 console.print(table)
 
                 save_backtest_results(
-                    "ewma", ewma_results, parsed_date,
-                    {"half_life": "2-5"}, output_dir=results_path,
+                    "ewma",
+                    ewma_results,
+                    parsed_date,
+                    {"half_life": "2-5"},
+                    output_dir=results_path,
                 )
 
             elif grp == "domain":
                 round_stats = load_round_stats_by_fight(session)
                 console.print("\n[bold]Domain Attribution Backtest (25 configs)...[/bold]")
 
-                # noqa: DEBUT-V25 -- backtest path intentionally unseeded for
+                # DEBUT-V25 -- backtest path intentionally unseeded for
                 # v2.3-baseline comparability. Phase 43 backtest-vs-prod
                 # comparisons need a constant 1500-default substrate so the
                 # backtest grid search isolates domain-attribution params from
@@ -1240,12 +1225,18 @@ def backtest_params(
                 domain_results = []
                 for dc in domain_configs:
                     result = evaluate_domain_brier(
-                        dc, fights, overall_snaps, round_stats, parsed_date,
+                        dc,
+                        fights,
+                        overall_snaps,
+                        round_stats,
+                        parsed_date,
                     )
                     domain_results.append(result)
                 domain_results.sort(key=lambda r: r["brier_score"])
 
-                table = Table(title=f"Domain Attribution Results (Top {min(top, len(domain_results))})")
+                table = Table(
+                    title=f"Domain Attribution Results (Top {min(top, len(domain_results))})"
+                )
                 table.add_column("Rank", style="cyan", justify="right")
                 table.add_column("KO Str/Grap", justify="right")
                 table.add_column("Sub Str/Grap", justify="right")
@@ -1257,12 +1248,15 @@ def backtest_params(
                         str(i),
                         f"{c['ko_striking']:.1f}/{c['ko_grappling']:.1f}",
                         f"{c['sub_striking']:.1f}/{c['sub_grappling']:.1f}",
-                        f"{r['brier_score']:.6f}", str(r["n_test_fights"]),
+                        f"{r['brier_score']:.6f}",
+                        str(r["n_test_fights"]),
                     )
                 console.print(table)
 
                 save_backtest_results(
-                    "domain_attribution", domain_results, parsed_date,
+                    "domain_attribution",
+                    domain_results,
+                    parsed_date,
                     {"ko_striking": "0.6-1.0", "sub_grappling": "0.6-1.0"},
                     output_dir=results_path,
                 )
@@ -1280,21 +1274,36 @@ def backtest_params(
                                 cfg_dict = r.get("config", {})
                                 valid_fields = set(EloConfig.__dataclass_fields__)
                                 filtered = {k: v for k, v in cfg_dict.items() if k in valid_fields}
-                                reconstructed.append({
-                                    "config": EloConfig(**filtered),
-                                    "brier_score": r["brier_score"],
-                                    "n_test_fights": r.get("n_test_fights", 0),
-                                })
+                                reconstructed.append(
+                                    {
+                                        "config": EloConfig(**filtered),
+                                        "brier_score": r["brier_score"],
+                                        "n_test_fights": r.get("n_test_fights", 0),
+                                    }
+                                )
                             independent_results[key] = reconstructed
 
                 console.print("\n[bold]Joint Optimization (top-3 cross-product)...[/bold]")
                 joint_results = run_joint_optimization(
-                    fights, independent_results, parsed_date, top_n=3,
+                    fights,
+                    independent_results,
+                    parsed_date,
+                    top_n=3,
                 )
                 if joint_results:
                     _print_backtest_results(
-                        "Joint Optimization", joint_results, top,
-                        cols=["KO/TKO", "Sub", "Split", "Transfer", "Inact.Thresh", "Inact.Rate", "Inact.Cap"],
+                        "Joint Optimization",
+                        joint_results,
+                        top,
+                        cols=[
+                            "KO/TKO",
+                            "Sub",
+                            "Split",
+                            "Transfer",
+                            "Inact.Thresh",
+                            "Inact.Rate",
+                            "Inact.Cap",
+                        ],
                         extractors=[
                             lambda c: f"{c.mov_ko_tko:.1f}",
                             lambda c: f"{c.mov_submission:.1f}",
@@ -1306,12 +1315,16 @@ def backtest_params(
                         ],
                     )
                     save_backtest_results(
-                        "joint", joint_results, parsed_date,
+                        "joint",
+                        joint_results,
+                        parsed_date,
                         {"strategy": "top-3 cross-product from independent sweeps"},
                         output_dir=results_path,
                     )
                 else:
-                    console.print("[yellow]No independent results available for joint optimization.[/yellow]")
+                    console.print(
+                        "[yellow]No independent results available for joint optimization.[/yellow]"
+                    )
 
     except Exception as exc:
         console.print(f"[red]Error during backtest: {exc}[/red]")
@@ -1412,9 +1425,7 @@ def fighter_lookup(
 
 @fighter_app.command("rankings")
 def fighter_rankings(
-    weight_class: Annotated[
-        str, typer.Argument(help="Weight class (e.g., 'Lightweight')")
-    ],
+    weight_class: Annotated[str, typer.Argument(help="Weight class (e.g., 'Lightweight')")],
     top: Annotated[int, typer.Option(help="Number of fighters to display")] = 15,
 ) -> None:
     """Display top fighters in a division ranked by Elo."""
@@ -1426,19 +1437,12 @@ def fighter_rankings(
     matches = resolve_weight_class(weight_class)
 
     if not matches:
-        console.print(
-            f"[yellow]No weight class matching '{weight_class}'[/yellow]"
-        )
-        console.print(
-            "Valid divisions: " + ", ".join(sorted(list_divisions()))
-        )
+        console.print(f"[yellow]No weight class matching '{weight_class}'[/yellow]")
+        console.print("Valid divisions: " + ", ".join(sorted(list_divisions())))
         return
 
     if len(matches) > 1:
-        console.print(
-            f"[yellow]Ambiguous weight class '{weight_class}'. "
-            "Did you mean:[/yellow]"
-        )
+        console.print(f"[yellow]Ambiguous weight class '{weight_class}'. Did you mean:[/yellow]")
         for m in matches:
             console.print(f"  - {m}")
         return
@@ -1523,8 +1527,7 @@ def compute_features() -> None:
 
         unique_fighters = len({r["fighter_id"] for r in feature_rows})
         console.print(
-            f"Computed {count} feature vectors for {unique_fighters} fighters "
-            f"in {elapsed:.2f}s"
+            f"Computed {count} feature vectors for {unique_fighters} fighters in {elapsed:.2f}s"
         )
     except Exception as exc:
         session.rollback()
@@ -1577,9 +1580,7 @@ def matchup_compare(
         # Resolve fighter A — apply same DEDUP-03 dedup as fighter_lookup
         matches_a = search_fighters(session, fighter_a)
         if not matches_a:
-            console.print(
-                f"[red]No fighters found matching '{fighter_a}'[/red]"
-            )
+            console.print(f"[red]No fighters found matching '{fighter_a}'[/red]")
             return
         by_name_a: dict[str, list[Fighter]] = {}
         for f in matches_a:
@@ -1592,17 +1593,13 @@ def matchup_compare(
             for i, f in enumerate(deduped_a, 1):
                 table.add_row(str(i), f.name)
             console.print(table)
-            console.print(
-                "[yellow]Multiple matches -- please be more specific[/yellow]"
-            )
+            console.print("[yellow]Multiple matches -- please be more specific[/yellow]")
             return
 
         # Resolve fighter B — apply same DEDUP-03 dedup as fighter_lookup
         matches_b = search_fighters(session, fighter_b)
         if not matches_b:
-            console.print(
-                f"[red]No fighters found matching '{fighter_b}'[/red]"
-            )
+            console.print(f"[red]No fighters found matching '{fighter_b}'[/red]")
             return
         by_name_b: dict[str, list[Fighter]] = {}
         for f in matches_b:
@@ -1615,9 +1612,7 @@ def matchup_compare(
             for i, f in enumerate(deduped_b, 1):
                 table.add_row(str(i), f.name)
             console.print(table)
-            console.print(
-                "[yellow]Multiple matches -- please be more specific[/yellow]"
-            )
+            console.print("[yellow]Multiple matches -- please be more specific[/yellow]")
             return
 
         fa = deduped_a[0]
@@ -1625,9 +1620,7 @@ def matchup_compare(
 
         # Same fighter check
         if fa.id == fb.id:
-            console.print(
-                "[red]Cannot compare a fighter to themselves[/red]"
-            )
+            console.print("[red]Cannot compare a fighter to themselves[/red]")
             return
 
         # Build matchup
@@ -1800,8 +1793,7 @@ def matchup_compare(
                     )
                 else:
                     console.print(
-                        f"  {wr.style_a} vs {wr.style_b}: "
-                        f"Insufficient data (< 10 fights)"
+                        f"  {wr.style_a} vs {wr.style_b}: Insufficient data (< 10 fights)"
                     )
 
         if st.cross_division_warning:
@@ -1837,7 +1829,8 @@ def gate_recalib(
     feature_set: Annotated[
         str,
         typer.Option(
-            "--feature-set", "-f",
+            "--feature-set",
+            "-f",
             help="Gate contract version to recalibrate (e.g., 'v2.6').",
         ),
     ] = "v2.6",
@@ -2054,7 +2047,8 @@ def gate_verify(
     candidate: Annotated[
         Path,
         typer.Option(
-            "--candidate", "-c",
+            "--candidate",
+            "-c",
             help="Path to candidate Pipeline (.joblib).",
         ),
     ],
@@ -2080,7 +2074,8 @@ def gate_verify(
     strategy: Annotated[
         str,
         typer.Option(
-            "--strategy", "-s",
+            "--strategy",
+            "-s",
             help="Substrate alignment strategy: refit_baseline or dual_test_set.",
         ),
     ] = "refit_baseline",
@@ -2146,7 +2141,8 @@ def gate_verify(
 
     Contract sources:
       - Verifier contract: ``.planning/gate_methodology_v2.6.md`` §6.
-      - CLI output surface: ``.planning/phases/63-substrate-snapshot-loader-crit-v261-01/63-CONTEXT.md`` §D-04.
+      - CLI output surface:
+        ``.planning/phases/63-substrate-snapshot-loader-crit-v261-01/63-CONTEXT.md`` §D-04.
 
     Phase 75 METH-V27-02 (Plan 75-03): ``--dual-substrate`` extends this
     command with the v2.7 dual-test methodology. When ``--dual-substrate``
@@ -2172,9 +2168,7 @@ def gate_verify(
             "--dual-substrate (with --candidate-substrate + "
             "--canonical-substrate for v2.7) is required."
         )
-    if dual_substrate and (
-        candidate_substrate is None or canonical_substrate is None
-    ):
+    if dual_substrate and (candidate_substrate is None or canonical_substrate is None):
         raise typer.BadParameter(
             "--dual-substrate requires BOTH --candidate-substrate and "
             "--canonical-substrate to be provided."
@@ -2182,8 +2176,8 @@ def gate_verify(
 
     if dual_substrate:
         # All four guard clauses above confirm both substrate paths are set.
-        assert candidate_substrate is not None  # noqa: S101 — type narrowing
-        assert canonical_substrate is not None  # noqa: S101 — type narrowing
+        assert candidate_substrate is not None
+        assert canonical_substrate is not None
         _gate_verify_dual_substrate(
             candidate=candidate,
             canonical=canonical,
@@ -2199,7 +2193,7 @@ def gate_verify(
     # ``substrate_parquet`` parameter (Plan 75-03 D-04 backward-compat
     # promotion to optional). The narrowing assertion below makes mypy-strict
     # happy without altering runtime behavior.
-    assert substrate_parquet is not None  # noqa: S101 — type narrowing
+    assert substrate_parquet is not None
     # Function-scope imports keep module-load cheap and mirror the
     # gate_recalib pattern (load_gate_contract is imported inside the
     # function body, not at module top-level).
@@ -2257,16 +2251,12 @@ def gate_verify(
         aligned_candidate = verdict.aligned_candidate_brier_per_slice[slice_name]
         aligned_delta = verdict.aligned_delta_per_slice[slice_name]
         floor_clear = verdict.floor_clears.get(slice_name, False)
-        floor_cell = (
-            "[green]PASS[/green]" if floor_clear else "[red]FAIL[/red]"
-        )
+        floor_cell = "[green]PASS[/green]" if floor_clear else "[red]FAIL[/red]"
         # Per Plan 64-01 width-mismatch guard contract, raw_* values can
         # be None (sentinel for "raw measurement structurally impossible
         # due to width mismatch"). Format defensively so the Rich table
         # render does not crash on the confound_block verdict path.
-        raw_baseline_cell = (
-            "n/a" if raw_baseline is None else f"{raw_baseline:.4f}"
-        )
+        raw_baseline_cell = "n/a" if raw_baseline is None else f"{raw_baseline:.4f}"
         table.add_row(
             slice_name,
             raw_baseline_cell,

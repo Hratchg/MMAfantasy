@@ -7,12 +7,10 @@ preserves backwards compat (75-col output).
 These tests RED on import (Wave 0) — `FEATURE_COLUMNS_NO_NET` does not yet
 exist in `config.py`. Goes GREEN when Wave 1 Tasks 9 + 10 land.
 """
+
 from __future__ import annotations
 
 from datetime import date
-
-import numpy as np
-import pytest
 
 from ufc_prediction.ml.config import FEATURE_COLUMNS, FEATURE_COLUMNS_NO_NET
 from ufc_prediction.ml.feature_matrix import FeatureMatrixAssembler
@@ -92,10 +90,20 @@ def _toy_computed_features() -> dict[tuple[int, int], dict[str, float | None]]:
 
 def _toy_fighter_physicals() -> dict[int, dict]:
     return {
-        1: {"height_inches": 72.0, "reach_inches": 74.0, "leg_reach_inches": 42.0,
-            "stance": "Orthodox", "date_of_birth": date(1990, 1, 1)},
-        2: {"height_inches": 70.0, "reach_inches": 71.0, "leg_reach_inches": 40.0,
-            "stance": "Southpaw", "date_of_birth": date(1991, 1, 1)},
+        1: {
+            "height_inches": 72.0,
+            "reach_inches": 74.0,
+            "leg_reach_inches": 42.0,
+            "stance": "Orthodox",
+            "date_of_birth": date(1990, 1, 1),
+        },
+        2: {
+            "height_inches": 70.0,
+            "reach_inches": 71.0,
+            "leg_reach_inches": 40.0,
+            "stance": "Southpaw",
+            "date_of_birth": date(1991, 1, 1),
+        },
     }
 
 

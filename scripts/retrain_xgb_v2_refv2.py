@@ -79,12 +79,8 @@ if str(_SCRIPTS_DIR) not in sys.path:
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 
 # AUDIT-01 anchors — locked per .planning/AUDIT-01-BASELINE-SHA.txt.
-EXPECTED_XGB_V2_SHA256: str = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
-EXPECTED_META_V2_SHA256: str = (
-    "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
-)
+EXPECTED_XGB_V2_SHA256: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+EXPECTED_META_V2_SHA256: str = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
 
 # Canonical hyperparameter source (READ-ONLY for this script).
 CANONICAL_XGB_META: Path = PROJECT_ROOT / "models" / "xgb_v2_meta.json"
@@ -100,10 +96,12 @@ OUT_OOF: Path = PROJECT_ROOT / "data" / "intermediate" / "xgb_v2_refv2_oof.parqu
 # Anti-overwrite guard set — Phase 64 CR-01 pattern + Phase 65 T-65-05 mitigation.
 # Resolved paths so a symlinked or relative-style operator argv cannot bypass
 # the guard. The guard fires BEFORE any disk write.
-PROTECTED_OUTPUTS: frozenset[Path] = frozenset({
-    CANONICAL_XGB_JOBLIB.resolve(),
-    CANONICAL_XGB_META.resolve(),
-})
+PROTECTED_OUTPUTS: frozenset[Path] = frozenset(
+    {
+        CANONICAL_XGB_JOBLIB.resolve(),
+        CANONICAL_XGB_META.resolve(),
+    }
+)
 
 # Phase 64 CR-03 determinism — frozen reference date for any synthetic-mode
 # ``date.today()`` callers in the upstream compose_v25_travel helper.
@@ -354,9 +352,7 @@ def _compute_ref_v2_columns(
     return [float(v) for v in finish_col], [float(v) for v in decision_col]  # type: ignore[arg-type]
 
 
-def build_92col_training_matrix(
-    *, source: str = "synthetic"
-) -> tuple[Any, Any, Any, Any]:
+def build_92col_training_matrix(*, source: str = "synthetic") -> tuple[Any, Any, Any, Any]:
     """Build the (X_92, y, fight_ids, event_dates) training matrix.
 
     Two source modes:
@@ -395,9 +391,7 @@ def build_92col_training_matrix(
         _orig_date = _cv.date
         _cv.date = _FixedDate
         try:
-            X_v25, y, fight_dates, fight_records = _build_synthetic_v25(
-                n=SYNTHETIC_N_FIGHTS
-            )
+            X_v25, y, fight_dates, fight_records = _build_synthetic_v25(n=SYNTHETIC_N_FIGHTS)
         finally:
             _cv.date = _orig_date
 
@@ -410,6 +404,7 @@ def build_92col_training_matrix(
         from compose_v25_travel import (  # type: ignore[import-not-found]
             _load_assembled_data_v25_travel,
         )
+
         from ufc_prediction.features.referee_v2 import (
             derive_event_country_bucket,
             derive_scoring_regime,
@@ -422,8 +417,7 @@ def build_92col_training_matrix(
         # records don't carry it, fall back to UNKNOWN — the substrate
         # builder coverage gate (Plan 65-04) will surface that.
         event_countries = [
-            derive_event_country_bucket(rec.get("venue_country"))
-            for rec in fight_records
+            derive_event_country_bucket(rec.get("venue_country")) for rec in fight_records
         ]
         scoring_regimes = [derive_scoring_regime(d) for d in fight_dates]
     else:
@@ -454,11 +448,13 @@ def build_92col_training_matrix(
     )
 
     # Stack into 92-col matrix.
-    X_92 = np.column_stack([
-        X_v22,
-        np.asarray(finish_col, dtype=np.float64),
-        np.asarray(decision_col, dtype=np.float64),
-    ])
+    X_92 = np.column_stack(
+        [
+            X_v22,
+            np.asarray(finish_col, dtype=np.float64),
+            np.asarray(decision_col, dtype=np.float64),
+        ]
+    )
     assert X_92.shape[1] == 92, (
         f"build_92col_training_matrix: expected 92-col output, got {X_92.shape[1]}"
     )
@@ -473,7 +469,12 @@ def build_92col_training_matrix(
 
 
 def fit_xgb_refv2(
-    X_92: Any, y: Any, best_params: dict, *, seed: int = DEFAULT_OOF_SEED, n_splits: int = DEFAULT_OOF_FOLDS
+    X_92: Any,
+    y: Any,
+    best_params: dict,
+    *,
+    seed: int = DEFAULT_OOF_SEED,
+    n_splits: int = DEFAULT_OOF_FOLDS,
 ) -> tuple[Any, Any]:
     """Train xgboost on the 92-col input with the canonical best_params.
 
@@ -625,16 +626,16 @@ def emit_outputs(
             XGB_REFV2_FROZEN_DATE.isoformat() if mode == "synthetic" else None
         ),
     }
-    out_meta.write_text(
-        json.dumps(sidecar, indent=2, sort_keys=False) + "\n", encoding="utf-8"
-    )
+    out_meta.write_text(json.dumps(sidecar, indent=2, sort_keys=False) + "\n", encoding="utf-8")
 
     # 3. OOF parquet — Plan 65-03 meta candidate reads col[0] from here.
-    df_oof = pd.DataFrame({
-        "fight_id": pd.array(fight_ids, dtype="int64"),
-        "oof_prob": pd.array(oof, dtype="float64"),
-        "event_date": pd.array(event_dates, dtype="object"),
-    })
+    df_oof = pd.DataFrame(
+        {
+            "fight_id": pd.array(fight_ids, dtype="int64"),
+            "oof_prob": pd.array(oof, dtype="float64"),
+            "event_date": pd.array(event_dates, dtype="object"),
+        }
+    )
     df_oof.to_parquet(out_oof, index=False)
 
 
@@ -755,9 +756,7 @@ def main(argv: list[str] | None = None) -> int:
     matrix_source = "synthetic" if args.mode == "synthetic" else "live"
     print(f"[retrain_xgb_v2_refv2] mode={args.mode}, seed={args.seed}")
     try:
-        X_92, y, fight_ids, event_dates = build_92col_training_matrix(
-            source=matrix_source
-        )
+        X_92, y, fight_ids, event_dates = build_92col_training_matrix(source=matrix_source)
     except FileNotFoundError as e:
         print(f"training data load failed: {e}", file=sys.stderr)
         return 1
@@ -767,9 +766,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # Fit + OOF.
-    model, oof = fit_xgb_refv2(
-        X_92, y, best_params, seed=args.seed, n_splits=args.n_splits
-    )
+    model, oof = fit_xgb_refv2(X_92, y, best_params, seed=args.seed, n_splits=args.n_splits)
 
     # Emit (anti-overwrite guard fires here BEFORE writes).
     try:
@@ -820,7 +817,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("interrupted", file=sys.stderr)
         sys.exit(130)
-    except Exception:  # noqa: BLE001
+    except Exception:
         # Defense-in-depth: any unhandled exception surfaces as exit 1
         # with a traceback so operators see the root cause but the process
         # rc is still well-defined.

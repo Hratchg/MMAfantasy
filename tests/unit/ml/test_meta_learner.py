@@ -4,6 +4,7 @@ Per CONTEXT.md D-02(P19): minimal 3-feature set + PolynomialFeatures interaction
 Pipeline shape: PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)
                  → StandardScaler → LogisticRegression(C=1.0, penalty='l2', solver='lbfgs').
 """
+
 from __future__ import annotations
 
 import logging
@@ -64,7 +65,9 @@ def test_nan_drop_warns(caplog, synthetic_meta_inputs):
 def test_meta_feature_columns_constant():
     """D-02(P19): META_FEATURE_COLUMNS literal."""
     assert meta_learner.META_FEATURE_COLUMNS == [
-        "xgb_oof_prob", "elo_prob", "closing_prob_diff",
+        "xgb_oof_prob",
+        "elo_prob",
+        "closing_prob_diff",
     ]
 
 

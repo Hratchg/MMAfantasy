@@ -21,6 +21,7 @@ no-ops, preserving the prior FK.
 Banned imports per Pitfall #1 / Finding 11: nothing under
 ``ufc_prediction.ml.*`` (LIVE-03 + AUDIT-01 byte-identity guard).
 """
+
 from __future__ import annotations
 
 import re
@@ -30,7 +31,6 @@ from rapidfuzz import fuzz
 from sqlalchemy.orm import Session
 
 from ufc_prediction.models.event import Event
-
 
 _WHITESPACE_RE = re.compile(r"\s+")
 _DEFAULT_THRESHOLD: int = 85

@@ -20,6 +20,7 @@ These tests assert:
      (29.99% presence MUST be "drop", not "reduced" — the comparator is `>=`)
   (d) helpers (_normalize_association, _compute_top30) carry over unchanged
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -48,8 +49,9 @@ class TestVersionSuffixEdits:
 
     def test_output_path_default_points_to_phase_29(self, audit_v23) -> None:
         """Allowed edit #3: default output path is the v23 phase directory."""
-        assert audit_v23.OUTPUT_PATH_DEFAULT == Path(
-            ".planning/phases/29-camp-re-audit-eval-set-infrastructure/CAMP_V23_AUDIT.json"
+        assert (
+            Path(".planning/phases/29-camp-re-audit-eval-set-infrastructure/CAMP_V23_AUDIT.json")
+            == audit_v23.OUTPUT_PATH_DEFAULT
         )
 
 
@@ -163,8 +165,8 @@ class TestComputeTop30WithFixture:
             {"fighter_id": 1, "raw_association": "Alpha", "normalized_association": "alpha"},
             {"fighter_id": 2, "raw_association": "Alpha", "normalized_association": "alpha"},
             {"fighter_id": 3, "raw_association": "Alpha", "normalized_association": "alpha"},
-            {"fighter_id": 4, "raw_association": "Beta",  "normalized_association": "beta"},
-            {"fighter_id": 5, "raw_association": None,    "normalized_association": None},
+            {"fighter_id": 4, "raw_association": "Beta", "normalized_association": "beta"},
+            {"fighter_id": 5, "raw_association": None, "normalized_association": None},
         ]
         per_camp, rate = audit_v23._compute_top30(results)
         # 2 camps in top-30 (the only non-None camps)
@@ -187,15 +189,14 @@ class TestComputeTop30WithFixture:
 class TestArgparseSurface:
     """argparse smoke: --dry-run and --output-path flags present + defaulted."""
 
-    def test_argparse_accepts_dry_run_and_output_path(
-        self, audit_v23, monkeypatch, capsys
-    ) -> None:
+    def test_argparse_accepts_dry_run_and_output_path(self, audit_v23, monkeypatch, capsys) -> None:
         """`audit_camp_v23 --help` succeeds and mentions both flags."""
         # We can't trivially call main() without DB — but we can verify the
         # parser by invoking it via the module's __doc__ / parser inspection.
         # Simplest robust check: import-time constants prove the script is
         # importable and the parser flags are declared in main().
         import inspect
+
         main_src = inspect.getsource(audit_v23.main)
         assert "--output-path" in main_src, "argparse missing --output-path"
         assert "--dry-run" in main_src, "argparse missing --dry-run"

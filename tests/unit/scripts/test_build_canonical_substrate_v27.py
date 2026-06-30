@@ -52,12 +52,11 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 # Direct import from scripts/ — Task 1 deliverable. Tests collect-fail with
 # ImportError until the script exists (RED phase contract).
-from build_canonical_substrate_v27 import (  # noqa: E402
+from build_canonical_substrate_v27 import (
     CANONICAL_FEATURE_COLUMNS,
     CANONICAL_OOF_PATH,
     CANONICAL_REFERENCE_DATE,
     DEFAULT_OUTPUT_PATH,
-    EXPECTED_CANONICAL_OOF_SHA,
     PROTECTED_OUTPUTS,
     RANDOM_15PCT_SEED,
     SLICE_NAMES,
@@ -66,9 +65,9 @@ from build_canonical_substrate_v27 import (  # noqa: E402
     main,
 )
 
-from ufc_prediction.ml.gate_verifier import EvalSlice  # noqa: E402
-from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS  # noqa: E402
-from ufc_prediction.ml.substrate_loader import load_substrate_snapshot  # noqa: E402
+from ufc_prediction.ml.gate_verifier import EvalSlice
+from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
+from ufc_prediction.ml.substrate_loader import load_substrate_snapshot
 
 # ── Shared fixture ────────────────────────────────────────────────────────
 
@@ -177,7 +176,7 @@ def test_feature_col_0_is_canonical_xgb_oof_prob_not_candidate() -> None:
     # Defensive: must NOT be any of the known candidate OOF column names
     forbidden_candidate_names = {
         "xgb_v2_refv2_oof",  # Phase 65 REF candidate
-        "xgb_v2_netd_oof",   # Phase 66 NET candidate
+        "xgb_v2_netd_oof",  # Phase 66 NET candidate
     }
     assert CANONICAL_FEATURE_COLUMNS[0] not in forbidden_candidate_names, (
         f"CANONICAL_FEATURE_COLUMNS[0] = {CANONICAL_FEATURE_COLUMNS[0]!r} matches a "
@@ -247,15 +246,16 @@ def test_oof_sha_mismatch_fails_fast(
     import build_canonical_substrate_v27 as builder
 
     monkeypatch.setattr(
-        builder, "EXPECTED_CANONICAL_OOF_SHA", "deadbeef" * 8,
+        builder,
+        "EXPECTED_CANONICAL_OOF_SHA",
+        "deadbeef" * 8,
     )
     with pytest.raises(RuntimeError) as excinfo:
         _load_canonical_oof_map()
     msg = str(excinfo.value).lower()
     # Operator-actionable substring: must name the audit invariant
     assert "audit-01" in msg or "d-06" in msg or "sha" in msg, (
-        f"RuntimeError message must name the AUDIT-01/D-06/SHA invariant; "
-        f"got: {excinfo.value!r}"
+        f"RuntimeError message must name the AUDIT-01/D-06/SHA invariant; got: {excinfo.value!r}"
     )
 
 
@@ -269,16 +269,17 @@ def test_oof_source_missing_fails_fast(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError) as excinfo:
         _load_canonical_oof_map(missing_path)
     msg = str(excinfo.value)
-    assert str(missing_path) in msg, (
-        f"FileNotFoundError must name the missing path; got: {msg!r}"
-    )
+    assert str(missing_path) in msg, f"FileNotFoundError must name the missing path; got: {msg!r}"
 
 
-@pytest.mark.parametrize("protected_path", [
-    Path("data/intermediate/travel_substrate_v261.parquet"),
-    Path("data/intermediate/ref_substrate_v261.parquet"),
-    Path("data/intermediate/net_substrate_v261.parquet"),
-])
+@pytest.mark.parametrize(
+    "protected_path",
+    [
+        Path("data/intermediate/travel_substrate_v261.parquet"),
+        Path("data/intermediate/ref_substrate_v261.parquet"),
+        Path("data/intermediate/net_substrate_v261.parquet"),
+    ],
+)
 def test_anti_overwrite_guard_blocks_phase_64_65_66_paths(
     protected_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -294,16 +295,19 @@ def test_anti_overwrite_guard_blocks_phase_64_65_66_paths(
     assert protected_path in PROTECTED_OUTPUTS, (
         f"PROTECTED_OUTPUTS missing {protected_path}; set is: {PROTECTED_OUTPUTS}"
     )
-    rc = main([
-        "--no-paired-substrate",
-        "--source", "synthetic",
-        "--output", str(protected_path),
-    ])
+    rc = main(
+        [
+            "--no-paired-substrate",
+            "--source",
+            "synthetic",
+            "--output",
+            str(protected_path),
+        ]
+    )
     assert rc == 1, f"Expected exit code 1 for protected path {protected_path}, got {rc}"
     captured = capsys.readouterr()
     assert "refusing to overwrite" in captured.err.lower(), (
-        f"Expected 'refusing to overwrite' in stderr for {protected_path}; "
-        f"got: {captured.err!r}"
+        f"Expected 'refusing to overwrite' in stderr for {protected_path}; got: {captured.err!r}"
     )
 
 
@@ -368,8 +372,7 @@ def test_slice_outcomes_are_int8_in_zero_one(built_parquet: Path) -> None:
     for name, sl in slices.items():
         for outcome in sl.outcomes:
             assert outcome in (0, 1), (
-                f"slice {name!r} has outcome {outcome!r} outside {{0, 1}} "
-                f"(Phase 63 R3 violation)"
+                f"slice {name!r} has outcome {outcome!r} outside {{0, 1}} (Phase 63 R3 violation)"
             )
         assert all(isinstance(o, int) for o in sl.outcomes), (
             f"slice {name!r} has non-int outcome values"
@@ -409,11 +412,15 @@ def test_no_paired_substrate_flag_uses_all_oof_fights(tmp_path: Path) -> None:
     and uses the full canonical OOF fight_id set. End-to-end via ``main``.
     """
     target = tmp_path / "no_paired.parquet"
-    rc = main([
-        "--no-paired-substrate",
-        "--source", "synthetic",
-        "--output", str(target),
-    ])
+    rc = main(
+        [
+            "--no-paired-substrate",
+            "--source",
+            "synthetic",
+            "--output",
+            str(target),
+        ]
+    )
     assert rc == 0, f"main() exited {rc} with --no-paired-substrate"
     assert target.exists()
     # Round-trip sanity
@@ -429,7 +436,7 @@ def test_default_output_path_is_canonical_substrate_v27() -> None:
     path without updating .gitignore will see this fail before committing
     a substrate-binary artifact accidentally.
     """
-    assert DEFAULT_OUTPUT_PATH == Path("data/intermediate/canonical_substrate_v27.parquet"), (
+    assert Path("data/intermediate/canonical_substrate_v27.parquet") == DEFAULT_OUTPUT_PATH, (
         f"DEFAULT_OUTPUT_PATH drifted from documented Plan 75-01 target: "
         f"got {DEFAULT_OUTPUT_PATH!r}"
     )

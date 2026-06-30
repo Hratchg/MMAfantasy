@@ -82,8 +82,7 @@ def load_computed_features(
             # from the training + inference feature pipeline. NULL handling
             # is conservative: pre-Phase-37 legacy rows with no as_of_date
             # are INCLUDED. See tests/regression/test_computed_features_temporal.py.
-            (ComputedFeature.as_of_date.is_(None))
-            | (ComputedFeature.as_of_date <= Event.date)
+            (ComputedFeature.as_of_date.is_(None)) | (ComputedFeature.as_of_date <= Event.date)
         )
     )
 
@@ -92,9 +91,7 @@ def load_computed_features(
     for row in rows:
         key = (row[0], row[1])
         features_json = row[2]
-        result[key] = {
-            feat: features_json.get(feat) for feat in PERFORMANCE_FEATURE_KEYS
-        }
+        result[key] = {feat: features_json.get(feat) for feat in PERFORMANCE_FEATURE_KEYS}
     return result
 
 
@@ -190,10 +187,7 @@ def load_pre_ufc_records(session: Session) -> dict[int, dict[str, Any]]:
     Keys in the JSON: total_wins, total_losses, total_fights, win_pct,
     ko_finish_rate, sub_finish_rate, etc.
     """
-    stmt = (
-        select(Fighter.id, Fighter.pre_ufc_record)
-        .where(Fighter.pre_ufc_record.isnot(None))
-    )
+    stmt = select(Fighter.id, Fighter.pre_ufc_record).where(Fighter.pre_ufc_record.isnot(None))
 
     rows = session.execute(stmt).all()
     return {row[0]: row[1] for row in rows}
@@ -225,11 +219,13 @@ def load_round_stats_for_ml(
         key = (row[0], row[1])
         if key not in result:
             result[key] = []
-        result[key].append({
-            "round_number": row[2],
-            "sig_str_landed": row[3] or 0,
-            "td_landed": row[4] or 0,
-        })
+        result[key].append(
+            {
+                "round_number": row[2],
+                "sig_str_landed": row[3] or 0,
+                "td_landed": row[4] or 0,
+            }
+        )
     return result
 
 

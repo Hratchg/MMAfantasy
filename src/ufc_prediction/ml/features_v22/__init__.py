@@ -30,20 +30,20 @@ from ufc_prediction.ml.features_v22.travel import (
 )
 
 __all__ = [
+    # Plan 23-02 TRAVEL:
+    "EARTH_RADIUS_MILES",
+    "age_at_fight",
     # Plan 23-01 REF:
     "beta_binomial_shrink",
     "classify_outcome",
     "compute_ref_rates_shrunk",
-    # Plan 23-02 TRAVEL:
-    "EARTH_RADIUS_MILES",
-    "haversine_miles",
-    "tz_offset_hours",
-    "compute_tz_shift_signed",
     "compute_travel_features",
+    "compute_tz_shift_signed",
+    "division_finish_rate_shrunk",
+    "elo_velocity",
+    "haversine_miles",
     # Plan 23-03 META:
     "layoff_days",
-    "age_at_fight",
-    "elo_velocity",
-    "division_finish_rate_shrunk",
     "reach_diff_normalized",
+    "tz_offset_hours",
 ]

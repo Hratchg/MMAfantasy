@@ -29,7 +29,6 @@ from typing import Any
 
 import pytest
 
-
 # ── Docker-availability gate (per Phase 41 CONTEXT) ───────────────────────
 
 
@@ -101,9 +100,7 @@ def _write_seeds_csv(tmp_path: Path, rows: list[dict[str, Any]]) -> Path:
     ]
     lines = [",".join(header)]
     for r in rows:
-        line = ",".join(
-            str(r.get(col, "")) for col in header
-        )
+        line = ",".join(str(r.get(col, "")) for col in header)
         lines.append(line)
     csv_path.write_text("\n".join(lines) + "\n")
     return csv_path
@@ -125,10 +122,8 @@ def _seed_fighters_event_fight(
     from ufc_prediction.models.fight import Fight
     from ufc_prediction.models.fighter import Fighter
 
-    fa = Fighter(id=fighter_a_id, name=f"Test Fighter A {fighter_a_id}",
-                 source="test-debut-v25-03")
-    fb = Fighter(id=fighter_b_id, name=f"Test Fighter B {fighter_b_id}",
-                 source="test-debut-v25-03")
+    fa = Fighter(id=fighter_a_id, name=f"Test Fighter A {fighter_a_id}", source="test-debut-v25-03")
+    fb = Fighter(id=fighter_b_id, name=f"Test Fighter B {fighter_b_id}", source="test-debut-v25-03")
     session.add_all([fa, fb])
     session.flush()
 
@@ -165,7 +160,8 @@ def _seed_fighters_event_fight(
 
 
 def test_seeded_debutant_first_fight_elo_before(
-    session: Any, tmp_path: Path,
+    session: Any,
+    tmp_path: Path,
 ) -> None:
     """A seeded debutant's first-fight SnapshotRecord has elo_before == seed.
 
@@ -181,23 +177,26 @@ def test_seeded_debutant_first_fight_elo_before(
     # Seed CSV: fighter A=1 has a major-tier 100% win-rate 20-fight record
     # -> derive_seed yields 1625.0 (per Plan 43-02 derive_seed corner-case
     # table). Fighter B=2 has NO seed row.
-    csv = _write_seeds_csv(tmp_path, [
-        {
-            "fighter_id": 1,
-            "n_pre_ufc_fights": 20,
-            "wins": 20,
-            "losses": 0,
-            "draws": 0,
-            "nc_dq": 0,
-            "win_rate": 1.0,
-            "kos": 10,
-            "submissions": 5,
-            "decisions": 5,
-            "last_organization": "Bellator 290",
-            "org_tier": "major",
-            "scraped_at": "2026-06-02T00:00:00+00:00",
-        },
-    ])
+    csv = _write_seeds_csv(
+        tmp_path,
+        [
+            {
+                "fighter_id": 1,
+                "n_pre_ufc_fights": 20,
+                "wins": 20,
+                "losses": 0,
+                "draws": 0,
+                "nc_dq": 0,
+                "win_rate": 1.0,
+                "kos": 10,
+                "submissions": 5,
+                "decisions": 5,
+                "last_organization": "Bellator 290",
+                "org_tier": "major",
+                "scraped_at": "2026-06-02T00:00:00+00:00",
+            },
+        ],
+    )
     seeds = load_seeds(csv)
     assert seeds == {1: 1625.0}, f"Pre-condition: seeds dict mismatch -> {seeds}"
 
@@ -245,7 +244,8 @@ def test_seeded_debutant_first_fight_elo_before(
 
 
 def test_unseeded_debutant_falls_back_to_1500(
-    session: Any, tmp_path: Path,
+    session: Any,
+    tmp_path: Path,
 ) -> None:
     """Empty seeds CSV -> all fighters fall back to config.initial_rating.
 
@@ -293,7 +293,8 @@ def test_unseeded_debutant_falls_back_to_1500(
 
 
 def test_seeded_first_fight_uses_expected_win_probability_from_seed(
-    session: Any, tmp_path: Path,
+    session: Any,
+    tmp_path: Path,
 ) -> None:
     """Two seeded fighters meet -> win-probability + delta use the seeds.
 
@@ -307,42 +308,43 @@ def test_seeded_first_fight_uses_expected_win_probability_from_seed(
 
     # Two seeded fighters: A has major + 100% + 20-fight (seed=1625), B has
     # regional + 50% + 0-fight (seed=1500).
-    csv = _write_seeds_csv(tmp_path, [
-        {
-            "fighter_id": 100,
-            "n_pre_ufc_fights": 20,
-            "wins": 20,
-            "losses": 0,
-            "draws": 0,
-            "nc_dq": 0,
-            "win_rate": 1.0,
-            "kos": 10,
-            "submissions": 5,
-            "decisions": 5,
-            "last_organization": "Bellator 290",
-            "org_tier": "major",
-            "scraped_at": "2026-06-02T00:00:00+00:00",
-        },
-        {
-            "fighter_id": 200,
-            "n_pre_ufc_fights": 0,
-            "wins": 0,
-            "losses": 0,
-            "draws": 0,
-            "nc_dq": 0,
-            "win_rate": 0.5,
-            "kos": 0,
-            "submissions": 0,
-            "decisions": 0,
-            "last_organization": "LFA",
-            "org_tier": "regional",
-            "scraped_at": "2026-06-02T00:00:00+00:00",
-        },
-    ])
-    seeds = load_seeds(csv)
-    assert seeds == {100: 1625.0, 200: 1500.0}, (
-        f"Pre-condition: seeds dict mismatch -> {seeds}"
+    csv = _write_seeds_csv(
+        tmp_path,
+        [
+            {
+                "fighter_id": 100,
+                "n_pre_ufc_fights": 20,
+                "wins": 20,
+                "losses": 0,
+                "draws": 0,
+                "nc_dq": 0,
+                "win_rate": 1.0,
+                "kos": 10,
+                "submissions": 5,
+                "decisions": 5,
+                "last_organization": "Bellator 290",
+                "org_tier": "major",
+                "scraped_at": "2026-06-02T00:00:00+00:00",
+            },
+            {
+                "fighter_id": 200,
+                "n_pre_ufc_fights": 0,
+                "wins": 0,
+                "losses": 0,
+                "draws": 0,
+                "nc_dq": 0,
+                "win_rate": 0.5,
+                "kos": 0,
+                "submissions": 0,
+                "decisions": 0,
+                "last_organization": "LFA",
+                "org_tier": "regional",
+                "scraped_at": "2026-06-02T00:00:00+00:00",
+            },
+        ],
     )
+    seeds = load_seeds(csv)
+    assert seeds == {100: 1625.0, 200: 1500.0}, f"Pre-condition: seeds dict mismatch -> {seeds}"
 
     seeded = _seed_fighters_event_fight(
         session,

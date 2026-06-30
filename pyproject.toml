@@ -63,21 +63,76 @@ packages = ["src/ufc_prediction"]
 target-version = "py313"
 line-length = 100
 # Exclude pre-existing PDF generation scripts (not part of the ufc_prediction package)
-exclude = ["generate_pdf.py", "generate_subset_pdf.py"]
+# plus the AUDIT-01 byte-identity-locked files (CONTRIBUTING.md L58-78): they are
+# frozen and cannot be reformatted/relinted, so ruff must skip them entirely.
+exclude = [
+    "generate_pdf.py",
+    "generate_subset_pdf.py",
+    "src/ufc_prediction/ml/predictor.py",
+    "src/ufc_prediction/ml/feature_matrix.py",
+    "src/ufc_prediction/ml/persistence.py",
+    "src/ufc_prediction/ml/train.py",
+    "scripts/spike_noise_floor_v22.py",
+    "scripts/spike_noise_floor_v23.py",
+    "scripts/train_meta_v22.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
+# The project deliberately uses Unicode punctuation in docstrings, strings, and
+# comments — en/em dashes, ×, ≥, →, etc. RUF001/002/003 flag these as
+# "ambiguous"; that is a style choice we have made repo-wide, not a defect.
+# SIM300 (Yoda conditions) auto-rewrites `NAME == literal` operand order, which
+# silently breaks source-grep tests asserting on exact assertion text (e.g.
+# tests/scripts/test_bfo_backfill.py greps for `assert BFO_ARCHIVE_START_DATE`);
+# operand order is left to the author.
+ignore = ["RUF001", "RUF002", "RUF003", "SIM300"]
 
 [tool.ruff.lint.per-file-ignores]
 "migrations/versions/*.py" = ["E501", "UP007", "UP035"]
 "src/ufc_prediction/api/routers/*.py" = ["B008"]
-"tests/conftest.py" = ["E402"]
+# Alembic env + the test fixtures both `import *` from the models package on
+# purpose (so every mapper is registered for autogenerate / fixtures).
+"migrations/env.py" = ["F403", "F405"]
+"tests/conftest.py" = ["E402", "F403", "F405"]
 "src/ufc_prediction/ml/*.py" = ["N803", "N806"]
-"src/ufc_prediction/cli/predict.py" = ["N803", "N806"]
+# Emits long operator-facing panels and embedded code snippets (typer.Option
+# blocks, gate-relaxation guidance) where wrapping the literals would hurt
+# readability and risk drift in asserted output.
+"src/ufc_prediction/cli/predict.py" = ["N803", "N806", "E501"]
 "tests/ml/*.py" = ["N803", "N806"]
+# Test code uses ML-style naming (X, y, df), version-tagged class/function names
+# mirroring the modules under test, and destructuring where not every element is
+# asserted. Relax those stylistic rules across the test suite; pyflakes (F*) and
+# real-bug bugbear rules stay active.
+# E402: test modules routinely bootstrap sys.path (to import scripts/ drivers)
+# or call importorskip before their module-level imports.
+# E501: long descriptive docstrings and assertion messages are common in tests
+# and don't warrant wrapping; test code is not the shipped surface.
+"tests/**/*.py" = ["N801", "N802", "N803", "N806", "RUF059", "B007", "B017", "E402", "RUF012", "E501"]
+# ML-idiom naming: feature matrices (train_X/test_X) and graph objects (G).
+"src/ufc_prediction/elo/backtesting.py" = ["N806"]
+"src/ufc_prediction/features/network*.py" = ["N806"]
+# Framework idiom: FastAPI Depends() / Typer Option() in argument defaults is
+# the documented call pattern, not a bugbear-flagged accidental call.
+"src/ufc_prediction/api/v1/predict.py" = ["B008"]
+"src/ufc_prediction/cli/db.py" = ["B008"]
+# Drivers are imported after a sys.path bootstrap, so module-level imports are
+# deliberately not at the top of the file.
+"src/ufc_prediction/cli/main.py" = ["E402"]
 # Phase 64 — ML matrix-naming convention (X for feature matrices, X_v25 for
 # version-tagged Level-0 matrices). Mirrors src/ufc_prediction/ml/ exception.
 "scripts/build_travel_substrate_v261.py" = ["N803", "N806"]
+# scripts/ holds one-off research/audit/training drivers (see scripts/README),
+# not shipped package code. Relax purely stylistic rules there — naming, line
+# length, simplification/bugbear nits — while KEEPING pyflakes (F*) so real
+# defects (undefined names, unused imports) are still caught.
+"scripts/**/*.py" = [
+    "N803", "N806", "E402", "E501",
+    "B007", "B905",
+    "SIM108", "SIM110", "SIM113",
+    "RUF005", "RUF046", "RUF059",
+]
 
 [tool.ruff.format]
 quote-style = "double"

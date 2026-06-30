@@ -86,8 +86,7 @@ class TestScrapeOddsCommandDiscovery:
         result = runner.invoke(app, ["scrape", "odds", "--help"])
         assert result.exit_code == 0
         # Typer wraps long option names; allow whitespace/newline between.
-        for flag in ("--delay", "--n-sessions", "--min-date",
-                     "--data-folder", "--skip-scrape"):
+        for flag in ("--delay", "--n-sessions", "--min-date", "--data-folder", "--skip-scrape"):
             assert flag in result.output, f"missing flag {flag} in --help"
 
 
@@ -95,9 +94,7 @@ class TestScrapeOddsSkipScrape:
     """--skip-scrape path: must NOT instantiate BFOScraper."""
 
     @patch("ufc_prediction.cli.main.SessionLocal")
-    def test_skip_scrape_calls_ingester_only(
-        self, mock_session_local: MagicMock
-    ) -> None:
+    def test_skip_scrape_calls_ingester_only(self, mock_session_local: MagicMock) -> None:
         mock_session_local.return_value = MagicMock()
         summary = _FakeSummary(
             bfo_fights_scanned=3,
@@ -109,19 +106,19 @@ class TestScrapeOddsSkipScrape:
         ingester_cls = _make_ingester_returning(summary)
         scraper_cls = _make_bfo_scraper_returning(_FakeScrapeSummary())
 
-        with patch(
-            "ufc_prediction.scraper.bfo_ingest.BFOOddsIngester", ingester_cls
-        ), patch(
-            "ufc_prediction.cli.main.BFOScraper", scraper_cls
-        ), patch(
-            "ufc_prediction.cli.main.ScraperClient"
+        with (
+            patch("ufc_prediction.scraper.bfo_ingest.BFOOddsIngester", ingester_cls),
+            patch("ufc_prediction.cli.main.BFOScraper", scraper_cls),
+            patch("ufc_prediction.cli.main.ScraperClient"),
         ):
             result = runner.invoke(
                 app,
                 [
-                    "scrape", "odds",
+                    "scrape",
+                    "odds",
                     "--skip-scrape",
-                    "--data-folder", "tests/scraper/fixtures",
+                    "--data-folder",
+                    "tests/scraper/fixtures",
                 ],
             )
 
@@ -151,12 +148,10 @@ class TestScrapeOddsDefaultInvokesScraper:
         client_cls = MagicMock()
         client_cls.return_value = MagicMock()
 
-        with patch(
-            "ufc_prediction.scraper.bfo_ingest.BFOOddsIngester", ingester_cls
-        ), patch(
-            "ufc_prediction.cli.main.BFOScraper", scraper_cls
-        ), patch(
-            "ufc_prediction.cli.main.ScraperClient", client_cls
+        with (
+            patch("ufc_prediction.scraper.bfo_ingest.BFOOddsIngester", ingester_cls),
+            patch("ufc_prediction.cli.main.BFOScraper", scraper_cls),
+            patch("ufc_prediction.cli.main.ScraperClient", client_cls),
         ):
             result = runner.invoke(
                 app,
@@ -172,9 +167,7 @@ class TestScrapeOddsDefaultInvokesScraper:
         client_cls.return_value.close.assert_called_once()
 
     @patch("ufc_prediction.cli.main.SessionLocal")
-    def test_scrape_odds_passes_min_date_to_scraper(
-        self, mock_session_local: MagicMock
-    ) -> None:
+    def test_scrape_odds_passes_min_date_to_scraper(self, mock_session_local: MagicMock) -> None:
         import datetime as _dt
 
         mock_session_local.return_value = MagicMock()
@@ -182,19 +175,20 @@ class TestScrapeOddsDefaultInvokesScraper:
         ingester_cls = _make_ingester_returning(summary)
         scraper_cls = _make_bfo_scraper_returning(_FakeScrapeSummary())
 
-        with patch(
-            "ufc_prediction.scraper.bfo_ingest.BFOOddsIngester", ingester_cls
-        ), patch(
-            "ufc_prediction.cli.main.BFOScraper", scraper_cls
-        ), patch(
-            "ufc_prediction.cli.main.ScraperClient"
+        with (
+            patch("ufc_prediction.scraper.bfo_ingest.BFOOddsIngester", ingester_cls),
+            patch("ufc_prediction.cli.main.BFOScraper", scraper_cls),
+            patch("ufc_prediction.cli.main.ScraperClient"),
         ):
             result = runner.invoke(
                 app,
                 [
-                    "scrape", "odds",
-                    "--min-date", "2010-01-01",
-                    "--data-folder", "tests/scraper/fixtures",
+                    "scrape",
+                    "odds",
+                    "--min-date",
+                    "2010-01-01",
+                    "--data-folder",
+                    "tests/scraper/fixtures",
                 ],
             )
 
@@ -208,9 +202,7 @@ class TestScrapeOddsOutput:
     """Summary table + coverage warnings render correctly."""
 
     @patch("ufc_prediction.cli.main.SessionLocal")
-    def test_scrape_odds_prints_summary_table(
-        self, mock_session_local: MagicMock
-    ) -> None:
+    def test_scrape_odds_prints_summary_table(self, mock_session_local: MagicMock) -> None:
         mock_session_local.return_value = MagicMock()
         summary = _FakeSummary(
             bfo_fights_scanned=3,
@@ -221,15 +213,15 @@ class TestScrapeOddsOutput:
         )
         ingester_cls = _make_ingester_returning(summary)
 
-        with patch(
-            "ufc_prediction.scraper.bfo_ingest.BFOOddsIngester", ingester_cls
-        ):
+        with patch("ufc_prediction.scraper.bfo_ingest.BFOOddsIngester", ingester_cls):
             result = runner.invoke(
                 app,
                 [
-                    "scrape", "odds",
+                    "scrape",
+                    "odds",
                     "--skip-scrape",
-                    "--data-folder", "tests/scraper/fixtures",
+                    "--data-folder",
+                    "tests/scraper/fixtures",
                 ],
             )
 
@@ -257,15 +249,15 @@ class TestScrapeOddsOutput:
         )
         ingester_cls = _make_ingester_returning(summary)
 
-        with patch(
-            "ufc_prediction.scraper.bfo_ingest.BFOOddsIngester", ingester_cls
-        ):
+        with patch("ufc_prediction.scraper.bfo_ingest.BFOOddsIngester", ingester_cls):
             result = runner.invoke(
                 app,
                 [
-                    "scrape", "odds",
+                    "scrape",
+                    "odds",
                     "--skip-scrape",
-                    "--data-folder", "tests/scraper/fixtures",
+                    "--data-folder",
+                    "tests/scraper/fixtures",
                 ],
             )
 
@@ -279,9 +271,7 @@ class TestScrapeOddsPathSecurity:
 
     def test_scrape_odds_rejects_unsafe_data_folder(self) -> None:
         # /etc is under the forbidden prefix list.
-        result = runner.invoke(
-            app, ["scrape", "odds", "--skip-scrape", "--data-folder", "/etc"]
-        )
+        result = runner.invoke(app, ["scrape", "odds", "--skip-scrape", "--data-folder", "/etc"])
         assert result.exit_code != 0, result.output
         # Typer may print the message to stdout via rich; check combined.
         assert "unsafe" in result.output.lower() or result.exit_code == 1

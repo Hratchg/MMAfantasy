@@ -11,6 +11,7 @@ Mirrors the bfo_matcher.py test discipline (Phase 15) but extends to the
 location-string domain (word-order variation; e.g. "Las Vegas, USA, Nevada"
 vs "Las Vegas, Nevada, USA") which fuzz.ratio handles poorly.
 """
+
 from __future__ import annotations
 
 import csv

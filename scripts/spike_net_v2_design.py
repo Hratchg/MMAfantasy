@@ -55,6 +55,7 @@ After completion, operator reviews NET-DESIGN-COMPARISON.md, runs
 `bash scripts/audit_xgb_v2_sha.sh`, and commits the artifacts manually
 (Pitfall D).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -63,7 +64,7 @@ import json
 import shutil
 import sys
 import time
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import numpy as np
@@ -99,7 +100,6 @@ from ufc_prediction.ml.queries import (
 )
 from ufc_prediction.ml.trainer import median_metrics
 
-
 # ── Phase 18 locked constants (D-01..D-03(P18); NET-V2-00 pre-registration) ─
 
 # Pre-registered immutable variant list (NET-V2-00; Pitfall #6 carry-forward).
@@ -112,9 +112,7 @@ TIE_BREAKER_MARGIN: float = 0.003
 # Operator-approved formula hash for the v2.1 promotion gate (carries forward
 # from Phase 17). Spike halts on drift between this literal and
 # load_gate_contract().formula_hash.
-EXPECTED_FORMULA_HASH: str = (
-    "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
-)
+EXPECTED_FORMULA_HASH: str = "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
 
 # AF-1 enforcement: best_params snapshot from models/xgb_v2_meta.json. The
 # 9-key dict is asserted verbatim at startup; any drift halts the spike.
@@ -146,7 +144,10 @@ PER_SLICE_KEYS: tuple[str, ...] = (
 
 
 def _train_with_fixed_params(
-    X_train: np.ndarray, y_train: np.ndarray, best_params: dict, seed: int,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    best_params: dict,
+    seed: int,
 ) -> CalibratedClassifierCV:
     """Single-seed train using xgb_v2 best_params (skips Optuna).
 
@@ -200,11 +201,7 @@ def _archive_loser(
     shutil.copy2(loser_joblib_path, target_joblib)
     shutil.copy2(loser_meta_path, target_meta)
     target_sha_anchor.write_text(sha + "\n", encoding="utf-8")
-    print(
-        f"[spike] AUDIT-03 archive: {loser_name} -> "
-        f"{target_joblib} "
-        f"(sha256 {sha[:16]}...)"
-    )
+    print(f"[spike] AUDIT-03 archive: {loser_name} -> {target_joblib} (sha256 {sha[:16]}...)")
     return sha
 
 
@@ -248,14 +245,16 @@ def _recompute_net_v2_in_computed_features(
             loser = a_id
         else:
             loser = None
-        net_fights.append({
-            "fight_id": f.get("fight_id"),
-            "event_date": f.get("event_date"),
-            "winner_id": winner,
-            "loser_id": loser,
-            "method": f.get("method"),
-            "weight_class": f.get("weight_class"),
-        })
+        net_fights.append(
+            {
+                "fight_id": f.get("fight_id"),
+                "event_date": f.get("event_date"),
+                "winner_id": winner,
+                "loser_id": loser,
+                "method": f.get("method"),
+                "weight_class": f.get("weight_class"),
+            }
+        )
 
     # 2) Build raw_results in the shape apply_network_features_v2 expects:
     #    [{fighter_id, as_of_date, features}, ...]
@@ -280,13 +279,15 @@ def _recompute_net_v2_in_computed_features(
             # Fight not in fight_records — leave row untouched (debutant
             # fallback handled inside apply_network_features_v2 if as_of None).
             continue
-        raw_results.append({
-            "fighter_id": fighter_id,
-            "fight_id": fight_id,
-            "as_of_date": as_of,
-            # Mutate a COPY of feats — never the input dict.
-            "features": dict(feats),
-        })
+        raw_results.append(
+            {
+                "fighter_id": fighter_id,
+                "fight_id": fight_id,
+                "as_of_date": as_of,
+                # Mutate a COPY of feats — never the input dict.
+                "features": dict(feats),
+            }
+        )
 
     # 3) Run the time-decayed apply (overwrites pagerank / sos_2hop /
     #    is_debutant_in_graph in-place inside each row's features dict).
@@ -334,27 +335,20 @@ def _emit_report(
     lines.append(f"**Spike started:** {spike_started.isoformat()}")
     lines.append(f"**Spike finished:** {spike_finished.isoformat()}")
     lines.append(f"**Spike duration:** ~{duration_min:.1f} min")
-    lines.append(
-        f"**Spike seeds:** {seeds} ({len(seeds)} seeds; D-16(P16) carry-forward)"
-    )
+    lines.append(f"**Spike seeds:** {seeds} ({len(seeds)} seeds; D-16(P16) carry-forward)")
     lines.append(f"**Cutoff date:** `{cutoff_str}` (verbatim from xgb_v2_meta.json)")
     lines.append(f"**Train fights / Test fights:** {n_train} / {n_test}")
     lines.append("**Hparams:** verbatim from xgb_v2_meta.json (AF-1 enforced)")
-    lines.append(
-        f"**FEATURE_COLUMNS at startup:** {len(FEATURE_COLUMNS)} (AF-2 enforced)"
-    )
+    lines.append(f"**FEATURE_COLUMNS at startup:** {len(FEATURE_COLUMNS)} (AF-2 enforced)")
     lines.append("**Variants tested (PRE-REGISTERED in Plan 18; D-01/D-02(P18)):**")
-    lines.append(
-        "  - `ablation`     — 72 cols; FEATURE_COLUMNS_NO_NET = FEATURE_COLUMNS[:-3]"
-    )
+    lines.append("  - `ablation`     — 72 cols; FEATURE_COLUMNS_NO_NET = FEATURE_COLUMNS[:-3]")
     lines.append(
         "  - `time_decayed` — 75 cols; NET-V2 from network_v2.py with "
         "0.98^days edge weights (Lazova & Basnarkov 2015)"
     )
     lines.append("")
     lines.append(
-        f"**Gate contract:** .planning/gate_contract.json (formula_hash "
-        f"`{formula_hash[:16]}...`)"
+        f"**Gate contract:** .planning/gate_contract.json (formula_hash `{formula_hash[:16]}...`)"
     )
     lines.append(
         f"**Tie-breaker (D-03(P18); locked at plan-time):** improvement-margin "
@@ -380,12 +374,8 @@ def _emit_report(
     lines.append("## Per-Variant Tables")
     lines.append("")
     for variant in VARIANTS_PRE_REGISTERED:
-        cols = 72 if variant == "ablation" else 75
-        suffix = (
-            "(72 cols)"
-            if variant == "ablation"
-            else "(75 cols; 0.98^days edge weights)"
-        )
+        _cols = 72 if variant == "ablation" else 75
+        suffix = "(72 cols)" if variant == "ablation" else "(75 cols; 0.98^days edge weights)"
         lines.append(f"### Variant: `{variant}` {suffix}")
         lines.append("")
         lines.append(
@@ -413,9 +403,7 @@ def _emit_report(
             )
         gate_pass = "PASS" if passed else "FAIL"
         lines.append("")
-        lines.append(
-            f"**Gate verdict (3-slice ALL-pass; D-13(P16)):** `{gate_pass}`"
-        )
+        lines.append(f"**Gate verdict (3-slice ALL-pass; D-13(P16)):** `{gate_pass}`")
         if not passed:
             lines.append("")
             lines.append("Failed criteria:")
@@ -436,8 +424,7 @@ def _emit_report(
     )
     lines.append("")
     lines.append(
-        "| Slice | ablation_median_brier | timedecayed_median_brier | "
-        "margin (a - td) | >= 0.003? |"
+        "| Slice | ablation_median_brier | timedecayed_median_brier | margin (a - td) | >= 0.003? |"
     )
     lines.append(
         "|-------|------------------------|---------------------------|"
@@ -449,14 +436,9 @@ def _emit_report(
             td_b = medians_per_variant["time_decayed"][slice_name]["brier_score"]
             margin = ablat_b - td_b
             ok = "YES" if margin >= TIE_BREAKER_MARGIN else "NO"
-            lines.append(
-                f"| `{slice_name}` | {ablat_b:.4f} | {td_b:.4f} | "
-                f"{margin:+.4f} | {ok} |"
-            )
+            lines.append(f"| `{slice_name}` | {ablat_b:.4f} | {td_b:.4f} | {margin:+.4f} | {ok} |")
     else:
-        lines.append(
-            "| (n/a — only one variant cleared, or neither cleared) | | | | |"
-        )
+        lines.append("| (n/a — only one variant cleared, or neither cleared) | | | | |")
     lines.append("")
     lines.append(f"**Tie-breaker decision:** `{tie_breaker['decision']}`")
     lines.append("")
@@ -495,7 +477,7 @@ def _emit_report(
     # Sanity checks
     lines.append("## Sanity Checks")
     lines.append("")
-    lines.append("- AF-1 (no hparam retuning): xgb_v2_meta.json[\"best_params\"] matched verbatim ✓")
+    lines.append('- AF-1 (no hparam retuning): xgb_v2_meta.json["best_params"] matched verbatim ✓')
     lines.append(
         f"- AF-2 (no feature engineering): len(FEATURE_COLUMNS) == "
         f"{len(FEATURE_COLUMNS)}; NET-* in last 3 ✓"
@@ -513,11 +495,13 @@ def _emit_report(
     lines.append("")
     try:
         import scipy
+
         scipy_v = scipy.__version__
     except ImportError:
         scipy_v = "n/a"
     try:
         import networkx
+
         nx_v = networkx.__version__
     except ImportError:
         nx_v = "n/a"
@@ -535,20 +519,20 @@ def _emit_report(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--meta-v2-path", default="models/xgb_v2_meta.json",
+        "--meta-v2-path",
+        default="models/xgb_v2_meta.json",
         help="Path to xgb_v2 metadata JSON (D-04(P16) cutoff_date inheritance).",
     )
     parser.add_argument(
-        "--seeds", nargs="+", type=int,
+        "--seeds",
+        nargs="+",
+        type=int,
         default=[42, 43, 44, 45, 46],
         help="Seeds to train (default: 42 43 44 45 46; D-16(P16) carry-forward).",
     )
     parser.add_argument(
         "--report-path",
-        default=(
-            ".planning/phases/18-net-redesign-or-removal/"
-            "18-NET-DESIGN-COMPARISON.md"
-        ),
+        default=(".planning/phases/18-net-redesign-or-removal/18-NET-DESIGN-COMPARISON.md"),
         help="Output path for NET-DESIGN-COMPARISON.md.",
     )
     parser.add_argument(
@@ -557,7 +541,8 @@ def main() -> int:
         help="Archive dir for losing variant bundle (D-09(P18) AUDIT-03).",
     )
     parser.add_argument(
-        "--quick", action="store_true",
+        "--quick",
+        action="store_true",
         help=(
             "Quick mode: only 1 seed (debugging only). Refuses to write "
             "variant joblibs, canonical alias, or NET-DESIGN-COMPARISON.md "
@@ -566,7 +551,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    spike_started = datetime.now(timezone.utc)
+    spike_started = datetime.now(UTC)
 
     # ── AF-2 startup assertion ────────────────────────────────────────
     if len(FEATURE_COLUMNS) != 75:
@@ -577,7 +562,9 @@ def main() -> int:
         print(f"[spike] FATAL: {msg}", file=sys.stderr)
         return 2
     expected_net_tail = [
-        "pagerank_diff", "sos_2hop_diff", "is_debutant_in_graph_diff",
+        "pagerank_diff",
+        "sos_2hop_diff",
+        "is_debutant_in_graph_diff",
     ]
     if list(FEATURE_COLUMNS[-3:]) != expected_net_tail:
         msg = (
@@ -587,10 +574,7 @@ def main() -> int:
         print(f"[spike] FATAL: {msg}", file=sys.stderr)
         return 2
     if list(FEATURE_COLUMNS_NO_NET) != list(FEATURE_COLUMNS[:-3]):
-        msg = (
-            f"FEATURE_COLUMNS_NO_NET drift: expected FEATURE_COLUMNS[:-3]; "
-            f"got divergent list."
-        )
+        msg = "FEATURE_COLUMNS_NO_NET drift: expected FEATURE_COLUMNS[:-3]; got divergent list."
         print(f"[spike] FATAL: {msg}", file=sys.stderr)
         return 2
     print(
@@ -619,10 +603,7 @@ def main() -> int:
         )
         print(f"[spike] FATAL: {msg}", file=sys.stderr)
         return 2
-    print(
-        "[spike] AF-1 OK: xgb_v2 best_params matched "
-        "EXPECTED_XGB_V2_BEST_PARAMS verbatim."
-    )
+    print("[spike] AF-1 OK: xgb_v2 best_params matched EXPECTED_XGB_V2_BEST_PARAMS verbatim.")
     print(f"  cutoff_date: {cutoff_str}")
 
     # ── Load gate_contract.json + verify formula_hash ────────────────
@@ -636,10 +617,7 @@ def main() -> int:
         print(f"[spike] FATAL: {msg}", file=sys.stderr)
         return 2
     formula_hash = contract.formula_hash
-    print(
-        f"[spike] gate_contract.json formula_hash matched "
-        f"({formula_hash[:16]}...)."
-    )
+    print(f"[spike] gate_contract.json formula_hash matched ({formula_hash[:16]}...).")
 
     # ── Data load (mirrors retrain_xgb_v3.py) ─────────────────────────
     print("[spike] Loading data from DB...")
@@ -662,7 +640,9 @@ def main() -> int:
 
     print("[spike] Computing division medians (training-set only)...")
     division_medians = compute_division_medians(
-        fighter_physicals, fight_records, cutoff_date_obj,
+        fighter_physicals,
+        fight_records,
+        cutoff_date_obj,
     )
 
     # ── Assemble feature matrix for ablation (Phase-16 NET-* values) ─
@@ -673,8 +653,12 @@ def main() -> int:
     config = MLConfig(cutoff_date=cutoff_str)
     assembler = FeatureMatrixAssembler(config)
     X_full, y, fight_dates_full = assembler.assemble(
-        fight_records, elo_features, computed_features,
-        fighter_physicals, division_medians, round_stats,
+        fight_records,
+        elo_features,
+        computed_features,
+        fighter_physicals,
+        division_medians,
+        round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
     )
@@ -689,13 +673,14 @@ def main() -> int:
 
     print("[spike] Temporal split at cutoff_date...")
     X_train, X_test, y_train, y_test = split_temporal(
-        X_full, y, fight_dates_full, cutoff_date_obj,
+        X_full,
+        y,
+        fight_dates_full,
+        cutoff_date_obj,
     )
     test_mask = np.array([d >= cutoff_date_obj for d in fight_dates_full])
     fight_dates_test = np.array(fight_dates_full)[test_mask]
-    print(
-        f"  Train: {X_train.shape[0]} fights, Test: {X_test.shape[0]} fights"
-    )
+    print(f"  Train: {X_train.shape[0]} fights, Test: {X_test.shape[0]} fights")
 
     # Pitfall E shape sanity
     expected_n_train = meta_v2.get("n_training_fights")
@@ -720,8 +705,7 @@ def main() -> int:
     X_test_72 = X_test[:, :-3]
     if X_train_72.shape[1] != 72:
         print(
-            f"[spike] FATAL: ablation subset produced {X_train_72.shape[1]} "
-            "cols; expected 72.",
+            f"[spike] FATAL: ablation subset produced {X_train_72.shape[1]} cols; expected 72.",
             file=sys.stderr,
         )
         return 2
@@ -762,7 +746,8 @@ def main() -> int:
     )
     t_v2 = time.time()
     computed_features_v2 = _recompute_net_v2_in_computed_features(
-        fight_records, computed_features,
+        fight_records,
+        computed_features,
     )
     print(
         f"  re-computed NET-V2 keys for {len(computed_features_v2)} rows in "
@@ -774,8 +759,12 @@ def main() -> int:
         "NET-V2 (0.98^days) values..."
     )
     X_full_v2, y_v2, fight_dates_full_v2 = assembler.assemble(
-        fight_records, elo_features, computed_features_v2,
-        fighter_physicals, division_medians, round_stats,
+        fight_records,
+        elo_features,
+        computed_features_v2,
+        fighter_physicals,
+        division_medians,
+        round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
     )
@@ -792,11 +781,12 @@ def main() -> int:
         print(f"[spike] FATAL: {msg}", file=sys.stderr)
         return 2
     X_train_v2, X_test_v2, _, _ = split_temporal(
-        X_full_v2, y_v2, fight_dates_full_v2, cutoff_date_obj,
+        X_full_v2,
+        y_v2,
+        fight_dates_full_v2,
+        cutoff_date_obj,
     )
-    print(
-        f"  v2 train/test shape: {X_train_v2.shape} / {X_test_v2.shape}"
-    )
+    print(f"  v2 train/test shape: {X_train_v2.shape} / {X_test_v2.shape}")
 
     # ── Outer variant × inner seed loop (5×2 = 10 trains; reuse seed=42) ─
     seeds = args.seeds if not args.quick else [42]
@@ -837,22 +827,25 @@ def main() -> int:
                 )
             else:
                 t_seed = time.time()
-                print(
-                    f"[spike] Seed {seed} ({i + 1}/{len(seeds)}) "
-                    f"[{variant}] - training..."
-                )
+                print(f"[spike] Seed {seed} ({i + 1}/{len(seeds)}) [{variant}] - training...")
                 model = _train_with_fixed_params(
-                    X_train_V, y_train, best_params, seed,
+                    X_train_V,
+                    y_train,
+                    best_params,
+                    seed,
                 )
                 print(f"  seed={seed} trained in {time.time() - t_seed:.1f}s")
             per_slice_seed = evaluate_per_slice(
-                model, X_test_V, y_test, fight_dates_test,
-                today=date.today(), random_seed=42,
+                model,
+                X_test_V,
+                y_test,
+                fight_dates_test,
+                today=date.today(),
+                random_seed=42,
             )
             per_seed_per_variant[variant].append(per_slice_seed)
             slice_summary = ", ".join(
-                f"{slice_name}: brier={metrics['brier_score']:.4f} "
-                f"acc={metrics['accuracy']:.4f}"
+                f"{slice_name}: brier={metrics['brier_score']:.4f} acc={metrics['accuracy']:.4f}"
                 for slice_name, metrics in per_slice_seed.items()
             )
             print(f"  seed={seed} slices: {slice_summary}")
@@ -866,20 +859,19 @@ def main() -> int:
         )
         seed_stds_per_variant[variant] = {}
         for slice_name in PER_SLICE_KEYS:
-            brier_arr = np.array([
-                psm[slice_name]["brier_score"]
-                for psm in per_seed_per_variant[variant]
-            ])
-            acc_arr = np.array([
-                psm[slice_name]["accuracy"]
-                for psm in per_seed_per_variant[variant]
-            ])
+            brier_arr = np.array(
+                [psm[slice_name]["brier_score"] for psm in per_seed_per_variant[variant]]
+            )
+            acc_arr = np.array(
+                [psm[slice_name]["accuracy"] for psm in per_seed_per_variant[variant]]
+            )
             seed_stds_per_variant[variant][slice_name] = {
                 "brier_score": float(np.std(brier_arr)),
                 "accuracy": float(np.std(acc_arr)),
             }
         verdicts_per_variant[variant] = gate_verdict(
-            medians_per_variant[variant], contract,
+            medians_per_variant[variant],
+            contract,
         )
         passed, failed = verdicts_per_variant[variant]
         print(
@@ -898,15 +890,11 @@ def main() -> int:
     if not v_a_passed and not v_t_passed:
         winner = "xgb_v2_stays"
         tie_breaker["outcome_path"] = "neither_clears_xgb_v2_stays"
-        tie_breaker["decision"] = (
-            "n/a (neither variant cleared gate; xgb_v2 stays)"
-        )
+        tie_breaker["decision"] = "n/a (neither variant cleared gate; xgb_v2 stays)"
     elif v_t_passed and not v_a_passed:
         winner = "time_decayed"
         tie_breaker["outcome_path"] = "time_decayed_only_clears_ships"
-        tie_breaker["decision"] = (
-            "n/a (only time_decayed cleared gate; ships)"
-        )
+        tie_breaker["decision"] = "n/a (only time_decayed cleared gate; ships)"
     elif v_a_passed and not v_t_passed:
         winner = "ablation"
         tie_breaker["outcome_path"] = "ablation_only_clears_ships"
@@ -922,22 +910,16 @@ def main() -> int:
         all_clear = all(m >= TIE_BREAKER_MARGIN for m in margins)
         if all_clear:
             winner = "time_decayed"
-            tie_breaker["outcome_path"] = (
-                "both_clear_time_decayed_ships_above_margin"
-            )
-            tie_breaker["decision"] = (
-                f"time_decayed wins (all 3 margins >= {TIE_BREAKER_MARGIN})"
-            )
+            tie_breaker["outcome_path"] = "both_clear_time_decayed_ships_above_margin"
+            tie_breaker["decision"] = f"time_decayed wins (all 3 margins >= {TIE_BREAKER_MARGIN})"
         else:
             winner = "ablation"
-            tie_breaker["outcome_path"] = (
-                "both_clear_ablation_ships_under_margin"
-            )
-            tie_breaker["decision"] = (
-                f"ablation wins (at least one margin < {TIE_BREAKER_MARGIN})"
-            )
-    print(f"[spike] Tie-breaker decision: winner = `{winner}` "
-          f"(outcome_path = {tie_breaker['outcome_path']})")
+            tie_breaker["outcome_path"] = "both_clear_ablation_ships_under_margin"
+            tie_breaker["decision"] = f"ablation wins (at least one margin < {TIE_BREAKER_MARGIN})"
+    print(
+        f"[spike] Tie-breaker decision: winner = `{winner}` "
+        f"(outcome_path = {tie_breaker['outcome_path']})"
+    )
 
     # ── Quick-mode hard guard ─────────────────────────────────────────
     if len(seeds) != 5:
@@ -955,16 +937,8 @@ def main() -> int:
     n_train = int(X_train.shape[0])
     n_test = int(X_test.shape[0])
     for variant in VARIANTS_PRE_REGISTERED:
-        version_tag = (
-            "v2_1_ablation"
-            if variant == "ablation"
-            else "v2_1_timedecayed"
-        )
-        feat_cols = (
-            list(FEATURE_COLUMNS_NO_NET)
-            if variant == "ablation"
-            else list(FEATURE_COLUMNS)
-        )
+        version_tag = "v2_1_ablation" if variant == "ablation" else "v2_1_timedecayed"
+        feat_cols = list(FEATURE_COLUMNS_NO_NET) if variant == "ablation" else list(FEATURE_COLUMNS)
         extra = {
             "base_model_kind": variant,
             "n_seeds_observed": len(seeds),
@@ -983,28 +957,17 @@ def main() -> int:
             extra_meta=extra,
         )
         joblib_path = Path("models") / f"xgb_{version_tag}.joblib"
-        meta_path = Path("models") / f"xgb_{version_tag}_meta.json"
+        _meta_path = Path("models") / f"xgb_{version_tag}_meta.json"
         sha = hashlib.sha256(joblib_path.read_bytes()).hexdigest()
-        persisted_paths[f"models/xgb_{version_tag}.joblib"] = (
-            f"sha256 {sha[:16]}..."
-        )
-        print(
-            f"[spike] Persisted variant '{variant}' -> {joblib_path} "
-            f"(sha256 {sha[:16]}...)"
-        )
+        persisted_paths[f"models/xgb_{version_tag}.joblib"] = f"sha256 {sha[:16]}..."
+        print(f"[spike] Persisted variant '{variant}' -> {joblib_path} (sha256 {sha[:16]}...)")
 
     # Canonical alias (only if winner != xgb_v2_stays)
     archive_dir = Path(args.archive_dir)
     if winner != "xgb_v2_stays":
-        version_tag_winner = (
-            "v2_1_ablation"
-            if winner == "ablation"
-            else "v2_1_timedecayed"
-        )
+        version_tag_winner = "v2_1_ablation" if winner == "ablation" else "v2_1_timedecayed"
         winner_joblib = Path("models") / f"xgb_{version_tag_winner}.joblib"
-        winner_meta = (
-            Path("models") / f"xgb_{version_tag_winner}_meta.json"
-        )
+        winner_meta = Path("models") / f"xgb_{version_tag_winner}_meta.json"
         canonical_joblib = Path("models") / "xgb_v2_1.joblib"
         canonical_meta = Path("models") / "xgb_v2_1_meta.json"
         shutil.copy2(winner_joblib, canonical_joblib)
@@ -1015,49 +978,36 @@ def main() -> int:
         persisted_paths["models/xgb_v2_1.joblib (canonical alias)"] = (
             f"sha256 {canonical_sha[:16]}..."
         )
-        print(
-            f"[spike] Canonical alias: models/xgb_v2_1.joblib "
-            f"(sha256 {canonical_sha[:16]}...)"
-        )
+        print(f"[spike] Canonical alias: models/xgb_v2_1.joblib (sha256 {canonical_sha[:16]}...)")
 
         # AUDIT-03 archive of loser
-        loser = (
-            "time_decayed" if winner == "ablation" else "ablation"
-        )
-        version_tag_loser = (
-            "v2_1_ablation"
-            if loser == "ablation"
-            else "v2_1_timedecayed"
-        )
+        loser = "time_decayed" if winner == "ablation" else "ablation"
+        version_tag_loser = "v2_1_ablation" if loser == "ablation" else "v2_1_timedecayed"
         loser_joblib = Path("models") / f"xgb_{version_tag_loser}.joblib"
-        loser_meta = (
-            Path("models") / f"xgb_{version_tag_loser}_meta.json"
-        )
+        loser_meta = Path("models") / f"xgb_{version_tag_loser}_meta.json"
         loser_sha = _archive_loser(
-            version_tag_loser, loser_joblib, loser_meta, archive_dir,
+            version_tag_loser,
+            loser_joblib,
+            loser_meta,
+            archive_dir,
         )
-        persisted_paths[f"archive/{version_tag_loser}*"] = (
-            f"sha256 {loser_sha[:16]}..."
-        )
+        persisted_paths[f"archive/{version_tag_loser}*"] = f"sha256 {loser_sha[:16]}..."
     else:
         # winner == xgb_v2_stays — archive BOTH variants for empirical record.
         for variant in VARIANTS_PRE_REGISTERED:
-            version_tag = (
-                "v2_1_ablation"
-                if variant == "ablation"
-                else "v2_1_timedecayed"
-            )
+            version_tag = "v2_1_ablation" if variant == "ablation" else "v2_1_timedecayed"
             v_joblib = Path("models") / f"xgb_{version_tag}.joblib"
             v_meta = Path("models") / f"xgb_{version_tag}_meta.json"
             v_sha = _archive_loser(
-                version_tag, v_joblib, v_meta, archive_dir,
+                version_tag,
+                v_joblib,
+                v_meta,
+                archive_dir,
             )
-            persisted_paths[f"archive/{version_tag}*"] = (
-                f"sha256 {v_sha[:16]}..."
-            )
+            persisted_paths[f"archive/{version_tag}*"] = f"sha256 {v_sha[:16]}..."
 
     # ── Emit NET-DESIGN-COMPARISON.md ─────────────────────────────────
-    spike_finished = datetime.now(timezone.utc)
+    spike_finished = datetime.now(UTC)
     report_path = Path(args.report_path)
     _emit_report(
         report_path,

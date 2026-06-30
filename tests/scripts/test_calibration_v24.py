@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RESULTS_DIR = PROJECT_ROOT / "results"
 JSON_PATH = RESULTS_DIR / "calibration_v24.json"
@@ -32,7 +31,9 @@ def doc() -> dict:
 
 def test_json_has_three_slices(doc: dict) -> None:
     assert set(doc["per_slice"].keys()) == {
-        "most_recent_12mo", "most_recent_24mo", "random_15pct",
+        "most_recent_12mo",
+        "most_recent_24mo",
+        "random_15pct",
     }
 
 

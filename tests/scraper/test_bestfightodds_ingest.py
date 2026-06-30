@@ -85,11 +85,11 @@ def test_bfo_odds_row_extracts_event_date_from_composite_fight_id() -> None:
 
     # 2. Malformed date prefix (has the pipe shape, but the prefix isn't ISO)
     with pytest.raises(ValueError):
-        BFOOddsRow(fight_id="not-a-date|3227|8697", fighter_id="3227").event_date
+        _ = BFOOddsRow(fight_id="not-a-date|3227|8697", fighter_id="3227").event_date
 
     # 3. No pipe at all — old fixture-style opaque key
     with pytest.raises(ValueError):
-        BFOOddsRow(fight_id="onlydate", fighter_id="x").event_date
+        _ = BFOOddsRow(fight_id="onlydate", fighter_id="x").event_date
 
 
 def test_bfo_fighter_name_accepts_valid_row() -> None:

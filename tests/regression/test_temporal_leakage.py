@@ -59,30 +59,86 @@ def toy_fights() -> list[dict]:
         2024-06-01  F5 beats F3     KO/TKO
     """
     return [
-        {"fight_id": 1, "event_date": date(2010, 1, 1),
-         "fighter_a_id": 1, "fighter_b_id": 2, "winner_id": 1, "loser_id": 2,
-         "method": "KO/TKO", "weight_class": "Lightweight"},
-        {"fight_id": 2, "event_date": date(2010, 6, 1),
-         "fighter_a_id": 1, "fighter_b_id": 3, "winner_id": 1, "loser_id": 3,
-         "method": "Decision", "weight_class": "Lightweight"},
-        {"fight_id": 3, "event_date": date(2011, 1, 1),
-         "fighter_a_id": 2, "fighter_b_id": 3, "winner_id": 2, "loser_id": 3,
-         "method": "KO/TKO", "weight_class": "Lightweight"},
-        {"fight_id": 4, "event_date": date(2011, 6, 1),
-         "fighter_a_id": 4, "fighter_b_id": 1, "winner_id": 4, "loser_id": 1,
-         "method": "Submission", "weight_class": "Lightweight"},
-        {"fight_id": 5, "event_date": date(2018, 1, 1),
-         "fighter_a_id": 5, "fighter_b_id": 4, "winner_id": 5, "loser_id": 4,
-         "method": "KO/TKO", "weight_class": "Lightweight"},
-        {"fight_id": 6, "event_date": date(2018, 6, 1),
-         "fighter_a_id": 5, "fighter_b_id": 1, "winner_id": 5, "loser_id": 1,
-         "method": "Decision", "weight_class": "Lightweight"},
-        {"fight_id": 7, "event_date": date(2024, 1, 1),
-         "fighter_a_id": 5, "fighter_b_id": 2, "winner_id": 5, "loser_id": 2,
-         "method": "Decision", "weight_class": "Lightweight"},
-        {"fight_id": 8, "event_date": date(2024, 6, 1),
-         "fighter_a_id": 5, "fighter_b_id": 3, "winner_id": 5, "loser_id": 3,
-         "method": "KO/TKO", "weight_class": "Lightweight"},
+        {
+            "fight_id": 1,
+            "event_date": date(2010, 1, 1),
+            "fighter_a_id": 1,
+            "fighter_b_id": 2,
+            "winner_id": 1,
+            "loser_id": 2,
+            "method": "KO/TKO",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 2,
+            "event_date": date(2010, 6, 1),
+            "fighter_a_id": 1,
+            "fighter_b_id": 3,
+            "winner_id": 1,
+            "loser_id": 3,
+            "method": "Decision",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 3,
+            "event_date": date(2011, 1, 1),
+            "fighter_a_id": 2,
+            "fighter_b_id": 3,
+            "winner_id": 2,
+            "loser_id": 3,
+            "method": "KO/TKO",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 4,
+            "event_date": date(2011, 6, 1),
+            "fighter_a_id": 4,
+            "fighter_b_id": 1,
+            "winner_id": 4,
+            "loser_id": 1,
+            "method": "Submission",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 5,
+            "event_date": date(2018, 1, 1),
+            "fighter_a_id": 5,
+            "fighter_b_id": 4,
+            "winner_id": 5,
+            "loser_id": 4,
+            "method": "KO/TKO",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 6,
+            "event_date": date(2018, 6, 1),
+            "fighter_a_id": 5,
+            "fighter_b_id": 1,
+            "winner_id": 5,
+            "loser_id": 1,
+            "method": "Decision",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 7,
+            "event_date": date(2024, 1, 1),
+            "fighter_a_id": 5,
+            "fighter_b_id": 2,
+            "winner_id": 5,
+            "loser_id": 2,
+            "method": "Decision",
+            "weight_class": "Lightweight",
+        },
+        {
+            "fight_id": 8,
+            "event_date": date(2024, 6, 1),
+            "fighter_a_id": 5,
+            "fighter_b_id": 3,
+            "winner_id": 5,
+            "loser_id": 3,
+            "method": "KO/TKO",
+            "weight_class": "Lightweight",
+        },
     ]
 
 
@@ -110,7 +166,7 @@ def test_pagerank_no_future_fights(toy_graph):
     is pulled by this signal.
     """
     as_of_partial = date(2011, 7, 1)  # only fights 1-4 in scope
-    as_of_full = date(2025, 1, 1)     # all 8 fights in scope
+    as_of_full = date(2025, 1, 1)  # all 8 fights in scope
 
     sub_partial = network._temporal_subgraph(toy_graph, as_of_partial)
     sub_full = network._temporal_subgraph(toy_graph, as_of_full)
@@ -150,13 +206,10 @@ def test_debutant_invariant(toy_graph):
     pr_post = network.compute_pagerank_at(toy_graph, 5, post_debut)
 
     assert pr_pre is None, (
-        f"F5 pre-debut PageRank should be None (debutant case per D-06); "
-        f"got {pr_pre!r}"
+        f"F5 pre-debut PageRank should be None (debutant case per D-06); got {pr_pre!r}"
     )
     assert pr_post is not None
-    assert pr_post > 0.0, (
-        f"F5 post-debut PageRank should be > 0.0; got {pr_post}"
-    )
+    assert pr_post > 0.0, f"F5 post-debut PageRank should be > 0.0; got {pr_post}"
 
 
 def test_multi_era_spot_check(toy_graph):
@@ -203,7 +256,9 @@ def test_subgraph_identity(toy_graph):
     sub = network._temporal_subgraph(toy_graph, as_of)
 
     expected_included_dates = {
-        date(2010, 1, 1), date(2010, 6, 1), date(2011, 1, 1),
+        date(2010, 1, 1),
+        date(2010, 6, 1),
+        date(2011, 1, 1),
     }
     actual_dates = {d["earliest_date"] for _, _, d in sub.edges(data=True)}
     assert actual_dates == expected_included_dates, (
@@ -245,7 +300,9 @@ network_v2 = pytest.importorskip("ufc_prediction.features.network_v2")
 def toy_graph_v2(toy_fights):
     """Pan-MMA + MOV-weighted DiGraph built via network_v2.build_fight_graph_v2."""
     return network_v2.build_fight_graph_v2(
-        toy_fights, scope="pan-mma", weight_mode="mov",
+        toy_fights,
+        scope="pan-mma",
+        weight_mode="mov",
     )
 
 

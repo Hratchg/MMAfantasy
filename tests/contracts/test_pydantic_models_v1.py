@@ -3,6 +3,7 @@
 Covers Pydantic-model behavior BEFORE schema artifacts are emitted (Plan 25-02).
 Schema-file round-trip + Hypothesis fuzz live in Plan 25-03 test files.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -54,32 +55,43 @@ class TestPredictorOutputV1:
     def test_win_probability_out_of_range_rejected(self):
         with pytest.raises(ValidationError):
             PredictorOutputV1(
-                schema_version="1.0.0", win_probability=1.5,
-                fighter_a="A", fighter_b="B", event_date=date(2026, 1, 1),
+                schema_version="1.0.0",
+                win_probability=1.5,
+                fighter_a="A",
+                fighter_b="B",
+                event_date=date(2026, 1, 1),
             )
         with pytest.raises(ValidationError):
             PredictorOutputV1(
-                schema_version="1.0.0", win_probability=-0.01,
-                fighter_a="A", fighter_b="B", event_date=date(2026, 1, 1),
+                schema_version="1.0.0",
+                win_probability=-0.01,
+                fighter_a="A",
+                fighter_b="B",
+                event_date=date(2026, 1, 1),
             )
 
     def test_schema_version_regex_enforced(self):
         with pytest.raises(ValidationError):
             PredictorOutputV1(
                 schema_version="abc",
-                win_probability=0.5, fighter_a="A", fighter_b="B",
+                win_probability=0.5,
+                fighter_a="A",
+                fighter_b="B",
                 event_date=date(2026, 1, 1),
             )
 
     def test_extra_field_ignored_not_allowed(self):
         """Pydantic default extra='ignore'; extra='allow' is a Security anti-pattern."""
-        obj = PredictorOutputV1.model_validate({
-            "schema_version": "1.0.0",
-            "win_probability": 0.5,
-            "fighter_a": "A", "fighter_b": "B",
-            "event_date": "2026-01-01",
-            "rogue_field": "should_be_dropped",
-        })
+        obj = PredictorOutputV1.model_validate(
+            {
+                "schema_version": "1.0.0",
+                "win_probability": 0.5,
+                "fighter_a": "A",
+                "fighter_b": "B",
+                "event_date": "2026-01-01",
+                "rogue_field": "should_be_dropped",
+            }
+        )
         assert "rogue_field" not in obj.model_dump()
 
 

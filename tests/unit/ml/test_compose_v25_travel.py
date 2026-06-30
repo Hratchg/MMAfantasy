@@ -51,8 +51,8 @@ from scripts.compose_v25_travel import (
     hurdle_clears,
 )
 
-
 # ────────────────── Locked-constant invariants ───────────────────────
+
 
 def test_floor_accuracy_min_locked_at_070() -> None:
     """CONTEXT D-18 floor accuracy threshold LOCKED at 0.70 verbatim."""
@@ -85,13 +85,11 @@ def test_substrate_version_is_v25() -> None:
 
 def test_formula_hash_d18_locked() -> None:
     """D-18 formula hash LOCKED — NO post-measurement renegotiation."""
-    assert (
-        FORMULA_HASH
-        == "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
-    )
+    assert FORMULA_HASH == "7d221b4ac21e550c3341db32c2bcec0de0bee5b87c5b9ec498163b81dd7ed20a"
 
 
 # ───────────────────────── TestFloorClears ───────────────────────────
+
 
 class TestFloorClears:
     """D-18 Floor: candidate Brier ≤ baseline AND candidate acc ≥ 0.70 on ALL slices."""
@@ -134,10 +132,7 @@ class TestFloorClears:
         }
         ok, failures = floor_clears(baseline, candidate_brier, candidate_accuracy)
         assert ok is False
-        assert any(
-            "most_recent_24mo" in f and "accuracy" in f and "0.6900" in f
-            for f in failures
-        )
+        assert any("most_recent_24mo" in f and "accuracy" in f and "0.6900" in f for f in failures)
         assert any("0.70" in f for f in failures)
 
     def test_floor_fails_on_both_brier_regression_AND_low_acc(self) -> None:
@@ -174,6 +169,7 @@ class TestFloorClears:
 
 # ───────────────────────── TestHurdleClears ───────────────────────────
 
+
 class TestHurdleClears:
     """D-18 Hurdle: ≥0.003 Brier improvement on ≥2/3 slices."""
 
@@ -192,7 +188,7 @@ class TestHurdleClears:
         candidate_brier = {
             "most_recent_12mo": 0.175,  # Δ=0.005 ✓
             "most_recent_24mo": 0.176,  # Δ=0.004 ✓
-            "random_15pct": 0.179,      # Δ=0.001 ✗
+            "random_15pct": 0.179,  # Δ=0.001 ✗
         }
         ok, msgs = hurdle_clears(baseline_brier, candidate_brier)
         assert ok is True
@@ -203,7 +199,7 @@ class TestHurdleClears:
         candidate_brier = {
             "most_recent_12mo": 0.175,  # Δ=0.005 ✓
             "most_recent_24mo": 0.179,  # Δ=0.001 ✗
-            "random_15pct": 0.179,      # Δ=0.001 ✗
+            "random_15pct": 0.179,  # Δ=0.001 ✗
         }
         ok, msgs = hurdle_clears(baseline_brier, candidate_brier)
         assert ok is False
@@ -260,6 +256,7 @@ class TestHurdleClears:
 
 # ─────────────────────── TestPathDetermination ───────────────────────
 
+
 class TestPathDetermination:
     """Path A eligibility vs Path B inevitability (mutually exclusive)."""
 
@@ -300,18 +297,21 @@ class TestPathDetermination:
         [(True, True), (True, False), (False, True), (False, False)],
     )
     def test_both_eligible_and_inevitable_are_mutually_exclusive(
-        self, floor_pass: bool, hurdle_pass: bool,
+        self,
+        floor_pass: bool,
+        hurdle_pass: bool,
     ) -> None:
         """For ANY input: XOR(path_a_eligible, path_b_inevitable) == True."""
         floor_result = (floor_pass, [] if floor_pass else ["x"])
         hurdle_result = (hurdle_pass, [] if hurdle_pass else ["y"])
         path = determine_path(floor_result, hurdle_result)
-        assert (
-            bool(path["path_a_eligible"]) != bool(path["path_b_inevitable"])
-        ), f"XOR broken: {path}"
+        assert bool(path["path_a_eligible"]) != bool(path["path_b_inevitable"]), (
+            f"XOR broken: {path}"
+        )
 
 
 # ─────────────────────────── TestReportShape ──────────────────────────
+
 
 def _synthetic_baseline_per_slice() -> dict[str, dict[str, float]]:
     return {
@@ -404,9 +404,7 @@ class TestReportShape:
             xgb_sha="x",
             meta_sha="y",
         )
-        assert (
-            bool(report["path_a_eligible"]) != bool(report["path_b_inevitable"])
-        )
+        assert bool(report["path_a_eligible"]) != bool(report["path_b_inevitable"])
 
     def test_report_delta_brier_is_signed(self) -> None:
         """delta_brier = baseline - candidate (positive = candidate improves)."""
@@ -420,9 +418,7 @@ class TestReportShape:
             meta_sha="y",
         )
         for slc in PER_SLICE_KEYS:
-            expected = (
-                baseline[slc]["brier_score"] - candidate[slc]["brier_score"]
-            )
+            expected = baseline[slc]["brier_score"] - candidate[slc]["brier_score"]
             actual = report["per_slice"][slc]["delta_brier"]
             assert math.isclose(actual, expected, abs_tol=1e-12), (
                 f"delta_brier mismatch on {slc}: actual={actual} expected={expected}"

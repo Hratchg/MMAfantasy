@@ -30,9 +30,7 @@ from pathlib import Path
 import pytest
 
 HARNESS_PATH = Path("scripts/rerun_v22_meta_spike_on_deduplicated_corpus.py")
-REPORT_PATH = Path(
-    ".planning/phases/28-referee-venue-ingestion-pipeline/28-04-METRIC-INTEGRITY.md"
-)
+REPORT_PATH = Path(".planning/phases/28-referee-venue-ingestion-pipeline/28-04-METRIC-INTEGRITY.md")
 NON_DEFERRED_VERDICTS = frozenset({"PRESERVED", "REDUCED", "MARGIN_LOST"})
 
 

@@ -122,9 +122,7 @@ def _make_event_detail_html(name: str, date_str: str, location: str) -> str:
     """
     base = _load_fixture("event_detail.html")
     # Replace event name
-    base = base.replace(
-        "UFC 327: Prochazka vs. Ulberg", name
-    )
+    base = base.replace("UFC 327: Prochazka vs. Ulberg", name)
     # Replace date
     base = base.replace("April 11, 2026", date_str)
     # Replace location
@@ -162,7 +160,7 @@ class TestConvertFighterProfile:
             nickname="Black Jag",
             height_str="6' 4\"",
             weight_str="205 lbs.",
-            reach_str="79\"",
+            reach_str='79"',
             stance="Switch",
             dob_str="Nov 07, 1990",
         )
@@ -218,24 +216,50 @@ class TestConvertFight:
 
         # Minimal fight detail page
         totals_a = RoundStatsRaw(
-            fighter_name="Fighter A", knockdowns="1", sig_str="20 of 30",
-            sig_str_pct="66%", total_str="30 of 40", td="1 of 2",
-            td_pct="50%", sub_att="0", rev="0", ctrl="2:15",
+            fighter_name="Fighter A",
+            knockdowns="1",
+            sig_str="20 of 30",
+            sig_str_pct="66%",
+            total_str="30 of 40",
+            td="1 of 2",
+            td_pct="50%",
+            sub_att="0",
+            rev="0",
+            ctrl="2:15",
         )
         totals_b = RoundStatsRaw(
-            fighter_name="Fighter B", knockdowns="0", sig_str="10 of 25",
-            sig_str_pct="40%", total_str="15 of 30", td="0 of 1",
-            td_pct="0%", sub_att="1", rev="0", ctrl="0:30",
+            fighter_name="Fighter B",
+            knockdowns="0",
+            sig_str="10 of 25",
+            sig_str_pct="40%",
+            total_str="15 of 30",
+            td="0 of 1",
+            td_pct="0%",
+            sub_att="1",
+            rev="0",
+            ctrl="0:30",
         )
         sig_a = SigStrikesRaw(
-            fighter_name="Fighter A", sig_str="20 of 30", sig_str_pct="66%",
-            head="10 of 15", body="5 of 8", leg="5 of 7",
-            distance="12 of 20", clinch="5 of 6", ground="3 of 4",
+            fighter_name="Fighter A",
+            sig_str="20 of 30",
+            sig_str_pct="66%",
+            head="10 of 15",
+            body="5 of 8",
+            leg="5 of 7",
+            distance="12 of 20",
+            clinch="5 of 6",
+            ground="3 of 4",
         )
         sig_b = SigStrikesRaw(
-            fighter_name="Fighter B", sig_str="10 of 25", sig_str_pct="40%",
-            head="5 of 10", body="3 of 8", leg="2 of 7",
-            distance="6 of 15", clinch="2 of 5", ground="2 of 5",
+            fighter_name="Fighter B",
+            sig_str="10 of 25",
+            sig_str_pct="40%",
+            head="5 of 10",
+            body="3 of 8",
+            leg="2 of 7",
+            distance="6 of 15",
+            clinch="2 of 5",
+            ground="2 of 5",
         )
 
         fight_detail = FightDetailPage(
@@ -357,12 +381,14 @@ class TestErrorHandling:
         from ufc_prediction.scraper.ingest import scrape_all_events
 
         # Create client where one event detail page is broken
-        mock_client = MockScraperClient({
-            "statistics/events/completed": _load_fixture("event_list_snippet.html"),
-            "event-details": "<html><body>broken html with no fight rows</body></html>",
-            "fight-details": _load_fixture("fight_detail_1round.html"),
-            "fighter-details": _load_fixture("fighter_profile.html"),
-        })
+        mock_client = MockScraperClient(
+            {
+                "statistics/events/completed": _load_fixture("event_list_snippet.html"),
+                "event-details": "<html><body>broken html with no fight rows</body></html>",
+                "fight-details": _load_fixture("fight_detail_1round.html"),
+                "fighter-details": _load_fixture("fighter_profile.html"),
+            }
+        )
 
         # Should not raise -- parse failure on event pages logged and continued
         result = scrape_all_events(session, mock_client)
@@ -484,7 +510,7 @@ class _SpyClient:
     def __init__(self, **kwargs: object) -> None:
         type(self).last_kwargs = dict(kwargs)
 
-    def get(self, url: str) -> str:  # noqa: ARG002 - spy
+    def get(self, url: str) -> str:
         return ""
 
     def map(self, fn, urls):  # type: ignore[no-untyped-def]
@@ -531,9 +557,7 @@ class TestScrapeConcurrencyIntegration:
 
         mock_client = _RaisingMockScraperClient(
             fixture_map={
-                "statistics/events/completed": _load_fixture(
-                    "event_list_snippet.html"
-                ),
+                "statistics/events/completed": _load_fixture("event_list_snippet.html"),
                 "fight-details": _load_fixture("fight_detail_1round.html"),
                 "fighter-details": _load_fixture("fighter_profile.html"),
             },
@@ -561,13 +585,13 @@ class TestScrapeConcurrencyIntegration:
         # scrape_all_events will call get(EVENT_LIST_URL) -> "" which then
         # trips parse_event_list(min_events=1) -> ValueError. That's fine;
         # we only care about the ScraperClient(...) kwargs captured by the spy.
-        with pytest.raises(Exception):  # noqa: BLE001, PT011
+        with pytest.raises(Exception):
             ingest_mod.scrape_all_events(session=None)  # type: ignore[arg-type]
 
         assert _SpyClient.last_kwargs.get("workers") == 4
 
         # Override path: workers=7 flows through.
         _SpyClient.last_kwargs = {}
-        with pytest.raises(Exception):  # noqa: BLE001, PT011
+        with pytest.raises(Exception):
             ingest_mod.scrape_all_events(session=None, workers=7)  # type: ignore[arg-type]
         assert _SpyClient.last_kwargs.get("workers") == 7

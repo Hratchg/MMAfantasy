@@ -37,8 +37,8 @@ from scripts.compose_v23_meta import (
     triple_gate_decision,
 )
 
-
 # ───────────────────────────── Mock gate contract ─────────────────────────────
+
 
 @dataclass(frozen=True)
 class _MockSliceThresholds:
@@ -57,7 +57,7 @@ def _make_contract_v23() -> _MockContract:
         per_slice={
             "most_recent_12mo": _MockSliceThresholds(brier_max=0.1512, accuracy_min=0.7814),
             "most_recent_24mo": _MockSliceThresholds(brier_max=0.1583, accuracy_min=0.7627),
-            "random_15pct":     _MockSliceThresholds(brier_max=0.1374, accuracy_min=0.7812),
+            "random_15pct": _MockSliceThresholds(brier_max=0.1374, accuracy_min=0.7812),
         },
     )
 
@@ -75,18 +75,17 @@ def _median_clearly_passes() -> dict[str, dict[str, float]]:
     return {
         "most_recent_12mo": {"brier_score": 0.140, "accuracy": 0.79},
         "most_recent_24mo": {"brier_score": 0.150, "accuracy": 0.78},
-        "random_15pct":     {"brier_score": 0.130, "accuracy": 0.80},
+        "random_15pct": {"brier_score": 0.130, "accuracy": 0.80},
     }
 
 
 def _final_brier_beats_meta_v22() -> dict[str, float]:
     """Final candidate Brier per slice, beats META-V22 by >0.003 on all 3."""
-    return {
-        slc: META_V22_BASELINE_BRIER[slc] - 0.010 for slc in PER_SLICE_KEYS
-    }
+    return {slc: META_V22_BASELINE_BRIER[slc] - 0.010 for slc in PER_SLICE_KEYS}
 
 
 # ───────────────────────────── Total-margin constant ─────────────────────────
+
 
 def test_total_margin_hurdle_locked_at_0003() -> None:
     """TOTAL_MARGIN_HURDLE LOCKED at 0.003 per D-03 leg 2."""
@@ -107,6 +106,7 @@ def test_meta_v22_baseline_per_slice_present() -> None:
 
 # ───────────────────────────── Path A (all 3 legs clear) ─────────────────────
 
+
 def test_triple_gate_all_three_clear_promotes() -> None:
     """All 3 legs clear → ('promote', 'path_a', [])."""
     contract = _make_contract_v23()
@@ -122,6 +122,7 @@ def test_triple_gate_all_three_clear_promotes() -> None:
 
 
 # ───────────────────────────── Path C (any-leg-miss) ─────────────────────────
+
 
 def test_triple_gate_rejects_on_gate_miss() -> None:
     """Gate-miss (Brier > brier_max on a slice) → ('reject', 'path_c', [<reason>])."""
@@ -145,9 +146,7 @@ def test_triple_gate_rejects_on_margin_miss() -> None:
     contract = _make_contract_v23()
     median_passes_gate = _median_clearly_passes()
     # Brier that beats gate but only beats META-V22 by 0.001 (< 0.003 hurdle).
-    final_brier_thin = {
-        slc: META_V22_BASELINE_BRIER[slc] - 0.001 for slc in PER_SLICE_KEYS
-    }
+    final_brier_thin = {slc: META_V22_BASELINE_BRIER[slc] - 0.001 for slc in PER_SLICE_KEYS}
     verdict, path, failures = triple_gate_decision(
         final_candidate_brier=final_brier_thin,
         prior_step_clears=_all_steps_clear(),
@@ -225,6 +224,7 @@ def test_triple_gate_rejects_nan() -> None:
 
 # ───────────────────────────── Path B (partial composition) ───────────────────
 
+
 def test_triple_gate_path_b_distinction() -> None:
     """Some-but-not-all-steps cleared + surviving candidate misses gate → path_b.
 
@@ -256,6 +256,7 @@ def test_triple_gate_path_b_distinction() -> None:
 
 # ───────────────────────────── Parametrized any-leg rejection ─────────────────
 
+
 @pytest.mark.parametrize(
     "fail_leg",
     ["gate", "margin", "per_step", "nan"],
@@ -275,9 +276,7 @@ def test_triple_gate_rejects_any_leg_miss(fail_leg: str) -> None:
     if fail_leg == "gate":
         median["most_recent_12mo"]["brier_score"] = 0.200  # > 0.1512
     elif fail_leg == "margin":
-        final_brier = {
-            slc: META_V22_BASELINE_BRIER[slc] - 0.001 for slc in PER_SLICE_KEYS
-        }
+        final_brier = {slc: META_V22_BASELINE_BRIER[slc] - 0.001 for slc in PER_SLICE_KEYS}
     elif fail_leg == "per_step":
         # With per_step miss + gate-pass + margin-pass → Path B (partial
         # composition). To force Path C on per-step miss, ALL transitions

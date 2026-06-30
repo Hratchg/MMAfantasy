@@ -101,24 +101,32 @@ class TestLoadFightOdds:
 
         assert load_fight_odds(session) == {}
 
-    def test_load_fight_odds_returns_keyed_by_fighter_fight_tuple(
-        self, session: Session
-    ) -> None:
+    def test_load_fight_odds_returns_keyed_by_fighter_fight_tuple(self, session: Session) -> None:
         from ufc_prediction.ml.queries import load_fight_odds
 
         fa, fb, fight = _seed_fight_for_odds(session)
-        session.add_all([
-            FightOdds(
-                fight_id=fight.id, fighter_id=fa.id,
-                opening_ml=-200, closing_range_min_ml=-220, closing_range_max_ml=-210,
-                opening_implied_prob=0.62, closing_implied_prob=0.65,
-            ),
-            FightOdds(
-                fight_id=fight.id, fighter_id=fb.id,
-                opening_ml=170, closing_range_min_ml=190, closing_range_max_ml=200,
-                opening_implied_prob=0.38, closing_implied_prob=0.35,
-            ),
-        ])
+        session.add_all(
+            [
+                FightOdds(
+                    fight_id=fight.id,
+                    fighter_id=fa.id,
+                    opening_ml=-200,
+                    closing_range_min_ml=-220,
+                    closing_range_max_ml=-210,
+                    opening_implied_prob=0.62,
+                    closing_implied_prob=0.65,
+                ),
+                FightOdds(
+                    fight_id=fight.id,
+                    fighter_id=fb.id,
+                    opening_ml=170,
+                    closing_range_min_ml=190,
+                    closing_range_max_ml=200,
+                    opening_implied_prob=0.38,
+                    closing_implied_prob=0.35,
+                ),
+            ]
+        )
         session.flush()
 
         result = load_fight_odds(session)
@@ -140,18 +148,28 @@ class TestLoadFightOdds:
         from ufc_prediction.ml.queries import load_fight_odds
 
         fa, fb, fight = _seed_fight_for_odds(session)
-        session.add_all([
-            FightOdds(
-                fight_id=fight.id, fighter_id=fa.id,
-                opening_ml=-200, closing_range_min_ml=-220, closing_range_max_ml=-210,
-                opening_implied_prob=0.62, closing_implied_prob=0.65,
-            ),
-            FightOdds(
-                fight_id=fight.id, fighter_id=fb.id,
-                opening_ml=170, closing_range_min_ml=190, closing_range_max_ml=200,
-                opening_implied_prob=0.38, closing_implied_prob=0.35,
-            ),
-        ])
+        session.add_all(
+            [
+                FightOdds(
+                    fight_id=fight.id,
+                    fighter_id=fa.id,
+                    opening_ml=-200,
+                    closing_range_min_ml=-220,
+                    closing_range_max_ml=-210,
+                    opening_implied_prob=0.62,
+                    closing_implied_prob=0.65,
+                ),
+                FightOdds(
+                    fight_id=fight.id,
+                    fighter_id=fb.id,
+                    opening_ml=170,
+                    closing_range_min_ml=190,
+                    closing_range_max_ml=200,
+                    opening_implied_prob=0.38,
+                    closing_implied_prob=0.35,
+                ),
+            ]
+        )
         session.flush()
 
         result = load_fight_odds(session)
@@ -245,8 +263,11 @@ class TestAssemblerSection13:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             fight_odds={},
         )
         assert X.shape[1] == 70
@@ -265,8 +286,11 @@ class TestAssemblerSection13:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_records, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_records,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             round_stats=None,
             pre_ufc_records=None,
         )
@@ -312,8 +336,11 @@ class TestAssemblerSection13:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_recs, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_recs,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             fight_odds=fight_odds,
         )
 
@@ -321,9 +348,7 @@ class TestAssemblerSection13:
         assert X[0, -2] == pytest.approx(0.65 - 0.35, abs=1e-9)
         # line_movement_diff = (cl_a - op_a) - (cl_b - op_b)
         # = (0.65 - 0.62) - (0.35 - 0.38) = 0.03 - (-0.03) = 0.06
-        assert X[0, -1] == pytest.approx(
-            (0.65 - 0.62) - (0.35 - 0.38), abs=1e-9
-        )
+        assert X[0, -1] == pytest.approx((0.65 - 0.62) - (0.35 - 0.38), abs=1e-9)
 
     def test_odds_diffs_missing_a_side_are_nan(
         self,
@@ -356,8 +381,11 @@ class TestAssemblerSection13:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_recs, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_recs,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             fight_odds=fight_odds,
         )
 
@@ -403,8 +431,11 @@ class TestAssemblerSection13:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_recs, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_recs,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             fight_odds=fight_odds,
         )
 
@@ -442,8 +473,11 @@ class TestAssemblerSection13:
 
         assembler = FeatureMatrixAssembler()
         X, _, _ = assembler.assemble(
-            fight_recs, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            fight_recs,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             fight_odds=fight_odds,
         )
 
@@ -461,9 +495,8 @@ class TestAssemblerSection13:
             a_odds["closing_implied_prob"] - b_odds["closing_implied_prob"],
             abs=1e-9,
         )
-        expected_lm = (
-            (a_odds["closing_implied_prob"] - a_odds["opening_implied_prob"])
-            - (b_odds["closing_implied_prob"] - b_odds["opening_implied_prob"])
+        expected_lm = (a_odds["closing_implied_prob"] - a_odds["opening_implied_prob"]) - (
+            b_odds["closing_implied_prob"] - b_odds["opening_implied_prob"]
         )
         assert X[0, -1] == pytest.approx(expected_lm, abs=1e-9)
 
@@ -511,8 +544,11 @@ class TestAssemblerSection13:
 
         assembler = FeatureMatrixAssembler()
         X_pickem, _, _ = assembler.assemble(
-            pickem_fights, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            pickem_fights,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             fight_odds=pickem_odds,
         )
         # Every pickem row: all 3 diffs are exactly 0.0 (NOT NaN)
@@ -537,8 +573,11 @@ class TestAssemblerSection13:
             for i in range(100)
         ]
         X_none, _, _ = assembler.assemble(
-            no_odds_fights, elo_features, computed_features,
-            fighter_physicals, division_medians,
+            no_odds_fights,
+            elo_features,
+            computed_features,
+            fighter_physicals,
+            division_medians,
             fight_odds={},
         )
         # Every no-odds row: all 3 diffs are NaN (NOT 0.0)
@@ -566,29 +605,42 @@ class TestPredictCliWiresFightOdds:
 
         runner = CliRunner()
 
-        with patch("ufc_prediction.cli.predict.SessionLocal") as mock_session_local, \
-             patch("ufc_prediction.cli.predict.load_fight_records", return_value=[]), \
-             patch("ufc_prediction.cli.predict.load_elo_features", return_value={}), \
-             patch("ufc_prediction.cli.predict.load_computed_features", return_value={}), \
-             patch("ufc_prediction.cli.predict.load_fighter_physicals", return_value={}), \
-             patch("ufc_prediction.cli.predict.load_round_stats_for_ml", return_value={}), \
-             patch("ufc_prediction.cli.predict.load_pre_ufc_records", return_value={}), \
-             patch("ufc_prediction.cli.predict.load_fight_odds", return_value={}) as mock_lfo, \
-             patch("ufc_prediction.cli.predict.compute_division_medians", return_value={}), \
-             patch("ufc_prediction.cli.predict.FeatureMatrixAssembler") as mock_asm_cls, \
-             patch("ufc_prediction.cli.predict.split_temporal", return_value=(
-                 np.zeros((1, 70)), np.zeros((1, 70)),
-                 np.zeros(1, dtype=np.int32), np.zeros(1, dtype=np.int32),
-             )), \
-             patch("ufc_prediction.cli.predict.ModelTrainer") as mock_trainer_cls, \
-             patch("ufc_prediction.cli.predict.evaluate_model", return_value={
-                 "brier_score": 0.25, "auc_roc": 0.6, "accuracy": 0.55,
-             }), \
-             patch("ufc_prediction.cli.predict.save_model", return_value="models/test"):
+        with (
+            patch("ufc_prediction.cli.predict.SessionLocal") as mock_session_local,
+            patch("ufc_prediction.cli.predict.load_fight_records", return_value=[]),
+            patch("ufc_prediction.cli.predict.load_elo_features", return_value={}),
+            patch("ufc_prediction.cli.predict.load_computed_features", return_value={}),
+            patch("ufc_prediction.cli.predict.load_fighter_physicals", return_value={}),
+            patch("ufc_prediction.cli.predict.load_round_stats_for_ml", return_value={}),
+            patch("ufc_prediction.cli.predict.load_pre_ufc_records", return_value={}),
+            patch("ufc_prediction.cli.predict.load_fight_odds", return_value={}) as mock_lfo,
+            patch("ufc_prediction.cli.predict.compute_division_medians", return_value={}),
+            patch("ufc_prediction.cli.predict.FeatureMatrixAssembler") as mock_asm_cls,
+            patch(
+                "ufc_prediction.cli.predict.split_temporal",
+                return_value=(
+                    np.zeros((1, 70)),
+                    np.zeros((1, 70)),
+                    np.zeros(1, dtype=np.int32),
+                    np.zeros(1, dtype=np.int32),
+                ),
+            ),
+            patch("ufc_prediction.cli.predict.ModelTrainer") as mock_trainer_cls,
+            patch(
+                "ufc_prediction.cli.predict.evaluate_model",
+                return_value={
+                    "brier_score": 0.25,
+                    "auc_roc": 0.6,
+                    "accuracy": 0.55,
+                },
+            ),
+            patch("ufc_prediction.cli.predict.save_model", return_value="models/test"),
+        ):
             # Stub assembler.assemble() return shape
             mock_asm = MagicMock()
             mock_asm.assemble.return_value = (
-                np.zeros((1, 70)), np.zeros(1, dtype=np.int32),
+                np.zeros((1, 70)),
+                np.zeros(1, dtype=np.int32),
                 np.array([date(2020, 1, 1)], dtype=object),
             )
             mock_asm_cls.return_value = mock_asm
@@ -622,30 +674,43 @@ class TestPredictCliWiresFightOdds:
 
         runner = CliRunner()
 
-        with patch("ufc_prediction.cli.predict.SessionLocal") as mock_session_local, \
-             patch("ufc_prediction.cli.predict.load_fight_records", return_value=[]), \
-             patch("ufc_prediction.cli.predict.load_elo_features", return_value={}), \
-             patch("ufc_prediction.cli.predict.load_computed_features", return_value={}), \
-             patch("ufc_prediction.cli.predict.load_fighter_physicals", return_value={}), \
-             patch("ufc_prediction.cli.predict.load_round_stats_for_ml", return_value={}), \
-             patch("ufc_prediction.cli.predict.load_pre_ufc_records", return_value={}), \
-             patch("ufc_prediction.cli.predict.load_fight_odds", return_value={}) as mock_lfo, \
-             patch("ufc_prediction.cli.predict.compute_division_medians", return_value={}), \
-             patch("ufc_prediction.cli.predict.FeatureMatrixAssembler") as mock_asm_cls, \
-             patch("ufc_prediction.cli.predict.split_temporal", return_value=(
-                 np.zeros((1, 70)), np.zeros((1, 70)),
-                 np.zeros(1, dtype=np.int32), np.zeros(1, dtype=np.int32),
-             )), \
-             patch("ufc_prediction.ml.persistence.load_model", return_value=MagicMock()), \
-             patch("ufc_prediction.cli.predict.load_metadata", return_value={}), \
-             patch("ufc_prediction.cli.predict.evaluate_model", return_value={
-                 "brier_score": 0.25, "auc_roc": 0.6, "accuracy": 0.55,
-             }), \
-             patch("ufc_prediction.cli.predict._extract_importances", return_value={}), \
-             patch("ufc_prediction.cli.predict.format_evaluation_report", return_value=""):
+        with (
+            patch("ufc_prediction.cli.predict.SessionLocal") as mock_session_local,
+            patch("ufc_prediction.cli.predict.load_fight_records", return_value=[]),
+            patch("ufc_prediction.cli.predict.load_elo_features", return_value={}),
+            patch("ufc_prediction.cli.predict.load_computed_features", return_value={}),
+            patch("ufc_prediction.cli.predict.load_fighter_physicals", return_value={}),
+            patch("ufc_prediction.cli.predict.load_round_stats_for_ml", return_value={}),
+            patch("ufc_prediction.cli.predict.load_pre_ufc_records", return_value={}),
+            patch("ufc_prediction.cli.predict.load_fight_odds", return_value={}) as mock_lfo,
+            patch("ufc_prediction.cli.predict.compute_division_medians", return_value={}),
+            patch("ufc_prediction.cli.predict.FeatureMatrixAssembler") as mock_asm_cls,
+            patch(
+                "ufc_prediction.cli.predict.split_temporal",
+                return_value=(
+                    np.zeros((1, 70)),
+                    np.zeros((1, 70)),
+                    np.zeros(1, dtype=np.int32),
+                    np.zeros(1, dtype=np.int32),
+                ),
+            ),
+            patch("ufc_prediction.ml.persistence.load_model", return_value=MagicMock()),
+            patch("ufc_prediction.cli.predict.load_metadata", return_value={}),
+            patch(
+                "ufc_prediction.cli.predict.evaluate_model",
+                return_value={
+                    "brier_score": 0.25,
+                    "auc_roc": 0.6,
+                    "accuracy": 0.55,
+                },
+            ),
+            patch("ufc_prediction.cli.predict._extract_importances", return_value={}),
+            patch("ufc_prediction.cli.predict.format_evaluation_report", return_value=""),
+        ):
             mock_asm = MagicMock()
             mock_asm.assemble.return_value = (
-                np.zeros((1, 70)), np.zeros(1, dtype=np.int32),
+                np.zeros((1, 70)),
+                np.zeros(1, dtype=np.int32),
                 np.array([date(2020, 1, 1)], dtype=object),
             )
             mock_asm_cls.return_value = mock_asm

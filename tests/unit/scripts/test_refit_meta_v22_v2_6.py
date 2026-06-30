@@ -48,7 +48,6 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -122,14 +121,11 @@ def test_feature_columns_layout_byte_equals_canonical() -> None:
         f"col[0] must be canonical xgb OOF source name (refit ≠ Plan 65-02 "
         f"candidate); got {cols[0]!r}"
     )
-    canonical = json.loads(
-        refit_mod.CANONICAL_META_JSON.read_text(encoding="utf-8")
-    )
+    canonical = json.loads(refit_mod.CANONICAL_META_JSON.read_text(encoding="utf-8"))
     canonical_cols = tuple(canonical["meta_feature_columns"])
     assert len(canonical_cols) == 13
     assert canonical_cols == cols, (
-        f"refit layout must byte-equal canonical META-V22; "
-        f"refit={cols} canonical={canonical_cols}"
+        f"refit layout must byte-equal canonical META-V22; refit={cols} canonical={canonical_cols}"
     )
 
 
@@ -152,8 +148,10 @@ def test_anti_overwrite_guard_fires_on_canonical_meta_joblib(
 
     rc = refit_mod.main(
         [
-            "--mode", "synthetic",
-            "--output", str(canonical),
+            "--mode",
+            "synthetic",
+            "--output",
+            str(canonical),
         ]
     )
     assert rc != 0, "anti-overwrite guard should return non-zero exit code"
@@ -179,9 +177,12 @@ def test_anti_overwrite_guard_fires_on_canonical_meta_json(
 
     rc = refit_mod.main(
         [
-            "--mode", "synthetic",
-            "--output", str(tmp_path / "tmp_refit.joblib"),
-            "--output-meta", str(canonical_meta),
+            "--mode",
+            "synthetic",
+            "--output",
+            str(tmp_path / "tmp_refit.joblib"),
+            "--output-meta",
+            str(canonical_meta),
         ]
     )
     assert rc != 0
@@ -202,8 +203,10 @@ def test_anti_overwrite_guard_fires_on_canonical_xgb_joblib(
 
     rc = refit_mod.main(
         [
-            "--mode", "synthetic",
-            "--output", str(canonical_xgb),
+            "--mode",
+            "synthetic",
+            "--output",
+            str(canonical_xgb),
         ]
     )
     assert rc != 0
@@ -241,9 +244,12 @@ def test_synthetic_mode_emits_13wide_pipeline(tmp_path: Path) -> None:
 
     rc = refit_mod.main(
         [
-            "--mode", "synthetic",
-            "--output", str(out_joblib),
-            "--output-meta", str(out_meta),
+            "--mode",
+            "synthetic",
+            "--output",
+            str(out_joblib),
+            "--output-meta",
+            str(out_meta),
         ]
     )
     assert rc == 0, f"refit driver exited non-zero rc={rc}"
@@ -254,9 +260,7 @@ def test_synthetic_mode_emits_13wide_pipeline(tmp_path: Path) -> None:
     # introspection contract).
     inner_pipeline = obj.pipeline
     n_features = inner_pipeline.n_features_in_
-    assert n_features == 13, (
-        f"inner pipeline n_features_in_ = {n_features}, expected 13"
-    )
+    assert n_features == 13, f"inner pipeline n_features_in_ = {n_features}, expected 13"
 
 
 @HEAVY
@@ -267,9 +271,12 @@ def test_synthetic_mode_sidecar_schema_locked(tmp_path: Path) -> None:
 
     rc = refit_mod.main(
         [
-            "--mode", "synthetic",
-            "--output", str(out_joblib),
-            "--output-meta", str(out_meta),
+            "--mode",
+            "synthetic",
+            "--output",
+            str(out_joblib),
+            "--output-meta",
+            str(out_meta),
         ]
     )
     assert rc == 0
@@ -283,20 +290,12 @@ def test_synthetic_mode_sidecar_schema_locked(tmp_path: Path) -> None:
     assert sidecar["n_features"] == 13
     assert sidecar["meta_feature_columns"][0] == "xgb_oof_prob"
     # Layout byte-equal canonical assertion exposed on the sidecar.
-    canonical = json.loads(
-        refit_mod.CANONICAL_META_JSON.read_text(encoding="utf-8")
-    )
+    canonical = json.loads(refit_mod.CANONICAL_META_JSON.read_text(encoding="utf-8"))
     assert sidecar["meta_feature_columns"] == canonical["meta_feature_columns"]
     # AUDIT-01 anchor record present + status UNCHANGED.
     assert sidecar["audit_01_invariant"]["status"] == "UNCHANGED"
-    assert (
-        sidecar["audit_01_invariant"]["xgb_v2_sha"]
-        == refit_mod.EXPECTED_XGB_V2_SHA256
-    )
-    assert (
-        sidecar["audit_01_invariant"]["meta_v2_sha"]
-        == refit_mod.EXPECTED_META_V2_SHA256
-    )
+    assert sidecar["audit_01_invariant"]["xgb_v2_sha"] == refit_mod.EXPECTED_XGB_V2_SHA256
+    assert sidecar["audit_01_invariant"]["meta_v2_sha"] == refit_mod.EXPECTED_META_V2_SHA256
     # Provenance fields per D-02 + methodology §7.2 (substrate SHA via
     # training-script SHA stands in for the substrate SHA on synthetic mode).
     assert "training_script_sha256" in sidecar
@@ -315,9 +314,12 @@ def test_audit01_unchanged_after_synthetic_emit(tmp_path: Path) -> None:
 
     rc = refit_mod.main(
         [
-            "--mode", "synthetic",
-            "--output", str(tmp_path / "out.joblib"),
-            "--output-meta", str(tmp_path / "out_meta.json"),
+            "--mode",
+            "synthetic",
+            "--output",
+            str(tmp_path / "out.joblib"),
+            "--output-meta",
+            str(tmp_path / "out_meta.json"),
         ]
     )
     assert rc == 0
@@ -338,16 +340,26 @@ def test_synthetic_mode_is_deterministic_across_reruns(tmp_path: Path) -> None:
 
     rc_a = refit_mod.main(
         [
-            "--mode", "synthetic", "--seed", "42",
-            "--output", str(a_joblib),
-            "--output-meta", str(a_meta),
+            "--mode",
+            "synthetic",
+            "--seed",
+            "42",
+            "--output",
+            str(a_joblib),
+            "--output-meta",
+            str(a_meta),
         ]
     )
     rc_b = refit_mod.main(
         [
-            "--mode", "synthetic", "--seed", "42",
-            "--output", str(b_joblib),
-            "--output-meta", str(b_meta),
+            "--mode",
+            "synthetic",
+            "--seed",
+            "42",
+            "--output",
+            str(b_joblib),
+            "--output-meta",
+            str(b_meta),
         ]
     )
     assert rc_a == 0 and rc_b == 0

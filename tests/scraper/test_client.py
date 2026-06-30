@@ -120,7 +120,9 @@ class TestScraperClientGet:
 
     @patch("ufc_prediction.scraper.client.time")
     @patch("ufc_prediction.scraper.client.httpx.Client")
-    def test_get_retries_on_429(self, mock_client_cls, mock_time, mock_response_429, mock_response_200):
+    def test_get_retries_on_429(
+        self, mock_client_cls, mock_time, mock_response_429, mock_response_200
+    ):
         """get() retries on 429 and succeeds on second attempt."""
         mock_time.monotonic.return_value = 100.0
         mock_time.sleep = MagicMock()
@@ -136,7 +138,9 @@ class TestScraperClientGet:
 
     @patch("ufc_prediction.scraper.client.time")
     @patch("ufc_prediction.scraper.client.httpx.Client")
-    def test_get_retries_on_503(self, mock_client_cls, mock_time, mock_response_503, mock_response_200):
+    def test_get_retries_on_503(
+        self, mock_client_cls, mock_time, mock_response_503, mock_response_200
+    ):
         """get() retries on 503 and succeeds on second attempt."""
         mock_time.monotonic.return_value = 100.0
         mock_time.sleep = MagicMock()
@@ -163,7 +167,7 @@ class TestScraperClientGet:
 
         client = ScraperClient(delay=0.0, max_retries=3)
 
-        with pytest.raises(RuntimeError, match="Failed to fetch.*after 3 retries"):
+        with pytest.raises(RuntimeError, match=r"Failed to fetch.*after 3 retries"):
             client.get("http://example.com")
 
         assert mock_client.get.call_count == 4  # initial + 3 retries
@@ -186,9 +190,7 @@ class TestScraperClientGet:
 
     @patch("ufc_prediction.scraper.client.time")
     @patch("ufc_prediction.scraper.client.httpx.Client")
-    def test_get_retries_on_transport_error(
-        self, mock_client_cls, mock_time, mock_response_200
-    ):
+    def test_get_retries_on_transport_error(self, mock_client_cls, mock_time, mock_response_200):
         """get() retries on TransportError (TCP reset / connection closed) and succeeds."""
         mock_time.monotonic.return_value = 100.0
         mock_time.sleep = MagicMock()
@@ -207,9 +209,7 @@ class TestScraperClientGet:
 
     @patch("ufc_prediction.scraper.client.time")
     @patch("ufc_prediction.scraper.client.httpx.Client")
-    def test_get_raises_after_transport_error_retries_exhausted(
-        self, mock_client_cls, mock_time
-    ):
+    def test_get_raises_after_transport_error_retries_exhausted(self, mock_client_cls, mock_time):
         """get() raises RuntimeError after max_retries transport errors."""
         mock_time.monotonic.return_value = 100.0
         mock_time.sleep = MagicMock()
@@ -219,7 +219,7 @@ class TestScraperClientGet:
 
         client = ScraperClient(delay=0.0, max_retries=3)
 
-        with pytest.raises(RuntimeError, match="Failed to fetch.*ReadError"):
+        with pytest.raises(RuntimeError, match=r"Failed to fetch.*ReadError"):
             client.get("http://example.com")
 
         assert mock_client.get.call_count == 4  # initial + 3 retries
@@ -378,9 +378,7 @@ class TestScraperClientConcurrency:
         results = client.map(lambda u: u, ["a", "b"])
 
         assert results == ["a", "b"]
-        assert client._executor is None, (
-            "workers=1 must not spawn a ThreadPoolExecutor"
-        )
+        assert client._executor is None, "workers=1 must not spawn a ThreadPoolExecutor"
         client.close()
 
     @patch("ufc_prediction.scraper.client.httpx.Client")

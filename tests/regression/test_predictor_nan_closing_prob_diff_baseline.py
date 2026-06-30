@@ -33,7 +33,6 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import joblib
 import numpy as np
 import pytest
 from sklearn.calibration import CalibratedClassifierCV

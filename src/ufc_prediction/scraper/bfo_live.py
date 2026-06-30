@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 import urllib.parse
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -32,9 +32,9 @@ from ufc_prediction.models.fight_odds import FightOdds
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.scraper.bfo_matcher import normalize_name
 from ufc_prediction.scraper.bfo_scraper import (
-    BFOParseError,
-    BFOParsedFight,
     SEARCH_URL,
+    BFOParsedFight,
+    BFOParseError,
     _check_captcha,
     find_bfo_fighter_url,
     parse_bfo_fighter_page,
@@ -77,15 +77,13 @@ def _resolve_fighter_id(session: Session, name: str) -> int | None:
     Returns ``None`` when no exact-match row exists; the caller falls
     through to the live HTTP path.
     """
-    rows = list(
-        session.execute(
-            select(Fighter).where(Fighter.name == name)
-        ).scalars().all()
-    )
+    rows = list(session.execute(select(Fighter).where(Fighter.name == name)).scalars().all())
     if not rows:
         return None
     canonical = prefer_canonical(
-        rows, source_key=lambda f: f.source, tiebreak_key=lambda f: f.id,
+        rows,
+        source_key=lambda f: f.source,
+        tiebreak_key=lambda f: f.id,
     )
     return canonical.id
 
@@ -115,14 +113,8 @@ def _try_cache(
             select(Fight.id)
             .join(Event, Fight.event_id == Event.id)
             .where(
-                (
-                    (Fight.fighter_a_id == fa_id)
-                    & (Fight.fighter_b_id == fb_id)
-                )
-                | (
-                    (Fight.fighter_a_id == fb_id)
-                    & (Fight.fighter_b_id == fa_id)
-                )
+                ((Fight.fighter_a_id == fa_id) & (Fight.fighter_b_id == fb_id))
+                | ((Fight.fighter_a_id == fb_id) & (Fight.fighter_b_id == fa_id))
             )
             .where(Event.date == event_date)
         )
@@ -132,9 +124,7 @@ def _try_cache(
 
         # Pull both sides of the odds.
         odds_rows = list(
-            session.execute(
-                select(FightOdds).where(FightOdds.fight_id == fight_id)
-            ).scalars().all()
+            session.execute(select(FightOdds).where(FightOdds.fight_id == fight_id)).scalars().all()
         )
         if not odds_rows:
             return None
@@ -147,7 +137,7 @@ def _try_cache(
         # scraped_at can be naive (server_default=func.now()); normalize to UTC-aware
         fetched_at = odds_a.scraped_at
         if fetched_at.tzinfo is None:
-            fetched_at = fetched_at.replace(tzinfo=timezone.utc)
+            fetched_at = fetched_at.replace(tzinfo=UTC)
 
         return MatchupOdds(
             fighter_a_opening=odds_a.opening_ml,
@@ -159,7 +149,7 @@ def _try_cache(
             fetched_at=fetched_at,
             source="cache",
         )
-    except Exception as exc:  # noqa: BLE001 — never raise out of cache
+    except Exception as exc:
         logger.warning("bfo_live cache lookup failed: %s", exc)
         return None
 
@@ -217,7 +207,9 @@ def _try_live(
             _check_captcha(soup)
         except BFOParseError as exc:
             logger.warning(
-                "bfo_live: CAPTCHA gate on search for %s: %s", fa_name, exc,
+                "bfo_live: CAPTCHA gate on search for %s: %s",
+                fa_name,
+                exc,
             )
             return None
 
@@ -249,23 +241,31 @@ def _try_live(
             fighter_b_opening=None,
             fighter_b_closing_min=None,
             fighter_b_closing_max=None,
-            fetched_at=datetime.now(timezone.utc),
+            fetched_at=datetime.now(UTC),
             source="live",
         )
     except BFOParseError as exc:
         logger.warning(
-            "bfo_live: %s vs %s parse failed: %s", fa_name, fb_name, exc,
+            "bfo_live: %s vs %s parse failed: %s",
+            fa_name,
+            fb_name,
+            exc,
         )
         return None
     except (RuntimeError, OSError, TimeoutError) as exc:
         logger.warning(
-            "bfo_live: %s vs %s transport failed: %s", fa_name, fb_name, exc,
+            "bfo_live: %s vs %s transport failed: %s",
+            fa_name,
+            fb_name,
+            exc,
         )
         return None
-    except Exception as exc:  # noqa: BLE001 — never raise; predict path can't abort
+    except Exception as exc:
         logger.warning(
             "bfo_live: %s vs %s unexpected failure: %s",
-            fa_name, fb_name, exc,
+            fa_name,
+            fb_name,
+            exc,
         )
         return None
 

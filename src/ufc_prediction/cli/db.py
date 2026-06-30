@@ -48,8 +48,7 @@ def _check_database_url() -> str:
     url = os.getenv("DATABASE_URL") or settings.database_url
     if not url:
         console.print(
-            "[red]Pre-flight 1/5 FAILED:[/red] DATABASE_URL is not set "
-            "(see docs/INSTALL.md step 3)"
+            "[red]Pre-flight 1/5 FAILED:[/red] DATABASE_URL is not set (see docs/INSTALL.md step 3)"
         )
         raise typer.Exit(1)
     return url
@@ -59,7 +58,7 @@ def _check_reachable(url: str) -> None:
     try:
         conn = psycopg.connect(_normalize_for_psycopg(url), connect_timeout=5)
         conn.close()
-    except Exception as exc:  # noqa: BLE001 — surface any connection failure
+    except Exception as exc:
         console.print(
             f"[red]Pre-flight 2/5 FAILED:[/red] Postgres not reachable at "
             f"{url}: {exc}; verify Docker container is running"
@@ -94,9 +93,7 @@ def _check_target_empty(force: bool) -> None:
             if table == "alembic_version":
                 continue
             try:
-                count = (
-                    session.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar() or 0
-                )
+                count = session.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar() or 0
             except Exception:
                 count = 0
             if count > 0:
@@ -147,7 +144,7 @@ def _predictor_sanity_check() -> None:
 
     try:
         ModelPredictor(model_dir="models", version="v2")
-    except Exception as exc:  # noqa: BLE001 — surface any predictor regression
+    except Exception as exc:
         console.print(
             "[red]Predictor sanity check FAILED[/red] — corpus restored but "
             "ModelPredictor(version='v2') cannot instantiate. This is the "
@@ -156,8 +153,7 @@ def _predictor_sanity_check() -> None:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(2) from exc
     console.print(
-        "[green]✓ ModelPredictor v2 instantiated:[/green] "
-        "META-V22 canonical (xgb_v2 + meta_v2)"
+        "[green]✓ ModelPredictor v2 instantiated:[/green] META-V22 canonical (xgb_v2 + meta_v2)"
     )
 
 
@@ -168,9 +164,7 @@ def seed(
         "--from",
         help="Path to pg_dump custom-format file (default: data/seed/ufc_corpus_v30.dump)",
     ),
-    force: bool = typer.Option(
-        False, "--force", help="Restore over non-empty target DB"
-    ),
+    force: bool = typer.Option(False, "--force", help="Restore over non-empty target DB"),
     no_migrate: bool = typer.Option(
         False, "--no-migrate", help="Skip `alembic stamp head` after restore"
     ),
@@ -218,9 +212,7 @@ def status() -> None:
     _print_row_table(_row_counts(), title="ufc db status")
     with SessionLocal() as session:
         try:
-            head = session.execute(
-                text("SELECT version_num FROM alembic_version")
-            ).scalar()
+            head = session.execute(text("SELECT version_num FROM alembic_version")).scalar()
         except Exception:
             head = None
     console.print(f"alembic head: [cyan]{head or '(unknown)'}[/cyan]")

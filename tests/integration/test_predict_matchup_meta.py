@@ -3,14 +3,13 @@
 Per OQ-5 (RESEARCH.md): mocked DB session — NO live PostgreSQL required.
 Mirrors tests/integration/test_live_odds_acceptance.py fixture pattern.
 """
+
 from __future__ import annotations
 
-import json
 from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import joblib
 import numpy as np
 import pytest
 from sklearn.calibration import CalibratedClassifierCV
@@ -56,16 +55,22 @@ def models_with_meta(tmp_path):
     rng = np.random.default_rng(42)
     X = rng.standard_normal((60, 72))
     y = rng.integers(0, 2, size=60)
-    base = XGBClassifier(n_estimators=5, max_depth=2, objective="binary:logistic",
-                         random_state=42, verbosity=0)
+    base = XGBClassifier(
+        n_estimators=5, max_depth=2, objective="binary:logistic", random_state=42, verbosity=0
+    )
     base.fit(X[:48], y[:48])
     cal = CalibratedClassifierCV(FrozenEstimator(base), method="sigmoid")
     cal.fit(X[48:], y[48:])
     save_model(
-        model=cal, metrics={"brier_score": 0.22, "auc_roc": 0.69, "accuracy": 0.65},
-        feature_columns=list(FEATURE_COLUMNS_NO_NET), best_params={},
-        model_dir=str(model_dir), version="vmeta", cutoff_date="2023-01-01",
-        n_training_fights=48, n_test_fights=12,
+        model=cal,
+        metrics={"brier_score": 0.22, "auc_roc": 0.69, "accuracy": 0.65},
+        feature_columns=list(FEATURE_COLUMNS_NO_NET),
+        best_params={},
+        model_dir=str(model_dir),
+        version="vmeta",
+        cutoff_date="2023-01-01",
+        n_training_fights=48,
+        n_test_fights=12,
     )
     meta_dir = model_dir / "meta"
     meta_dir.mkdir()
@@ -73,10 +78,14 @@ def models_with_meta(tmp_path):
     ym = rng.integers(0, 2, size=80)
     m = meta_learner.MetaLearnerLogistic().fit(Xm, ym)
     import hashlib
+
     base_sha = hashlib.sha256((model_dir / "xgb_vmeta.joblib").read_bytes()).hexdigest()
     meta_persistence.save_meta_model(
-        m, meta_kind="logistic", meta_version="v1",
-        base_model_version="vmeta", base_model_sha256=base_sha,
+        m,
+        meta_kind="logistic",
+        meta_version="v1",
+        base_model_version="vmeta",
+        base_model_sha256=base_sha,
         meta_feature_columns=["xgb_oof_prob", "elo_prob", "closing_prob_diff"],
         meta_input_distribution_hash="d" * 64,
         meta_oof_parquet_sha256="c" * 64,
@@ -88,21 +97,29 @@ def models_with_meta(tmp_path):
     return model_dir, meta_dir
 
 
-def _patched_predict(model_dir, meta_dir, stub_fighters, *,
-                     closing_prob_diff: float = 0.05, no_use_meta: bool = False):
+def _patched_predict(
+    model_dir,
+    meta_dir,
+    stub_fighters,
+    *,
+    closing_prob_diff: float = 0.05,
+    no_use_meta: bool = False,
+):
     fa, fb = stub_fighters
     p = predictor.ModelPredictor(
-        model_dir=str(model_dir), version="vmeta",
+        model_dir=str(model_dir),
+        version="vmeta",
         meta_dir=None if no_use_meta else str(meta_dir),
     )
     idx = FEATURE_COLUMNS_NO_NET.index("closing_prob_diff")
     feature_vec = np.zeros((1, 72))
     feature_vec[0, idx] = closing_prob_diff
-    with patch("ufc_prediction.ml.predictor._resolve_fighter") as mock_resolve, \
-         patch("ufc_prediction.ml.predictor.build_inference_features",
-               return_value=feature_vec), \
-         patch("ufc_prediction.ml.predictor.fetch_matchup_odds", return_value=None), \
-         patch("ufc_prediction.ml.predictor._get_latest_elo", return_value=1500):
+    with (
+        patch("ufc_prediction.ml.predictor._resolve_fighter") as mock_resolve,
+        patch("ufc_prediction.ml.predictor.build_inference_features", return_value=feature_vec),
+        patch("ufc_prediction.ml.predictor.fetch_matchup_odds", return_value=None),
+        patch("ufc_prediction.ml.predictor._get_latest_elo", return_value=1500),
+    ):
         mock_resolve.side_effect = [fa, fb]
         return p.predict(MagicMock(), fa.name, fb.name)
 
@@ -110,8 +127,15 @@ def _patched_predict(model_dir, meta_dir, stub_fighters, *,
 def test_predict_matchup_includes_meta_fields(models_with_meta, stub_fighters, predict_log_path):
     model_dir, meta_dir = models_with_meta
     result = _patched_predict(model_dir, meta_dir, stub_fighters)
-    for field in ("win_probability", "base_prob", "meta_prob", "meta_kind",
-                  "meta_learner_version", "meta_skipped", "meta_skipped_reason"):
+    for field in (
+        "win_probability",
+        "base_prob",
+        "meta_prob",
+        "meta_kind",
+        "meta_learner_version",
+        "meta_skipped",
+        "meta_skipped_reason",
+    ):
         assert field in result, f"missing field {field!r} in predictor output"
     assert result["meta_kind"] == "logistic"
     assert result["meta_learner_version"] == "v1"
@@ -128,8 +152,7 @@ def test_predict_matchup_no_use_meta_flag(models_with_meta, stub_fighters):
 
 def test_predict_matchup_skips_on_nan_closing_prob_diff(models_with_meta, stub_fighters):
     model_dir, meta_dir = models_with_meta
-    result = _patched_predict(model_dir, meta_dir, stub_fighters,
-                              closing_prob_diff=float("nan"))
+    result = _patched_predict(model_dir, meta_dir, stub_fighters, closing_prob_diff=float("nan"))
     assert result["meta_skipped"] is True
     assert result["meta_skipped_reason"] == "nan_closing_prob_diff"
     assert result["meta_prob"] is None

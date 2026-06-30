@@ -77,7 +77,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 # Direct import from scripts/ — Task 1 deliverable. Tests collect-fail with
 # ImportError until the script exists (RED phase contract).
-from build_net_substrate_v261 import (  # noqa: E402
+from build_net_substrate_v261 import (
     DEBUTANT_NAN_MAX_PROPORTION,
     NET_FEATURE_COLUMNS,
     NET_SUBSTRATE_REFERENCE_DATE,
@@ -88,8 +88,8 @@ from build_net_substrate_v261 import (  # noqa: E402
     main,
 )
 
-from ufc_prediction.ml.gate_verifier import EvalSlice  # noqa: E402
-from ufc_prediction.ml.substrate_loader import load_substrate_snapshot  # noqa: E402
+from ufc_prediction.ml.gate_verifier import EvalSlice
+from ufc_prediction.ml.substrate_loader import load_substrate_snapshot
 
 # ── Shared fixture ────────────────────────────────────────────────────────
 
@@ -185,9 +185,7 @@ def test_feature_column_order_matches_meta_v2_netd_meta_json() -> None:
     # vs canonical at predict time on the same meta-input shape, with only
     # col[0] (the OOF source) differing.
     canonical_meta_path = REPO_ROOT / "models" / "meta" / "meta_v2_meta.json"
-    canonical_meta: dict[str, Any] = json.loads(
-        canonical_meta_path.read_text(encoding="utf-8")
-    )
+    canonical_meta: dict[str, Any] = json.loads(canonical_meta_path.read_text(encoding="utf-8"))
     canonical_cols: list[str] = canonical_meta["meta_feature_columns"]
     assert list(NET_FEATURE_COLUMNS[1:]) == canonical_cols[1:], (
         f"NET cols[1..12] drifted from canonical META-V22 cols[1..12]:\n"
@@ -213,12 +211,12 @@ def test_feature_col_0_is_xgb_v2_netd_oof_not_canonical_nor_refv2() -> None:
         f"(candidate-aligned), got {NET_FEATURE_COLUMNS[0]!r}"
     )
     assert NET_FEATURE_COLUMNS[0] != "xgb_oof_prob", (
-        f"NET_FEATURE_COLUMNS[0] must NOT be the canonical name "
-        f"'xgb_oof_prob' — col[0] swap is the substrate-drift signal"
+        "NET_FEATURE_COLUMNS[0] must NOT be the canonical name "
+        "'xgb_oof_prob' — col[0] swap is the substrate-drift signal"
     )
     assert NET_FEATURE_COLUMNS[0] != "xgb_v2_refv2_oof", (
-        f"NET_FEATURE_COLUMNS[0] must NOT be the Phase 65 REF name "
-        f"'xgb_v2_refv2_oof' — Phase 66 is NET, NOT REF"
+        "NET_FEATURE_COLUMNS[0] must NOT be the Phase 65 REF name "
+        "'xgb_v2_refv2_oof' — Phase 66 is NET, NOT REF"
     )
 
 
@@ -275,7 +273,8 @@ def test_builder_is_deterministic_across_reruns(tmp_path: Path) -> None:
 
 
 def test_builder_is_deterministic_across_simulated_calendar_drift(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Mirrors Phase 65 test #9 (CR-03 regression; T-66-19): builder stays
     byte-deterministic across calendar-day drift.
@@ -289,8 +288,9 @@ def test_builder_is_deterministic_across_simulated_calendar_drift(
     between two builds; if CR-03 is in place, the inner ``_FixedDate`` patch
     wins and both builds match.
     """
-    import compose_v25_travel as _cv  # type: ignore[import-not-found]
     from datetime import date as _date
+
+    import compose_v25_travel as _cv  # type: ignore[import-not-found]
 
     # First build: monkeypatch ``date`` so .today() returns 2025-01-15.
     class _Today2025_01_15(_date):
@@ -334,8 +334,7 @@ def test_slice_outcomes_are_int8_in_zero_one(built_parquet: Path) -> None:
     for name, sl in slices.items():
         for outcome in sl.outcomes:
             assert outcome in (0, 1), (
-                f"slice {name!r} has outcome {outcome!r} outside {{0, 1}} "
-                f"(Phase 63 R3 violation)"
+                f"slice {name!r} has outcome {outcome!r} outside {{0, 1}} (Phase 63 R3 violation)"
             )
         assert all(isinstance(o, int) for o in sl.outcomes), (
             f"slice {name!r} has non-int outcome values"
@@ -343,7 +342,8 @@ def test_slice_outcomes_are_int8_in_zero_one(built_parquet: Path) -> None:
 
 
 def test_nan_coverage_gate_fires_when_debutant_exceeds_threshold(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Phase 66 NaN-debutant gate (T-66-17): monkeypatch the OOF-load helper
     so every fight_id returns NaN; the blocking RuntimeError must fire.
@@ -359,7 +359,7 @@ def test_nan_coverage_gate_fires_when_debutant_exceeds_threshold(
     → proportion = 100% (well above 20%) → gate fires.
     """
     # Sanity: the threshold constant exists and is the expected value.
-    assert DEBUTANT_NAN_MAX_PROPORTION == pytest.approx(0.20)
+    assert pytest.approx(0.20) == DEBUTANT_NAN_MAX_PROPORTION
 
     # Force every fight_id in the OOF map to carry NaN — every synthetic
     # row will be flagged as debutant → 100% gate-triggering.
@@ -380,7 +380,8 @@ def test_nan_coverage_gate_fires_when_debutant_exceeds_threshold(
 
 
 def test_nan_coverage_gate_bypass_via_allow_low_coverage(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Phase 66 NaN-debutant gate (T-66-17): ``allow_low_coverage=True``
     overrides the gate even when debutant proportion is 100%. The build
@@ -415,10 +416,14 @@ def test_anti_overwrite_guard_refuses_phase_64_substrate_path(
         f"PROTECTED_OUTPUTS missing Phase 64 path; set is: {PROTECTED_OUTPUTS}"
     )
 
-    rc = main([
-        "--source", "synthetic",
-        "--output", "data/intermediate/travel_substrate_v261.parquet",
-    ])
+    rc = main(
+        [
+            "--source",
+            "synthetic",
+            "--output",
+            "data/intermediate/travel_substrate_v261.parquet",
+        ]
+    )
     assert rc == 1, f"Expected exit code 1, got {rc}"
     captured = capsys.readouterr()
     assert "refusing to overwrite" in captured.err.lower(), (
@@ -443,10 +448,14 @@ def test_anti_overwrite_guard_refuses_phase_65_substrate_path(
         f"PROTECTED_OUTPUTS missing Phase 65 path; set is: {PROTECTED_OUTPUTS}"
     )
 
-    rc = main([
-        "--source", "synthetic",
-        "--output", "data/intermediate/ref_substrate_v261.parquet",
-    ])
+    rc = main(
+        [
+            "--source",
+            "synthetic",
+            "--output",
+            "data/intermediate/ref_substrate_v261.parquet",
+        ]
+    )
     assert rc == 1, f"Expected exit code 1, got {rc}"
     captured = capsys.readouterr()
     assert "refusing to overwrite" in captured.err.lower(), (

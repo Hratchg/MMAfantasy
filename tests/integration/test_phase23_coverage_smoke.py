@@ -12,9 +12,7 @@ from pathlib import Path
 
 import pytest
 
-Q6_PATH = Path(
-    ".planning/phases/23-feature-engineering-append-only/23-Q6-COVERAGE.json"
-)
+Q6_PATH = Path(".planning/phases/23-feature-engineering-append-only/23-Q6-COVERAGE.json")
 
 
 def test_phase22_referee_venue_coverage_smoke() -> None:
@@ -25,8 +23,7 @@ def test_phase22_referee_venue_coverage_smoke() -> None:
     """
     if not Q6_PATH.exists():
         pytest.skip(
-            f"Q6 coverage JSON not yet written at {Q6_PATH} — "
-            "Plan 23-01 Task 1 Step B has not run."
+            f"Q6 coverage JSON not yet written at {Q6_PATH} — Plan 23-01 Task 1 Step B has not run."
         )
 
     data = json.loads(Q6_PATH.read_text(encoding="utf-8"))

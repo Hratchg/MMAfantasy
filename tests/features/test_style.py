@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from ufc_prediction.features.style import classify_style
 
 

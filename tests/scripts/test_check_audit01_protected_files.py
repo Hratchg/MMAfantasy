@@ -11,7 +11,6 @@ Locks the PROTECTED_FILES set against drift from CONTRIBUTING.md L62-74.
 from __future__ import annotations
 
 import importlib.util
-import os
 import sys
 from pathlib import Path
 
@@ -24,7 +23,8 @@ SCRIPT_PATH = PROJECT_ROOT / "scripts" / "check_audit01_protected_files.py"
 @pytest.fixture(scope="module")
 def mod():
     spec = importlib.util.spec_from_file_location(
-        "check_audit01_protected_files", SCRIPT_PATH,
+        "check_audit01_protected_files",
+        SCRIPT_PATH,
     )
     assert spec is not None and spec.loader is not None
     m = importlib.util.module_from_spec(spec)

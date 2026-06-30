@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import date
 
-import pytest
 from typer.testing import CliRunner
 
 from ufc_prediction.cli.main import app
@@ -66,27 +65,47 @@ def _seed_fighter_with_domain_elo(session):
 
     # Round stats for both fights
     for round_num in range(1, 3):
-        session.add(RoundStats(
-            fight_id=fight1.id, fighter_id=fighter.id,
-            round_number=round_num,
-            sig_strikes_landed=45, takedowns_landed=0, control_time_seconds=5,
-        ))
-        session.add(RoundStats(
-            fight_id=fight1.id, fighter_id=opp1.id,
-            round_number=round_num,
-            sig_strikes_landed=20, takedowns_landed=0, control_time_seconds=5,
-        ))
+        session.add(
+            RoundStats(
+                fight_id=fight1.id,
+                fighter_id=fighter.id,
+                round_number=round_num,
+                sig_strikes_landed=45,
+                takedowns_landed=0,
+                control_time_seconds=5,
+            )
+        )
+        session.add(
+            RoundStats(
+                fight_id=fight1.id,
+                fighter_id=opp1.id,
+                round_number=round_num,
+                sig_strikes_landed=20,
+                takedowns_landed=0,
+                control_time_seconds=5,
+            )
+        )
     for round_num in range(1, 4):
-        session.add(RoundStats(
-            fight_id=fight2.id, fighter_id=fighter.id,
-            round_number=round_num,
-            sig_strikes_landed=50, takedowns_landed=1, control_time_seconds=10,
-        ))
-        session.add(RoundStats(
-            fight_id=fight2.id, fighter_id=opp2.id,
-            round_number=round_num,
-            sig_strikes_landed=35, takedowns_landed=0, control_time_seconds=5,
-        ))
+        session.add(
+            RoundStats(
+                fight_id=fight2.id,
+                fighter_id=fighter.id,
+                round_number=round_num,
+                sig_strikes_landed=50,
+                takedowns_landed=1,
+                control_time_seconds=10,
+            )
+        )
+        session.add(
+            RoundStats(
+                fight_id=fight2.id,
+                fighter_id=opp2.id,
+                round_number=round_num,
+                sig_strikes_landed=35,
+                takedowns_landed=0,
+                control_time_seconds=5,
+            )
+        )
     session.flush()
 
     # Run overall + domain pipeline

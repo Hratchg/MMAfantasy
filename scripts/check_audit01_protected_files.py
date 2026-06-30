@@ -78,9 +78,7 @@ SOFT_PROTECT_ENV_VAR: str = "GSD_REFIT_REEMIT"
 def find_violations(staged_paths: list[str]) -> list[str]:
     """Return staged paths that fall inside the HARD-protected set."""
     # Normalize via Path to handle ./ prefixes + alternate separators.
-    return sorted(
-        {str(Path(p)) for p in staged_paths if str(Path(p)) in PROTECTED_FILES}
-    )
+    return sorted({str(Path(p)) for p in staged_paths if str(Path(p)) in PROTECTED_FILES})
 
 
 def find_soft_violations(staged_paths: list[str]) -> list[str]:

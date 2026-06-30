@@ -15,6 +15,7 @@ project that dict onto the partner-facing PredictionMetadataV12 model
 (6 fields) when v1.2.0 is negotiated, and to leave the field None on
 older contract versions (forward-compat lock).
 """
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -24,7 +25,6 @@ from fastapi.testclient import TestClient
 
 from ufc_prediction.api.deps import get_db
 from ufc_prediction.api.v1 import predict as v1_predict
-
 
 # Mirrors the predictor.predict() return shape after Plan 35-04: the dict
 # now carries a `prediction_metadata` sub-dict with the 7 internal keys
@@ -65,7 +65,13 @@ class _FakePredictor:
     """In-memory fake mirroring ModelPredictor.predict()."""
 
     def predict(
-        self, db, fighter_a_name, fighter_b_name, *, event_date=None, refresh=False,
+        self,
+        db,
+        fighter_a_name,
+        fighter_b_name,
+        *,
+        event_date=None,
+        refresh=False,
     ):
         if "Nonexistent" in fighter_a_name or "Nonexistent" in fighter_b_name:
             raise ValueError(
@@ -90,7 +96,7 @@ def _standalone_app_client() -> TestClient:
     return TestClient(app)
 
 
-def _post(client: TestClient, **extra) -> "dict | None":
+def _post(client: TestClient, **extra) -> dict | None:
     """Helper: POST a happy-path matchup body + return response."""
     body = {
         "fighter_a": "Khabib Nurmagomedov",
@@ -180,9 +186,7 @@ class TestPredictV1_2_0Negotiation:
                 "model_candidates",
                 "phase_chain_audit_sha",
             ):
-                assert key in body, (
-                    f"v{version} response missing Phase 32 D-04 field {key!r}"
-                )
+                assert key in body, f"v{version} response missing Phase 32 D-04 field {key!r}"
                 assert body[key] is None, (
                     f"v{version} field {key!r} should be None (none populated "
                     f"by the predictor); got {body[key]!r}"
@@ -196,8 +200,7 @@ class TestPredictV1_2_0EdgeCases:
         """When predictor returns no prediction_metadata key (legacy path),
         the v1.2.0 route synthesizes safe defaults rather than 500-ing."""
         legacy_result = {
-            k: v for k, v in _FAKE_PREDICT_RESULT.items()
-            if k != "prediction_metadata"
+            k: v for k, v in _FAKE_PREDICT_RESULT.items() if k != "prediction_metadata"
         }
 
         class _LegacyPredictor:
@@ -219,7 +222,8 @@ class TestPredictV1_2_0EdgeCases:
             resp = c.post(
                 "/api/v1/predict",
                 json={
-                    "fighter_a": "A", "fighter_b": "B",
+                    "fighter_a": "A",
+                    "fighter_b": "B",
                     "event_date": "2026-05-27",
                     "accept_schema_version": "1.2.0",
                 },

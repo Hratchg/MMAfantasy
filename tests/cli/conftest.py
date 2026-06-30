@@ -64,9 +64,7 @@ def seed_cli_data(session):
     session.flush()
 
     # Alias
-    alias = FighterAlias(
-        fighter_id=khabib.id, alias_name="The Eagle", source="test"
-    )
+    alias = FighterAlias(fighter_id=khabib.id, alias_name="The Eagle", source="test")
     session.add(alias)
     session.flush()
 
@@ -222,13 +220,19 @@ def seed_cli_data(session):
         k_factor_used=40.0,
         fight_date=date(2018, 10, 6),
     )
-    session.add_all([
-        snap_khabib1, snap_khabib2,
-        snap_conor1, snap_conor2,
-        snap_dustin1, snap_dustin2,
-        snap_anderson,
-        snap_dup_ufc, snap_dup_kaggle,
-    ])
+    session.add_all(
+        [
+            snap_khabib1,
+            snap_khabib2,
+            snap_conor1,
+            snap_conor2,
+            snap_dustin1,
+            snap_dustin2,
+            snap_anderson,
+            snap_dup_ufc,
+            snap_dup_kaggle,
+        ]
+    )
     session.flush()
 
     # Domain Elo snapshots -- Khabib (striking + grappling)
@@ -277,10 +281,14 @@ def seed_cli_data(session):
         k_factor_used=40.0,
         fight_date=date(2018, 10, 6),
     )
-    session.add_all([
-        snap_khabib_str, snap_khabib_grap,
-        snap_conor_str, snap_conor_grap,
-    ])
+    session.add_all(
+        [
+            snap_khabib_str,
+            snap_khabib_grap,
+            snap_conor_str,
+            snap_conor_grap,
+        ]
+    )
     session.flush()
 
     # RoundStats for Khabib and Conor in fight1 (for striking accuracy)
@@ -428,53 +436,61 @@ def seed_matchup_data(session, seed_cli_data):
     # Add Elo snapshots and ComputedFeature for each fight
     for i, fight in enumerate(fights):
         # Overall Elo snapshots
-        session.add(EloSnapshot(
-            fighter_id=strikers[i].id,
-            fight_id=fight.id,
-            division="Lightweight",
-            elo_type="overall",
-            elo_before=1500.0,
-            elo_after=1510.0,
-            elo_after_shrinkage=1508.0,
-            k_factor_used=40.0,
-            fight_date=events[i].date,
-        ))
-        session.add(EloSnapshot(
-            fighter_id=grapplers[i].id,
-            fight_id=fight.id,
-            division="Lightweight",
-            elo_type="overall",
-            elo_before=1500.0,
-            elo_after=1490.0,
-            elo_after_shrinkage=1492.0,
-            k_factor_used=40.0,
-            fight_date=events[i].date,
-        ))
+        session.add(
+            EloSnapshot(
+                fighter_id=strikers[i].id,
+                fight_id=fight.id,
+                division="Lightweight",
+                elo_type="overall",
+                elo_before=1500.0,
+                elo_after=1510.0,
+                elo_after_shrinkage=1508.0,
+                k_factor_used=40.0,
+                fight_date=events[i].date,
+            )
+        )
+        session.add(
+            EloSnapshot(
+                fighter_id=grapplers[i].id,
+                fight_id=fight.id,
+                division="Lightweight",
+                elo_type="overall",
+                elo_before=1500.0,
+                elo_after=1490.0,
+                elo_after_shrinkage=1492.0,
+                k_factor_used=40.0,
+                fight_date=events[i].date,
+            )
+        )
 
         # ComputedFeature for striker
-        session.add(ComputedFeature(
-            fighter_id=strikers[i].id,
-            fight_id=fight.id,
-            as_of_date=events[i].date,
-            feature_set_version="v1",
-            features={
-                "sig_str_per_minute": 5.0,
-                "td_rate": 1.0,
-                "style_tag": "striker",
-            },
-        ))
+        session.add(
+            ComputedFeature(
+                fighter_id=strikers[i].id,
+                fight_id=fight.id,
+                as_of_date=events[i].date,
+                feature_set_version="v1",
+                features={
+                    "sig_str_per_minute": 5.0,
+                    "td_rate": 1.0,
+                    "style_tag": "striker",
+                },
+            )
+        )
         # ComputedFeature for grappler
-        session.add(ComputedFeature(
-            fighter_id=grapplers[i].id,
-            fight_id=fight.id,
-            as_of_date=events[i].date,
-            feature_set_version="v1",
-            features={
-                "sig_str_per_minute": 2.0,
-                "td_rate": 6.0,
-                "style_tag": "grappler",
-            },
-        ))
+        session.add(
+            ComputedFeature(
+                fighter_id=grapplers[i].id,
+                fight_id=fight.id,
+                as_of_date=events[i].date,
+                feature_set_version="v1",
+                features={
+                    "sig_str_per_minute": 2.0,
+                    "td_rate": 6.0,
+                    "style_tag": "grappler",
+                },
+            )
+        )
     session.flush()
 
     data["style_fights"] = fights

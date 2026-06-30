@@ -50,9 +50,7 @@ def test_export_fighters_json(patch_export_session):
 def test_export_fighters_to_file(patch_export_session, tmp_path):
     """Export fighters to a file using --output."""
     outfile = tmp_path / "fighters.csv"
-    result = runner.invoke(
-        app, ["export", "fighters", "--format", "csv", "--output", str(outfile)]
-    )
+    result = runner.invoke(app, ["export", "fighters", "--format", "csv", "--output", str(outfile)])
     assert result.exit_code == 0
     assert outfile.exists()
     content = outfile.read_text()
@@ -65,9 +63,7 @@ def test_export_fighters_to_file(patch_export_session, tmp_path):
 
 def test_export_rankings_csv(patch_export_session):
     """Export Lightweight rankings as CSV."""
-    result = runner.invoke(
-        app, ["export", "rankings", "Lightweight", "--format", "csv"]
-    )
+    result = runner.invoke(app, ["export", "rankings", "Lightweight", "--format", "csv"])
     assert result.exit_code == 0
     lines = result.stdout.strip().split("\n")
     assert len(lines) >= 2  # header + data
@@ -77,9 +73,7 @@ def test_export_rankings_csv(patch_export_session):
 
 def test_export_rankings_json(patch_export_session):
     """Export Lightweight rankings as JSON."""
-    result = runner.invoke(
-        app, ["export", "rankings", "Lightweight", "--format", "json"]
-    )
+    result = runner.invoke(app, ["export", "rankings", "Lightweight", "--format", "json"])
     assert result.exit_code == 0
     data = json.loads(result.stdout)
     assert isinstance(data, list)
@@ -97,9 +91,7 @@ def test_export_rankings_invalid_division(patch_export_session):
 
 def test_export_history_csv(patch_export_session):
     """Export Khabib's Elo history as CSV."""
-    result = runner.invoke(
-        app, ["export", "history", "Khabib", "--format", "csv"]
-    )
+    result = runner.invoke(app, ["export", "history", "Khabib", "--format", "csv"])
     assert result.exit_code == 0
     lines = result.stdout.strip().split("\n")
     assert len(lines) >= 3  # header + 2 fights for Khabib
@@ -109,9 +101,7 @@ def test_export_history_csv(patch_export_session):
 
 def test_export_history_json(patch_export_session):
     """Export Khabib's Elo history as JSON."""
-    result = runner.invoke(
-        app, ["export", "history", "Khabib", "--format", "json"]
-    )
+    result = runner.invoke(app, ["export", "history", "Khabib", "--format", "json"])
     assert result.exit_code == 0
     data = json.loads(result.stdout)
     assert isinstance(data, list)

@@ -33,6 +33,7 @@ All constraints use ``op.f()`` per ``db/base.py`` naming convention dict:
 
 Banned imports per Pitfall #1 / Finding 11: nothing under ``ufc_prediction.ml.*``.
 """
+
 import csv
 from pathlib import Path
 from typing import Sequence, Union
@@ -40,10 +41,9 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-
 # revision identifiers, used by Alembic.
-revision: str = '59981c08e056'
-down_revision: Union[str, Sequence[str], None] = '11e7e94d0370'
+revision: str = "59981c08e056"
+down_revision: Union[str, Sequence[str], None] = "11e7e94d0370"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -93,18 +93,20 @@ def upgrade() -> None:
     with open(csv_path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for r in reader:
-            rows.append({
-                "id": int(r["venue_id"]),
-                "name": r["name"],
-                "city": r["city"] or None,
-                "state": r["state"] or None,
-                "country": r["country"],
-                "lat": float(r["lat"]),
-                "lon": float(r["lon"]),
-                "timezone_iana": r["timezone_iana"],
-                "n_events": int(r["n_events"]) if r["n_events"] else None,
-                "geocode_source": r["geocode_source"] or None,
-            })
+            rows.append(
+                {
+                    "id": int(r["venue_id"]),
+                    "name": r["name"],
+                    "city": r["city"] or None,
+                    "state": r["state"] or None,
+                    "country": r["country"],
+                    "lat": float(r["lat"]),
+                    "lon": float(r["lon"]),
+                    "timezone_iana": r["timezone_iana"],
+                    "n_events": int(r["n_events"]) if r["n_events"] else None,
+                    "geocode_source": r["geocode_source"] or None,
+                }
+            )
     if rows:
         op.bulk_insert(venues_table, rows)
 

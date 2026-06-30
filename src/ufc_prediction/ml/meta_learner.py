@@ -48,20 +48,33 @@ class MetaLearnerLogistic:
     """
 
     def __init__(self, *, random_state: int = 42, C: float = 1.0):
-        self.pipeline: Pipeline = Pipeline([
-            ("poly", PolynomialFeatures(
-                degree=2, interaction_only=True, include_bias=False,
-            )),
-            ("scaler", StandardScaler()),
-            ("clf", LogisticRegression(
-                C=C, penalty="l2", solver="lbfgs", max_iter=1000,
-                random_state=random_state,
-            )),
-        ])
+        self.pipeline: Pipeline = Pipeline(
+            [
+                (
+                    "poly",
+                    PolynomialFeatures(
+                        degree=2,
+                        interaction_only=True,
+                        include_bias=False,
+                    ),
+                ),
+                ("scaler", StandardScaler()),
+                (
+                    "clf",
+                    LogisticRegression(
+                        C=C,
+                        penalty="l2",
+                        solver="lbfgs",
+                        max_iter=1000,
+                        random_state=random_state,
+                    ),
+                ),
+            ]
+        )
         self.random_state: int = random_state
         self.C: float = C
 
-    def fit(self, X_meta: np.ndarray, y: np.ndarray) -> "MetaLearnerLogistic":
+    def fit(self, X_meta: np.ndarray, y: np.ndarray) -> MetaLearnerLogistic:
         """Fit pipeline; drop rows with NaN in any Level-1 feature.
 
         Warns (logger.warning) when NaN drop rate exceeds NAN_DROP_WARN_FRACTION (10%).
@@ -71,7 +84,8 @@ class MetaLearnerLogistic:
         if n_dropped / max(len(mask), 1) > NAN_DROP_WARN_FRACTION:
             logger.warning(
                 "MetaLearnerLogistic: dropping %d NaN rows (%.1f%% of total)",
-                n_dropped, 100 * n_dropped / max(len(mask), 1),
+                n_dropped,
+                100 * n_dropped / max(len(mask), 1),
             )
         self.pipeline.fit(X_meta[mask], y[mask])
         return self

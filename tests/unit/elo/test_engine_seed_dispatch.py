@@ -17,7 +17,6 @@ import pytest
 from ufc_prediction.elo.config import EloConfig
 from ufc_prediction.elo.engine import EloEngine, FightRecord
 
-
 # ── Helpers (local — avoid coupling to tests/elo/conftest.py which has its own
 # auto-use fixtures and counter resets specific to that test directory) ──────
 
@@ -55,20 +54,49 @@ def _five_fight_fixture() -> list[FightRecord]:
     """
     return [
         # Fight 1: A wins decision
-        _fight(1, 1, 2, winner_id=1, event_date=date(2020, 1, 1),
-               method="Decision", method_detail="Unanimous"),
+        _fight(
+            1,
+            1,
+            2,
+            winner_id=1,
+            event_date=date(2020, 1, 1),
+            method="Decision",
+            method_detail="Unanimous",
+        ),
         # Fight 2: B wins by KO
-        _fight(2, 1, 2, winner_id=2, event_date=date(2020, 3, 1),
-               method="KO/TKO", method_detail=None),
+        _fight(
+            2, 1, 2, winner_id=2, event_date=date(2020, 3, 1), method="KO/TKO", method_detail=None
+        ),
         # Fight 3: A vs new fighter C, A wins by sub
-        _fight(3, 1, 3, winner_id=1, event_date=date(2020, 5, 1),
-               method="Submission", method_detail=None),
+        _fight(
+            3,
+            1,
+            3,
+            winner_id=1,
+            event_date=date(2020, 5, 1),
+            method="Submission",
+            method_detail=None,
+        ),
         # Fight 4: C vs new fighter D, draw
-        _fight(4, 3, 4, winner_id=None, event_date=date(2020, 7, 1),
-               method="Decision", method_detail="Majority"),
+        _fight(
+            4,
+            3,
+            4,
+            winner_id=None,
+            event_date=date(2020, 7, 1),
+            method="Decision",
+            method_detail="Majority",
+        ),
         # Fight 5: D vs B, D wins split decision
-        _fight(5, 4, 2, winner_id=4, event_date=date(2020, 9, 1),
-               method="Decision", method_detail="Split"),
+        _fight(
+            5,
+            4,
+            2,
+            winner_id=4,
+            event_date=date(2020, 9, 1),
+            method="Decision",
+            method_detail="Split",
+        ),
     ]
 
 
@@ -104,30 +132,25 @@ def test_3_empty_seeds_is_no_op_regression_invariant() -> None:
     fights2 = _five_fight_fixture()
     snaps2 = e2.compute_all(fights2)
 
-    assert len(snaps1) == len(snaps2), (
-        f"Snapshot count differs: e1={len(snaps1)} e2={len(snaps2)}"
-    )
-    for i, (s1, s2) in enumerate(zip(snaps1, snaps2)):
+    assert len(snaps1) == len(snaps2), f"Snapshot count differs: e1={len(snaps1)} e2={len(snaps2)}"
+    for i, (s1, s2) in enumerate(zip(snaps1, snaps2, strict=False)):
         assert s1.fighter_id == s2.fighter_id, f"snapshot {i} fighter_id"
         assert s1.fight_id == s2.fight_id, f"snapshot {i} fight_id"
         assert s1.division == s2.division, f"snapshot {i} division"
         assert s1.elo_type == s2.elo_type, f"snapshot {i} elo_type"
         # The crux: bit-exact float equality on all four numeric fields.
         assert s1.elo_before == s2.elo_before, (
-            f"snapshot {i}: elo_before mismatch "
-            f"e1={s1.elo_before!r} e2={s2.elo_before!r}"
+            f"snapshot {i}: elo_before mismatch e1={s1.elo_before!r} e2={s2.elo_before!r}"
         )
         assert s1.elo_after == s2.elo_after, (
-            f"snapshot {i}: elo_after mismatch "
-            f"e1={s1.elo_after!r} e2={s2.elo_after!r}"
+            f"snapshot {i}: elo_after mismatch e1={s1.elo_after!r} e2={s2.elo_after!r}"
         )
         assert s1.elo_after_shrinkage == s2.elo_after_shrinkage, (
             f"snapshot {i}: elo_after_shrinkage mismatch "
             f"e1={s1.elo_after_shrinkage!r} e2={s2.elo_after_shrinkage!r}"
         )
         assert s1.k_factor_used == s2.k_factor_used, (
-            f"snapshot {i}: k_factor_used mismatch "
-            f"e1={s1.k_factor_used!r} e2={s2.k_factor_used!r}"
+            f"snapshot {i}: k_factor_used mismatch e1={s1.k_factor_used!r} e2={s2.k_factor_used!r}"
         )
 
 
@@ -199,9 +222,7 @@ def test_8_two_seeded_fighters_first_fight_uses_seed_values() -> None:
     # Expected win probability for fighter 42 at 1700 vs 99 at 1500
     expected_p = 1.0 / (1.0 + 10.0 ** ((1500.0 - 1700.0) / 400.0))
     # Use the engine's API (must equal our hand-computed value)
-    assert engine.expected_win_probability(1700.0, 1500.0) == pytest.approx(
-        expected_p
-    )
+    assert engine.expected_win_probability(1700.0, 1500.0) == pytest.approx(expected_p)
 
     # Delta for fighter 42 (winner): k * mov * (1.0 - e_a). Both fighters are
     # at fight_count=0 -> K_initial=40.0; MOV unanimous decision = 1.0.

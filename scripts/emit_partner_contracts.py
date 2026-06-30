@@ -38,6 +38,7 @@ WR-03 (Phase 25 review-fix): emission logic is wrapped in main() + the
 `if __name__ == "__main__":` guard so import does not silently overwrite
 committed JSON files.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -76,9 +77,7 @@ SCHEMA_V130_PATH = CONTRACTS_DIR / "predictor.schema.v1.3.0.json"
 OPENAPI_V130_PATH = CONTRACTS_DIR / "openapi.v1.3.0.json"
 
 # Canonical xgb_v2.joblib SHA — AUDIT-01 chain leaf invariant.
-XGB_V2_CANONICAL_SHA = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-)
+XGB_V2_CANONICAL_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
 
 
 def _check_audit01_xgb_v2_sha(repo_root: Path) -> str:

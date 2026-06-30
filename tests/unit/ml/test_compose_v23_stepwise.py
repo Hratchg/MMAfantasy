@@ -18,10 +18,6 @@ Per CONTEXT.md D-02 + D-03 binding: per-step ≥0.003 Brier hurdle is the
 
 from __future__ import annotations
 
-import math
-
-import pytest
-
 # Wave 0 RED: this import MUST fail until Task 2 creates compose_v23_meta.
 # Tests will not be skipped — they will error at import (pytest collects
 # the failure, which is the RED signal).
@@ -30,7 +26,6 @@ from scripts.compose_v23_meta import (
     STEPWISE_HURDLE,
     per_step_brier_clears,
 )
-
 
 # ───────────────────────────── Per-slice constants ─────────────────────────────
 
@@ -53,6 +48,7 @@ def test_per_slice_keys_match_canonical_tuple() -> None:
 
 # ───────────────────────── per_step_brier_clears (Δ ≥ 0.003) ────────────────────
 
+
 def test_per_step_brier_hurdle_clears() -> None:
     """All 3 slices clear with Δ=0.004 (>= 0.003 hurdle) → (True, [])."""
     baseline = {slc: 0.180 for slc in PER_SLICE_KEYS}
@@ -68,7 +64,7 @@ def test_per_step_brier_hurdle_rejects_lt_003() -> None:
     candidate = {
         "most_recent_12mo": 0.176,  # Δ=0.004 ✓
         "most_recent_24mo": 0.176,  # Δ=0.004 ✓
-        "random_15pct": 0.178,      # Δ=0.002 ✗
+        "random_15pct": 0.178,  # Δ=0.002 ✗
     }
     clears, failures = per_step_brier_clears(candidate, baseline)
     assert clears is False
@@ -83,7 +79,7 @@ def test_per_step_brier_hurdle_rejects_one_slice_failure() -> None:
     candidate = {
         "most_recent_12mo": 0.170,  # Δ=0.010 ✓
         "most_recent_24mo": 0.170,  # Δ=0.010 ✓
-        "random_15pct": 0.180,      # Δ=0.000 ✗
+        "random_15pct": 0.180,  # Δ=0.000 ✗
     }
     clears, failures = per_step_brier_clears(candidate, baseline)
     assert clears is False
@@ -124,6 +120,7 @@ def test_per_step_brier_hurdle_negative_delta() -> None:
 
 
 # ──────────────────────── Forward-stepwise pruning discipline ───────────────────
+
 
 def test_rejected_step_baseline_unchanged() -> None:
     """If step N is rejected, step N+1 composes on PRIOR baseline (not rejected step).

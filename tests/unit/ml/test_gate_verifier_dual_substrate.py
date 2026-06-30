@@ -68,7 +68,6 @@ from ufc_prediction.ml.gate_verifier import (
     verify_candidate_vs_canonical_dual_substrate,
 )
 
-
 # ── Mock-verdict factory ──────────────────────────────────────────────────
 #
 # The combinator branch tests are kept fast by NOT loading any joblib
@@ -131,11 +130,7 @@ def test_combine_verdicts_substrate_drift_artifact_when_t1_pass_t2_reject() -> N
     assert combined == "substrate_drift_artifact"
     assert "substrate_drift_artifact" in rationale
     # Diagnostic substring (any of these is acceptable per D-03 rationale shape)
-    assert (
-        "OOF-source-divergence" in rationale
-        or "OOF" in rationale
-        or "drift" in rationale
-    )
+    assert "OOF-source-divergence" in rationale or "OOF" in rationale or "drift" in rationale
 
 
 def test_combine_verdicts_highly_suspect_when_t1_reject_t2_pass() -> None:
@@ -185,8 +180,7 @@ def test_combine_verdicts_width_mismatch_dual_when_phase_64_guard_fires() -> Non
     t1 = _make_mock_verdict(
         "confound_block",
         confound_evidence=(
-            "width_mismatch_drift: canonical input width=13 != "
-            "substrate feature_vector width=15"
+            "width_mismatch_drift: canonical input width=13 != substrate feature_vector width=15"
         ),
     )
     t2 = _make_mock_verdict("path_a_promote")

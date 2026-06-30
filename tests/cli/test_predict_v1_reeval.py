@@ -20,7 +20,6 @@ import numpy as np
 
 from ufc_prediction.cli.predict import _reevaluate_v1_baseline  # NEW in Task 3
 
-
 X_test_dummy = np.array([[1.0] * 72] * 5)  # 5 fights x 72 features (FEATURE_COLUMNS)
 y_test_dummy = np.array([0, 1, 0, 1, 0])
 

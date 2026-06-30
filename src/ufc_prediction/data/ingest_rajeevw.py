@@ -109,12 +109,8 @@ def ingest_rajeevw_fighters(csv_path: Path, session: Session) -> IngestResult:
             height = parse_height_to_inches(
                 str(raw["Height"]) if pd.notna(raw.get("Height")) else None
             )
-            reach = parse_reach_to_inches(
-                str(raw["Reach"]) if pd.notna(raw.get("Reach")) else None
-            )
-            dob = parse_dob(
-                str(raw["DOB"]) if pd.notna(raw.get("DOB")) else None
-            )
+            reach = parse_reach_to_inches(str(raw["Reach"]) if pd.notna(raw.get("Reach")) else None)
+            dob = parse_dob(str(raw["DOB"]) if pd.notna(raw.get("DOB")) else None)
             stance_raw = raw.get("Stance")
             stance = str(stance_raw).strip() if pd.notna(stance_raw) else None
 
@@ -315,9 +311,7 @@ def ingest_rajeevw_fights(csv_path: Path, session: Session) -> IngestResult:
             raw = row.to_dict()
 
             # 1. Parse fight metadata
-            event_date = parse_fight_date(
-                str(raw["date"]) if pd.notna(raw.get("date")) else None
-            )
+            event_date = parse_fight_date(str(raw["date"]) if pd.notna(raw.get("date")) else None)
             if event_date is None:
                 # Per D-07: skip row if date is unparseable
                 result.log_rejection(idx, raw, "Unparseable date (D-07)")
@@ -335,9 +329,7 @@ def ingest_rajeevw_fights(csv_path: Path, session: Session) -> IngestResult:
 
             round_finished = _parse_int_safe(raw.get("last_round"))
             time_finished_raw = raw.get("last_round_time")
-            time_finished = (
-                str(time_finished_raw).strip() if pd.notna(time_finished_raw) else None
-            )
+            time_finished = str(time_finished_raw).strip() if pd.notna(time_finished_raw) else None
 
             # Fighter names
             r_fighter = str(raw.get("R_fighter", "")).strip()
@@ -356,9 +348,7 @@ def ingest_rajeevw_fights(csv_path: Path, session: Session) -> IngestResult:
 
             # Location
             location_raw = raw.get("location")
-            location = (
-                str(location_raw).strip() if pd.notna(location_raw) else None
-            )
+            location = str(location_raw).strip() if pd.notna(location_raw) else None
 
             # Event name
             event_name = raw.get("event")
@@ -453,13 +443,9 @@ def ingest_rajeevw_fights(csv_path: Path, session: Session) -> IngestResult:
 
             # 5. Upsert fight-level stats as RoundStats with round_number=0
             if fight_row.fighter_a_stats is not None:
-                _upsert_round_stats(
-                    session, fight.id, fighter_a.id, 0, fight_row.fighter_a_stats
-                )
+                _upsert_round_stats(session, fight.id, fighter_a.id, 0, fight_row.fighter_a_stats)
             if fight_row.fighter_b_stats is not None:
-                _upsert_round_stats(
-                    session, fight.id, fighter_b.id, 0, fight_row.fighter_b_stats
-                )
+                _upsert_round_stats(session, fight.id, fighter_b.id, 0, fight_row.fighter_b_stats)
 
             # Batch commit for performance
             if (idx + 1) % _BATCH_SIZE == 0:

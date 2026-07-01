@@ -24,15 +24,22 @@ Read these in order:
 
 ## Local Development
 
-- **Python 3.14+** (`pyproject.toml` pins `>=3.14.0,!=3.14.1`)
+- **Python 3.13** (`pyproject.toml` pins `>=3.13.0,!=3.13.1`)
 - **Package manager:** [uv](https://github.com/astral-sh/uv) — required (not pip/poetry)
-- **Tests:** pytest 8.x (`uv run pytest -q`)
+- **Tests:** pytest 9.x (`uv run pytest -q`)
 - **Linter / formatter:** [ruff](https://docs.astral.sh/ruff/) (`uv run ruff check`, `uv run ruff format --check`)
-- **Type checking:** not currently configured; manual review (mypy strict deferred to v2.5+)
+- **Type checking:** [mypy](https://mypy.readthedocs.io/) strict on a pilot allow-list (`[tool.mypy] files=` in `pyproject.toml`), run via the local pre-commit hook and CI
+- **Git hooks:** [pre-commit](https://pre-commit.com/) — ships in the dev group; install the hook once per clone (see setup below)
 
 ```bash
 # First-time setup
-uv sync --frozen
+uv sync --frozen            # installs runtime + dev deps (incl. pre-commit)
+uv run pre-commit install   # install the git hook: ruff, mypy, AUDIT-01 guard
+
+# The git hook is NOT installed automatically on clone — git never runs
+# arbitrary code on checkout. Skipping `pre-commit install` is harmless for
+# repo correctness (the CI `pre-commit` job re-runs every hook on each PR), but
+# you won't get the AUDIT-01 protected-file guard locally until you run it.
 
 # Fast test suite (skip slow / integration tests)
 uv run pytest -q -m "not slow"

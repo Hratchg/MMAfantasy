@@ -321,6 +321,7 @@ def test_zero_variance_halt(tmp_path) -> None:
 # ── 30-02-06: canonical-lineage 0.1409 ───────────────────────────────
 
 
+@pytest.mark.slow  # exact-brier reproduction is platform/BLAS-dependent (CI != local)
 def test_seed42_deterministic_matches_plan_29_03(tmp_path) -> None:
     """30-02-06 — spike_v23 seed=42 --no-bootstrap matches Plan 29-03 random_15pct
     Brier 0.1409 to 4-decimal precision (ResearchQ10 canonical-lineage anchor).

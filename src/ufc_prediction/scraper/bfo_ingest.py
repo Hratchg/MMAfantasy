@@ -374,10 +374,23 @@ class BFOOddsIngester:
         """Compute implied probs for ``this_row`` normalized against
         ``other_row``, then upsert into ``fight_odds`` idempotently.
         """
+        # Bad-data resilience (review #12): the devig helpers now raise
+        # ValueError on an out-of-domain moneyline (|ml| < 100). BFOOddsRow does
+        # not validate moneylines, so a single malformed feed cell must NOT abort
+        # the whole batch (bfo_ingest invariant: one bad row ≠ thousands lost).
+        # Catch per-field and leave that prob NULL, mirroring the missing-data path.
         opening_prob: float | None = None
         if this_row.opening is not None and other_row.opening is not None:
-            p_this, _ = devig_proportional(this_row.opening, other_row.opening)
-            opening_prob = p_this
+            try:
+                p_this, _ = devig_proportional(this_row.opening, other_row.opening)
+                opening_prob = p_this
+            except ValueError as exc:
+                logger.warning(
+                    "skipping opening odds for fight_id=%s fighter_id=%s: %s",
+                    fight_id,
+                    this_fighter_id,
+                    exc,
+                )
 
         closing_prob: float | None = None
         if (
@@ -386,13 +399,21 @@ class BFOOddsIngester:
             and other_row.closing_range_min is not None
             and other_row.closing_range_max is not None
         ):
-            p_this, _ = devig_closing_range(
-                this_row.closing_range_min,
-                this_row.closing_range_max,
-                other_row.closing_range_min,
-                other_row.closing_range_max,
-            )
-            closing_prob = p_this
+            try:
+                p_this, _ = devig_closing_range(
+                    this_row.closing_range_min,
+                    this_row.closing_range_max,
+                    other_row.closing_range_min,
+                    other_row.closing_range_max,
+                )
+                closing_prob = p_this
+            except ValueError as exc:
+                logger.warning(
+                    "skipping closing odds for fight_id=%s fighter_id=%s: %s",
+                    fight_id,
+                    this_fighter_id,
+                    exc,
+                )
 
         stmt = pg_insert(FightOdds).values(
             fight_id=fight_id,

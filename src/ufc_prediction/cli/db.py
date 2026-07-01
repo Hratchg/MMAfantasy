@@ -46,6 +46,21 @@ def _normalize_for_psycopg(url: str) -> str:
     return url
 
 
+def _sqlalchemy_url(url: str) -> str:
+    # create_engine needs an explicit driver; a bare postgresql:// defaults to
+    # psycopg2 (not installed → ModuleNotFoundError) and postgres:// is rejected
+    # outright. Normalize both to the +psycopg form so _session_for accepts every
+    # URL shape _check_reachable (via _normalize_for_psycopg + psycopg.connect)
+    # already tolerates — review #12.
+    if url.startswith("postgresql+"):
+        return url
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url[len("postgresql://") :]
+    if url.startswith("postgres://"):
+        return "postgresql+psycopg://" + url[len("postgres://") :]
+    return url
+
+
 @contextmanager
 def _session_for(url: str):
     """Yield a Session bound to the RUNTIME-resolved ``url``.
@@ -57,7 +72,7 @@ def _session_for(url: str):
     inspect one DB while ``pg_restore --clean`` clobbers another. Binding a
     fresh engine to the resolved URL keeps inspection and restore consistent.
     """
-    engine = create_engine(url)
+    engine = create_engine(_sqlalchemy_url(url))
     try:
         with SASession(engine) as session:
             yield session

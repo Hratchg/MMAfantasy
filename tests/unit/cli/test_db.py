@@ -2,11 +2,71 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import psycopg
+import pytest
+import typer
+from sqlalchemy.exc import ProgrammingError
 from typer.testing import CliRunner
 
+from ufc_prediction.cli import db as dbmod
 from ufc_prediction.cli.db import CANONICAL_TABLES, DEFAULT_DUMP_PATH, db_app
 
 runner = CliRunner()
+
+_URL = "postgresql+psycopg://u:p@localhost:5433/x"
+
+
+def _patch_session(sess):
+    """Patch _session_for to yield the given mock session."""
+    m = patch("ufc_prediction.cli.db._session_for")
+    ctx = m.start()
+    ctx.return_value.__enter__.return_value = sess
+    return m
+
+
+def test_check_target_empty_undefined_table_treated_as_empty():
+    """#4: a missing table (UndefinedTable) is legitimately empty → proceed."""
+    sess = MagicMock()
+    sess.execute.side_effect = ProgrammingError(
+        "SELECT COUNT(*)", {}, psycopg.errors.UndefinedTable("relation does not exist")
+    )
+    m = _patch_session(sess)
+    try:
+        # Should NOT raise: every table absent → empty target, force not needed.
+        dbmod._check_target_empty(force=False, url=_URL)
+    finally:
+        m.stop()
+    assert sess.rollback.called
+
+
+def test_check_target_empty_fails_closed_on_other_programming_error():
+    """#4 core: a non-UndefinedTable error must NOT be read as empty — abort."""
+    sess = MagicMock()
+    sess.execute.side_effect = ProgrammingError(
+        "SELECT COUNT(*)", {}, Exception("permission denied for table fights")
+    )
+    m = _patch_session(sess)
+    try:
+        with pytest.raises(typer.Exit) as ei:
+            dbmod._check_target_empty(force=False, url=_URL)
+    finally:
+        m.stop()
+    assert ei.value.exit_code == 1
+    assert sess.rollback.called
+
+
+def test_check_target_empty_fails_closed_on_generic_db_error():
+    """#4: any non-ProgrammingError DB error also fails closed (never silent-empty)."""
+    sess = MagicMock()
+    sess.execute.side_effect = RuntimeError("connection reset mid-count")
+    m = _patch_session(sess)
+    try:
+        with pytest.raises(typer.Exit) as ei:
+            dbmod._check_target_empty(force=False, url=_URL)
+    finally:
+        m.stop()
+    assert ei.value.exit_code == 1
+    assert sess.rollback.called
 
 
 def test_canonical_tables_count():

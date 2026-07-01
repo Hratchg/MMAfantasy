@@ -377,15 +377,53 @@ class ModelPredictor:
         elif self.meta_model is None:
             meta_skipped_reason = "no_meta_artifact"
         else:
-            # closing_prob_diff is at the canonical index in the 72-col vector
-            if np.isnan(closing_prob_diff):
-                meta_skipped_reason = "nan_closing_prob_diff"
+            # Dispatch on the loaded meta's Level-1 width (validated in __init__).
+            # META-01 (v1) is a 3-col stacker; META-V22 (v2) is a 13-col stacker.
+            #
+            # BUGFIX (review CRITICAL #1): the v2 branch previously fed the 13-col
+            # META-V22 model a 3-wide vector [prob_a, elo_prob_a, closing_prob_diff],
+            # which raised `ValueError: X has 3 features, ... expecting 13` on every
+            # odds-present prediction (the meta path was effectively dead). We now
+            # assemble the Level-1 vector via the SAME build_meta_features_v22 the
+            # trainer used, fed a real 90-col FEATURE_COLUMNS_V22 inference vector,
+            # so inference finally matches the gated eval harness. The model
+            # artifacts (xgb_v2 / meta_v2) are byte-unchanged.
+            meta_cols = list(self.meta_metadata["meta_feature_columns"])
+            if len(meta_cols) == 3:
+                # META-01 (v1): [xgb_oof_prob→prob_a, elo_prob→elo_prob_a, closing_prob_diff]
+                if np.isnan(closing_prob_diff):
+                    meta_skipped_reason = "nan_closing_prob_diff"
+                else:
+                    meta_input = np.array([[prob_a, elo_prob_a, closing_prob_diff]])
+                    meta_prob = float(self.meta_model.predict_proba(meta_input)[0, 1])
+                    meta_kind = self.meta_metadata["meta_kind"]
+                    meta_learner_version = self.meta_metadata["meta_version"]
+                    meta_skipped = False
             else:
-                meta_input = np.array([[prob_a, elo_prob_a, closing_prob_diff]])
-                meta_prob = float(self.meta_model.predict_proba(meta_input)[0, 1])
-                meta_kind = self.meta_metadata["meta_kind"]
-                meta_learner_version = self.meta_metadata["meta_version"]
-                meta_skipped = False
+                # META-V22 (v2): 13-col rich Level-1 set. Build the 90-col
+                # FEATURE_COLUMNS_V22 inference vector (REF/TRAVEL come back NaN for
+                # a bare matchup but are not read by build_meta_features_v22), then
+                # assemble exactly as training did. The stacker's StandardScaler
+                # cannot ingest NaN, so if ANY of the 13 Level-1 inputs is missing
+                # we skip META and fall back to the calibrated base prob (same
+                # graceful degradation as the no-odds path) rather than crash.
+                from ufc_prediction.ml.meta_features_v22 import build_meta_features_v22
+
+                x_v22 = build_inference_features(
+                    session, fighter_a, fighter_b, ev_date,
+                    live_odds=live_odds,
+                    feature_set="v2.2",
+                )
+                meta_input = build_meta_features_v22(
+                    np.array([prob_a]), np.array([elo_prob_a]), x_v22
+                )
+                if np.isnan(meta_input).any():
+                    meta_skipped_reason = "nan_meta_input"
+                else:
+                    meta_prob = float(self.meta_model.predict_proba(meta_input)[0, 1])
+                    meta_kind = self.meta_metadata["meta_kind"]
+                    meta_learner_version = self.meta_metadata["meta_version"]
+                    meta_skipped = False
 
         win_probability = meta_prob if not meta_skipped else prob_a
 

@@ -186,13 +186,28 @@ reliable across Docker Desktop, colima, and Linux.
 
 | ID | Description | Severity | Status |
 |---|---|---|---|
-| OPS-V30-01 | Pre-commit hook missing on some clones | Low (operator-side) | Workaround: `pre-commit install` |
+| OPS-V30-01 | Pre-commit hook missing on some clones | Low (operator-side) | **Resolved** (v3.1, unreleased) |
 
 OPS-V30-01 was surfaced at Phase 88 Plan 88-03 close: `.git/hooks/pre-commit`
 was not present on the originating clone. The byte-identity diff is the binding
 AUDIT-01 contract, so this is belt-and-suspenders rather than a behavioral
-regression. Operator should run `pre-commit install` before tagging if the
-pre-commit framework is the intended hook source.
+regression — the CI `pre-commit` job re-runs every hook on each PR regardless of
+local hook state.
+
+**Resolution (v3.1):** git cannot auto-install hooks on clone (it never runs
+arbitrary code on checkout), so the fix removes the *friction* that made the
+step easy to skip. `pre-commit` now ships in the dev dependency group
+(`pyproject.toml`), so a plain `uv sync` puts it in the project venv and a
+fresh clone's setup is exactly two documented steps:
+
+```bash
+uv sync --frozen
+uv run pre-commit install
+```
+
+Both are now the first entries in the CONTRIBUTING.md "First-time setup" block
+(previously only `uv sync` was listed, which is why the hook was missed). No
+separate `uv tool install pre-commit` is required anymore.
 
 ## How to Report New Issues
 

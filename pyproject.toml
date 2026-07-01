@@ -317,6 +317,11 @@ dev = [
     "ruff>=0.15.10",
     "hypothesis>=6.152.7",
     "openapi-spec-validator>=0.8.5",
+    # pre-commit ships in the dev group (not a separate `uv tool install`) so a
+    # fresh `uv sync` puts it in the project venv and `uv run pre-commit install`
+    # works identically on every clone — closes OPS-V30-01 (hook missing on some
+    # clones because the git hook was never installed).
+    "pre-commit>=4.0,<5",
     # mypy runs via the local pre-commit hook (`uv run mypy`) so it type-checks
     # in the project venv with all runtime deps resolvable — the mirrors-mypy
     # isolated venv could not see sqlalchemy/fastapi/etc. Pinned to the 1.13.x

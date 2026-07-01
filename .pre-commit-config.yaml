@@ -6,9 +6,10 @@
 #   - trailing-whitespace + end-of-file-fixer
 #   - audit-01-protected-files (custom local hook; CONTRIBUTING.md L58-78)
 #
-# Install + use:
-#   uv tool install pre-commit && pre-commit install
-#   pre-commit run --all-files     # one-shot
+# Install + use (pre-commit ships in the dev group — see pyproject.toml):
+#   uv sync --frozen                    # installs pre-commit into the venv
+#   uv run pre-commit install           # install the git hook (once per clone)
+#   uv run pre-commit run --all-files   # one-shot
 #   git commit --no-verify ...     # discouraged (use AUDIT01_OVERRIDE=1
 #                                  # for protected files; for other hooks
 #                                  # always investigate the failure first)

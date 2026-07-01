@@ -10,6 +10,9 @@ The project follows a continuous-milestone format. Each milestone delivers a coh
 
 **Fixed:**
 - Matchup predictions are now **order-invariant**. The raw predictor was asymmetric — swapping `fighter_a`/`fighter_b` shifted the probability by ~10 points on close fights (caused by three non-anti-symmetric style/stance features: `stance_matchup`, `a_striking_vs_b_grappling`, `a_grappling_vs_b_striking`). A new `ufc_prediction.ml.order_invariant.predict_order_invariant` wrapper averages both orderings; the CLI and API now call it, so whoever you list first no longer changes the result. The AUDIT-01-locked `predictor.py` and the model artifacts are untouched.
+- **CI: pinned uv to Python 3.13** so `lxml` installs from its prebuilt wheel instead of a doomed source build (`UV_PYTHON=3.13` in `ci.yml` + `refresh-odds.yml`); also dropped the invalid `python-version` input from `setup-uv@v3` that was emitting an `Unexpected input(s)` annotation on every run.
+- **Scraper resilience:** `ScraperClient` now retries the Cloudflare `520`–`524` origin-error family (e.g. `522` "Connection Timed Out") with the same backoff it already applied to `429`/`503`. A single transient `522` from BestFightOdds had been aborting the entire weekly odds refresh.
+- **`OPS-V30-01`** — the pre-commit git hook was missing on fresh clones because setup only ran `uv sync`. `pre-commit` now ships in the dev dependency group (so `uv sync` provides it) and CONTRIBUTING.md's first-time setup documents `uv run pre-commit install`. Correctness was never at risk — the CI `pre-commit` job runs every hook on each PR — but the local AUDIT-01 guard is now reliably installable in two documented steps.
 
 ---
 

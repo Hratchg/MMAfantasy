@@ -347,8 +347,14 @@ def main(argv: list[str] | None = None) -> int:
         # D-04/D-05 protected Phase 58 artifacts; surface its error as a
         # clean operator-facing message + non-zero exit instead of an
         # unhandled traceback.
+        # Pass the module-level constants explicitly (read at call time) so
+        # they honor any test-time monkeypatch of ``RESULTS_MD`` /
+        # ``RESULTS_JSON``. ``emit_provisional_path_b``'s parameter defaults
+        # bind at import time, so relying on them here made this path depend on
+        # the real (gitignored) ``results/`` artifacts rather than the patched
+        # paths — an isolation hazard in fresh checkouts (CI).
         try:
-            md, js = emit_provisional_path_b()
+            md, js = emit_provisional_path_b(md_path=RESULTS_MD, json_path=RESULTS_JSON)
         except RuntimeError as e:
             sys.stderr.write(f"ERROR: {e}\n")
             return 1

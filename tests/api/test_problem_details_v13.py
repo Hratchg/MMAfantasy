@@ -16,18 +16,35 @@ ProblemDetails shape — Phase 52 is opt-in via the Accept header only.
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
 
 
 @pytest.fixture(scope="module")
-def client() -> TestClient:
-    os.environ.setdefault("UFC_API_KEYS", "test-key:test-partner")
-    os.environ.setdefault("UFC_ENV", "dev")
-    from ufc_prediction.api.app import create_app
+def client() -> Iterator[TestClient]:
+    # Save/restore the two env vars this fixture sets so it never leaks into
+    # os.environ. Leaking these previously contaminated the process-wide
+    # environment (and any later test that reconstructs `Settings`), an
+    # order-dependent test-isolation hazard. Record the prior state, set the
+    # test values for the app under test, then restore on teardown.
+    keys = ("UFC_API_KEYS", "UFC_ENV")
+    values = {"UFC_API_KEYS": "test-key:test-partner", "UFC_ENV": "dev"}
+    prev = {k: os.environ.get(k) for k in keys}
+    for k, v in values.items():
+        os.environ[k] = v
+    try:
+        from ufc_prediction.api.app import create_app
 
-    return TestClient(create_app())
+        with TestClient(create_app()) as test_client:
+            yield test_client
+    finally:
+        for k in keys:
+            if prev[k] is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = prev[k]
 
 
 def test_default_accept_preserves_existing_detail_shape(client: TestClient) -> None:

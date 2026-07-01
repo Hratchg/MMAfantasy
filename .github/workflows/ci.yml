@@ -66,8 +66,6 @@ jobs:
 
       - name: Set up uv (Python 3.13)
         uses: astral-sh/setup-uv@v3
-        with:
-          python-version: "3.13"
 
       - name: Install dependencies (frozen lockfile)
         run: uv sync --frozen
@@ -101,8 +99,6 @@ jobs:
 
       - name: Set up uv (for the AUDIT-01 guard's `uv run` invocation)
         uses: astral-sh/setup-uv@v3
-        with:
-          python-version: "3.13"
 
       - name: Install dependencies (frozen lockfile)
         run: uv sync --frozen

@@ -56,6 +56,20 @@ def mock_response_503():
 
 
 @pytest.fixture
+def mock_response_522():
+    """Create a mock 522 response (Cloudflare 'Connection Timed Out')."""
+    resp = MagicMock()
+    resp.status_code = 522
+    resp.text = "Connection timed out"
+    resp.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "522 <none>",
+        request=MagicMock(),
+        response=resp,
+    )
+    return resp
+
+
+@pytest.fixture
 def mock_response_404():
     """Create a mock 404 response."""
     resp = MagicMock()
@@ -146,6 +160,29 @@ class TestScraperClientGet:
         mock_time.sleep = MagicMock()
         mock_client = MagicMock()
         mock_client.get.side_effect = [mock_response_503, mock_response_200]
+        mock_client_cls.return_value = mock_client
+
+        client = ScraperClient(delay=0.0, max_retries=3)
+        result = client.get("http://example.com")
+
+        assert result == "<html>OK</html>"
+        assert mock_client.get.call_count == 2
+
+    @patch("ufc_prediction.scraper.client.time")
+    @patch("ufc_prediction.scraper.client.httpx.Client")
+    def test_get_retries_on_522(
+        self, mock_client_cls, mock_time, mock_response_522, mock_response_200
+    ):
+        """get() retries on Cloudflare 522 and succeeds on second attempt.
+
+        Regression guard for the weekly BFO refresh failure of 2026-07-01: a
+        single transient 522 ("Connection Timed Out") from BestFightOdds behind
+        Cloudflare aborted the whole scrape because 52x codes were not retryable.
+        """
+        mock_time.monotonic.return_value = 100.0
+        mock_time.sleep = MagicMock()
+        mock_client = MagicMock()
+        mock_client.get.side_effect = [mock_response_522, mock_response_200]
         mock_client_cls.return_value = mock_client
 
         client = ScraperClient(delay=0.0, max_retries=3)

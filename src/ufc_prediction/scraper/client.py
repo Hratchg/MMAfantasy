@@ -26,6 +26,14 @@ logger = logging.getLogger(__name__)
 
 _USER_AGENT = "UFCFightPrediction/0.1 (research project)"
 
+# HTTP status codes worth retrying with backoff. 429 (rate limited) and 503
+# (service unavailable) are the classic transient signals. 520-524 are
+# Cloudflare origin errors (520 Unknown, 521 Web Server Down, 522 Connection
+# Timed Out, 523 Origin Unreachable, 524 Timeout) seen intermittently from
+# BestFightOdds when Cloudflare cannot reach the origin in time — transient and
+# safe to retry rather than fail an entire scrape on a single edge blip.
+_RETRYABLE_STATUS = frozenset({429, 503, 520, 521, 522, 523, 524})
+
 T = TypeVar("T")
 
 
@@ -36,7 +44,8 @@ class ScraperClient:
         delay: Minimum seconds between consecutive requests from a single
             worker (default 1.5). With ``workers > 1`` each worker enforces
             this delay independently.
-        max_retries: Maximum retry attempts on 429/503 (default 3).
+        max_retries: Maximum retry attempts on retryable status codes
+            (429/503 plus Cloudflare 520-524; default 3).
         timeout: HTTP request timeout in seconds (default 30.0).
         workers: Maximum number of concurrent worker threads available to
             :meth:`map` / :meth:`map_get` (default 1). Must be >= 1. With
@@ -81,8 +90,9 @@ class ScraperClient:
         """Fetch URL with rate limiting and retry.
 
         Rate limits: sleeps if elapsed time since this thread's last request
-        < ``delay``. Retries on 429/503 with exponential backoff (5s, 10s, 20s).
-        Raises on non-200 after retries exhausted.
+        < ``delay``. Retries on transient status codes (429/503 plus the
+        Cloudflare 520-524 origin-error family) with exponential backoff
+        (5s, 10s, 20s). Raises on non-200 after retries exhausted.
 
         Args:
             url: The URL to fetch.
@@ -134,7 +144,7 @@ class ScraperClient:
             if response.status_code == 200:
                 return response.text
 
-            if response.status_code in (429, 503) and attempt < self._max_retries:
+            if response.status_code in _RETRYABLE_STATUS and attempt < self._max_retries:
                 backoff = 2**attempt * 5  # 5s, 10s, 20s
                 logger.warning(
                     "Got %d from %s, retrying in %ds (attempt %d/%d)",
@@ -148,7 +158,7 @@ class ScraperClient:
                 continue
 
             # Non-retryable or last retry attempt for retryable codes
-            if response.status_code not in (429, 503):
+            if response.status_code not in _RETRYABLE_STATUS:
                 response.raise_for_status()
 
         msg = f"Failed to fetch {url} after {self._max_retries} retries"

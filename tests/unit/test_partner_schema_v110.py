@@ -45,6 +45,8 @@ EXPECTED_V110_ADDITIVE_TRIO: set[str] = {
     "gate_contract_ref",
     "model_candidates",
     "phase_chain_audit_sha",
+    "prediction_metadata",
+    "disclaimer",
 }
 
 
@@ -82,7 +84,7 @@ def test_v110_fields_typing():
     assert pca_ann == (str | None), f"phase_chain_audit_sha annotation = {pca_ann!r}"
 
     mc_ann = fields["model_candidates"].annotation
-    assert mc_ann == (list[dict] | None), f"model_candidates annotation = {mc_ann!r}"
+    assert mc_ann == (list[dict[str, str]] | None), f"model_candidates annotation = {mc_ann!r}"
 
     # Defaults must be None (Phase 25 forward-compat lock binding).
     assert fields["gate_contract_ref"].default is None

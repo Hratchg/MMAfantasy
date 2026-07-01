@@ -35,6 +35,15 @@ def mod():
     return m
 
 
+@pytest.fixture(autouse=True)
+def _assume_changed(mod, monkeypatch):
+    """The guard now flags only paths that differ from HEAD; these tests
+    exercise the soft-protect match/block LOGIC, so assume the inputs are
+    genuinely being changed.
+    """
+    monkeypatch.setattr(mod, "_differs_from_head", lambda _path: True)
+
+
 # ── Soft-protect symbol exposure ──────────────────────────────────────────
 
 

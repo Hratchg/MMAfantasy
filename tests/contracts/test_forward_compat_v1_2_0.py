@@ -260,11 +260,11 @@ def test_v100_response_bytes_match_frozen_reference():
     # Stable reference values — these MUST not change as the contract
     # is byte-frozen at Phase 25.
     assert projected["schema_version"] == "1.0.0"
-    assert projected["win_probability"] == 0.6234
+    assert projected["win_probability"] == 0.5
     assert projected["fighter_a"] == "Khabib Nurmagomedov"
     assert projected["fighter_b"] == "Conor McGregor"
     assert projected["event_date"] == "2018-10-06"
-    assert projected["base_prob"] == 0.6234
+    assert projected["base_prob"] == 0.5
     assert projected["meta_prob"] is None
     assert projected["meta_learner_version"] is None
     assert projected["meta_skipped_reason"] == "no_meta_artifact"

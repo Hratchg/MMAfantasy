@@ -19,6 +19,7 @@ mocked to return the candidate pool deterministically.
 from __future__ import annotations
 
 import json
+from collections import namedtuple
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -40,12 +41,15 @@ def _build_ingester_with_pool(
 ) -> BFOOddsIngester:
     """Construct a BFOOddsIngester whose session returns ``candidate_pool``.
 
-    The fixture stores ``candidate_pool`` as JSON arrays ``[[id, name], ...]``;
-    SQLAlchemy returns row-like tuples from ``session.execute(...).all()``.
+    The fixture stores ``candidate_pool`` as JSON arrays ``[[id, name], ...]``.
+    SQLAlchemy returns ``Row`` objects from ``session.execute(...).all()`` that
+    support attribute access (``row.id``/``row.name``), so mock with a namedtuple
+    rather than a plain tuple (which only supports index access).
     """
     session = MagicMock()
-    pool_tuples = [tuple(row) for row in candidate_pool]
-    session.execute.return_value.all.return_value = pool_tuples
+    _Row = namedtuple("_Row", ["id", "name"])
+    pool_rows = [_Row(*row) for row in candidate_pool]
+    session.execute.return_value.all.return_value = pool_rows
 
     # data_folder is unused in _match_fighters; tmp_path-like dummy is fine.
     ingester = BFOOddsIngester(

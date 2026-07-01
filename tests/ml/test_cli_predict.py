@@ -43,10 +43,14 @@ class TestPredictAppRegistration:
         assert "evaluate" in command_names
 
     def test_callback_exists(self):
-        """predict_app has a callback for 'predict A vs B' syntax."""
+        """predict_app exposes 'A vs B' prediction via the 'matchup' subcommand
+        (which replaced the earlier top-level predict-callback shorthand)."""
         from ufc_prediction.cli.predict import predict_app
 
-        assert predict_app.registered_callback is not None
+        command_names = [
+            cmd.name or cmd.callback.__name__ for cmd in predict_app.registered_commands
+        ]
+        assert "matchup" in command_names
 
     def test_main_includes_predict(self):
         """Main app has predict_app registered."""

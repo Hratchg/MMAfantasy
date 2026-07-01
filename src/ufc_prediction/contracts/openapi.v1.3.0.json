@@ -243,7 +243,17 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/MatchupResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FighterSearchResponse"
+                    }
+                  ],
+                  "title": "Response Get Matchup Api V1 Matchup Get"
+                }
               }
             }
           },
@@ -490,6 +500,101 @@
         "title": "DivisionRating",
         "description": "Rating detail for one division a fighter competes in."
       },
+      "EloComparisonModel": {
+        "properties": {
+          "fighter_a_overall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter A Overall"
+          },
+          "fighter_b_overall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter B Overall"
+          },
+          "fighter_a_striking": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter A Striking"
+          },
+          "fighter_b_striking": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter B Striking"
+          },
+          "fighter_a_grappling": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter A Grappling"
+          },
+          "fighter_b_grappling": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter B Grappling"
+          },
+          "fighter_a_division": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter A Division"
+          },
+          "fighter_b_division": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter B Division"
+          }
+        },
+        "type": "object",
+        "title": "EloComparisonModel",
+        "description": "Elo comparison across overall and domain ratings."
+      },
       "EloHistoryPoint": {
         "properties": {
           "fight_date": {
@@ -642,6 +747,101 @@
         "title": "FighterSearchResult",
         "description": "Single fighter candidate returned when multiple matches exist."
       },
+      "GrapplingModel": {
+        "properties": {
+          "a_td_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A Td Rate"
+          },
+          "a_td_accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A Td Accuracy"
+          },
+          "a_td_defense": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A Td Defense"
+          },
+          "b_td_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B Td Rate"
+          },
+          "b_td_accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B Td Accuracy"
+          },
+          "b_td_defense": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B Td Defense"
+          },
+          "a_ctrl_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A Ctrl Time"
+          },
+          "b_ctrl_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B Ctrl Time"
+          }
+        },
+        "type": "object",
+        "title": "GrapplingModel",
+        "description": "Grappling matchup matrix."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -654,6 +854,118 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "MatchupResponse": {
+        "properties": {
+          "fighter_a_name": {
+            "type": "string",
+            "title": "Fighter A Name"
+          },
+          "fighter_b_name": {
+            "type": "string",
+            "title": "Fighter B Name"
+          },
+          "physical": {
+            "$ref": "#/components/schemas/PhysicalModel"
+          },
+          "elo": {
+            "$ref": "#/components/schemas/EloComparisonModel"
+          },
+          "striking": {
+            "$ref": "#/components/schemas/StrikingModel"
+          },
+          "grappling": {
+            "$ref": "#/components/schemas/GrapplingModel"
+          },
+          "style": {
+            "$ref": "#/components/schemas/StyleModel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fighter_a_name",
+          "fighter_b_name",
+          "physical",
+          "elo",
+          "striking",
+          "grappling",
+          "style"
+        ],
+        "title": "MatchupResponse",
+        "description": "Full matchup comparison between two fighters."
+      },
+      "PhysicalModel": {
+        "properties": {
+          "height_diff": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Diff"
+          },
+          "reach_diff": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reach Diff"
+          },
+          "leg_reach_diff": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leg Reach Diff"
+          },
+          "age_diff": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Diff"
+          },
+          "fighter_a_age": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter A Age"
+          },
+          "fighter_b_age": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter B Age"
+          }
+        },
+        "type": "object",
+        "title": "PhysicalModel",
+        "description": "Physical attribute differentials between two fighters."
       },
       "PredictMatchupRequestV1": {
         "properties": {
@@ -987,6 +1299,201 @@
         ],
         "title": "RankingsResponse",
         "description": "Ranked list of fighters within a division."
+      },
+      "StrikingModel": {
+        "properties": {
+          "a_sig_str_per_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A Sig Str Per Min"
+          },
+          "a_striking_accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A Striking Accuracy"
+          },
+          "a_strike_defense": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A Strike Defense"
+          },
+          "b_sig_str_per_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B Sig Str Per Min"
+          },
+          "b_striking_accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B Striking Accuracy"
+          },
+          "b_strike_defense": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B Strike Defense"
+          }
+        },
+        "type": "object",
+        "title": "StrikingModel",
+        "description": "Striking matchup matrix."
+      },
+      "StyleMatchupWinRateModel": {
+        "properties": {
+          "style_a": {
+            "type": "string",
+            "title": "Style A"
+          },
+          "style_b": {
+            "type": "string",
+            "title": "Style B"
+          },
+          "style_a_wins": {
+            "type": "integer",
+            "title": "Style A Wins"
+          },
+          "style_b_wins": {
+            "type": "integer",
+            "title": "Style B Wins"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "style_a_win_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style A Win Pct"
+          },
+          "sufficient_data": {
+            "type": "boolean",
+            "title": "Sufficient Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "style_a",
+          "style_b",
+          "style_a_wins",
+          "style_b_wins",
+          "total",
+          "sufficient_data"
+        ],
+        "title": "StyleMatchupWinRateModel",
+        "description": "Win rate for a specific style matchup type."
+      },
+      "StyleModel": {
+        "properties": {
+          "fighter_a_style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter A Style"
+          },
+          "fighter_b_style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter B Style"
+          },
+          "fighter_a_index": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter A Index"
+          },
+          "fighter_b_index": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fighter B Index"
+          },
+          "matchup_win_rates": {
+            "items": {
+              "$ref": "#/components/schemas/StyleMatchupWinRateModel"
+            },
+            "type": "array",
+            "title": "Matchup Win Rates"
+          },
+          "cross_division_warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cross Division Warning"
+          }
+        },
+        "type": "object",
+        "required": [
+          "matchup_win_rates"
+        ],
+        "title": "StyleModel",
+        "description": "Style analysis section of a matchup comparison."
       },
       "ValidationError": {
         "properties": {

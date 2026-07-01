@@ -64,7 +64,7 @@ def test_predictor_loads_72_col_ablation_model(tmp_path):
         model_dir=str(tmp_path),
         version="vablation",
     )
-    p = predictor.ModelPredictor(model_dir=str(tmp_path), version="vablation")
+    p = predictor.ModelPredictor(model_dir=str(tmp_path), version="vablation", meta_dir=None)
     assert p.metadata["n_features"] == 72
     assert p._include_net is False
 
@@ -82,7 +82,7 @@ def test_predictor_loads_75_col_timedecayed_model(tmp_path):
         model_dir=str(tmp_path),
         version="vtimedecayed",
     )
-    p = predictor.ModelPredictor(model_dir=str(tmp_path), version="vtimedecayed")
+    p = predictor.ModelPredictor(model_dir=str(tmp_path), version="vtimedecayed", meta_dir=None)
     assert p.metadata["n_features"] == 75
     assert p._include_net is True
 

@@ -62,6 +62,10 @@ def test_isotonic_source_path_in_json_documented(doc: dict) -> None:
     assert "candidate_brier_per_slice" in path_str
 
 
+@pytest.mark.skipif(
+    not PNG_12MO.exists(),
+    reason="calibration PNGs are dev-generated viz outputs (scripts/calibration_v24.py); absent on a fresh clone",
+)
 def test_three_pngs_exist_and_nonempty() -> None:
     for p in (PNG_12MO, PNG_24MO, PNG_RANDOM):
         assert p.exists(), f"missing: {p}"

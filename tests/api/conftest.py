@@ -5,10 +5,12 @@ from __future__ import annotations
 from datetime import date
 
 import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from ufc_prediction.api.app import create_app
+from ufc_prediction.api.auth import require_api_key
 from ufc_prediction.api.deps import get_db
 from ufc_prediction.models.computed_feature import ComputedFeature
 from ufc_prediction.models.elo_snapshot import EloSnapshot
@@ -439,6 +441,19 @@ def seed_matchup_api_data(session, seed_api_data):
     return data
 
 
+def _bypass_api_key(request: Request) -> None:
+    """Auth override for data-focused API tests.
+
+    `require_api_key` is fail-closed (always demands an X-API-Key header), so
+    these endpoint-behaviour tests would all 401 without supplying a key. They
+    exercise route DATA, not auth (auth is covered by its own tests), so bypass
+    the gate while still populating the request-state attrs downstream
+    middleware/rate-limiting read.
+    """
+    request.state.partner_label = "test"
+    request.state.api_key_raw = "test:test"
+
+
 @pytest.fixture()
 def client(session: Session, seed_api_data) -> TestClient:
     """TestClient with DB session overridden to use test transaction."""
@@ -448,6 +463,7 @@ def client(session: Session, seed_api_data) -> TestClient:
         yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[require_api_key] = _bypass_api_key
     with TestClient(app) as c:
         yield c
 
@@ -461,5 +477,6 @@ def client_matchup(session: Session, seed_matchup_api_data) -> TestClient:
         yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[require_api_key] = _bypass_api_key
     with TestClient(app) as c:
         yield c

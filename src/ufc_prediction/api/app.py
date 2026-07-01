@@ -76,7 +76,7 @@ def _problem_details_exception_handler(
     detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
     if PROBLEM_JSON_CONTENT_TYPE not in accept.lower():
         # Forward-compat: pre-v1.3.0 partners get the existing shape.
-        return JSONResponse(status_code=status_code, content={"detail": detail})
+        return JSONResponse(status_code=status_code, content={"detail": exc.detail})
     problem = ProblemDetailsV13(
         type="about:blank",
         title=detail or "HTTP error",

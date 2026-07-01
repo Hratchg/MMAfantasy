@@ -36,14 +36,18 @@ repos:
           (?x)^(
             models/.*\.json|
             tests/.*fixtures/.*|
-            migrations/README
+            migrations/README|
+            \.planning/.*|
+            data/intermediate/.*
           )$
       - id: end-of-file-fixer
         exclude: |
           (?x)^(
             models/.*\.json|
             tests/.*fixtures/.*|
-            migrations/README
+            migrations/README|
+            \.planning/.*|
+            data/intermediate/.*
           )$
       - id: check-yaml
         exclude: ^\.github/workflows/.*\.yml$  # GH Actions YAML uses on: which check-yaml mis-parses

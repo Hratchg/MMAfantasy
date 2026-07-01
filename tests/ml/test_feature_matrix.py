@@ -59,21 +59,26 @@ class TestMLConfig:
 
     def test_feature_columns_ends_with_pre_ufc(self) -> None:
         """Phase 13-03 appended 3 betting-odds diffs after pre_ufc, then
-        Phase 15.1 gap closure appended 2 engineered odds features after
-        those (sharp_money_signal, odds_elo_divergence on D-05).
+        Phase 15.1 gap closure appended 2 engineered odds features
+        (sharp_money_signal, odds_elo_divergence on D-05), and finally the
+        3 NET features (pagerank/sos_2hop/is_debutant_in_graph) are the last
+        columns (FEATURE_COLUMNS_NO_NET == FEATURE_COLUMNS[:-3]).
 
-        pre_ufc_win_pct_diff now sits at index -6 (6th from end). The
-        full odds tail is the 5 betting-odds features in this order.
+        pre_ufc_win_pct_diff now sits at index -9; the tail is the 5
+        betting-odds features followed by the 3 NET features.
         """
         from ufc_prediction.ml.config import FEATURE_COLUMNS
 
-        assert FEATURE_COLUMNS[-6] == "pre_ufc_win_pct_diff"
-        assert FEATURE_COLUMNS[-5:] == [
+        assert FEATURE_COLUMNS[-9] == "pre_ufc_win_pct_diff"
+        assert FEATURE_COLUMNS[-8:] == [
             "opening_prob_diff",
             "closing_prob_diff",
             "line_movement_diff",
             "sharp_money_signal",
             "odds_elo_divergence",
+            "pagerank_diff",
+            "sos_2hop_diff",
+            "is_debutant_in_graph_diff",
         ]
 
     def test_feature_columns_physical_diffs(self) -> None:
@@ -289,7 +294,7 @@ class TestFeatureMatrixAssembler:
             division_medians,
         )
 
-        assert X.shape == (5, 72)
+        assert X.shape == (5, 75)
         assert y.shape == (5,)
         assert fight_dates.shape == (5,)
 
@@ -315,9 +320,9 @@ class TestFeatureMatrixAssembler:
         )
 
         # Verify by checking known values at known positions
-        # Fight 101: fighter 1 vs 2, Elo overall diff = 1520 - 1480 = 40
+        # Fight 101: A=1 (1520), B=2 (1480). Diff is B-A = 1480 - 1520 = -40
         elo_overall_idx = FEATURE_COLUMNS.index("elo_overall_diff")
-        assert X[0, elo_overall_idx] == pytest.approx(40.0)
+        assert X[0, elo_overall_idx] == pytest.approx(-40.0)
 
     def test_elo_differential(
         self,
@@ -341,15 +346,14 @@ class TestFeatureMatrixAssembler:
         )
 
         # Fight 101: A=1, B=2
-        # overall: 1520 - 1480 = 40
-        # striking: 1530 - 1470 = 60
-        # grappling: 1510 - 1490 = 20
+        # B-A convention: overall 1480-1520=-40, striking 1470-1530=-60,
+        # grappling 1490-1510=-20
         idx_o = FEATURE_COLUMNS.index("elo_overall_diff")
         idx_s = FEATURE_COLUMNS.index("elo_striking_diff")
         idx_g = FEATURE_COLUMNS.index("elo_grappling_diff")
-        assert X[0, idx_o] == pytest.approx(40.0)
-        assert X[0, idx_s] == pytest.approx(60.0)
-        assert X[0, idx_g] == pytest.approx(20.0)
+        assert X[0, idx_o] == pytest.approx(-40.0)
+        assert X[0, idx_s] == pytest.approx(-60.0)
+        assert X[0, idx_g] == pytest.approx(-20.0)
 
     def test_performance_feature_differential(
         self,
@@ -372,10 +376,9 @@ class TestFeatureMatrixAssembler:
             division_medians,
         )
 
-        # Fight 101: A=1 (base: sig_str=4.5), B=2 (alt: sig_str=3.5)
-        # Diff = 4.5 - 3.5 = 1.0
+        # Fight 101: A=1 (4.5), B=2 (3.5). B-A diff = 3.5 - 4.5 = -1.0
         idx = FEATURE_COLUMNS.index("sig_str_per_minute_diff")
-        assert X[0, idx] == pytest.approx(1.0)
+        assert X[0, idx] == pytest.approx(-1.0)
 
     def test_physical_differential(
         self,
@@ -398,14 +401,13 @@ class TestFeatureMatrixAssembler:
             division_medians,
         )
 
-        # Fight 101: A=1 (height 72), B=2 (height 70)
-        # height_diff = 72 - 70 = 2.0
+        # Fight 101: A=1 (height 72), B=2 (height 70). B-A = 70 - 72 = -2.0
         idx_h = FEATURE_COLUMNS.index("height_diff")
-        assert X[0, idx_h] == pytest.approx(2.0)
+        assert X[0, idx_h] == pytest.approx(-2.0)
 
-        # reach_diff = 74 - 72 = 2.0
+        # reach_diff (B-A) = 72 - 74 = -2.0
         idx_r = FEATURE_COLUMNS.index("reach_diff")
-        assert X[0, idx_r] == pytest.approx(2.0)
+        assert X[0, idx_r] == pytest.approx(-2.0)
 
     def test_missing_physical_imputed_with_division_median(
         self,
@@ -441,9 +443,9 @@ class TestFeatureMatrixAssembler:
 
         # Fighter 3: height=None -> imputed to 72.0 (Welterweight median)
         # Fighter 4: height=68.0
-        # height_diff = 72.0 - 68.0 = 4.0
+        # height_diff (B-A) = 68.0 - 72.0 = -4.0
         idx_h = FEATURE_COLUMNS.index("height_diff")
-        assert X[0, idx_h] == pytest.approx(4.0)
+        assert X[0, idx_h] == pytest.approx(-4.0)
 
         # Fighter 3: reach=None -> imputed to 74.0 (Welterweight median)
         # Fighter 4: reach=None -> imputed to 74.0 (Welterweight median)
@@ -500,15 +502,16 @@ class TestFeatureMatrixAssembler:
             division_medians,
         )
 
-        # Fight 101: winner_id=1, fighter_a_id=1 -> y=1
-        assert y[0] == 1
-        # Fight 102: winner_id=4, fighter_a_id=3 -> y=0
-        assert y[1] == 0
-        # Fight 103: winner_id=5, fighter_a_id=1 -> y=0
-        assert y[2] == 0
-        # Fight 104: winner_id=2, fighter_a_id=2 -> y=1
-        assert y[3] == 1
-        # Fight 105: winner_id=1, fighter_a_id=1 -> y=1
+        # y=1 iff fighter_b wins (frozen label convention).
+        # Fight 101: winner=1=A -> y=0
+        assert y[0] == 0
+        # Fight 102: winner=4=B -> y=1
+        assert y[1] == 1
+        # Fight 103: winner=5=B -> y=1
+        assert y[2] == 1
+        # Fight 104: winner=2=A -> y=0
+        assert y[3] == 0
+        # Fight 105: canonically reordered (ids 1,3) -> y=1
         assert y[4] == 1
 
     def test_chronological_order(
@@ -637,11 +640,11 @@ class TestFeatureMatrixAssembler:
 
         # Fighter 1: DOB 1990-01-01, fight date 2020-01-15 -> age ~30.04
         # Fighter 2: DOB 1988-06-15, fight date 2020-01-15 -> age ~31.59
-        # age_diff = 30.04 - 31.59 = -1.55 (approx)
+        # age_diff (B-A) = 31.59 - 30.04 = +1.55 (approx); A is younger
         idx = FEATURE_COLUMNS.index("age_diff")
         age_diff = X[0, idx]
-        assert age_diff < 0  # Fighter A is younger
-        assert age_diff == pytest.approx(-1.55, abs=0.1)
+        assert age_diff > 0  # Fighter A is younger -> B-A positive
+        assert age_diff == pytest.approx(1.55, abs=0.1)
 
 
 # ─── split_temporal tests ────────────────────────────────────────────────────
@@ -698,8 +701,8 @@ class TestSplitTemporal:
         )
 
         X_train, X_test, _, _ = split_temporal(X, y, fight_dates, date(2023, 1, 1))
-        assert X_train.shape[1] == 28
-        assert X_test.shape[1] == 28
+        assert X_train.shape[1] == 75
+        assert X_test.shape[1] == 75
 
 
 # ─── Elo-as-input verification (ML-06) ──────────────────────────────────────
@@ -733,15 +736,16 @@ class TestEloAsInput:
             division_medians,
         )
 
-        # Verify Elo features are present as columns (3 Elo diff columns)
+        # Verify Elo features are present as columns (4 Elo diff columns:
+        # overall, striking, grappling, momentum)
         elo_cols = [c for c in FEATURE_COLUMNS if c.startswith("elo_")]
-        assert len(elo_cols) == 3
+        assert len(elo_cols) == 4
 
         # Verify the Elo values are elo_before-based differentials
         # Fight 101: A=fighter1 (overall=1520), B=fighter2 (overall=1480)
-        # If elo_after were used, values would be different (post-fight)
+        # B-A elo_before differential (post-fight elo_after would differ)
         idx = FEATURE_COLUMNS.index("elo_overall_diff")
-        assert X[0, idx] == pytest.approx(40.0)  # 1520 - 1480
+        assert X[0, idx] == pytest.approx(-40.0)  # 1480 - 1520
 
     def test_queries_module_uses_elo_before(self) -> None:
         """The queries module must reference elo_before, never elo_after."""

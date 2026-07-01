@@ -144,6 +144,7 @@ def _post_predict(client: TestClient) -> dict:
                 "fighter_a": "Khabib Nurmagomedov",
                 "fighter_b": "Conor McGregor",
                 "event_date": "2018-10-06",
+                "accept_schema_version": "1.0.0",
             },
         )
     assert resp.status_code == 200, resp.text

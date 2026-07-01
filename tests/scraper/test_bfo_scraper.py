@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -585,7 +586,7 @@ class TestScrapeEventUrls:
         # — return one candidate so the match attempt doesn't trivially
         # short-circuit.
         result_mock = MagicMock()
-        result_mock.all.return_value = [(1, "Placeholder Name")]
+        result_mock.all.return_value = [SimpleNamespace(id=1, name="Placeholder Name")]
         session_mock.execute.return_value = result_mock
         ingester_with_session = BFOOddsIngester(
             session=session_mock,

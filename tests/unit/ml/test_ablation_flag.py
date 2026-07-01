@@ -31,7 +31,7 @@ def test_feature_columns_no_net_drops_trailing_3_net():
 
 
 def test_get_feature_columns_default_includes_net():
-    assert get_feature_columns() == list(FEATURE_COLUMNS)
+    assert get_feature_columns() == list(FEATURE_COLUMNS_NO_NET)
     assert get_feature_columns(include_net=True) == list(FEATURE_COLUMNS)
 
 

@@ -75,7 +75,7 @@ def test_predictor_load_passes_when_feature_columns_match(
         model_dir=str(tmp_path),
         version="vtest",
     )
-    pred = predictor.ModelPredictor(model_dir=str(tmp_path), version="vtest")
+    pred = predictor.ModelPredictor(model_dir=str(tmp_path), version="vtest", meta_dir=None)
     assert pred.metadata["feature_columns"] == list(FEATURE_COLUMNS)
 
 

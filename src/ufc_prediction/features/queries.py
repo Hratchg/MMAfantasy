@@ -7,6 +7,8 @@ All queries use SQLAlchemy parameterized select() statements (T-07-02).
 
 from __future__ import annotations
 
+import math
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -170,6 +172,18 @@ def bulk_insert_features(session: Session, feature_rows: list[dict[str, object]]
     """
     if not feature_rows:
         return 0
+
+    # Postgres JSON/JSONB cannot represent NaN or Infinity. The feature pipeline
+    # canonically emits NaN for debutant pagerank (D-06) and for sos_2hop of
+    # fighters with no wins yet; persist those as JSON null so the round-trip is
+    # valid. XGBoost re-imputes null -> NaN natively at train/predict time.
+    for row in feature_rows:
+        feats = row.get("features")
+        if isinstance(feats, dict):
+            row["features"] = {
+                k: (None if isinstance(v, float) and not math.isfinite(v) else v)
+                for k, v in feats.items()
+            }
 
     session.execute(ComputedFeature.__table__.insert(), feature_rows)  # type: ignore[attr-defined]
     return len(feature_rows)

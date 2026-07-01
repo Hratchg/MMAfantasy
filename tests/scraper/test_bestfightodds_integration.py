@@ -271,7 +271,7 @@ class TestFightOddsMigration:
                 result = conn.execute(text("SELECT to_regclass('fight_odds')")).scalar()
             assert result == "fight_odds"
 
-            command.downgrade(cfg, "-1")
+            command.downgrade(cfg, "e7a2cf1b9d01")
             with engine.connect() as conn:
                 result = conn.execute(text("SELECT to_regclass('fight_odds')")).scalar()
             assert result is None

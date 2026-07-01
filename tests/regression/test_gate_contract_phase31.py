@@ -337,6 +337,8 @@ def test_phase_31_end_sha_artifact_present_path_a(outcome_path):
     """31-XGB-V2-SHA-PHASE-31-END.txt exists with AUDIT-01 baseline content (Path A only)."""
     if outcome_path != "path_a":
         pytest.skip(f"Path A test; current outcome={outcome_path}")
+    if not PHASE_31_DIR.exists():
+        pytest.skip(f"{PHASE_31_DIR} pruned from handoff checkout; END SHA artifact n/a")
     assert END_SHA_PATH.exists(), (
         f"{END_SHA_PATH} missing — Path A should emit END SHA artifact (WR-04 carry-forward)"
     )

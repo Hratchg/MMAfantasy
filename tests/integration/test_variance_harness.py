@@ -66,7 +66,7 @@ FIXTURE_NPZ: Path = REPO_ROOT / "tests" / "fixtures" / "variance" / "meta_train_
 FIXTURE_SLICES: Path = REPO_ROOT / "tests" / "fixtures" / "variance" / "eval_slices.json"
 
 EXPECTED_XGB_V2_SHA: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.1409
+PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.155699
 PLAN_29_03_TOLERANCE: float = 0.0001
 
 

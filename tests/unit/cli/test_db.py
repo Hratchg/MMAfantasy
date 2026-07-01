@@ -71,7 +71,7 @@ def test_preflight_4_dump_missing(mock_which, mock_connect, tmp_path):
 @patch.dict("os.environ", {"DATABASE_URL": "postgres://u:p@localhost:5433/x"})
 @patch("ufc_prediction.cli.db.psycopg.connect")
 @patch("ufc_prediction.cli.db.shutil.which", return_value="/usr/bin/pg_restore")
-@patch("ufc_prediction.cli.db.SessionLocal")
+@patch("ufc_prediction.cli.db._session_for")
 def test_preflight_5_target_not_empty_without_force(
     mock_session, mock_which, mock_connect, tmp_path
 ):
@@ -86,7 +86,7 @@ def test_preflight_5_target_not_empty_without_force(
 @patch.dict("os.environ", {"DATABASE_URL": "postgres://u:p@localhost:5433/x"})
 @patch("ufc_prediction.cli.db.psycopg.connect")
 @patch("ufc_prediction.cli.db.shutil.which", return_value="/usr/bin/pg_restore")
-@patch("ufc_prediction.cli.db.SessionLocal")
+@patch("ufc_prediction.cli.db._session_for")
 @patch("ufc_prediction.cli.db.subprocess.run")
 @patch("ufc_prediction.cli.db._row_counts", return_value={t: 1 for t in CANONICAL_TABLES})
 @patch("ufc_prediction.cli.db._print_row_table")
@@ -116,7 +116,7 @@ def test_seed_skips_alembic_when_no_migrate(
 @patch.dict("os.environ", {"DATABASE_URL": "postgres://u:p@localhost:5433/x"})
 @patch("ufc_prediction.cli.db.psycopg.connect")
 @patch("ufc_prediction.cli.db.shutil.which", return_value="/usr/bin/pg_restore")
-@patch("ufc_prediction.cli.db.SessionLocal")
+@patch("ufc_prediction.cli.db._session_for")
 @patch("ufc_prediction.cli.db.subprocess.run")
 @patch("ufc_prediction.cli.db._row_counts", return_value={t: 1 for t in CANONICAL_TABLES})
 @patch("ufc_prediction.cli.db._print_row_table")
@@ -146,7 +146,7 @@ def test_seed_runs_alembic_by_default(
 @patch.dict("os.environ", {"DATABASE_URL": "postgres://u:p@localhost:5433/x"})
 @patch("ufc_prediction.cli.db.psycopg.connect")
 @patch("ufc_prediction.cli.db.shutil.which", return_value="/usr/bin/pg_restore")
-@patch("ufc_prediction.cli.db.SessionLocal")
+@patch("ufc_prediction.cli.db._session_for")
 @patch("ufc_prediction.cli.db.subprocess.run")
 def test_seed_surfaces_pg_restore_failure(
     mock_run,
@@ -167,7 +167,7 @@ def test_seed_surfaces_pg_restore_failure(
 @patch.dict("os.environ", {"DATABASE_URL": "postgres://u:p@localhost:5433/x"})
 @patch("ufc_prediction.cli.db.psycopg.connect")
 @patch("ufc_prediction.cli.db.shutil.which", return_value="/usr/bin/pg_restore")
-@patch("ufc_prediction.cli.db.SessionLocal")
+@patch("ufc_prediction.cli.db._session_for")
 @patch("ufc_prediction.cli.db.subprocess.run")
 @patch("ufc_prediction.cli.db._row_counts", return_value={t: 1 for t in CANONICAL_TABLES})
 @patch("ufc_prediction.cli.db._print_row_table")

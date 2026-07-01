@@ -585,9 +585,15 @@ class TestScrapeEventUrls:
         # ``self._session.execute(select(Fighter.id, Fighter.name)).all()``
         # — return one candidate so the match attempt doesn't trivially
         # short-circuit.
-        result_mock = MagicMock()
-        result_mock.all.return_value = [SimpleNamespace(id=1, name="Placeholder Name")]
-        session_mock.execute.return_value = result_mock
+        # _match_fighters now issues TWO queries: (1) candidate (id, name) rows
+        # for the fuzzy matcher, then (2) a (id, source_id) map used to resolve a
+        # canonical database_id against real fighters (review #6 existence check).
+        # Serve them in order via side_effect.
+        cand_result = MagicMock()
+        cand_result.all.return_value = [SimpleNamespace(id=1, name="Placeholder Name")]
+        srcid_result = MagicMock()
+        srcid_result.all.return_value = [(1, "placeholder-ufcstats-id")]
+        session_mock.execute.side_effect = [cand_result, srcid_result]
         ingester_with_session = BFOOddsIngester(
             session=session_mock,
             data_folder=tmp_path,

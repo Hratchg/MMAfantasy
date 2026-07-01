@@ -191,6 +191,42 @@ class TestScraperClientGet:
         assert result == "<html>OK</html>"
         assert mock_client.get.call_count == 2
 
+    @pytest.mark.parametrize("status", [520, 521, 522, 523, 524])
+    @patch("ufc_prediction.scraper.client.time")
+    @patch("ufc_prediction.scraper.client.httpx.Client")
+    def test_get_retries_on_cloudflare_5xx_family(
+        self, mock_client_cls, mock_time, status, mock_response_200
+    ):
+        """get() retries the WHOLE Cloudflare origin-error family (520-524), not just 522.
+
+        Guards against a refactor to a numeric predicate (e.g. range(520, 524),
+        an easy off-by-one that would silently stop retrying 524) — review
+        finding #9.
+        """
+        mock_time.monotonic.return_value = 100.0
+        mock_time.sleep = MagicMock()
+        resp = MagicMock()
+        resp.status_code = status
+        resp.text = "cloudflare origin error"
+        resp.raise_for_status.side_effect = httpx.HTTPStatusError(
+            f"{status} <none>", request=MagicMock(), response=resp
+        )
+        mock_client = MagicMock()
+        mock_client.get.side_effect = [resp, mock_response_200]
+        mock_client_cls.return_value = mock_client
+
+        client = ScraperClient(delay=0.0, max_retries=3)
+        result = client.get("http://example.com")
+
+        assert result == "<html>OK</html>"
+        assert mock_client.get.call_count == 2
+
+    def test_retryable_status_set_covers_expected_codes(self):
+        """The retryable set must include 429/503 + the Cloudflare 520-524 family."""
+        from ufc_prediction.scraper.client import _RETRYABLE_STATUS
+
+        assert {429, 503, 520, 521, 522, 523, 524} <= _RETRYABLE_STATUS
+
     @patch("ufc_prediction.scraper.client.time")
     @patch("ufc_prediction.scraper.client.httpx.Client")
     def test_get_raises_after_max_retries(self, mock_client_cls, mock_time, mock_response_429):

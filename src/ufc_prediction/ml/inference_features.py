@@ -60,7 +60,7 @@ from ufc_prediction.models.fight_odds import FightOdds
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.models.venue import Venue
 from ufc_prediction.scraper.bfo_math import (
-    closing_ml_consensus,
+    devig_closing_range,
     devig_proportional,
 )
 
@@ -902,15 +902,12 @@ def _populate_odds(
             and live_odds.fighter_b_closing_min is not None
             and live_odds.fighter_b_closing_max is not None
         ):
-            a_mid = closing_ml_consensus(
+            cl_a, cl_b = devig_closing_range(
                 live_odds.fighter_a_closing_min,
                 live_odds.fighter_a_closing_max,
-            )
-            b_mid = closing_ml_consensus(
                 live_odds.fighter_b_closing_min,
                 live_odds.fighter_b_closing_max,
             )
-            cl_a, cl_b = devig_proportional(a_mid, b_mid)
     elif cached_a is not None and cached_b is not None:
         op_a = cached_a.get("opening_implied_prob")
         op_b = cached_b.get("opening_implied_prob")

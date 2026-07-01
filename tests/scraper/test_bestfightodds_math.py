@@ -12,7 +12,8 @@ import pytest
 
 from ufc_prediction.scraper.bfo_math import (
     american_ml_to_implied_prob,
-    closing_ml_consensus,
+    closing_prob_consensus,
+    devig_closing_range,
     devig_proportional,
 )
 
@@ -70,21 +71,45 @@ class TestDevigProportional:
         assert isinstance(result[1], float)
 
 
-class TestClosingMlConsensus:
-    """`closing_ml_consensus` — D-01 midpoint of book-to-book closing range."""
+class TestAmericanMlGuard:
+    """`american_ml_to_implied_prob` rejects invalid moneylines (review #3)."""
 
-    def test_closing_consensus_midpoint_even(self) -> None:
-        """Even midpoint: (-200, -180) -> -190."""
-        assert closing_ml_consensus(-200, -180) == -190
+    @pytest.mark.parametrize("ml", [-99, -1, 0, 1, 50, 99])
+    def test_rejects_values_inside_open_interval(self, ml: int) -> None:
+        """Values in (-100, 100) are not valid American odds → ValueError.
 
-    def test_closing_consensus_midpoint_odd_rounds(self) -> None:
-        """Odd midpoint uses Python 3.12 banker's rounding via int(round(...)).
-
-        (-195, -180) -> raw midpoint -187.5 -> int(round(-187.5)) == -188
-        (Python 3 rounds half to even: -187.5 -> -188 since -188 is even).
+        This is the guard that catches a midpoint that averaged two MLs across
+        zero (e.g. -2) instead of silently returning a garbage probability.
         """
-        assert closing_ml_consensus(-195, -180) == -188
+        with pytest.raises(ValueError, match="invalid American moneyline"):
+            american_ml_to_implied_prob(ml)
 
-    def test_closing_consensus_mixed_signs(self) -> None:
-        """Mixed-sign range: (-110, 120) -> midpoint 5."""
-        assert closing_ml_consensus(-110, 120) == 5
+    @pytest.mark.parametrize("ml", [-100, 100, -110, 250, -1000])
+    def test_accepts_valid_moneylines(self, ml: int) -> None:
+        """|ml| >= 100 (incl. even ±100) is accepted."""
+        p = american_ml_to_implied_prob(ml)
+        assert 0.0 < p < 1.0
+
+
+class TestClosingProbConsensus:
+    """`closing_prob_consensus` / `devig_closing_range` — probability-space
+    closing consensus (review #3: supersedes the broken ML-midpoint method)."""
+
+    def test_consensus_same_side_range(self) -> None:
+        """(-200, -180) -> mean(0.6667, 0.6429) = 0.6548 (both favorite)."""
+        assert closing_prob_consensus(-200, -180) == pytest.approx(0.6548, abs=1e-4)
+
+    def test_straddle_zero_range_is_sane(self) -> None:
+        """REGRESSION: a range straddling zero must NOT collapse to garbage.
+
+        The old midpoint method turned (-105, 100) into midpoint -2 -> p=0.0196.
+        Probability-space consensus gives mean(0.5122, 0.5000) = 0.5061.
+        """
+        assert closing_prob_consensus(-105, 100) == pytest.approx(0.5061, abs=1e-4)
+
+    def test_devig_closing_range_near_even_fight(self) -> None:
+        """The full near-even devig is ~50/50, not the old (0.0196, 0.9804)."""
+        p_a, p_b = devig_closing_range(-105, 100, -100, 105)
+        assert p_a == pytest.approx(0.5, abs=0.02)
+        assert p_b == pytest.approx(0.5, abs=0.02)
+        assert (p_a + p_b) == pytest.approx(1.0, abs=1e-9)

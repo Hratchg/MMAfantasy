@@ -123,6 +123,10 @@ def test_nan_closing_prob_diff_currently_falls_back_to_base_prob(tmp_path):
     p = predictor_module.ModelPredictor(
         model_dir=str(model_dir), version="vmeta", meta_dir=str(meta_dir)
     )
+    # This test characterizes the nan_closing_prob_diff meta-skip path; the
+    # global META_DISABLED_NO_LIFT guard (which would short-circuit before the
+    # dispatch) is covered separately in test_predictor_meta_dispatch.py.
+    p.META_DISABLED_NO_LIFT = False
 
     with (
         patch.object(p, "model") as mock_xgb,

@@ -29,7 +29,11 @@ pytestmark = pytest.mark.skipif(
 
 
 def _make_predictor():
-    return pmod.ModelPredictor(model_dir="models", version="v2", meta_dir="models/meta")
+    p = pmod.ModelPredictor(model_dir="models", version="v2", meta_dir="models/meta")
+    # These tests validate the retained 13-col dispatch logic; the global
+    # META_DISABLED_NO_LIFT guard is exercised in test_predictor_meta_dispatch.py.
+    p.META_DISABLED_NO_LIFT = False
+    return p
 
 
 def _patch_common(monkeypatch, p):

@@ -111,6 +111,9 @@ def _patched_predict(
         version="vmeta",
         meta_dir=None if no_use_meta else str(meta_dir),
     )
+    # Exercise the retained meta dispatch logic; the default meta-off guard
+    # (META_DISABLED_NO_LIFT) is covered in test_predictor_meta_dispatch.py.
+    p.META_DISABLED_NO_LIFT = False
     idx = FEATURE_COLUMNS_NO_NET.index("closing_prob_diff")
     feature_vec = np.zeros((1, 72))
     feature_vec[0, idx] = closing_prob_diff

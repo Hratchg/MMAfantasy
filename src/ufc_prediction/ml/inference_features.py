@@ -755,13 +755,13 @@ def _populate_meta(
 
     Only per-fighter ``layoff_days_red``/``layoff_days_blue`` are written here.
 
-    KNOWN GAP (review #12, corrects a stale note): the differential
-    ``days_since_last_fight_diff`` is NOT populated at inference — it is not in
-    ``_populate_performance``'s key set and is never assigned, so it stays NaN.
-    The base xgb_v2 model tolerates this via XGBoost's NaN default branch, but it
-    blocks the META-V22 stacker (whose StandardScaler cannot ingest NaN), so the
-    meta currently skips to the base prob on real matchups. Closing this gap
-    changes base-model inference inputs and must be gate-validated (follow-up).
+    INFERENCE-PARITY FIX (2026-07-01): the differential
+    ``days_since_last_fight_diff`` is now populated below to match the training
+    career block exactly (was previously NaN at inference, a train/serve gap).
+    Note this un-starves the 13-col META-V22 stacker (its StandardScaler can now
+    ingest a full row); because the meta adds no lift (KNOWN_ISSUES "Model
+    performance clarification") it is explicitly kept OFF at the predictor level
+    (see ``FightPredictor`` meta-off guard) so it cannot run and regress.
     """
     # Layoff (per-fighter only): query each fighter's prior fight date.
     prior_a = _query_fighter_prior_fight_date(
@@ -777,6 +777,18 @@ def _populate_meta(
     feats["layoff_days_red"] = layoff_days(event_date_val, prior_a)
     feats["layoff_days_blue"] = layoff_days(event_date_val, prior_b)
     # NB: layoff_days_diff intentionally NOT written (Q4 + D-07).
+
+    # days_since_last_fight_diff — inference-parity fix (2026-07-01). The base
+    # xgb_v2 model is trained WITH this feature (FEATURE_COLUMNS_NO_NET[32],
+    # feature_matrix.py career block), but it was previously never populated at
+    # inference and defaulted to NaN. Populate it to match training EXACTLY:
+    # unclipped, NaN-for-debut, A-B, NaN-propagating. (Magnitude parity with
+    # training; the sign convention matches training's A/B ordering.)
+    days_a = float((event_date_val - prior_a).days) if prior_a is not None else float("nan")
+    days_b = float((event_date_val - prior_b).days) if prior_b is not None else float("nan")
+    feats["days_since_last_fight_diff"] = (
+        days_a - days_b if (days_a == days_a and days_b == days_b) else float("nan")
+    )
 
     # Age (Pitfall #5 — uses event_date).
     feats["age_at_fight_red"] = age_at_fight(

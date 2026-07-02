@@ -209,6 +209,54 @@ Both are now the first entries in the CONTRIBUTING.md "First-time setup" block
 (previously only `uv sync` was listed, which is why the hook was missed). No
 separate `uv tool install pre-commit` is required anymore.
 
+## Model performance clarification — META-V22 provides no lift over base xgb_v2 (2026-07-01)
+
+**TL;DR:** The headline "~75–78% accuracy / ~0.15 Brier" for META-V22 was a
+**deduplicated-Phase-26-substrate artifact**. On the current corpus the stacker
+performs **≈ the base `xgb_v2` model (~70% accuracy / ~0.20 Brier)** — it adds no
+real lift. Treat the base model as the honest performance ceiling. Do **not**
+attempt to "enable" META-V22 at inference; doing so regresses predictions.
+
+**Two facts operators should know:**
+
+1. **META-V22 has been dormant at inference the whole time.** Its 13-feature
+   Level-1 vector requires `days_since_last_fight_diff`, which is not populated in
+   the live inference path, so `predict()` sets `meta_skipped_reason=
+   "nan_meta_input"` and returns the **base `xgb_v2`** probability. Every
+   prediction the CLI/API has ever served is the base model's — which is fine,
+   because (see #2) the base is as good as the meta anyway.
+
+2. **The stacker does not beat the base — verified three ways (2026-07-01):**
+   - Promoted `meta_v2`'s own metrics block reports **Brier 0.213 / acc 0.70**
+     (12mo) — the "~0.15/78%" numbers appear only in the `meta_v2_candidate` /
+     `meta_v2_dedup` sidecars, measured on the deduplicated Phase-26 substrate.
+   - Frozen `meta_v2` run on the current substrate → **Brier 0.42, 72.8% of
+     outputs saturated at 0/1**: the documented baseline-scaler-OOD substrate-drift
+     confound (its `StandardScaler` was fit on the Phase-26 substrate).
+   - A clean **refit** of the same architecture on the current substrate →
+     **Brier 0.207 / acc 0.71**, statistically indistinguishable from base
+     **(0.193 / 0.70)**. So even the ideal fix yields no lift.
+
+**Why (mechanistic):** 10 of META-V22's 13 Level-1 inputs are already base
+`xgb_v2` features; the base (gradient-boosted trees) already models their
+interactions and is already probability-calibrated. The only genuinely-new
+input is `division_finish_rate_shrunk` (a single weak division-level rate);
+`elo_prob` largely duplicates the base's Elo diffs. There is almost no
+incremental signal for the stacker to exploit.
+
+**Consequences / guidance:**
+- **Canonical predictor = base `xgb_v2` (~70% / ~0.20 Brier).** Where other docs
+  (`BUSINESS_HANDOFF.md`, `TECHNICAL_HANDOFF.md`, `METHODOLOGY_CLIENT.md`) cite
+  ~75%, read it as **~70%** on the current corpus.
+- The prior "re-measure META-V22 on v2.3 widened slices" item
+  (`docs/QUICKSTART-PARTNER.md`) is **closed as no-lift** — not worth pursuing.
+- Frozen artifacts are unchanged and were never touched by this investigation
+  (`xgb_v2.joblib` / `meta_v2.joblib` SHAs match the AUDIT-01 baseline).
+- Reproduce: the head-to-head + refit are derivable from
+  `scripts/remeasure_meta_v22_v23.py` plus a same-architecture refit on the
+  post-cutoff (out-of-fold) rows; no frozen-model or model-weight change is
+  required or advisable.
+
 ## How to Report New Issues
 
 Open a GitHub issue at the project repository. One-line title format helps

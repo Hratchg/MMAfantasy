@@ -36,7 +36,9 @@ It runs as a Python service with two access methods: a command-line tool for ana
 
 The corpus is frozen at v3.0 close. Every fight up to early June 2026 is in there. The model files are byte-frozen and audit-protected — they can't drift accidentally.
 
-The accuracy is about 75% on recent fights. The closing betting market itself hits ~70–75%. UFC has high inherent variance — a single punch flips an 8-second outcome — so 75% is roughly the ceiling on this sport. The product's edge isn't beating the bookmakers; it's the per-fighter explainability layered on top.
+The accuracy is about **70%** on recent fights (~0.20 Brier). The closing betting market itself hits ~70–75%. UFC has high inherent variance — a single punch flips an 8-second outcome — so this is roughly the ceiling on this sport. The product's edge isn't beating the bookmakers; it's the per-fighter explainability layered on top.
+
+> **Correction (2026-07-01):** earlier drafts cited "~75%." A re-measurement on the current corpus put the honest figure at **~70% / ~0.20 Brier** (the base `xgb_v2` model). The higher number came from a deduplicated-substrate measurement of the META-V22 stacker that did not reproduce — the stacker adds no lift over the base. See `KNOWN_ISSUES.md` → "Model performance clarification."
 
 ---
 

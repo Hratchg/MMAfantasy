@@ -27,15 +27,17 @@ You can talk to it two ways:
 
 ## 2. How accurate is it?
 
-Honest answer: **about 70-75% accurate**, which is roughly where the betting market is too. That's the ceiling on this sport — UFC fights have a lot of single-punch randomness.
+Honest answer: **about 70% accurate (~0.20 Brier)**, which is roughly where the betting market is too. That's the ceiling on this sport — UFC fights have a lot of single-punch randomness.
 
-On a held-out test set of recent fights:
+> **Correction (2026-07-01):** the table below reports the **META-V22** stacker on a *deduplicated Phase-26 substrate*. Those figures **do not reproduce on the current corpus** and are retained only for lineage. A 2026-07-01 re-measurement found META-V22 provides **no lift over the base `xgb_v2`**: frozen on the current substrate it regresses (0.42 Brier, scaler-OOD confound), and a clean refit only matches base (0.207 vs 0.193). The base model — what the CLI/API actually serve — is **~70% accuracy / ~0.20 Brier**. Full evidence in `KNOWN_ISSUES.md` → "Model performance clarification."
+
+On a held-out test set of recent fights (META-V22, deduplicated Phase-26 substrate — see correction above):
 
 | Slice | Accuracy | Brier score (lower = better) |
 |---|---|---|
-| Most recent 12 months | ~75% | 0.161 |
-| Most recent 24 months | ~75% | 0.165 |
-| Random 15% holdout | ~75% | 0.154 |
+| Most recent 12 months | ~75% (dedup substrate) | 0.161 |
+| Most recent 24 months | ~75% (dedup substrate) | 0.165 |
+| Random 15% holdout | ~75% (dedup substrate) | 0.154 |
 
 The model's real value isn't beating the market — it's giving you a probability *and an explanation* (which fighter has the Elo edge, which has the striking edge, etc.) that you can show to fantasy users.
 

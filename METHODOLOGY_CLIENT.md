@@ -20,6 +20,8 @@ No statistical background is needed to follow this document. Technical terms are
 
 We assign every active UFC fighter a numerical rating that represents their current skill level. These ratings feed into a machine learning model that predicts fight outcomes with **60.1% accuracy** across 3,315 test fights.
 
+> **Note (2026-07-01):** this is a v2.0-era document describing the Elo-anchored pipeline (60.1% / 0.2348 Brier). The current shipped model (base `xgb_v2`, which folds in closing-odds features) reaches **~70% accuracy / ~0.20 Brier** on recent fights. See `KNOWN_ISSUES.md` → "Model performance clarification" for the current, evidence-based figures.
+
 The system accounts for:
 
 - **Who they beat** -- beating a top-10 fighter is worth more than beating a newcomer

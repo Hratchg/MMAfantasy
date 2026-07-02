@@ -18,6 +18,15 @@ Decisions implemented:
 from __future__ import annotations
 
 
+class InvalidMoneylineError(ValueError):
+    """Raised for an out-of-domain American moneyline (|ml| < 100).
+
+    Subclasses ``ValueError`` (back-compat: existing ``except ValueError``
+    handlers still catch it), but lets callers catch ONLY the domain-guard
+    failure without swallowing unrelated ``ValueError``s — review #12 nit.
+    """
+
+
 def american_ml_to_implied_prob(ml: int) -> float:
     """Raw implied probability from an American moneyline (includes vig).
 
@@ -39,7 +48,7 @@ def american_ml_to_implied_prob(ml: int) -> float:
     reject it loudly rather than return garbage. See ``closing_prob_consensus``.
     """
     if -100 < ml < 100:
-        raise ValueError(
+        raise InvalidMoneylineError(
             f"invalid American moneyline {ml!r}: |ml| must be >= 100 "
             "(values in (-100, 100) are not valid odds — did you average MLs across zero?)"
         )

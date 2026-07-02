@@ -45,6 +45,7 @@ from ufc_prediction.models.fight_odds import FightOdds
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.scraper.bfo_matcher import match_bfo_name
 from ufc_prediction.scraper.bfo_math import (
+    InvalidMoneylineError,
     devig_closing_range,
     devig_proportional,
 )
@@ -375,7 +376,7 @@ class BFOOddsIngester:
         ``other_row``, then upsert into ``fight_odds`` idempotently.
         """
         # Bad-data resilience (review #12): the devig helpers now raise
-        # ValueError on an out-of-domain moneyline (|ml| < 100). BFOOddsRow does
+        # InvalidMoneylineError on an out-of-domain moneyline (|ml| < 100). BFOOddsRow does
         # not validate moneylines, so a single malformed feed cell must NOT abort
         # the whole batch (bfo_ingest invariant: one bad row ≠ thousands lost).
         # Catch per-field and leave that prob NULL, mirroring the missing-data path.
@@ -384,7 +385,7 @@ class BFOOddsIngester:
             try:
                 p_this, _ = devig_proportional(this_row.opening, other_row.opening)
                 opening_prob = p_this
-            except ValueError as exc:
+            except InvalidMoneylineError as exc:
                 logger.warning(
                     "skipping opening odds for fight_id=%s fighter_id=%s: %s",
                     fight_id,
@@ -407,7 +408,7 @@ class BFOOddsIngester:
                     other_row.closing_range_max,
                 )
                 closing_prob = p_this
-            except ValueError as exc:
+            except InvalidMoneylineError as exc:
                 logger.warning(
                     "skipping closing odds for fight_id=%s fighter_id=%s: %s",
                     fight_id,

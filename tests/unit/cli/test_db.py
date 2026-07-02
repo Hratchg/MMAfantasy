@@ -69,6 +69,20 @@ def test_check_target_empty_fails_closed_on_generic_db_error():
     assert sess.rollback.called
 
 
+def test_sqlalchemy_url_normalizes_bare_postgres_forms():
+    """#8 helper: bare postgres[ql]:// → +psycopg driver (review #12 nit)."""
+    assert (
+        dbmod._sqlalchemy_url("postgresql://u:p@h:5433/db") == "postgresql+psycopg://u:p@h:5433/db"
+    )
+    assert dbmod._sqlalchemy_url("postgres://u:p@h/db") == "postgresql+psycopg://u:p@h/db"
+
+
+def test_sqlalchemy_url_passthrough_for_explicit_drivers():
+    """Already-driver'd and non-postgres URLs pass through unchanged."""
+    for u in ("postgresql+psycopg://u@h/db", "postgresql+asyncpg://u@h/db", "sqlite:///x.db"):
+        assert dbmod._sqlalchemy_url(u) == u
+
+
 def test_canonical_tables_count():
     assert len(CANONICAL_TABLES) == 12
     assert CANONICAL_TABLES[0] == "events"

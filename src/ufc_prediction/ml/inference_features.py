@@ -60,6 +60,7 @@ from ufc_prediction.models.fight_odds import FightOdds
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.models.venue import Venue
 from ufc_prediction.scraper.bfo_math import (
+    InvalidMoneylineError,
     devig_closing_range,
     devig_proportional,
 )
@@ -898,17 +899,19 @@ def _populate_odds(
         # moneylines from the parsed fighter-page row; B-side often arrives
         # as None and must NaN out per Pattern D.
         #
-        # Bad-data resilience (review #12): the devig helpers raise ValueError on
-        # an out-of-domain moneyline (|ml| < 100). Per Pattern D ("missing data →
-        # NaN, never crash"), a corrupt odds value must leave the odds feats NaN,
-        # not raise out of predict(). Catch and degrade.
+        # Bad-data resilience (review #12): the devig helpers raise
+        # InvalidMoneylineError on an out-of-domain moneyline (|ml| < 100). Per
+        # Pattern D ("missing data → NaN, never crash"), a corrupt odds value must
+        # leave the odds feats NaN, not raise out of predict(). Catch, log
+        # (mirroring the ingest path), and degrade.
         if live_odds.fighter_a_opening is not None and live_odds.fighter_b_opening is not None:
             try:
                 op_a, op_b = devig_proportional(
                     live_odds.fighter_a_opening,
                     live_odds.fighter_b_opening,
                 )
-            except ValueError:
+            except InvalidMoneylineError as exc:
+                logger.warning("live opening odds NaN-degraded (bad moneyline): %s", exc)
                 op_a = op_b = None
         if (
             live_odds.fighter_a_closing_min is not None
@@ -923,7 +926,8 @@ def _populate_odds(
                     live_odds.fighter_b_closing_min,
                     live_odds.fighter_b_closing_max,
                 )
-            except ValueError:
+            except InvalidMoneylineError as exc:
+                logger.warning("live closing odds NaN-degraded (bad moneyline): %s", exc)
                 cl_a = cl_b = None
     elif cached_a is not None and cached_b is not None:
         op_a = cached_a.get("opening_implied_prob")

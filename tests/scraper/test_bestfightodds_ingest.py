@@ -50,6 +50,37 @@ def test_bfo_odds_row_accepts_null_odds() -> None:
     assert row.closing_range_max is None
 
 
+def test_upsert_row_bad_moneyline_does_not_abort_batch() -> None:
+    """review #12 (Major): an out-of-domain moneyline (|ml|<100) must skip that
+    row's odds and still upsert (NULL prob) — NOT raise and kill the whole batch.
+    """
+    from unittest.mock import MagicMock
+
+    from ufc_prediction.scraper.bfo_ingest import BFOOddsIngester
+
+    ingester = BFOOddsIngester(session=MagicMock(), data_folder=Path("."))
+    # this_row has an invalid closing range (-50 is not a valid American ML);
+    # opening is valid. The devig helper will raise ValueError internally.
+    this_row = BFOOddsRow(
+        fight_id="f", fighter_id="a", opening=-200, closing_range_min=-50, closing_range_max=-40
+    )
+    other_row = BFOOddsRow(
+        fight_id="f", fighter_id="b", opening=170, closing_range_min=170, closing_range_max=180
+    )
+    # Must not raise despite the bad closing moneyline.
+    ingester._upsert_row(1, 1, this_row, other_row)
+    # The row is still upserted, keeping the batch alive...
+    assert ingester._session.execute.called
+    # ...and the bad closing prob is NULL while the valid opening prob is kept
+    # (a regression that swallowed the error but wrote garbage would fail here).
+    from sqlalchemy.dialects import postgresql
+
+    stmt = ingester._session.execute.call_args.args[0]
+    params = stmt.compile(dialect=postgresql.dialect()).params
+    assert params["closing_implied_prob"] is None
+    assert params["opening_implied_prob"] is not None
+
+
 def test_bfo_odds_row_rejects_non_int_opening() -> None:
     """Non-numeric string on opening ML raises ValidationError (T-13-01)."""
     with pytest.raises(ValidationError):

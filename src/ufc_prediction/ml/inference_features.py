@@ -60,7 +60,8 @@ from ufc_prediction.models.fight_odds import FightOdds
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.models.venue import Venue
 from ufc_prediction.scraper.bfo_math import (
-    closing_ml_consensus,
+    InvalidMoneylineError,
+    devig_closing_range,
     devig_proportional,
 )
 
@@ -752,9 +753,15 @@ def _populate_meta(
     ``_populate_physical``; per-fighter ``age_at_fight_*`` here also uses
     event_date).
 
-    Q4 RESOLVED: no ``layoff_days_diff`` is written — the canonical
-    differential ``days_since_last_fight_diff`` is already populated by
-    ``_populate_performance`` (FEATURE_COLUMNS_NO_NET[61]).
+    Only per-fighter ``layoff_days_red``/``layoff_days_blue`` are written here.
+
+    KNOWN GAP (review #12, corrects a stale note): the differential
+    ``days_since_last_fight_diff`` is NOT populated at inference — it is not in
+    ``_populate_performance``'s key set and is never assigned, so it stays NaN.
+    The base xgb_v2 model tolerates this via XGBoost's NaN default branch, but it
+    blocks the META-V22 stacker (whose StandardScaler cannot ingest NaN), so the
+    meta currently skips to the base prob on real matchups. Closing this gap
+    changes base-model inference inputs and must be gate-validated (follow-up).
     """
     # Layoff (per-fighter only): query each fighter's prior fight date.
     prior_a = _query_fighter_prior_fight_date(
@@ -891,26 +898,37 @@ def _populate_odds(
         # ingest pipeline. The bfo_live single-shot only populates A's
         # moneylines from the parsed fighter-page row; B-side often arrives
         # as None and must NaN out per Pattern D.
+        #
+        # Bad-data resilience (review #12): the devig helpers raise
+        # InvalidMoneylineError on an out-of-domain moneyline (|ml| < 100). Per
+        # Pattern D ("missing data → NaN, never crash"), a corrupt odds value must
+        # leave the odds feats NaN, not raise out of predict(). Catch, log
+        # (mirroring the ingest path), and degrade.
         if live_odds.fighter_a_opening is not None and live_odds.fighter_b_opening is not None:
-            op_a, op_b = devig_proportional(
-                live_odds.fighter_a_opening,
-                live_odds.fighter_b_opening,
-            )
+            try:
+                op_a, op_b = devig_proportional(
+                    live_odds.fighter_a_opening,
+                    live_odds.fighter_b_opening,
+                )
+            except InvalidMoneylineError as exc:
+                logger.warning("live opening odds NaN-degraded (bad moneyline): %s", exc)
+                op_a = op_b = None
         if (
             live_odds.fighter_a_closing_min is not None
             and live_odds.fighter_a_closing_max is not None
             and live_odds.fighter_b_closing_min is not None
             and live_odds.fighter_b_closing_max is not None
         ):
-            a_mid = closing_ml_consensus(
-                live_odds.fighter_a_closing_min,
-                live_odds.fighter_a_closing_max,
-            )
-            b_mid = closing_ml_consensus(
-                live_odds.fighter_b_closing_min,
-                live_odds.fighter_b_closing_max,
-            )
-            cl_a, cl_b = devig_proportional(a_mid, b_mid)
+            try:
+                cl_a, cl_b = devig_closing_range(
+                    live_odds.fighter_a_closing_min,
+                    live_odds.fighter_a_closing_max,
+                    live_odds.fighter_b_closing_min,
+                    live_odds.fighter_b_closing_max,
+                )
+            except InvalidMoneylineError as exc:
+                logger.warning("live closing odds NaN-degraded (bad moneyline): %s", exc)
+                cl_a = cl_b = None
     elif cached_a is not None and cached_b is not None:
         op_a = cached_a.get("opening_implied_prob")
         op_b = cached_b.get("opening_implied_prob")

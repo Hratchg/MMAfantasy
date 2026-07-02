@@ -45,7 +45,8 @@ from ufc_prediction.models.fight_odds import FightOdds
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.scraper.bfo_matcher import match_bfo_name
 from ufc_prediction.scraper.bfo_math import (
-    closing_ml_consensus,
+    InvalidMoneylineError,
+    devig_closing_range,
     devig_proportional,
 )
 from ufc_prediction.scraper.bfo_models import BFOFighterName, BFOOddsRow
@@ -243,6 +244,21 @@ class BFOOddsIngester:
             (row.id, row.name)
             for row in self._session.execute(select(Fighter.id, Fighter.name)).all()
         ]
+        # Existence + semantics guards for the canonical path (see below). The
+        # two producers of fighters_names.csv disagree on database_id semantics:
+        # refresh_fighters_names_v26.py writes the int Fighter.id PK, while the
+        # operator-curated fixture stores ufcstats hex source_id hashes. Accept
+        # BOTH — but only when the referenced fighter actually exists — so a
+        # bogus/stale id can never be trusted as a PK (was: cast to int and used
+        # unchecked, silently mis-attributing or undercounting canonical hits).
+        valid_ids: set[int] = {fid for fid, _ in db_candidates}
+        sourceid_to_id: dict[str, int] = {
+            src_id: fid
+            for fid, src_id in self._session.execute(
+                select(Fighter.id, Fighter.source_id).where(Fighter.source == "ufcstats")
+            ).all()
+            if src_id is not None
+        }
 
         bfo_to_db: dict[str, int] = {}
         for bfo_id, name_rows in bfo_names.items():
@@ -255,17 +271,25 @@ class BFOOddsIngester:
                 continue
 
             # Canonical path (BFO-V25-02): trust the operator-curated alias
-            # substrate when database_id is present + int-parseable.
+            # substrate ONLY when database_id resolves to a real fighter — either
+            # as an int PK that exists, or as a ufcstats source_id hash.
             if preferred_row.database_id is not None:
+                canonical_id: int | None = None
                 try:
-                    canonical_id = int(preferred_row.database_id)
+                    as_int = int(preferred_row.database_id)
                 except (TypeError, ValueError):
-                    canonical_id = None
+                    as_int = None
+                if as_int is not None and as_int in valid_ids:
+                    canonical_id = as_int  # int PK, verified to exist
+                elif str(preferred_row.database_id) in sourceid_to_id:
+                    canonical_id = sourceid_to_id[str(preferred_row.database_id)]
                 if canonical_id is not None:
                     bfo_to_db[bfo_id] = canonical_id
                     summary.fighters_matched += 1
                     summary.fighters_matched_canonical += 1
                     continue
+                # database_id present but did not resolve to a real fighter →
+                # do NOT trust it; fall through to the fuzzy matcher.
 
             # Fuzzy fallback: alias substrate had no canonical id for this row.
             match = match_bfo_name(
@@ -351,10 +375,23 @@ class BFOOddsIngester:
         """Compute implied probs for ``this_row`` normalized against
         ``other_row``, then upsert into ``fight_odds`` idempotently.
         """
+        # Bad-data resilience (review #12): the devig helpers now raise
+        # InvalidMoneylineError on an out-of-domain moneyline (|ml| < 100). BFOOddsRow does
+        # not validate moneylines, so a single malformed feed cell must NOT abort
+        # the whole batch (bfo_ingest invariant: one bad row ≠ thousands lost).
+        # Catch per-field and leave that prob NULL, mirroring the missing-data path.
         opening_prob: float | None = None
         if this_row.opening is not None and other_row.opening is not None:
-            p_this, _ = devig_proportional(this_row.opening, other_row.opening)
-            opening_prob = p_this
+            try:
+                p_this, _ = devig_proportional(this_row.opening, other_row.opening)
+                opening_prob = p_this
+            except InvalidMoneylineError as exc:
+                logger.warning(
+                    "skipping opening odds for fight_id=%s fighter_id=%s: %s",
+                    fight_id,
+                    this_fighter_id,
+                    exc,
+                )
 
         closing_prob: float | None = None
         if (
@@ -363,12 +400,21 @@ class BFOOddsIngester:
             and other_row.closing_range_min is not None
             and other_row.closing_range_max is not None
         ):
-            this_mid = closing_ml_consensus(this_row.closing_range_min, this_row.closing_range_max)
-            other_mid = closing_ml_consensus(
-                other_row.closing_range_min, other_row.closing_range_max
-            )
-            p_this, _ = devig_proportional(this_mid, other_mid)
-            closing_prob = p_this
+            try:
+                p_this, _ = devig_closing_range(
+                    this_row.closing_range_min,
+                    this_row.closing_range_max,
+                    other_row.closing_range_min,
+                    other_row.closing_range_max,
+                )
+                closing_prob = p_this
+            except InvalidMoneylineError as exc:
+                logger.warning(
+                    "skipping closing odds for fight_id=%s fighter_id=%s: %s",
+                    fight_id,
+                    this_fighter_id,
+                    exc,
+                )
 
         stmt = pg_insert(FightOdds).values(
             fight_id=fight_id,

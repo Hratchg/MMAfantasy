@@ -282,6 +282,36 @@ def test_odds_block_parity_with_live(monkeypatch):
     assert vec[cl_idx] > 0
 
 
+def test_odds_block_degrades_on_bad_live_moneyline(monkeypatch):
+    """review #12 (Minor): a corrupt LIVE moneyline (|ml| < 100) must leave the
+    odds features NaN and must NOT raise out of build()/predict() (Pattern D).
+    """
+    from ufc_prediction.scraper.bfo_live import MatchupOdds
+
+    live = MatchupOdds(
+        fighter_a_opening=-200,
+        fighter_a_closing_min=-50,  # invalid: |ml| < 100 → devig raises, caught + degraded
+        fighter_a_closing_max=-40,
+        fighter_b_opening=170,
+        fighter_b_closing_min=150,
+        fighter_b_closing_max=190,
+        fetched_at=datetime.now(UTC),
+        source="live",
+    )
+    session = _patch_session_with_snapshots(monkeypatch)
+    fa = _stub_fighter(1)
+    fb = _stub_fighter(2)
+
+    # Must not raise despite the bad closing moneyline.
+    vec = inference_features.build(session, fa, fb, date(2026, 6, 14), live_odds=live)[0]
+
+    cl_idx = FEATURE_COLUMNS.index("closing_prob_diff")
+    op_idx = FEATURE_COLUMNS.index("opening_prob_diff")
+    # Closing degrades to NaN; opening (valid MLs) is still populated.
+    assert np.isnan(vec[cl_idx])
+    assert not np.isnan(vec[op_idx])
+
+
 # ── Test 5: no-odds fallback (NaN, never 0.0) ───────────────────────────────
 
 

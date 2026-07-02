@@ -2,11 +2,85 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import psycopg
+import pytest
+import typer
+from sqlalchemy.exc import ProgrammingError
 from typer.testing import CliRunner
 
+from ufc_prediction.cli import db as dbmod
 from ufc_prediction.cli.db import CANONICAL_TABLES, DEFAULT_DUMP_PATH, db_app
 
 runner = CliRunner()
+
+_URL = "postgresql+psycopg://u:p@localhost:5433/x"
+
+
+def _patch_session(sess):
+    """Patch _session_for to yield the given mock session."""
+    m = patch("ufc_prediction.cli.db._session_for")
+    ctx = m.start()
+    ctx.return_value.__enter__.return_value = sess
+    return m
+
+
+def test_check_target_empty_undefined_table_treated_as_empty():
+    """#4: a missing table (UndefinedTable) is legitimately empty → proceed."""
+    sess = MagicMock()
+    sess.execute.side_effect = ProgrammingError(
+        "SELECT COUNT(*)", {}, psycopg.errors.UndefinedTable("relation does not exist")
+    )
+    m = _patch_session(sess)
+    try:
+        # Should NOT raise: every table absent → empty target, force not needed.
+        dbmod._check_target_empty(force=False, url=_URL)
+    finally:
+        m.stop()
+    assert sess.rollback.called
+
+
+def test_check_target_empty_fails_closed_on_other_programming_error():
+    """#4 core: a non-UndefinedTable error must NOT be read as empty — abort."""
+    sess = MagicMock()
+    sess.execute.side_effect = ProgrammingError(
+        "SELECT COUNT(*)", {}, Exception("permission denied for table fights")
+    )
+    m = _patch_session(sess)
+    try:
+        with pytest.raises(typer.Exit) as ei:
+            dbmod._check_target_empty(force=False, url=_URL)
+    finally:
+        m.stop()
+    assert ei.value.exit_code == 1
+    assert sess.rollback.called
+
+
+def test_check_target_empty_fails_closed_on_generic_db_error():
+    """#4: any non-ProgrammingError DB error also fails closed (never silent-empty)."""
+    sess = MagicMock()
+    sess.execute.side_effect = RuntimeError("connection reset mid-count")
+    m = _patch_session(sess)
+    try:
+        with pytest.raises(typer.Exit) as ei:
+            dbmod._check_target_empty(force=False, url=_URL)
+    finally:
+        m.stop()
+    assert ei.value.exit_code == 1
+    assert sess.rollback.called
+
+
+def test_sqlalchemy_url_normalizes_bare_postgres_forms():
+    """#8 helper: bare postgres[ql]:// → +psycopg driver (review #12 nit)."""
+    assert (
+        dbmod._sqlalchemy_url("postgresql://u:p@h:5433/db") == "postgresql+psycopg://u:p@h:5433/db"
+    )
+    assert dbmod._sqlalchemy_url("postgres://u:p@h/db") == "postgresql+psycopg://u:p@h/db"
+
+
+def test_sqlalchemy_url_passthrough_for_explicit_drivers():
+    """Already-driver'd and non-postgres URLs pass through unchanged."""
+    for u in ("postgresql+psycopg://u@h/db", "postgresql+asyncpg://u@h/db", "sqlite:///x.db"):
+        assert dbmod._sqlalchemy_url(u) == u
 
 
 def test_canonical_tables_count():
@@ -71,7 +145,7 @@ def test_preflight_4_dump_missing(mock_which, mock_connect, tmp_path):
 @patch.dict("os.environ", {"DATABASE_URL": "postgres://u:p@localhost:5433/x"})
 @patch("ufc_prediction.cli.db.psycopg.connect")
 @patch("ufc_prediction.cli.db.shutil.which", return_value="/usr/bin/pg_restore")
-@patch("ufc_prediction.cli.db.SessionLocal")
+@patch("ufc_prediction.cli.db._session_for")
 def test_preflight_5_target_not_empty_without_force(
     mock_session, mock_which, mock_connect, tmp_path
 ):
@@ -86,7 +160,7 @@ def test_preflight_5_target_not_empty_without_force(
 @patch.dict("os.environ", {"DATABASE_URL": "postgres://u:p@localhost:5433/x"})
 @patch("ufc_prediction.cli.db.psycopg.connect")
 @patch("ufc_prediction.cli.db.shutil.which", return_value="/usr/bin/pg_restore")
-@patch("ufc_prediction.cli.db.SessionLocal")
+@patch("ufc_prediction.cli.db._session_for")
 @patch("ufc_prediction.cli.db.subprocess.run")
 @patch("ufc_prediction.cli.db._row_counts", return_value={t: 1 for t in CANONICAL_TABLES})
 @patch("ufc_prediction.cli.db._print_row_table")
@@ -116,7 +190,7 @@ def test_seed_skips_alembic_when_no_migrate(
 @patch.dict("os.environ", {"DATABASE_URL": "postgres://u:p@localhost:5433/x"})
 @patch("ufc_prediction.cli.db.psycopg.connect")
 @patch("ufc_prediction.cli.db.shutil.which", return_value="/usr/bin/pg_restore")
-@patch("ufc_prediction.cli.db.SessionLocal")
+@patch("ufc_prediction.cli.db._session_for")
 @patch("ufc_prediction.cli.db.subprocess.run")
 @patch("ufc_prediction.cli.db._row_counts", return_value={t: 1 for t in CANONICAL_TABLES})
 @patch("ufc_prediction.cli.db._print_row_table")
@@ -146,7 +220,7 @@ def test_seed_runs_alembic_by_default(
 @patch.dict("os.environ", {"DATABASE_URL": "postgres://u:p@localhost:5433/x"})
 @patch("ufc_prediction.cli.db.psycopg.connect")
 @patch("ufc_prediction.cli.db.shutil.which", return_value="/usr/bin/pg_restore")
-@patch("ufc_prediction.cli.db.SessionLocal")
+@patch("ufc_prediction.cli.db._session_for")
 @patch("ufc_prediction.cli.db.subprocess.run")
 def test_seed_surfaces_pg_restore_failure(
     mock_run,
@@ -167,7 +241,7 @@ def test_seed_surfaces_pg_restore_failure(
 @patch.dict("os.environ", {"DATABASE_URL": "postgres://u:p@localhost:5433/x"})
 @patch("ufc_prediction.cli.db.psycopg.connect")
 @patch("ufc_prediction.cli.db.shutil.which", return_value="/usr/bin/pg_restore")
-@patch("ufc_prediction.cli.db.SessionLocal")
+@patch("ufc_prediction.cli.db._session_for")
 @patch("ufc_prediction.cli.db.subprocess.run")
 @patch("ufc_prediction.cli.db._row_counts", return_value={t: 1 for t in CANONICAL_TABLES})
 @patch("ufc_prediction.cli.db._print_row_table")

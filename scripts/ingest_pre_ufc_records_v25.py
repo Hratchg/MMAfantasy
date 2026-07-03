@@ -45,6 +45,7 @@ _SRC = _PROJECT_ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
+from ufc_prediction.scraper.antibot import detect_antibot
 from ufc_prediction.scraper.sherdog import (
     compute_pre_ufc_stats,
     filter_pre_ufc_fights,
@@ -119,16 +120,10 @@ FAILURES_COLUMNS: list[str] = [
 OrgTier = Literal["major", "regional", "local", "none"]
 
 
-# Cloudflare / anti-bot HTML signatures (case-sensitive substring match
-# — Cloudflare emits these verbatim).
-_ANTIBOT_HTML_SIGNATURES: tuple[str, ...] = (
-    "Just a moment...",
-    "cf-browser-verification",
-    "Cloudflare Ray ID",
-    "Attention Required! | Cloudflare",
-)
-
-_ANTIBOT_STATUS_CODES: frozenset[int] = frozenset({403, 429, 503})
+# Anti-bot detection (signatures, status codes, and ``detect_antibot``) now
+# lives in ``ufc_prediction.scraper.antibot`` and is imported above so it can
+# be shared with the UFCStats browser fetcher. The names are re-exported here
+# (via the import) for backward compatibility with existing callers/tests.
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -276,23 +271,6 @@ def write_failures_csv(path: Path, failures: list[dict]) -> int:
         for row in failures:
             writer.writerow({col: row.get(col, "") for col in FAILURES_COLUMNS})
     return len(failures)
-
-
-def detect_antibot(html: str, status_code: int) -> bool:
-    """Detect Sherdog anti-bot challenge (Cloudflare / rate-limit gate).
-
-    Returns True on:
-    - HTTP status in {403, 429, 503}
-    - HTML containing any known Cloudflare challenge signature
-    """
-    if status_code in _ANTIBOT_STATUS_CODES:
-        return True
-    if not html:
-        return False
-    for sig in _ANTIBOT_HTML_SIGNATURES:
-        if sig in html:
-            return True
-    return False
 
 
 # ─────────────────────────────────────────────────────────────────────────

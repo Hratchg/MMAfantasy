@@ -76,6 +76,14 @@ class ModelPredictor:
     Per D-12: model coexists with Elo predictions.
     """
 
+    # META-V22 kill switch (2026-07-01). The 13-col meta stacker adds no lift
+    # over the calibrated base model (KNOWN_ISSUES "Model performance
+    # clarification"). Populating ``days_since_last_fight_diff`` at inference
+    # (inference_features._populate_meta) un-starves the meta so it would now
+    # run — and regress. Keep it explicitly OFF: the meta dispatch below
+    # short-circuits to the base prob whenever this is True.
+    META_DISABLED_NO_LIFT: bool = True
+
     def __init__(
         self,
         model_dir: str = "models",
@@ -376,6 +384,12 @@ class ModelPredictor:
             meta_skipped_reason = "fallback_no_odds_used"
         elif self.meta_model is None:
             meta_skipped_reason = "no_meta_artifact"
+        elif self.META_DISABLED_NO_LIFT:
+            # Explicit meta-off guard (see class docstring). A meta artifact IS
+            # loaded and odds are present, so the meta WOULD run here — but it
+            # adds no lift and the days_since inference-parity fix un-starves it
+            # into running and regressing. Keep it OFF and serve the base prob.
+            meta_skipped_reason = "disabled_no_lift"
         else:
             # Dispatch on the loaded meta's Level-1 width (validated in __init__).
             # META-01 (v1) is a 3-col stacker; META-V22 (v2) is a 13-col stacker.

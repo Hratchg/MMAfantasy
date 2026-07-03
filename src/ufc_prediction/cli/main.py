@@ -284,6 +284,37 @@ def ingest_mdabbert_cmd(
 # ── Scrape Commands ──────────────────────────────────────────────────────────
 
 
+def _build_scrape_fetcher(
+    backend: str,
+    delay: float,
+    workers: int,
+    proxy: str | None,
+) -> object:
+    """Construct the fetcher (context manager) for the chosen backend.
+
+    - ``http``: the default httpx :class:`ScraperClient`.
+    - ``browser``: a headless-Chromium :class:`BrowserFetcher` that solves the
+      UFCStats JS anti-bot challenge. Always single-worker/serial.
+
+    Both expose the same ``get`` / ``map`` / ``close`` / context-manager
+    interface consumed by the ingest orchestrator.
+    """
+    if backend == "browser":
+        from ufc_prediction.scraper.browser_fetch import BrowserFetcher
+
+        console.print(
+            "[yellow]Using headless-browser backend (operator-authorized "
+            "anti-bot bypass; single worker, polite rate).[/yellow]"
+        )
+        return BrowserFetcher(proxy=proxy, delay=delay)
+    if backend == "http":
+        from ufc_prediction.scraper.client import ScraperClient
+
+        return ScraperClient(delay=delay, workers=workers)
+    msg = f"Unknown backend '{backend}' (expected 'http' or 'browser')"
+    raise typer.BadParameter(msg)
+
+
 @scrape_app.command("all")
 def scrape_all(
     delay: Annotated[float, typer.Option(help="Delay between requests in seconds")] = 1.5,
@@ -296,17 +327,33 @@ def scrape_all(
             help="Concurrent worker threads (default 4). Reduce to 1 if rate-limited (429s).",
         ),
     ] = 4,
+    backend: Annotated[
+        str,
+        typer.Option(
+            help=(
+                "Fetch backend: 'http' (default, httpx ScraperClient) or "
+                "'browser' (headless Chromium, solves the JS anti-bot challenge)."
+            ),
+        ),
+    ] = "http",
+    proxy: Annotated[
+        str | None,
+        typer.Option(
+            help="Proxy URL for the browser backend (overrides UFC_SCRAPE_PROXY).",
+        ),
+    ] = None,
 ) -> None:
     """Scrape all completed events from UFCStats.com (full historical scrape).
 
     Downloads event listings, fight details, and fighter profiles.
     Uses upsert logic -- safe to re-run without creating duplicates.
     Use --after YYYY-MM-DD to resume from a specific date.
+    Use --backend browser to route through headless Chromium when UFCStats is
+    behind its JS proof-of-work anti-bot challenge (the 'browser' backend is
+    always single-worker/serial regardless of --workers).
     Estimated time: 2-3 hours with default 1.5s delay and workers=4.
     """
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-
-    from ufc_prediction.scraper.client import ScraperClient
 
     after_date = None
     if after:
@@ -317,11 +364,12 @@ def scrape_all(
     else:
         console.print("[bold]Starting full UFCStats scrape...[/bold]")
     console.print(f"Request delay: {delay}s")
+    console.print(f"Backend: {backend}")
     console.print(f"Workers: {workers}")
 
     session = SessionLocal()
     try:
-        with ScraperClient(delay=delay, workers=workers) as client:
+        with _build_scrape_fetcher(backend, delay, workers, proxy) as client:
             result = scrape_all_events(
                 session,
                 client,
@@ -355,22 +403,38 @@ def scrape_latest(
             help="Concurrent worker threads (default 4). Reduce to 1 if rate-limited (429s).",
         ),
     ] = 4,
+    backend: Annotated[
+        str,
+        typer.Option(
+            help=(
+                "Fetch backend: 'http' (default, httpx ScraperClient) or "
+                "'browser' (headless Chromium, solves the JS anti-bot challenge)."
+            ),
+        ),
+    ] = "http",
+    proxy: Annotated[
+        str | None,
+        typer.Option(
+            help="Proxy URL for the browser backend (overrides UFC_SCRAPE_PROXY).",
+        ),
+    ] = None,
 ) -> None:
     """Scrape only new events from UFCStats.com (incremental update).
 
     Compares UFCStats event listing against database and only downloads
     events not yet scraped. Fast way to update after a UFC event.
+    Use --backend browser to route through headless Chromium when UFCStats is
+    behind its JS proof-of-work anti-bot challenge.
     """
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-    from ufc_prediction.scraper.client import ScraperClient
-
     console.print("[bold]Checking for new events on UFCStats...[/bold]")
+    console.print(f"Backend: {backend}")
     console.print(f"Workers: {workers}")
 
     session = SessionLocal()
     try:
-        with ScraperClient(delay=delay, workers=workers) as client:
+        with _build_scrape_fetcher(backend, delay, workers, proxy) as client:
             result = scrape_latest_events(session, client, workers=workers)
 
         if result.accepted == 0 and result.rejected == 0:

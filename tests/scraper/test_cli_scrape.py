@@ -323,3 +323,74 @@ class TestScrapeSherdogCommand:
         assert result.exit_code == 0
         assert "--workers" in result.output
         assert "--since-year" in result.output
+
+
+# ── --backend browser CLI option (UFCStats browser scraper) ─────────────────
+
+
+class TestScrapeBackendOption:
+    """--backend browser routes ingest through the BrowserFetcher."""
+
+    def test_scrape_all_help_lists_backend_and_proxy(self) -> None:
+        result = runner.invoke(app, ["scrape", "all", "--help"])
+        assert result.exit_code == 0
+        assert "--backend" in result.output
+        assert "--proxy" in result.output
+
+    def test_scrape_latest_help_lists_backend_and_proxy(self) -> None:
+        result = runner.invoke(app, ["scrape", "latest", "--help"])
+        assert result.exit_code == 0
+        assert "--backend" in result.output
+        assert "--proxy" in result.output
+
+    @patch("ufc_prediction.cli.main.SessionLocal")
+    @patch("ufc_prediction.scraper.browser_fetch.BrowserFetcher")
+    @patch("ufc_prediction.cli.main.scrape_all_events")
+    def test_scrape_all_browser_backend_builds_fetcher(
+        self,
+        mock_scrape: MagicMock,
+        mock_fetcher_cls: MagicMock,
+        mock_session_local: MagicMock,
+    ) -> None:
+        mock_scrape.return_value = IngestResult(accepted=1)
+        mock_session_local.return_value = MagicMock()
+        mock_fetcher = MagicMock()
+        mock_fetcher_cls.return_value.__enter__ = MagicMock(return_value=mock_fetcher)
+        mock_fetcher_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+        result = runner.invoke(
+            app,
+            ["scrape", "all", "--backend", "browser", "--proxy", "http://p:8080"],
+        )
+
+        assert result.exit_code == 0
+        mock_fetcher_cls.assert_called_once_with(proxy="http://p:8080", delay=1.5)
+        # The BrowserFetcher (not a ScraperClient) is injected into ingest.
+        args, _ = mock_scrape.call_args
+        assert args[1] is mock_fetcher
+
+    @patch("ufc_prediction.cli.main.SessionLocal")
+    @patch("ufc_prediction.scraper.browser_fetch.BrowserFetcher")
+    @patch("ufc_prediction.cli.main.scrape_latest_events")
+    def test_scrape_latest_browser_backend_builds_fetcher(
+        self,
+        mock_scrape: MagicMock,
+        mock_fetcher_cls: MagicMock,
+        mock_session_local: MagicMock,
+    ) -> None:
+        mock_scrape.return_value = IngestResult(accepted=0)
+        mock_session_local.return_value = MagicMock()
+        mock_fetcher = MagicMock()
+        mock_fetcher_cls.return_value.__enter__ = MagicMock(return_value=mock_fetcher)
+        mock_fetcher_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+        result = runner.invoke(app, ["scrape", "latest", "--backend", "browser"])
+
+        assert result.exit_code == 0
+        mock_fetcher_cls.assert_called_once_with(proxy=None, delay=1.5)
+
+    @patch("ufc_prediction.cli.main.SessionLocal")
+    def test_scrape_all_unknown_backend_errors(self, mock_session_local: MagicMock) -> None:
+        mock_session_local.return_value = MagicMock()
+        result = runner.invoke(app, ["scrape", "all", "--backend", "bogus"])
+        assert result.exit_code != 0

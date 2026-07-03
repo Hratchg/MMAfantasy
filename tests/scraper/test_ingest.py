@@ -7,6 +7,7 @@ Uses MockScraperClient to avoid live network calls.
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session
@@ -595,3 +596,128 @@ class TestScrapeConcurrencyIntegration:
         with pytest.raises(Exception):
             ingest_mod.scrape_all_events(session=None, workers=7)  # type: ignore[arg-type]
         assert _SpyClient.last_kwargs.get("workers") == 7
+
+
+# ── Browser-fetcher parity ───────────────────────────────────────────────────
+
+
+class _DispatchPage:
+    """Fake Playwright page: dispatches ``content()`` by the last-navigated URL.
+
+    Lets a real :class:`BrowserFetcher` (Playwright fully bypassed) drive the
+    ingest orchestrator against the same fixtures the mock/http path uses, so
+    we can prove the browser backend drops into ingest and yields identical
+    fights.
+    """
+
+    def __init__(self, exact_map: dict[str, str], fixture_map: dict[str, str]) -> None:
+        self._exact_map = exact_map
+        self._fixture_map = fixture_map
+        self._current_url = ""
+
+    def goto(self, url: str, **_kwargs: object):  # type: ignore[no-untyped-def]
+        self._current_url = url
+        resp = MagicMock()
+        resp.status = 200
+        return resp
+
+    def wait_for_load_state(self, *_a: object, **_k: object) -> None:
+        return None
+
+    def wait_for_selector(self, *_a: object, **_k: object):  # type: ignore[no-untyped-def]
+        return MagicMock()
+
+    def content(self) -> str:
+        if self._current_url in self._exact_map:
+            return self._exact_map[self._current_url]
+        for pattern, html in self._fixture_map.items():
+            if pattern in self._current_url:
+                return html
+        msg = f"_DispatchPage: no fixture for URL {self._current_url}"
+        raise RuntimeError(msg)
+
+    def close(self) -> None:
+        return None
+
+
+def _make_browser_fetcher() -> object:
+    from ufc_prediction.scraper.browser_fetch import BrowserFetcher
+
+    exact_map = {
+        url: _make_event_detail_html(name, date_str, location)
+        for url, name, date_str, location in _EVENT_URLS
+    }
+    page = _DispatchPage(
+        exact_map=exact_map,
+        fixture_map={
+            "statistics/events/completed": _load_fixture("event_list_snippet.html"),
+            "fight-details": _load_fixture("fight_detail_1round.html"),
+            "fighter-details": _load_fixture("fighter_profile.html"),
+        },
+    )
+    fetcher = BrowserFetcher(delay=0.0)
+    fetcher._page = page  # inject fake page; skips real Chromium launch
+    return fetcher
+
+
+class TestBrowserFetcherIngestParity:
+    """The BrowserFetcher drops into ingest and yields the same fights."""
+
+    def test_browser_backend_ingests_fights(self, session: Session) -> None:
+        from ufc_prediction.scraper.ingest import scrape_all_events
+
+        browser = _make_browser_fetcher()
+        result = scrape_all_events(session, browser)
+
+        assert isinstance(result, IngestResult)
+        assert result.accepted > 0
+
+        events = session.query(Event).filter(Event.source == "ufcstats").all()
+        fights = session.query(Fight).filter(Fight.source == "ufcstats").all()
+        assert len(events) > 0
+        assert len(fights) > 0
+
+    def test_browser_backend_ingests_same_fights_as_http(self, session: Session) -> None:
+        """Parity: browser and http backends yield the identical fight set.
+
+        Both run ``scrape_all_events`` over byte-identical fixtures on the same
+        rolled-back session. The mock (http) run populates the DB; the browser
+        run over the same fixtures processes the same fights (identical accepted
+        count) and, thanks to idempotent upsert, leaves the fight set unchanged.
+        This proves the browser fetcher feeds the parsers the same content.
+        """
+        from ufc_prediction.scraper.ingest import scrape_all_events
+
+        http_result = scrape_all_events(session, _make_mock_client())
+        http_fights = sorted((f.fighter_a_id, f.fighter_b_id) for f in session.query(Fight).all())
+
+        assert http_result.accepted > 0
+        assert len(http_fights) > 0
+
+        # Re-run through the browser backend on the now-populated DB: identical
+        # fixtures => same fights processed and the same (idempotent) fight set.
+        browser_result = scrape_all_events(session, _make_browser_fetcher())
+        browser_fights = sorted(
+            (f.fighter_a_id, f.fighter_b_id) for f in session.query(Fight).all()
+        )
+
+        assert browser_result.accepted == http_result.accepted
+        assert browser_fights == http_fights
+
+    def test_browser_and_http_fetch_identical_html(self) -> None:
+        """Fetch-layer parity: both backends return byte-identical HTML per URL.
+
+        This is what guarantees the unchanged parsers produce the same fights,
+        independent of any DB state.
+        """
+        mock = _make_mock_client()
+        browser = _make_browser_fetcher()
+
+        urls = [
+            "http://ufcstats.com/statistics/events/completed?page=all",
+            _EVENT_URLS[0][0],
+            "http://ufcstats.com/fight-details/deadbeef",
+            "http://ufcstats.com/fighter-details/cafef00d",
+        ]
+        for url in urls:
+            assert browser.get(url) == mock.get(url), f"HTML mismatch for {url}"

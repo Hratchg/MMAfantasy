@@ -29,13 +29,17 @@ Status taxonomy: **Works** | **Blocked** | **Partial** | **One-time backfill**.
 
 **Status:** Blocked since v2.5 Phase 40 close (Apr 2026).
 
-**Root cause:** Cloudflare-style anti-bot challenge on the public site. Direct `requests.get(...)` returns 403; headless-browser circumvention is brittle and gets re-blocked within hours. The behavior was first flagged at v2.4 close, confirmed at v2.5 Phase 40, and left as a Bucket I deferral through v2.6, v2.6.1, and v2.7 before being formally retired at v3.0 open (`.planning/REQUIREMENTS.md` "Formally Retired" table).
+**Root cause:** Cloudflare-style anti-bot challenge on the public site — specifically a JavaScript proof-of-work gate. The plain `httpx` `ScraperClient` cannot execute JS, so it only ever receives the challenge stub (403 / "Just a moment..."). The behavior was first flagged at v2.4 close, confirmed at v2.5 Phase 40, and left as a Bucket I deferral through v2.6, v2.6.1, and v2.7 before being formally retired at v3.0 open (`.planning/REQUIREMENTS.md` "Formally Retired" table).
 
-**Suggested workaround for downstream users:** None reliable through this scraper. Use the shipped corpus dump (`data/seed/ufc_corpus_v30.dump`, loadable via `uv run ufc db seed`) as your baseline, then investigate licensed alternatives or accept stale data going forward.
+**Policy update (operator-authorized, `feat/ufcstats-browser-scraper`):** The earlier posture — "Option A: honor the challenge, no active bypass" — has been **reversed by the operator**. Active challenge-solving is now authorized via a headless-browser fetcher (`src/ufc_prediction/scraper/browser_fetch.py`, `BrowserFetcher`, Playwright/Chromium) exposed behind the existing `ScraperClient.get`/`.map` seam and selectable with `ufc scrape latest --backend browser` (also `scrape all`). The parsers and ingest flow are unchanged; only the fetch layer is swapped.
 
-**Milestone history:** v2.4 close → flagged → v2.5 Phase 40 confirmed blocked → carried as Bucket I deferral through v2.6 → v2.6.1 → v2.7 → formally retired at v3.0 open.
+- **Politeness / ToS posture:** single worker, serial `map`, ≥1.5s inter-request delay, browser context + cookies solved once and reused, exponential backoff on re-block. Optional residential proxy via `UFC_SCRAPE_PROXY` or `--proxy`.
+- **Honest halt:** on a persistent challenge after retries the fetcher raises `AntiBotChallengeError` (shared `detect_antibot` in `scraper/antibot.py`) — it NEVER fabricates or returns stub data.
+- **Known brittleness stands:** headless circumvention is still expected to be re-blocked within hours/days and may require a residential proxy and ongoing maintenance. If it proves unreliable, the fallback remains a licensed/API source or odds-only. This is an operator-accepted tradeoff.
 
-> **Downstream TL;DR:** Don't try to re-enable UFCStats. Pin yourself to the shipped corpus and refresh when the underlying access situation changes.
+**Suggested workaround for downstream users:** Prefer `--backend browser` for fresh ingest when the site is challenging. If it HALTs (blocked), fall back to the shipped corpus dump (`data/seed/ufc_corpus_v30.dump`, loadable via `uv run ufc db seed`) and investigate licensed alternatives.
+
+**Milestone history:** v2.4 close → flagged → v2.5 Phase 40 confirmed blocked → carried as Bucket I deferral through v2.6 → v2.6.1 → v2.7 → formally retired at v3.0 open → **browser-backend bypass added (operator-authorized) on `feat/ufcstats-browser-scraper`.**
 
 ### BFO / BestFightOdds — `src/ufc_prediction/scraper/bfo_scraper.py`, `bfo_ingest.py`, `bfo_classify.py`, `bfo_matcher.py`, `bfo_math.py`, `bfo_models.py`, `bfo_live.py`
 

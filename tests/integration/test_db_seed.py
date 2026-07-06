@@ -40,13 +40,16 @@ pytestmark = [
 ]
 
 EXPECTED_ROW_COUNTS = {
-    "elo_snapshots": 89_988,
-    "round_stats": 68_960,
-    "computed_features": 28_624,
-    "fight_odds": 25_632,
-    "fights": 16_902,
-    "fighters": 6_820,
-    "events": 1_872,
+    # Re-baselined 2026-07-06 (RETRAIN-V31-01 / SEED-REBASE-01): dump regenerated
+    # on the promoted substrate (dedup ufcstats corpus current to 2026-06-27,
+    # corrected odds, Sherdog-seeded elo). Exact COUNT(*) per table.
+    "elo_snapshots": 90_642,
+    "round_stats": 69_684,
+    "computed_features": 28_816,
+    "fight_odds": 25_812,
+    "fights": 17_011,
+    "fighters": 6_846,
+    "events": 1_881,
     "fighter_aliases": 399,
     "venues": 174,
     "referees": 39,

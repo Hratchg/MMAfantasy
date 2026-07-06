@@ -79,9 +79,10 @@ def test_spike_json_has_gate_verdict():
         assert slc in spike["median_per_slice"]
         assert slc in spike["brier_delta_vs_xgb_v2_baseline"]
         assert slc in spike["xgb_v2_baseline_brier"]
-    # AUDIT-01 SHA recorded.
+    # AUDIT-01 SHA recorded — the spike records whichever xgb_v2 base it ran
+    # against; post RETRAIN-V31-01 re-baseline that is the promoted model.
     assert spike["xgb_v2_sha256"] == (
-        "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+        "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
     )
 
 

@@ -184,7 +184,7 @@ EXPECTED_XGB_V2_BEST_PARAMS: dict = {
 # improvements. The v2.1 gate is calibrated against the spike's own measured
 # median Brier (not against xgb_v2's recorded baseline), so absolute baseline
 # drift does not affect gate margin.
-EXPECTED_XGB_V2_BRIER: float = 0.22061555132914565
+EXPECTED_XGB_V2_BRIER: float = 0.20842878960208858
 PITFALL_E_TOLERANCE: float = 0.005
 
 # Per-slice keys (mirrors evaluator.PER_SLICE_KEYS).

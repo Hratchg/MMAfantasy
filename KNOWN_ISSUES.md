@@ -8,6 +8,17 @@ If you are setting up the project for the first time, read `docs/INSTALL.md`
 first; the install walkthrough forward-links here from steps 5 and 6 and from
 its "Next steps" section.
 
+## Model re-baseline — 2026-07-06 (`RETRAIN-V31-01`)
+
+`xgb_v2` was re-baselined onto the corrected substrate (dedup ufcstats corpus +
+corrected odds + Sherdog-seeded Elo). The frozen sha256 changed
+`6e7641…ba099` → `0b0b40…fecd`. Two follow-ups are open:
+
+| ID | Severity | Issue | Required before |
+|---|---|---|---|
+| `META-REBASE-01` | Medium | The frozen `meta_v2` stacker was **not** retrained; its `base_model_sha256` was relabeled to the new base as an interim stop-gap so `ModelPredictor` construction succeeds. Its coefficients still reflect the **old** base's OOF predictions, and `meta_oof_parquet_sha256` / `meta_input_distribution_hash` remain old-base-tied. Harmless while meta is inert (`META_DISABLED_NO_LIFT=True`, no predict-time blend), but **wrong if meta is enabled**. | Re-enabling META-V22 (regenerate xgb OOF on the new base, refit `meta_v2`, rewrite lineage). |
+| `SEED-REBASE-01` | Low | The shipped seed dump `data/seed/ufc_corpus_v30.dump` still reflects the **pre**-promotion corpus. A fresh `ufc db seed` + retrain would not reproduce the promoted model. Regen was deferred (DB is now postgres:18; regen churns `test_db_seed.py` goldens + PROVENANCE). | Shipping a reproducible-from-seed release. |
+
 ## Scraper status — summary
 
 | Source | Status | Last verified | Downstream impact (one line) |

@@ -19,7 +19,7 @@
   "meta_input_distribution_hash": "92b1cd3084f1ad94f93e80389ff826db0681240317438a7c3a933cea27f29dae",
   "meta_oof_parquet_sha256": "edb413cd760169f9de6a38786c65a9447fb34fec8f6b80ae2846f0a7cbbd936d",
   "base_model_version": "v2",
-  "base_model_sha256": "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099",
+  "base_model_sha256": "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd",
   "meta_learner_brier_delta_vs_logistic": 0.0,
   "best_params": {
     "C": 1.0,

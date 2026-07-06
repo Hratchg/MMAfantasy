@@ -541,6 +541,6 @@ class TestPhase23FullPipelineV22:
         baseline = _REPO_ROOT / ".planning" / "AUDIT-01-BASELINE-SHA.txt"
         assert baseline.exists(), "AUDIT-01-BASELINE-SHA.txt missing"
         content = baseline.read_text().strip()
-        assert content == ("6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"), (
+        assert content == ("0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"), (
             f"Baseline SHA changed: {content}"
         )

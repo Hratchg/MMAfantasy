@@ -46,7 +46,7 @@ def test_xgb_v2_sha_baseline():
     """D-07(P19) part 2: xgb_v2.joblib SHA-256 must equal baseline (AUDIT-01 setup)."""
     import hashlib
 
-    expected = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+    expected = "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
     model_path = pathlib.Path("models/xgb_v2.joblib")
     assert model_path.exists(), "models/xgb_v2.joblib missing — rollback path violated"
     actual = hashlib.sha256(model_path.read_bytes()).hexdigest()

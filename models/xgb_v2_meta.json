@@ -1,9 +1,9 @@
 {
   "version": "v2",
-  "trained_at": "2026-05-02T01:57:51.699940+00:00",
+  "trained_at": "2026-07-06T17:06:58.719579+00:00",
   "xgboost_version": "3.2.0",
   "sklearn_version": "1.8.0",
-  "python_version": "3.14.4 (main, Apr 14 2026, 14:46:33) [Clang 22.1.3 ]",
+  "python_version": "3.13.13 (main, Apr 14 2026, 14:32:41) [Clang 22.1.3 ]",
   "feature_columns": [
     "elo_overall_diff",
     "elo_striking_diff",
@@ -78,6 +78,7 @@
     "sharp_money_signal",
     "odds_elo_divergence"
   ],
+  "n_features": 72,
   "best_params": {
     "n_estimators": 253,
     "max_depth": 7,
@@ -90,34 +91,38 @@
     "reg_lambda": 4.437482739059479e-05
   },
   "metrics": {
-    "brier_score": 0.22061555132914565,
-    "auc_roc": 0.6980914709750344,
-    "accuracy": 0.650631389055923,
+    "brier_score": 0.20842878960208858,
+    "auc_roc": 0.7368963232444462,
+    "accuracy": 0.6629401900503075,
     "calibration_curve": {
       "fraction_of_positives": [
-        0.08620689655172414,
-        0.27972027972027974,
-        0.31528662420382164,
-        0.44026845637583895,
-        0.5942622950819673,
-        0.6491862567811935,
-        0.8103448275862069,
-        0.8529411764705882
+        0.07692307692307693,
+        0.05555555555555555,
+        0.211340206185567,
+        0.34916201117318435,
+        0.4892703862660944,
+        0.50199203187251,
+        0.62,
+        0.76,
+        0.5,
+        0.864516129032258
       ],
       "mean_predicted_value": [
-        0.18642977386917983,
-        0.258261588376325,
-        0.35670944789135917,
-        0.4513641181586218,
-        0.5481728466011546,
-        0.6479666364349902,
-        0.7420556117036203,
-        0.815506319197716
+        0.07595970306115654,
+        0.11882716086175707,
+        0.2442748099565506,
+        0.375065766150059,
+        0.4120079298131967,
+        0.565223719731745,
+        0.6299649287973131,
+        0.7530440708001455,
+        0.842621922492981,
+        0.9338162560616771
       ]
     }
   },
   "cutoff_date": "2023-01-01",
-  "n_training_fights": 13315,
-  "n_test_fights": 3326,
-  "n_features": 72
+  "n_training_fights": 6792,
+  "n_test_fights": 1789,
+  "promotion_note": "Re-baselined 2026-07-06 from xgb_v2_corrected (dedup ufcstats corpus + corrected odds + Sherdog-seeded elo). Same locked best_params as the prior v2; substrate corrected. Prior v2 metrics (Brier 0.22062, n_train 13315) were on the 1.95x-inflated cross-source corpus."
 }

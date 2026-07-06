@@ -1,0 +1,31 @@
+{
+  "env": {
+    "DOCKER_HOST": "unix:///Users/hratchghanime/.colima/default/docker.sock",
+    "DATABASE_URL": "postgresql+psycopg://ufc:ufc@localhost:5433/ufc_prediction",
+    "TESTCONTAINERS_RYUK_DISABLED": "true"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/audit01_guard.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ruff_format.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

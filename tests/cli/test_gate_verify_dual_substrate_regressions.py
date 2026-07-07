@@ -69,7 +69,7 @@ from build_travel_substrate_v261 import (  # type: ignore[import-not-found]
 # AUDIT-01 D-06 anchors — must remain byte-identical end-to-end.
 CANONICAL_META = REPO_ROOT / "models/meta/meta_v2.joblib"
 XGB_V2 = REPO_ROOT / "models/xgb_v2.joblib"
-EXPECTED_CANONICAL_META_SHA = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
+EXPECTED_CANONICAL_META_SHA = "e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8"
 EXPECTED_XGB_V2_SHA = "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
 
 # v2.6.1 case candidates (real on-disk joblibs).

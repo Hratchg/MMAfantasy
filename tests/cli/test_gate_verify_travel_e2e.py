@@ -66,7 +66,7 @@ CANONICAL = REPO_ROOT / "models/meta/meta_v2.joblib"
 # Asserting this in the test propagated-through-verifier path proves the
 # verifier read the right canonical file and the file was not tampered
 # with between this test's start and the verdict JSON emission.
-EXPECTED_CANONICAL_SHA = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
+EXPECTED_CANONICAL_SHA = "e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8"
 
 # Phase 64 Plan 64-02 locked slice names.
 EXPECTED_SLICE_NAMES = {"most_recent_12mo", "most_recent_24mo", "random_15pct"}

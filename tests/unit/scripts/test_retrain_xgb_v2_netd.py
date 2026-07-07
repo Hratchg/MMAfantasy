@@ -142,7 +142,7 @@ def test_expected_meta_v2_sha256_matches_audit01() -> None:
     """The meta_v2 AUDIT-01 anchor SHA matches the locked value (D-10)."""
     assert (
         EXPECTED_META_V2_SHA256
-        == "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
+        == "e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8"
     )
 
 

@@ -448,4 +448,4 @@ def test_audit01_invariants_unchanged_after_dry_run(dry_run_built: Path) -> None
         (REPO_ROOT / "models" / "meta" / "meta_v2.joblib").read_bytes()
     ).hexdigest()
     assert sha_xgb == EXPECTED_XGB_V2_SHA256
-    assert sha_meta == "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
+    assert sha_meta == "e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8"

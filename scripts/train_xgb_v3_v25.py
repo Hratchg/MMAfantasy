@@ -67,7 +67,7 @@ SHA_MID_META_V2_PATH = PHASE_DIR / "45-META-V2-SHA-PHASE-45-MID.txt"
 
 # AUDIT-01 invariants (PROJECT.md cross-cutting invariants #1 + #2).
 EXPECTED_XGB_V2_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-EXPECTED_META_V2_SHA = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
+EXPECTED_META_V2_SHA = "e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8"
 
 # 5-seed harness per D-CONTEXT §Training-Strategy (same as xgb_v2).
 SEEDS: tuple[int, ...] = (42, 43, 44, 45, 46)

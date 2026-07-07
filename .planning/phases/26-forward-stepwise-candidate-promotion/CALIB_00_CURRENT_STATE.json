@@ -2,9 +2,9 @@
   "model_path": "models/xgb_v2.joblib",
   "model_class": "CalibratedClassifierCV",
   "is_calibrated": true,
-  "calibration_method": "sigmoid",
+  "calibration_method": "isotonic",
   "n_calibrators": 1,
   "double_calibration_risk": false,
-  "audited_at": "2026-05-17T18:07:41.267627+00:00",
-  "decision": "CALIB-V22-01 wires Platt as REPLACEMENT (not stacked) \u2014 Pitfall #8 prevention"
+  "audited_at": "2026-07-06T18:08:28.070868+00:00",
+  "decision": "CALIB-V22-01 wires Platt fresh \u2014 no existing calibration detected"
 }

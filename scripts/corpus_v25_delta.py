@@ -46,7 +46,7 @@ OUT_MD = Path("results/corpus_v25_delta.md")
 
 # AUDIT-01 canonical anchors (PROJECT.md cross-cutting invariants 1+2).
 CANON_XGB_V2_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-CANON_META_V2_SHA = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
+CANON_META_V2_SHA = "e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8"
 
 DEBUTANT_SAMPLE_SIZE = 20  # per CONTEXT specifics: "sample list of 20"
 

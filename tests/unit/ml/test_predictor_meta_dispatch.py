@@ -93,6 +93,7 @@ def test_predict_with_meta_loaded(tmp_path):
     model_dir = _save_xgb_v2(tmp_path)
     meta_dir = _save_meta_v1(tmp_path)
     p = predictor.ModelPredictor(model_dir=str(model_dir), version="vmeta", meta_dir=str(meta_dir))
+    p.META_DISABLED_NO_LIFT = False  # exercise the (retained) meta dispatch path
     # Mock the inference path so we don't need a DB session
     with (
         patch.object(p, "model") as mock_xgb,
@@ -159,6 +160,9 @@ def test_predict_with_nan_closing_prob_diff(tmp_path):
     model_dir = _save_xgb_v2(tmp_path)
     meta_dir = _save_meta_v1(tmp_path)
     p = predictor.ModelPredictor(model_dir=str(model_dir), version="vmeta", meta_dir=str(meta_dir))
+    p.META_DISABLED_NO_LIFT = (
+        False  # isolate the nan_closing_prob_diff branch from the global guard
+    )
     with (
         patch.object(p, "model") as mock_xgb,
         patch("ufc_prediction.ml.predictor._resolve_fighter") as mock_resolve,
@@ -181,6 +185,43 @@ def test_predict_with_nan_closing_prob_diff(tmp_path):
         result = p.predict(MagicMock(), "A", "B")
     assert result["meta_skipped"] is True
     assert result["meta_skipped_reason"] == "nan_closing_prob_diff"
+    assert result["meta_prob"] is None
+    assert result["win_probability"] == pytest.approx(0.6)
+
+
+def test_predict_meta_disabled_no_lift_guard(tmp_path):
+    """Default META_DISABLED_NO_LIFT guard → meta skipped with reason 'disabled_no_lift'.
+
+    The meta adds no lift (KNOWN_ISSUES) and is explicitly kept OFF even when a
+    valid meta artifact loads and inputs are finite; win_probability = base prob.
+    """
+    model_dir = _save_xgb_v2(tmp_path)
+    meta_dir = _save_meta_v1(tmp_path)
+    p = predictor.ModelPredictor(model_dir=str(model_dir), version="vmeta", meta_dir=str(meta_dir))
+    assert p.META_DISABLED_NO_LIFT is True  # default: meta off
+    assert p.meta_model is not None  # artifact loaded, just not used
+    with (
+        patch.object(p, "model") as mock_xgb,
+        patch("ufc_prediction.ml.predictor._resolve_fighter") as mock_resolve,
+        patch("ufc_prediction.ml.predictor.build_inference_features") as mock_build,
+        patch("ufc_prediction.ml.predictor.fetch_matchup_odds") as mock_odds,
+        patch("ufc_prediction.ml.predictor._get_latest_elo") as mock_elo,
+    ):
+        mock_xgb.predict_proba.return_value = np.array([[0.4, 0.6]])
+        fa = MagicMock(name="fa", id=1)
+        fa.name = "A"
+        fb = MagicMock(name="fb", id=2)
+        fb.name = "B"
+        mock_resolve.side_effect = [fa, fb]
+        idx = FEATURE_COLUMNS_NO_NET.index("closing_prob_diff")
+        feature_vec = np.zeros((1, 72))
+        feature_vec[0, idx] = 0.05  # finite → meta WOULD engage if not guarded
+        mock_build.return_value = feature_vec
+        mock_odds.return_value = None
+        mock_elo.return_value = 1500
+        result = p.predict(MagicMock(), "A", "B")
+    assert result["meta_skipped"] is True
+    assert result["meta_skipped_reason"] == "disabled_no_lift"
     assert result["meta_prob"] is None
     assert result["win_probability"] == pytest.approx(0.6)
 

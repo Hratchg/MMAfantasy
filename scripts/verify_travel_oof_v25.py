@@ -95,7 +95,7 @@ ARTIFACT_THRESHOLD_PHASE_42_DELTA = 0.20  # phase_42 > 0.20 = order-of-magnitude
 
 # Cross-cutting invariants (mirrors PROJECT.md cross-cutting invariants).
 XGB_V2_SHA_INVARIANT = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
-META_V2_SHA_INVARIANT = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
+META_V2_SHA_INVARIANT = "e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8"
 
 
 logger = logging.getLogger(__name__)

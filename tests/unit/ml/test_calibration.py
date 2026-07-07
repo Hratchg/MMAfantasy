@@ -58,11 +58,13 @@ def test_audit_emits_artifact(fresh_audit_artifact):
     assert on_disk == audit
 
 
-def test_audit_detects_sigmoid_method(fresh_audit_artifact):
-    """test_audit_detects_sigmoid_method: real xgb_v2 returns method='sigmoid' + risk=False."""
+def test_audit_detects_isotonic_method(fresh_audit_artifact):
+    """test_audit_detects_isotonic_method: the re-baselined xgb_v2 (RETRAIN-V31-01)
+    is CalibratedClassifierCV(method='isotonic') + risk=False. The prior frozen v2
+    used method='sigmoid'; the promoted corrected-substrate model uses isotonic."""
     audit, _ = fresh_audit_artifact
     assert audit["is_calibrated"] is True, audit
-    assert audit["calibration_method"] == "sigmoid", audit
+    assert audit["calibration_method"] == "isotonic", audit
     assert audit["double_calibration_risk"] is False, audit
     assert audit["n_calibrators"] >= 1, audit
 
@@ -72,7 +74,7 @@ def test_canonical_artifact_on_disk_matches_expected():
     must reflect the expected post-audit state (Plan 26-01 must_have M1)."""
     assert CALIB_AUDIT_PATH.exists(), f"canonical audit missing at {CALIB_AUDIT_PATH}"
     on_disk = json.loads(CALIB_AUDIT_PATH.read_text(encoding="utf-8"))
-    assert on_disk["calibration_method"] == "sigmoid", on_disk
+    assert on_disk["calibration_method"] == "isotonic", on_disk
     assert on_disk["is_calibrated"] is True, on_disk
     assert on_disk["double_calibration_risk"] is False, on_disk
 

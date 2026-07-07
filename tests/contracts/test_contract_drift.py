@@ -15,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 CONTRACT_PATH = REPO_ROOT / "models" / "xgb_v2-contract.json"
 
 # Pinned values — sourced from CONTEXT D-05 + AUDIT-01 baseline + Phase 24 gate output.
-EXPECTED_MODEL_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+EXPECTED_MODEL_SHA = "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
 EXPECTED_FEATURE_HASH = "402d59aed0edac88062f3c76e1c9d96b05fe168cda218ea5ee610058c32caead"
 
 

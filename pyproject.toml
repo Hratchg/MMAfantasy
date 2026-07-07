@@ -34,6 +34,7 @@ dependencies = [
     "slowapi>=0.1.9",
     "python-json-logger>=2.0.7",
     "sentry-sdk[fastapi]>=2.18.0",
+    "playwright>=1.61.0",
 ]
 
 [tool.uv]

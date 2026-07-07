@@ -88,7 +88,7 @@ CANDIDATE = REPO_ROOT / "models/meta/meta_v2_refv2.joblib"
 CANONICAL = REPO_ROOT / "models/meta/meta_v2.joblib"
 
 # AUDIT-01 invariant — canonical meta_v2.joblib SHA. Locked since v2.5.
-EXPECTED_CANONICAL_SHA = "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
+EXPECTED_CANONICAL_SHA = "e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8"
 
 # Phase 75 D-03 LOCKED dual-substrate combined-verdict literals.
 VALID_DUAL_VERDICTS = {

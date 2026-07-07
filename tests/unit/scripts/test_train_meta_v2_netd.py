@@ -127,11 +127,11 @@ def test_argparse_help_exits_zero() -> None:
 def test_audit01_sha_constants_match_canonical() -> None:
     """Locked AUDIT-01 SHA constants equal the canonical hex values (D-10)."""
     assert (
-        EXPECTED_XGB_V2_SHA256 == "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+        EXPECTED_XGB_V2_SHA256 == "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
     )
     assert (
         EXPECTED_META_V2_SHA256
-        == "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196"
+        == "e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8"
     )
 
 

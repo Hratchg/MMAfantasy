@@ -162,7 +162,7 @@ PROVISIONAL_PATH_B_VERDICT_JSON: dict[str, object] = {
     "confound_threshold": 0.05,
     "audit_01_invariant": {
         "xgb_v2_sha": "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099",
-        "meta_v2_sha": "77076d3b2eed79797c355195f0f76156582b4c2f9b16df923c06ae2c855f9196",
+        "meta_v2_sha": "e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8",
         "status": "UNCHANGED",
     },
     "v2_6_1_followon_needed": True,

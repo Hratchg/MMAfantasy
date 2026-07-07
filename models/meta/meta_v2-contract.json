@@ -4,7 +4,7 @@
   "feature_columns_hash": "2251bb67a2ebd4db34b5631aa7cef7e47aca6d445390489ac20003a7c35b36b7",
   "min_partner_version_supported": "1.0.0",
   "deprecation_policy": "N >= 2 minor versions",
-  "model_artifact_sha256": "06cbc16d1dbd734d6c4e13292c90d95e1772dd45e3aa8832bbd966a81125976c",
-  "created_at": "2026-07-01",
-  "candidate_or_promoted": "candidate"
+  "model_artifact_sha256": "e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8",
+  "created_at": "2026-07-06",
+  "candidate_or_promoted": "promoted"
 }

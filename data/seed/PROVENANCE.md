@@ -1,63 +1,84 @@
 # UFC Corpus v3.0 Seed — Provenance
 
 **Artifact:** `data/seed/ufc_corpus_v30.dump`
-**Generated:** 2026-06-10T05:14:32Z
-**Phase:** 88 — HANDOFF-V30-02 DB Dump Packaging
+**Generated:** 2026-07-06 (re-baselined — `RETRAIN-V31-01` / `SEED-REBASE-01`)
+**Phase:** 88 — HANDOFF-V30-02 DB Dump Packaging (regenerated on the promoted substrate)
+
+> **Re-baseline note (2026-07-06):** this dump was regenerated on the corrected,
+> promoted substrate that produced the re-baselined `xgb_v2` (sha256
+> `0b0b40…fecd`): the deduplicated `ufcstats` corpus current to 2026-06-27,
+> corrected implied-probability odds, BFO odds for the new fights, and
+> Sherdog-seeded debutant Elo. A fresh `ufc db seed` from this dump followed by
+> `elo compute` / `features compute` / `predict train` reproduces the promoted
+> model. The prior v3.0 dump (postgres:16, sha `8661a327…`) reflected the
+> pre-promotion corpus.
 
 ## Source
 
 | Field | Value |
 |-------|-------|
-| Container | `ufc-fight-prediction-db-1` |
-| Image | `postgres:16` |
+| Container | `mmafantasy-db-1` |
+| Image | `postgres:18` |
 | Host port | `5433` |
 | Database | `ufc_prediction` |
 | User | `ufc` |
-| Postgres server version | `PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1)` |
-| Raw DB size | 85 MB |
+| Postgres server version | `PostgreSQL 18.4 (Debian 18.4-1.pgdg13+1)` |
+| Raw DB size | 116 MB |
 
 ## Dump command
 
+The promoted corpus lives in a **postgres:18** dev DB, but CI seeds via the
+runner's **pg_restore 16** (`.github/workflows/ci.yml` uses `postgres:16-alpine`).
+A pg_dump-18 custom archive (format v1.16) is **not** readable by pg_restore 16
+(`unsupported version (1.16)`), so the shipped dump is produced in **PG16 custom
+format**: the PG18 data is bridged through a throwaway postgres:16 container, then
+dumped with pg_dump 16.
+
 ```bash
-docker exec ufc-fight-prediction-db-1 pg_dump \
-  --format=custom -Z 9 \
-  -U ufc -d ufc_prediction \
-  > data/seed/ufc_corpus_v30.dump
+# 1. bridge the promoted PG18 corpus into a throwaway postgres:16 container
+docker run -d --rm --name pg16 -e POSTGRES_USER=ufc -e POSTGRES_PASSWORD=ufc \
+  -e POSTGRES_DB=ufc_prediction postgres:16-alpine
+docker exec mmafantasy-db-1 pg_dump --format=plain --no-owner --no-privileges \
+  -U ufc -d ufc_prediction | docker exec -i pg16 psql -q -U ufc -d ufc_prediction
+# 2. re-dump in PG16 custom format (archive readable by pg_restore 16)
+docker exec pg16 pg_dump --format=custom -Z 9 --no-owner --no-privileges \
+  -U ufc -d ufc_prediction > data/seed/ufc_corpus_v30.dump
 ```
+
+Verified: `pg_restore 16` restores the resulting dump into a fresh postgres:16
+with the exact per-table counts below.
 
 ## Sizes
 
 | Field | Value |
 |-------|-------|
-| Compressed dump size | 10,926,354 bytes (10.42 MB) |
-| SHA256 | `8661a327659d48890636fa8781f8947253abcf9c132a73b05c68872b94c79cdb` |
+| Compressed dump size | 11,125,102 bytes (10.61 MB) |
+| SHA256 | `fcd7a55c4e95008225ef7846f884e5416db19cd998007c04854079314eeb9be4` |
 
 ## Hosting route
 
 Committed in repo (≤ 30 MB threshold per D-B1).
 
-The compressed dump (10.42 MB) sits well under the 30 MB cutoff, so the
+The compressed dump (10.61 MB) sits well under the 30 MB cutoff, so the
 binary lives directly in the repo alongside this provenance file and the
 SHA256 sidecar. No external GitHub Release hosting required for v3.0.
 
 ## Tables included (12)
 
-Per-table exact row counts in the dump (`SELECT COUNT(*)`). NOTE: earlier
-versions of this file reported `n_live_tup` from `pg_stat_user_tables`, which is
-a planner *estimate* refreshed only on VACUUM/ANALYZE — it undercounted
-`round_stats` by 74 rows (68886 vs the true 68960). The values below are exact
-and match the goldens in `tests/integration/test_db_seed.py`:
+Per-table exact row counts in the dump (`SELECT COUNT(*)`). These are exact
+counts (not `pg_stat_user_tables` planner estimates) and match the goldens in
+`tests/integration/test_db_seed.py`:
 
 ```
       relname      |   count
 -------------------+------------
- elo_snapshots     |      89988
- round_stats       |      68960
- computed_features |      28624
- fight_odds        |      25632
- fights            |      16902
- fighters          |       6820
- events            |       1872
+ elo_snapshots     |      90642
+ round_stats       |      69684
+ computed_features |      28816
+ fight_odds        |      25812
+ fights            |      17011
+ fighters          |       6846
+ events            |       1881
  fighter_aliases   |        399
  venues            |        174
  referees          |         39

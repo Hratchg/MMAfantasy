@@ -69,8 +69,10 @@ V23_CONTRACT_PATH_DEFAULT: Path = _REPO_ROOT / ".planning" / "gate_contract_v2.3
 # CONTEXT D-01 Path A — operator empirical floor pre-committed BEFORE spike runs.
 OPERATOR_FLOOR_V23: float = 0.70
 
-# AUDIT-01 baseline SHA — models/xgb_v2.joblib MUST stay byte-identical end-to-end.
-EXPECTED_XGB_V2_SHA: str = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+# AUDIT-01 baseline SHA — models/xgb_v2.joblib re-baselined to the corrected
+# dedup + Sherdog-seeded substrate (2026-07-06 promotion). MUST stay byte-identical
+# end-to-end at this new baseline.
+EXPECTED_XGB_V2_SHA: str = "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
 
 # D-18 formula hash binding — carried forward from v2.1 + v2.2; no post-measurement
 # renegotiation.

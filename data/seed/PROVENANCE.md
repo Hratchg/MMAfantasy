@@ -27,20 +27,33 @@
 
 ## Dump command
 
+The promoted corpus lives in a **postgres:18** dev DB, but CI seeds via the
+runner's **pg_restore 16** (`.github/workflows/ci.yml` uses `postgres:16-alpine`).
+A pg_dump-18 custom archive (format v1.16) is **not** readable by pg_restore 16
+(`unsupported version (1.16)`), so the shipped dump is produced in **PG16 custom
+format**: the PG18 data is bridged through a throwaway postgres:16 container, then
+dumped with pg_dump 16.
+
 ```bash
-docker exec mmafantasy-db-1 pg_dump \
-  --format=custom -Z 9 \
-  --no-owner --no-privileges \
-  -U ufc -d ufc_prediction \
-  > data/seed/ufc_corpus_v30.dump
+# 1. bridge the promoted PG18 corpus into a throwaway postgres:16 container
+docker run -d --rm --name pg16 -e POSTGRES_USER=ufc -e POSTGRES_PASSWORD=ufc \
+  -e POSTGRES_DB=ufc_prediction postgres:16-alpine
+docker exec mmafantasy-db-1 pg_dump --format=plain --no-owner --no-privileges \
+  -U ufc -d ufc_prediction | docker exec -i pg16 psql -q -U ufc -d ufc_prediction
+# 2. re-dump in PG16 custom format (archive readable by pg_restore 16)
+docker exec pg16 pg_dump --format=custom -Z 9 --no-owner --no-privileges \
+  -U ufc -d ufc_prediction > data/seed/ufc_corpus_v30.dump
 ```
+
+Verified: `pg_restore 16` restores the resulting dump into a fresh postgres:16
+with the exact per-table counts below.
 
 ## Sizes
 
 | Field | Value |
 |-------|-------|
-| Compressed dump size | 11,125,458 bytes (10.61 MB) |
-| SHA256 | `72d13c23d699f08d7928a358071e2cad22c24699ac64d4e99f605596562a9dd6` |
+| Compressed dump size | 11,125,102 bytes (10.61 MB) |
+| SHA256 | `fcd7a55c4e95008225ef7846f884e5416db19cd998007c04854079314eeb9be4` |
 
 ## Hosting route
 

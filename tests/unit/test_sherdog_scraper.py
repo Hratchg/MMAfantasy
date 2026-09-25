@@ -209,7 +209,7 @@ def test_since_year_none_skips_filter(monkeypatch: pytest.MonkeyPatch) -> None:
 # ── Test 2: incremental commit fires every N fighters ─────────────────────
 
 
-def test_incremental_commit_fires_every_batch(
+def test_dry_run_matches_without_writing_or_committing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """With ``commit_batch_size=3`` and 7 successful matches, at least one
@@ -234,17 +234,15 @@ def test_incremental_commit_fires_every_batch(
 
     monkeypatch.setattr(sherdog_module, "parse_sherdog_search_results", fake_parse_search)
 
-    # Use dry_run=True so we skip profile-fetch path entirely but still
-    # go through the matched + _maybe_commit code.
+    # dry_run=True skips the profile-fetch path entirely. It is search-and-
+    # match ONLY: it must not write ``sherdog_url`` (which would make a later
+    # real run skip these fighters as "already processed") and must not commit.
     scraper = SherdogScraper(client, session, commit_batch_size=3)
     result = scraper.scrape_all_fighters(dry_run=True)
 
-    # 7 matches with commit_batch_size=3 → expect >= 2 commits total
-    # (at least one intermediate fire + final flush).
-    assert session.commit.call_count >= 2, (
-        f"expected >= 2 commits with 7 fighters/batch=3, got {session.commit.call_count}"
-    )
     assert result["matched"] == 7
+    assert session.commit.call_count == 0, "dry run must not commit"
+    assert all(f.sherdog_url is None for f in fighters), "dry run must not persist sherdog_url"
 
 
 # ── Test 3: workers=2 dispatches via client.map ───────────────────────────

@@ -721,3 +721,75 @@ class TestBrowserFetcherIngestParity:
         ]
         for url in urls:
             assert browser.get(url) == mock.get(url), f"HTML mismatch for {url}"
+
+
+class TestPerPageIsolationAndIdentity:
+    """Code-review fixes (2026-09): HTTP status errors are isolated per page,
+    and fighter identity is the UFCStats hex id, not the display name."""
+
+    def test_http_status_error_on_fighter_profile_does_not_abort_run(
+        self, session: Session
+    ) -> None:
+        """``ScraperClient.get`` raises ``httpx.HTTPStatusError`` on a 404;
+        that must skip ONE profile (name-only fallback), not kill the run."""
+        import httpx
+
+        from ufc_prediction.scraper.ingest import scrape_all_events
+
+        class Client404(MockScraperClient):
+            def get(self, url: str) -> str:
+                if "fighter-details/9014c02eff8b3d62" in url:
+                    req = httpx.Request("GET", url)
+                    resp = httpx.Response(404, request=req)
+                    raise httpx.HTTPStatusError("404 Not Found", request=req, response=resp)
+                return super().get(url)
+
+        base = _make_mock_client()
+        client = Client404(base._fixture_map, base._exact_map)
+
+        result = scrape_all_events(session, client)
+
+        assert isinstance(result, IngestResult)
+        assert result.accepted > 0, "run must continue past the dead profile page"
+        fallback = (
+            session.query(Fighter).filter(Fighter.source_id == "9014c02eff8b3d62").one_or_none()
+        )
+        assert fallback is not None, "name-only fallback row expected for the 404 profile"
+        assert fallback.name == "Carlos Ulberg"
+
+    def test_same_name_fighters_with_distinct_hex_ids_stay_separate(self, session: Session) -> None:
+        from ufc_prediction.scraper.ingest import _ensure_fighter
+
+        client = MockScraperClient({"fighter-details": _load_fixture("fighter_profile.html")})
+        cache: dict[str, int] = {}
+        id_1 = _ensure_fighter(
+            client, session, "Bruno Silva", "http://ufcstats.com/fighter-details/aaaa0000", cache
+        )
+        id_2 = _ensure_fighter(
+            client, session, "Bruno Silva", "http://ufcstats.com/fighter-details/bbbb1111", cache
+        )
+
+        assert id_1 != id_2
+        rows = session.query(Fighter).filter(Fighter.name == "Bruno Silva").all()
+        assert sorted(r.source_id for r in rows) == ["aaaa0000", "bbbb1111"]
+
+    def test_same_hex_id_seen_under_two_display_names_is_one_fighter(
+        self, session: Session
+    ) -> None:
+        from ufc_prediction.scraper.ingest import _ensure_fighter
+
+        client = MockScraperClient({"fighter-details": _load_fixture("fighter_profile.html")})
+        url = "http://ufcstats.com/fighter-details/cccc2222"
+        id_1 = _ensure_fighter(client, session, "Weili Zhang", url, {})
+        id_2 = _ensure_fighter(client, session, "Zhang Weili", url, {})
+
+        assert id_1 == id_2
+        assert session.query(Fighter).filter(Fighter.source_id == "cccc2222").count() == 1
+
+    def test_fighter_cache_hit_returns_cached_id_without_refetch(self, session: Session) -> None:
+        from ufc_prediction.scraper.ingest import _ensure_fighter
+
+        client = MockScraperClient({})  # any get() would raise
+        url = "http://ufcstats.com/fighter-details/dddd3333"
+        assert _ensure_fighter(client, session, "Anyone", url, {url: 4242}) == 4242
+        assert client._call_log == []

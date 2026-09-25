@@ -17,6 +17,7 @@ from collections import Counter
 from collections.abc import Callable
 from datetime import date
 
+import httpx
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -90,7 +91,10 @@ def _safe_fetch(
     """
     try:
         return (url, client.get(url), None)
-    except (RuntimeError, ValueError) as exc:
+    except (RuntimeError, ValueError, httpx.HTTPError) as exc:
+        # ``ScraperClient.get`` raises ``httpx.HTTPStatusError`` (an
+        # ``httpx.HTTPError``) on non-retryable statuses such as 404 —
+        # it must be isolated here too, or one dead page aborts the run.
         return (url, None, exc)
 
 
@@ -480,16 +484,16 @@ def _ensure_fighter(
 ) -> int:
     """Ensure fighter exists in DB, fetching profile if not cached.
 
-    Uses the name from the event detail page (not the profile page) as the
-    upsert key, because the event detail has the authoritative per-fight name.
-    Profile data is only used for physical attributes.
+    Identity is the UFCStats hex id parsed from the profile URL
+    (``Fighter.source_id``), so two distinct fighters who share a display
+    name stay separate rows. The name from the event detail page is used
+    for a NEW row; profile data is only used for physical attributes.
 
     Returns fighter_id.
     """
     if url in fighter_cache:
-        # Already fetched this session; just look up by name for the id
-        fighter = upsert_fighter(session, name, SOURCE)
-        return fighter.id
+        # Already resolved this session — the cache maps URL → fighter_id.
+        return fighter_cache[url]
 
     # Fetch and parse profile for physical attributes
     source_id = _extract_hex_id(url)
@@ -510,7 +514,7 @@ def _ensure_fighter(
             stance=fighter_row.stance,
             date_of_birth=fighter_row.date_of_birth,
         )
-    except (ValueError, RuntimeError) as exc:
+    except (ValueError, RuntimeError, httpx.HTTPError) as exc:
         logger.warning(
             "Failed to fetch/parse fighter profile %s, using name-only fallback: %s",
             url,

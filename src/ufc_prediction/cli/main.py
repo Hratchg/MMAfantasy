@@ -67,6 +67,7 @@ from ufc_prediction.elo.queries import (
 from ufc_prediction.ml.predictor import _prefer_canonical
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.scraper.bfo_scraper import BFOScraper
+from ufc_prediction.scraper.browser_fetch import AntiBotChallengeError
 from ufc_prediction.scraper.client import ScraperClient
 from ufc_prediction.scraper.ingest import scrape_all_events, scrape_latest_events
 from ufc_prediction.scraper.sherdog import SherdogScraper
@@ -386,6 +387,10 @@ def scrape_all(
         table.add_row("Events rejected", str(result.rejected))
         console.print(table)
 
+    except AntiBotChallengeError as exc:
+        session.rollback()
+        console.print(f"[red]HALT: anti-bot challenge persisted — no data ingested: {exc}[/red]")
+        raise SystemExit(2) from exc
     except Exception as exc:
         session.rollback()
         console.print(f"[red]Scrape failed: {exc}[/red]")
@@ -447,6 +452,10 @@ def scrape_latest(
             table.add_row("Events rejected", str(result.rejected))
             console.print(table)
 
+    except AntiBotChallengeError as exc:
+        session.rollback()
+        console.print(f"[red]HALT: anti-bot challenge persisted — no data ingested: {exc}[/red]")
+        raise SystemExit(2) from exc
     except Exception as exc:
         session.rollback()
         console.print(f"[red]Scrape failed: {exc}[/red]")

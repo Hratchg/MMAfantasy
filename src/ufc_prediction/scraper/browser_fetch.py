@@ -83,11 +83,17 @@ window.chrome = window.chrome || { runtime: {} };
 """
 
 
-class AntiBotChallengeError(RuntimeError):
+class AntiBotChallengeError(Exception):
     """Raised when the anti-bot challenge persists after all retries.
 
     Surfacing this (rather than returning stub HTML) enforces the HALT-honestly
     contract: a caller must never mistake a challenge page for real data.
+
+    Deliberately NOT a ``RuntimeError`` subclass: the ingest pipeline's
+    per-URL error isolation (``ingest._safe_fetch``, ``_ensure_fighter``,
+    ``_safe_fetch_bfo``, ``_safe_fetch_sherdog``) catches ``RuntimeError``
+    to skip one bad page. A persistent challenge is not a bad page — it
+    must abort the whole run, so it has to escape those handlers.
     """
 
 

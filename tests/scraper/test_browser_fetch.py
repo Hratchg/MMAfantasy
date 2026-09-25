@@ -261,3 +261,19 @@ def test_close_is_idempotent() -> None:
     fetcher.close()
     assert page.closed is True
     fetcher.close()  # second close must not raise
+
+
+def test_antibot_error_escapes_per_page_isolation() -> None:
+    """The HALT error must not be swallowed by the per-URL ``_safe_fetch``
+    handlers (which catch ``RuntimeError`` to skip one bad page)."""
+    from ufc_prediction.scraper.browser_fetch import AntiBotChallengeError
+    from ufc_prediction.scraper.ingest import _safe_fetch
+
+    assert not issubclass(AntiBotChallengeError, RuntimeError)
+
+    class Blocked:
+        def get(self, url: str) -> str:
+            raise AntiBotChallengeError("challenge persisted")
+
+    with pytest.raises(AntiBotChallengeError):
+        _safe_fetch(Blocked(), "http://ufcstats.com/fight-details/x")

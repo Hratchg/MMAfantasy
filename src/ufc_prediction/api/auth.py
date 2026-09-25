@@ -39,6 +39,34 @@ def _derive_partner_label(matched_key: str) -> str:
     return f"anon-{hashlib.sha256(matched_key.encode()).hexdigest()[:6]}"
 
 
+def _match_api_key(candidate: str) -> str | None:
+    """Return the stored key entry matching ``candidate``, or None.
+
+    Uses ``secrets.compare_digest`` and a counter (no short-circuit) so
+    timing stays flat across the key list.
+    """
+    matched_key: str | None = None
+    match_count = 0
+    for stored in settings.api_keys:
+        if secrets.compare_digest(stored, candidate):
+            match_count += 1
+            matched_key = stored
+    return matched_key if match_count else None
+
+
+def partner_label_from_header(x_api_key: str | None) -> str | None:
+    """Resolve a partner label straight from an ``X-API-Key`` header value.
+
+    Used by the rate-limit ``key_func``, which runs in middleware before
+    ``require_api_key`` has populated ``request.state``. Returns None for
+    a missing or unrecognized key.
+    """
+    if not x_api_key:
+        return None
+    matched = _match_api_key(x_api_key)
+    return _derive_partner_label(matched) if matched is not None else None
+
+
 def require_api_key(
     request: Request,
     x_api_key: str | None = Header(None, alias="X-API-Key"),
@@ -62,16 +90,9 @@ def require_api_key(
             },
         )
 
-    matched_key: str | None = None
-    match_count = 0
-    for stored in settings.api_keys:
-        # secrets.compare_digest is constant-time over equal-length inputs;
-        # sum-into-counter avoids short-circuit timing differences.
-        if secrets.compare_digest(stored, x_api_key):
-            match_count += 1
-            matched_key = stored
+    matched_key = _match_api_key(x_api_key)
 
-    if match_count == 0 or matched_key is None:
+    if matched_key is None:
         raise HTTPException(
             status_code=401,
             detail={

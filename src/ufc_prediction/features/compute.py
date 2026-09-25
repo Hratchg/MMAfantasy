@@ -121,16 +121,21 @@ class FeatureComputer:
             a_round_stats = [rs for rs in all_round_stats if rs["fighter_id"] == fighter_a_id]
             b_round_stats = [rs for rs in all_round_stats if rs["fighter_id"] == fighter_b_id]
 
-            # Process each fighter in the fight
-            for fighter_id, opponent_id, fighter_rs, opponent_rs in [
+            participants = [
                 (fighter_a_id, fighter_b_id, a_round_stats, b_round_stats),
                 (fighter_b_id, fighter_a_id, b_round_stats, a_round_stats),
-            ]:
+            ]
+
+            # Snapshot BOTH fighters from PRE-fight accumulator state before
+            # either accumulator absorbs this fight. The opponent-adjusted
+            # features read the opponent's accumulator, so updating fighter
+            # A before building fighter B's features would leak this fight's
+            # own stats into B's ``opp_adj_*`` columns (target leakage).
+            for fighter_id, opponent_id, _fighter_rs, _opponent_rs in participants:
                 acc = accumulators.setdefault(fighter_id, FighterAccumulator())
                 opp_acc = accumulators.setdefault(opponent_id, FighterAccumulator())
 
                 if acc.fight_count >= 1:
-                    # Build feature vector from pre-fight accumulator state
                     features = self._build_features(
                         acc,
                         opp_acc,
@@ -149,7 +154,9 @@ class FeatureComputer:
                     )
                     fight_count_at_feature.append(acc.fight_count)
 
-                # Update accumulator with this fight's raw data
+            # Now fold this fight's raw data into both accumulators.
+            for fighter_id, _opponent_id, fighter_rs, opponent_rs in participants:
+                acc = accumulators[fighter_id]
                 if fighter_rs:
                     rates = compute_rate_features(fighter_rs, opponent_rs, fight_duration)
                     self._update_accumulator(

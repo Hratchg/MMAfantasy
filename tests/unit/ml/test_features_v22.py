@@ -298,7 +298,7 @@ class TestTrainInferenceParity:
         monkeypatch.setattr(
             inference_features,
             "_get_latest_elo",
-            lambda s, fid, et: 1500.0,
+            lambda s, fid, et, *a, **kw: 1500.0,
         )
         monkeypatch.setattr(
             inference_features,
@@ -782,7 +782,7 @@ class TestTrainInferenceParityTravel:
         monkeypatch.setattr(
             inference_features,
             "_get_latest_elo",
-            lambda s, fid, et: 1500.0,
+            lambda s, fid, et, *a, **kw: 1500.0,
         )
         monkeypatch.setattr(
             inference_features,
@@ -1436,7 +1436,7 @@ class TestTrainInferenceParityMeta:
         monkeypatch.setattr(
             inference_features,
             "_get_latest_elo",
-            lambda s, fid, et: 1500.0,
+            lambda s, fid, et, *a, **kw: 1500.0,
         )
         monkeypatch.setattr(
             inference_features,

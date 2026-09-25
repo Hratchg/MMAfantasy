@@ -16,15 +16,19 @@ via sparsity-aware split finding (D-04(P14)).
 Per Pitfall #12: column ordering is locked by ``FEATURE_COLUMNS``; a strict
 ``unknown_keys`` guard prevents silent positional drift.
 
-The five DB-reading helpers (``_get_latest_elo``, ``_get_latest_computed_features``,
-``_get_fighter_physical``, ``_get_cached_odds``) are module-level so tests can
+The DB-reading helpers (``_get_latest_elo``, ``_get_latest_computed_features``,
+``_get_cached_odds``, ``_load_career_inputs``) are module-level so tests can
 monkey-patch them without spinning up Postgres.
 """
 
 from __future__ import annotations
 
+import functools
 import logging
+import math
+from dataclasses import dataclass, field
 from datetime import date
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -32,12 +36,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ufc_prediction.dedup.source_priority import prefer_canonical
+from ufc_prediction.elo.asof import RatedFight, pre_fight_rating
+from ufc_prediction.elo.config import EloConfig
+from ufc_prediction.elo.seed import load_seeds
+from ufc_prediction.ml import queries as ml_queries
 from ufc_prediction.ml.config import (
     FEATURE_COLUMNS_V22,
     PERFORMANCE_FEATURE_KEYS,
     encode_stance_matchup,
     get_feature_columns,
 )
+from ufc_prediction.ml.feature_matrix import FeatureMatrixAssembler
 from ufc_prediction.ml.features_v22.meta import (
     age_at_fight,
     division_finish_rate_shrunk,
@@ -74,21 +83,93 @@ logger = logging.getLogger(__name__)
 # ── DB-reading helpers ──────────────────────────────────────────────────────
 
 
-def _get_latest_elo(session: Session, fighter_id: int, elo_type: str) -> float:
-    """Read latest ``elo_after_shrinkage`` for a fighter (lifted from
-    predictor.py:_get_latest_elo).
+# Anchored to the repo root (src/ufc_prediction/ml/<this file> → parents[3]),
+# matching cli/predict.py's WR-05 anchoring rather than the CWD-relative path
+# cli/main.py uses for ``elo compute``.
+_REPO_ROOT: Path = Path(__file__).resolve().parents[3]
+_SHERDOG_PRE_UFC_CSV: Path = _REPO_ROOT / "data" / "sherdog" / "pre_ufc_records.csv"
 
-    Returns 1500.0 fallback when no snapshots exist (debutant case).
+
+@functools.lru_cache(maxsize=1)
+def _load_debutant_seeds() -> dict[int, float]:
+    """Debutant Elo seeds (DEBUT-V25-03), the same CSV ``elo compute`` reads.
+
+    ``load_seeds`` returns ``{}`` when the file is absent, so a serve host
+    without the Sherdog substrate degrades to the flat-1500 default exactly
+    as the engine does.
     """
+    return load_seeds(_SHERDOG_PRE_UFC_CSV)
+
+
+def _load_elo_history(
+    session: Session,
+    fighter_id: int,
+    elo_type: str,
+    before_date: date,
+) -> list[RatedFight]:
+    """All of a fighter's ``elo_type`` snapshots dated strictly before
+    ``before_date``, oldest first — the input to ``pre_fight_rating``."""
     stmt = (
-        select(EloSnapshot.elo_after_shrinkage)
+        select(EloSnapshot.fight_date, EloSnapshot.division, EloSnapshot.elo_after)
         .where(EloSnapshot.fighter_id == fighter_id)
         .where(EloSnapshot.elo_type == elo_type)
-        .order_by(EloSnapshot.fight_date.desc())
-        .limit(1)
+        .where(EloSnapshot.fight_date < before_date)
+        .order_by(EloSnapshot.fight_date, EloSnapshot.fight_id)
     )
-    result = session.scalar(stmt)
-    return float(result) if result is not None else 1500.0
+    return [
+        RatedFight(fight_date=row[0], division=row[1], elo_after=float(row[2]))
+        for row in session.execute(stmt).all()
+    ]
+
+
+def _get_latest_elo(
+    session: Session,
+    fighter_id: int,
+    elo_type: str,
+    as_of: date | None = None,
+    division: str | None = None,
+) -> float:
+    """Return the rating training would have read as ``elo_before`` for a
+    fight of ``fighter_id`` in ``division`` on ``as_of``.
+
+    Training (``queries.load_elo_features``) reads ``EloSnapshot.elo_before``:
+    the raw per-division rating after the engine's pre-fight inactivity
+    regression and division transfer. This used to read the latest
+    ``elo_after_shrinkage`` instead — a post-fight, Bayesian-shrunk display
+    number with no regression or transfer — so ``elo_*_diff`` at serve time
+    lived on a different scale than at training time. It now replays the
+    fighter's stored history through ``elo.asof.pre_fight_rating`` with the
+    engine's own semantics per Elo type:
+
+    - ``overall``: regression + transfer, debutant seed on a fresh key.
+    - ``striking``: regression + transfer, no seed.
+    - ``grappling``: neither — ``DomainEloComputer`` shares its last-fight
+      bookkeeping across the striking and grappling loops, so the grappling
+      loop always sees "fought today, same division" and never adjusts.
+
+    ``as_of`` defaults to today; ``division`` ``None`` resolves to the
+    fighter's most recent transferable division.
+
+    The name is kept for the tests that monkeypatch this symbol.
+    """
+    as_of = as_of or date.today()
+    history = _load_elo_history(session, fighter_id, elo_type, as_of)
+    if elo_type == "overall":
+        seed: float | None = _load_debutant_seeds().get(fighter_id)
+        adjust = True
+    elif elo_type == "striking":
+        seed, adjust = None, True
+    else:
+        seed, adjust = None, False
+    return pre_fight_rating(
+        history,
+        as_of,
+        division,
+        config=EloConfig(),
+        seed=seed,
+        regress=adjust,
+        transfer=adjust,
+    )
 
 
 def _get_latest_computed_features(
@@ -202,18 +283,20 @@ def _populate_elo(
     fa_id: int,
     fb_id: int,
     feats: dict[str, float],
+    as_of: date | None = None,
+    division: str | None = None,
 ) -> tuple[float, float]:
     """Section 1: Elo differentials (3 features) + cross-domain (2 features).
 
     Returns ``(elo_a_overall, elo_b_overall)`` for the odds_elo_divergence
     derivation later in ``_populate_odds``.
     """
-    elo_a_overall = _get_latest_elo(session, fa_id, "overall")
-    elo_b_overall = _get_latest_elo(session, fb_id, "overall")
-    elo_a_striking = _get_latest_elo(session, fa_id, "striking")
-    elo_b_striking = _get_latest_elo(session, fb_id, "striking")
-    elo_a_grappling = _get_latest_elo(session, fa_id, "grappling")
-    elo_b_grappling = _get_latest_elo(session, fb_id, "grappling")
+    elo_a_overall = _get_latest_elo(session, fa_id, "overall", as_of, division)
+    elo_b_overall = _get_latest_elo(session, fb_id, "overall", as_of, division)
+    elo_a_striking = _get_latest_elo(session, fa_id, "striking", as_of, division)
+    elo_b_striking = _get_latest_elo(session, fb_id, "striking", as_of, division)
+    elo_a_grappling = _get_latest_elo(session, fa_id, "grappling", as_of, division)
+    elo_b_grappling = _get_latest_elo(session, fb_id, "grappling", as_of, division)
 
     feats["elo_overall_diff"] = elo_a_overall - elo_b_overall
     feats["elo_striking_diff"] = elo_a_striking - elo_b_striking
@@ -572,6 +655,10 @@ def _query_elo_history(
     Strict ``Event.date < before_date`` cutoff (Pitfall #4). Returns
     chronological list (oldest first) so caller can call
     ``elo_velocity(history, window=5)`` directly.
+
+    Reads ``elo_before`` — the same column training's
+    ``feature_matrix._build_elo_histories`` sees via ``load_elo_features`` —
+    not the shrunk post-fight display rating.
     """
     try:
         # EloSnapshot has 3 rows per fight (overall/striking/grappling).
@@ -596,7 +683,7 @@ def _query_elo_history(
             select(
                 EloSnapshot.fight_date,
                 EloSnapshot.elo_type,
-                EloSnapshot.elo_after_shrinkage,
+                EloSnapshot.elo_before,
             )
             .where(EloSnapshot.fighter_id == fighter_id)
             .where(EloSnapshot.fight_date.in_(fight_dates))
@@ -745,6 +832,7 @@ def _populate_meta(
     fighter_a,
     fighter_b,
     event_date_val: date,
+    weight_class: str | None = None,
 ) -> None:
     """Populate the 9 META cols using SAME helpers feature_matrix.py uses.
 
@@ -754,14 +842,8 @@ def _populate_meta(
     event_date).
 
     Only per-fighter ``layoff_days_red``/``layoff_days_blue`` are written here.
-
-    INFERENCE-PARITY FIX (2026-07-01): the differential
-    ``days_since_last_fight_diff`` is now populated below to match the training
-    career block exactly (was previously NaN at inference, a train/serve gap).
-    Note this un-starves the 13-col META-V22 stacker (its StandardScaler can now
-    ingest a full row); because the meta adds no lift (KNOWN_ISSUES "Model
-    performance clarification") it is explicitly kept OFF at the predictor level
-    (see ``FightPredictor`` meta-off guard) so it cannot run and regress.
+    The base-block differential ``days_since_last_fight_diff`` comes from the
+    career replay in ``_populate_career`` (same accumulator as training).
     """
     # Layoff (per-fighter only): query each fighter's prior fight date.
     prior_a = _query_fighter_prior_fight_date(
@@ -777,18 +859,6 @@ def _populate_meta(
     feats["layoff_days_red"] = layoff_days(event_date_val, prior_a)
     feats["layoff_days_blue"] = layoff_days(event_date_val, prior_b)
     # NB: layoff_days_diff intentionally NOT written (Q4 + D-07).
-
-    # days_since_last_fight_diff — inference-parity fix (2026-07-01). The base
-    # xgb_v2 model is trained WITH this feature (FEATURE_COLUMNS_NO_NET[32],
-    # feature_matrix.py career block), but it was previously never populated at
-    # inference and defaulted to NaN. Populate it to match training EXACTLY:
-    # unclipped, NaN-for-debut, A-B, NaN-propagating. (Magnitude parity with
-    # training; the sign convention matches training's A/B ordering.)
-    days_a = float((event_date_val - prior_a).days) if prior_a is not None else float("nan")
-    days_b = float((event_date_val - prior_b).days) if prior_b is not None else float("nan")
-    feats["days_since_last_fight_diff"] = (
-        days_a - days_b if (days_a == days_a and days_b == days_b) else float("nan")
-    )
 
     # Age (Pitfall #5 — uses event_date).
     feats["age_at_fight_red"] = age_at_fight(
@@ -815,10 +885,12 @@ def _populate_meta(
     feats["elo_striking_velocity_diff"] = _vel_diff("elo_striking")
     feats["elo_grappling_velocity_diff"] = _vel_diff("elo_grappling")
 
-    # Division finish rate: resolve fighter's most recent division.
-    weight_class = _query_fighter_division(session, fighter_a.id) or _query_fighter_division(
-        session, fighter_b.id
-    )
+    # Division finish rate: explicit weight class, else the fighters' most
+    # recent division.
+    if weight_class is None:
+        weight_class = _query_fighter_division(session, fighter_a.id) or _query_fighter_division(
+            session, fighter_b.id
+        )
     div_hist, global_finish_rate = _query_division_state(
         session,
         weight_class,
@@ -839,6 +911,211 @@ def _populate_meta(
         getattr(fighter_b, "reach_inches", None),
         mean_reach,
     )
+
+
+# ── Career replay (sections 5, 7-12 of the training row) ─────────────────────
+#
+# Mirrors the ``wc_order`` literal inside ``FeatureMatrixAssembler.assemble``
+# (feature_matrix.py is AUDIT-01 frozen, so the mapping is duplicated here and
+# pinned by tests/unit/ml/test_inference_career_parity.py).
+_WEIGHT_CLASS_ORDINAL: dict[str, int] = {
+    "Strawweight": 1,
+    "Flyweight": 2,
+    "Bantamweight": 3,
+    "Featherweight": 4,
+    "Lightweight": 5,
+    "Welterweight": 6,
+    "Middleweight": 7,
+    "Light Heavyweight": 8,
+    "Heavyweight": 9,
+    "Women's Strawweight": 1,
+    "Women's Flyweight": 2,
+    "Women's Bantamweight": 3,
+    "Women's Featherweight": 4,
+}
+_WEIGHT_CLASS_ORDINAL_DEFAULT = 5
+
+_CAREER_KEYS: tuple[tuple[str, str], ...] = (
+    ("win_streak", "win_streak_diff"),
+    ("loss_streak", "loss_streak_diff"),
+    ("career_win_pct", "career_win_pct_diff"),
+    ("fight_count", "ufc_fight_count_diff"),
+    ("days_since_last_fight", "days_since_last_fight_diff"),
+    ("ko_finish_rate", "ko_finish_rate_diff"),
+    ("sub_finish_rate", "sub_finish_rate_diff"),
+    ("ko_loss_rate", "ko_loss_rate_diff"),
+    ("sub_loss_rate", "sub_loss_rate_diff"),
+    ("total_cage_minutes", "total_cage_minutes_diff"),
+    ("avg_fight_duration", "avg_fight_duration_diff"),
+    ("division_fight_count", "division_fight_count_diff"),
+    ("is_debut", "is_debut_diff"),
+    ("fights_per_year", "fights_per_year_diff"),
+    ("avg_opponent_elo", "avg_opponent_elo_diff"),
+    ("elo_momentum", "elo_momentum_diff"),
+    # Section 9: non-linear layoff.
+    ("log_days_since_last_fight", "log_days_since_last_fight_diff"),
+    ("is_short_turnaround", "is_short_turnaround_diff"),
+    ("is_comeback", "is_comeback_diff"),
+    # Section 10: rolling windows.
+    ("sig_str_per_min_last3", "sig_str_per_min_last3_diff"),
+    ("td_rate_last3", "td_rate_last3_diff"),
+    ("strike_defense_last3", "strike_defense_last3_diff"),
+    ("ctrl_time_last3", "ctrl_time_last3_diff"),
+    ("sig_str_per_min_last5", "sig_str_per_min_last5_diff"),
+    ("td_rate_last5", "td_rate_last5_diff"),
+    ("strike_defense_last5", "strike_defense_last5_diff"),
+    ("ctrl_time_last5", "ctrl_time_last5_diff"),
+)
+
+_PACE_KEYS: tuple[tuple[str, str], ...] = (
+    ("pace_decay_strikes", "pace_decay_strikes_diff"),
+    ("pace_decay_td", "pace_decay_td_diff"),
+    ("pace_output_variance", "pace_output_variance_diff"),
+    ("avg_r1_sig_str", "avg_r1_sig_str_diff"),
+)
+
+
+@dataclass
+class CareerInputs:
+    """Both fighters' prior-fight substrate, in the loader shapes the
+    assembler's static builders consume."""
+
+    fight_records: list[dict[str, Any]] = field(default_factory=list)
+    elo_features: dict[tuple[int, int], dict[str, float]] = field(default_factory=dict)
+    computed_features: dict[tuple[int, int], dict[str, float | None]] = field(default_factory=dict)
+    round_stats: dict[tuple[int, int], list[dict[str, Any]]] = field(default_factory=dict)
+    pre_ufc_records: dict[int, dict[str, Any]] = field(default_factory=dict)
+
+
+def _load_career_inputs(
+    session: Session,
+    fa_id: int,
+    fb_id: int,
+    before_date: date,
+) -> CareerInputs:
+    """Load every prior ufcstats fight (winner present, event strictly before
+    ``before_date``) involving either fighter, plus the per-fight Elo,
+    computed-feature and round-stat rows those fights need.
+
+    Uses the same ``ml.queries`` loaders as training, scoped to the two
+    fighters, so "a prior fight" means the same thing on both sides.
+    """
+    records = ml_queries.load_fight_records(
+        session, fighter_ids=(fa_id, fb_id), before_date=before_date
+    )
+    fight_ids = [r["fight_id"] for r in records]
+    if not fight_ids:
+        return CareerInputs(
+            pre_ufc_records=ml_queries.load_pre_ufc_records(session, fighter_ids=(fa_id, fb_id))
+        )
+    return CareerInputs(
+        fight_records=records,
+        elo_features=ml_queries.load_elo_features(session, fight_ids=fight_ids),
+        computed_features=ml_queries.load_computed_features(session, fight_ids=fight_ids),
+        round_stats=ml_queries.load_round_stats_for_ml(session, fight_ids=fight_ids),
+        pre_ufc_records=ml_queries.load_pre_ufc_records(session, fighter_ids=(fa_id, fb_id)),
+    )
+
+
+def _synthetic_fight_id(records: list[dict[str, Any]]) -> int:
+    """A negative id that cannot collide with any stored fight."""
+    lowest = min((r["fight_id"] for r in records), default=0)
+    return min(lowest, 0) - 1
+
+
+def _diff(va: float, vb: float) -> float:
+    if va != va or vb != vb:  # NaN on either side propagates
+        return float("nan")
+    return va - vb
+
+
+def _populate_career(
+    feats: dict[str, float],
+    fa_id: int,
+    fb_id: int,
+    event_date: date,
+    inputs: CareerInputs,
+    *,
+    weight_class: str | None,
+    num_rounds: int,
+    is_title_fight: bool,
+) -> str | None:
+    """Sections 5 and 7-12 of the training row (37 of the 72 base columns).
+
+    Appends a synthetic record for the upcoming fight to both fighters'
+    prior fights and runs the assembler's own static builders
+    (``_build_career_stats``, ``_build_pace_stats``, ``_build_rematch_index``)
+    over the sequence. The snapshot taken at the synthetic record is, by
+    construction, exactly what training computes for a fight on
+    ``event_date`` — the builders only ever read pre-fight state.
+
+    Returns the weight class used (resolved from A's, then B's, most recent
+    fight when not given) so the Elo section can replay the same division.
+    """
+    records = sorted(inputs.fight_records, key=lambda r: (r["event_date"], r["fight_id"]))
+    if weight_class is None:
+        for fid in (fa_id, fb_id):
+            mine = [r for r in records if fid in (r["fighter_a_id"], r["fighter_b_id"])]
+            if mine:
+                weight_class = mine[-1]["weight_class"]
+                break
+    upcoming_id = _synthetic_fight_id(records)
+    upcoming = {
+        "fight_id": upcoming_id,
+        "event_date": event_date,
+        "fighter_a_id": fa_id,
+        "fighter_b_id": fb_id,
+        "winner_id": None,
+        "weight_class": weight_class or "",
+        "method": None,
+        "is_title_fight": is_title_fight,
+        "num_rounds": num_rounds,
+    }
+    sequence = [*records, upcoming]
+
+    career, fight_pairs = FeatureMatrixAssembler._build_career_stats(
+        sequence, inputs.elo_features, inputs.computed_features
+    )
+    pace = FeatureMatrixAssembler._build_pace_stats(sequence, inputs.round_stats)
+    rematch = FeatureMatrixAssembler._build_rematch_index(fight_pairs)
+
+    career_a = career.get((fa_id, upcoming_id), {})
+    career_b = career.get((fb_id, upcoming_id), {})
+    for src, dst in _CAREER_KEYS:
+        feats[dst] = _diff(career_a.get(src, math.nan), career_b.get(src, math.nan))
+
+    # Section 7: context flags (never NaN in training).
+    feats["is_title_fight"] = 1.0 if is_title_fight else 0.0
+    feats["num_rounds"] = float(num_rounds)
+    feats["weight_class_ordinal"] = float(
+        _WEIGHT_CLASS_ORDINAL.get(weight_class or "", _WEIGHT_CLASS_ORDINAL_DEFAULT)
+    )
+
+    # Section 8: pace decay.
+    pace_a = pace.get((fa_id, upcoming_id), {})
+    pace_b = pace.get((fb_id, upcoming_id), {})
+    for src, dst in _PACE_KEYS:
+        feats[dst] = _diff(pace_a.get(src, math.nan), pace_b.get(src, math.nan))
+
+    # Section 11: rematch.
+    rm = rematch.get(upcoming_id, {})
+    feats["is_rematch"] = float(rm.get("is_rematch", 0))
+    first_winner = rm.get("first_fight_winner")
+    if first_winner == fa_id:
+        feats["first_fight_winner_diff"] = 1.0
+    elif first_winner == fb_id:
+        feats["first_fight_winner_diff"] = -1.0
+    else:
+        feats["first_fight_winner_diff"] = 0.0
+
+    # Section 12: pre-UFC record.
+    pre_a = inputs.pre_ufc_records.get(fa_id) or {}
+    pre_b = inputs.pre_ufc_records.get(fb_id) or {}
+    feats["pre_ufc_win_pct_diff"] = _diff(
+        pre_a.get("win_pct", math.nan) if pre_a else math.nan,
+        pre_b.get("win_pct", math.nan) if pre_b else math.nan,
+    )
+    return weight_class
 
 
 def _populate_physical(
@@ -979,9 +1256,12 @@ def build(
     feature_set: str = "v1.0",
     referee_id: int | None = None,
     event_id: int | None = None,
+    weight_class: str | None = None,
+    num_rounds: int = 3,
+    is_title_fight: bool = False,
 ) -> np.ndarray:
-    """Build a ``(1, len(cols))`` feature vector from latest snapshots
-    + injected live/cached odds.
+    """Build a ``(1, len(cols))`` feature vector from the fighters' stored
+    history as of ``event_date`` + injected live/cached odds.
 
     Per Phase 23 D-09: ``feature_set`` is the new public knob.
         - ``"v1.0"``        → 75 cols (includes 3 NET-* tail).
@@ -1010,6 +1290,12 @@ def build(
             ``feature_set='v2.2'``; ``None`` or unresolvable venue triggers
             graceful NaN degradation for the 6 TRAVEL cols. Debut fighters
             (no prior UFC fight) get the 0 sentinel per CONTEXT D-04.
+        weight_class: Division of the upcoming fight. Drives
+            ``weight_class_ordinal``, ``division_fight_count_diff`` and the
+            per-division Elo replay. ``None`` falls back to fighter A's (then
+            B's) most recent division.
+        num_rounds: Scheduled rounds (3 or 5) → ``num_rounds`` column.
+        is_title_fight: → ``is_title_fight`` column.
 
     Returns:
         ``np.ndarray`` of shape ``(1, len(cols))``, dtype ``float64``.
@@ -1029,12 +1315,29 @@ def build(
     cols = get_feature_columns(feature_set=feature_set)
     feats: dict[str, float] = {col: float("nan") for col in cols}
 
+    # Sections 5, 7-12: career / context / pace / layoff / rolling / rematch /
+    # pre-UFC — replayed from both fighters' prior fights with the assembler's
+    # own builders. Runs first so the resolved division feeds the Elo replay.
+    career_inputs = _load_career_inputs(session, fighter_a.id, fighter_b.id, event_date)
+    weight_class = _populate_career(
+        feats,
+        fighter_a.id,
+        fighter_b.id,
+        event_date,
+        career_inputs,
+        weight_class=weight_class,
+        num_rounds=num_rounds,
+        is_title_fight=is_title_fight,
+    )
+
     # Section 1 & 2: Elo + performance differentials
     elo_a_overall, elo_b_overall = _populate_elo(
         session,
         fighter_a.id,
         fighter_b.id,
         feats,
+        event_date,
+        weight_class,
     )
     feats_a_latest, feats_b_latest = _populate_performance(
         session,
@@ -1095,7 +1398,7 @@ def build(
         # Pitfall #5 fixed: age_at_fight_* uses event_date.
         # Q4 RESOLVED: no layoff_days_diff (days_since_last_fight_diff at
         # FEATURE_COLUMNS_NO_NET[61] is the canonical differential).
-        _populate_meta(session, feats, fighter_a, fighter_b, event_date)
+        _populate_meta(session, feats, fighter_a, fighter_b, event_date, weight_class)
 
     # Section 7: strict column-order materialization (Pitfall #12 guard,
     # lifted from predictor.py:332-340).

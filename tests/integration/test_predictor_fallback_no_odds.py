@@ -105,7 +105,7 @@ def patched_predictor(stub_fighters):
 
     fa, fb = stub_fighters
 
-    def fake_get_elo(session, fighter_id, elo_type):
+    def fake_get_elo(session, fighter_id, elo_type, *args, **kwargs):
         is_a = fighter_id == fa.id
         if elo_type == "overall":
             return 1620.0 if is_a else 1480.0

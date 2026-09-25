@@ -7,6 +7,8 @@ All queries use SQLAlchemy parameterized select() statements (T-10-03).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+from datetime import date
 from typing import Any
 
 from sqlalchemy import select
@@ -19,14 +21,22 @@ from ufc_prediction.models.event import Event
 from ufc_prediction.models.fight import Fight
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.models.round_stats import RoundStats
+from ufc_prediction.models.venue import Venue
 
 
-def load_elo_features(session: Session) -> dict[tuple[int, int], dict[str, float]]:
+def load_elo_features(
+    session: Session,
+    *,
+    fight_ids: Iterable[int] | None = None,
+) -> dict[tuple[int, int], dict[str, float]]:
     """Load Elo features indexed by (fighter_id, fight_id).
 
     Returns elo_before for overall, striking, grappling.
     CRITICAL: Uses elo_before (NOT elo_after) to avoid data leakage (T-10-01).
     Default to 1500.0 for missing elo types.
+
+    ``fight_ids`` restricts the load to those fights (serve-time career
+    replay); ``None`` loads the whole table (training).
     """
     stmt = select(
         EloSnapshot.fighter_id,
@@ -34,6 +44,8 @@ def load_elo_features(session: Session) -> dict[tuple[int, int], dict[str, float
         EloSnapshot.elo_type,
         EloSnapshot.elo_before,
     )
+    if fight_ids is not None:
+        stmt = stmt.where(EloSnapshot.fight_id.in_(list(fight_ids)))
 
     rows = session.execute(stmt).all()
     result: dict[tuple[int, int], dict[str, float]] = {}
@@ -51,8 +63,13 @@ def load_elo_features(session: Session) -> dict[tuple[int, int], dict[str, float
 
 def load_computed_features(
     session: Session,
+    *,
+    fight_ids: Iterable[int] | None = None,
 ) -> dict[tuple[int, int], dict[str, float | None]]:
     """Load computed features indexed by (fighter_id, fight_id).
+
+    ``fight_ids`` restricts the load to those fights (serve-time career
+    replay); ``None`` loads the whole table (training).
 
     Extracts the 20 numeric features from CANONICAL_FEATURE_ORDER
     (excluding style_tag). None values are preserved (XGBoost handles NaN).
@@ -85,6 +102,8 @@ def load_computed_features(
             (ComputedFeature.as_of_date.is_(None)) | (ComputedFeature.as_of_date <= Event.date)
         )
     )
+    if fight_ids is not None:
+        stmt = stmt.where(ComputedFeature.fight_id.in_(list(fight_ids)))
 
     rows = session.execute(stmt).all()
     result: dict[tuple[int, int], dict[str, float | None]] = {}
@@ -122,12 +141,30 @@ def load_fighter_physicals(session: Session) -> dict[int, dict[str, Any]]:
     }
 
 
-def load_fight_records(session: Session) -> list[dict[str, Any]]:
+def load_fight_records(
+    session: Session,
+    *,
+    fighter_ids: Iterable[int] | None = None,
+    before_date: date | None = None,
+) -> list[dict[str, Any]]:
     """Load fight records joined with events for chronological ordering.
 
     Returns list of dicts ordered by event_date ASC, fight_id ASC.
     Skips fights where winner_id is None (draws/no-contests) since
     they have no prediction target (per existing backtesting.py pattern).
+
+    Each record also carries the v2.2 REF/TRAVEL inputs the assembler's
+    pre-passes read: ``event_id``, ``referee_id`` (``Event.referee_id``) and
+    ``venue_lat`` / ``venue_lon`` / ``venue_timezone_iana`` (outer-joined
+    from ``Venue`` via ``Event.venue_id``; ``None`` when the event has no
+    venue). Before these were selected every v2.2 training run collapsed
+    REF to the global rates and TRAVEL to NaN.
+
+    ``fighter_ids`` restricts the result to fights involving any of those
+    fighters and ``before_date`` to events strictly before that date; both
+    are used by the serve-time career replay in ``inference_features`` so
+    the same filter (ufcstats source, winner present) defines "a prior
+    fight" on both sides of the train/serve boundary.
 
     Plan 28-04 Task 1 (Path B at load) — closes the HIGH-severity finding
     documented in
@@ -155,12 +192,23 @@ def load_fight_records(session: Session) -> list[dict[str, Any]]:
             Fight.method,
             Fight.is_title_fight,
             Fight.num_rounds,
+            Fight.event_id,
+            Event.referee_id,
+            Venue.lat,
+            Venue.lon,
+            Venue.timezone_iana,
         )
         .join(Event, Fight.event_id == Event.id)
+        .outerjoin(Venue, Event.venue_id == Venue.id)
         .where(Fight.winner_id.isnot(None))
         .where(Event.source == "ufcstats")
         .order_by(Event.date, Fight.id)
     )
+    if fighter_ids is not None:
+        ids = list(fighter_ids)
+        stmt = stmt.where(Fight.fighter_a_id.in_(ids) | Fight.fighter_b_id.in_(ids))
+    if before_date is not None:
+        stmt = stmt.where(Event.date < before_date)
 
     rows = session.execute(stmt).all()
     return [
@@ -174,12 +222,21 @@ def load_fight_records(session: Session) -> list[dict[str, Any]]:
             "method": row[6],
             "is_title_fight": row[7],
             "num_rounds": row[8],
+            "event_id": row[9],
+            "referee_id": row[10],
+            "venue_lat": row[11],
+            "venue_lon": row[12],
+            "venue_timezone_iana": row[13],
         }
         for row in rows
     ]
 
 
-def load_pre_ufc_records(session: Session) -> dict[int, dict[str, Any]]:
+def load_pre_ufc_records(
+    session: Session,
+    *,
+    fighter_ids: Iterable[int] | None = None,
+) -> dict[int, dict[str, Any]]:
     """Load pre-UFC career records indexed by fighter_id.
 
     Returns dict mapping fighter_id -> pre_ufc_record JSON dict
@@ -188,6 +245,8 @@ def load_pre_ufc_records(session: Session) -> dict[int, dict[str, Any]]:
     ko_finish_rate, sub_finish_rate, etc.
     """
     stmt = select(Fighter.id, Fighter.pre_ufc_record).where(Fighter.pre_ufc_record.isnot(None))
+    if fighter_ids is not None:
+        stmt = stmt.where(Fighter.id.in_(list(fighter_ids)))
 
     rows = session.execute(stmt).all()
     return {row[0]: row[1] for row in rows}
@@ -195,8 +254,13 @@ def load_pre_ufc_records(session: Session) -> dict[int, dict[str, Any]]:
 
 def load_round_stats_for_ml(
     session: Session,
+    *,
+    fight_ids: Iterable[int] | None = None,
 ) -> dict[tuple[int, int], list[dict[str, Any]]]:
     """Load round stats indexed by (fighter_id, fight_id) for pace decay features.
+
+    ``fight_ids`` restricts the load to those fights (serve-time career
+    replay); ``None`` loads the whole table (training).
 
     Returns dict mapping (fighter_id, fight_id) -> list of per-round dicts
     sorted by round_number. Each dict has: round_number, sig_str_landed, td_landed.
@@ -212,6 +276,8 @@ def load_round_stats_for_ml(
         .where(RoundStats.round_number > 0)  # skip round 0 aggregates
         .order_by(RoundStats.fight_id, RoundStats.fighter_id, RoundStats.round_number)
     )
+    if fight_ids is not None:
+        stmt = stmt.where(RoundStats.fight_id.in_(list(fight_ids)))
 
     rows = session.execute(stmt).all()
     result: dict[tuple[int, int], list[dict[str, Any]]] = {}

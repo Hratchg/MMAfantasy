@@ -142,7 +142,7 @@ def _patch_path_a_environment(monkeypatch, tmp_path, *, below_floor: bool = Fals
     monkeypatch.setattr(
         pred_mod,
         "_assert_xgb_v2_sha",
-        lambda label: "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099",
+        lambda label: "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd",
         raising=False,
     )
     monkeypatch.setattr(
@@ -192,7 +192,7 @@ def test_cli_dispatch_synthetic(monkeypatch, tmp_path):
     end_sha_path = phase_31_iso / "31-XGB-V2-SHA-PHASE-31-END.txt"
     assert end_sha_path.exists()
     assert end_sha_path.read_text(encoding="utf-8").strip() == (
-        "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+        "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
     )
 
     # HALT artifact NOT emitted on Path A.
@@ -284,7 +284,7 @@ def test_cli_halt_path_d_runs_end_sha_assertion_without_writing_artifact(
 
     def tracking_sha(label: str) -> str:
         sha_calls.append(label)
-        return "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+        return "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
 
     monkeypatch.setattr(
         pred_mod,

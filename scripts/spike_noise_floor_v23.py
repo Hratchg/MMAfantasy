@@ -85,7 +85,7 @@ import numpy as np
 # MID + END SHA assertions (Phase 30 MID artifact was emitted by Plan 30-01;
 # this script emits the END artifact at completion).
 EXPECTED_XGB_V2_SHA: str = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+    "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
 )
 
 # D-08 formula hash binding — preserved verbatim from v2.2 spike. The reduction

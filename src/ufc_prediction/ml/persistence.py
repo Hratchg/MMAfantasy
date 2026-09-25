@@ -30,6 +30,7 @@ def save_model(
     n_test_fights: int = 0,
     *,
     extra_meta: dict | None = None,
+    overwrite: bool = False,
 ) -> Path:
     """Save trained model and metadata to model_dir.
 
@@ -54,15 +55,28 @@ def save_model(
             metrics, cutoff_date, n_training_fights, n_test_fights, trained_at,
             xgboost_version, sklearn_version, python_version) cannot be
             overridden — those are computed by save_model itself.
+        overwrite: Replace an existing ``xgb_{version}.joblib``. Off by
+            default so a retrain can never silently clobber a frozen
+            AUDIT-01 artifact (``models/xgb_v2.joblib``); callers that mean
+            to replace a model pass ``overwrite=True`` explicitly.
 
     Returns:
         Path to the saved model file.
+
+    Raises:
+        FileExistsError: If the model file exists and ``overwrite`` is False.
     """
     dir_path = Path(model_dir)
     dir_path.mkdir(parents=True, exist_ok=True)
 
     model_path = dir_path / f"xgb_{version}.joblib"
     meta_path = dir_path / f"xgb_{version}_meta.json"
+
+    if model_path.exists() and not overwrite:
+        raise FileExistsError(
+            f"{model_path} already exists; refusing to overwrite a persisted model. "
+            "Pass overwrite=True (CLI: --overwrite) or choose another --version."
+        )
 
     # Save model
     joblib.dump(model, model_path)
@@ -79,7 +93,7 @@ def save_model(
         "sklearn_version": sklearn.__version__,
         "python_version": sys.version,
         "feature_columns": list(feature_columns),
-        "n_features": int(len(feature_columns)),  # HOUSE-01 (Pitfall #12 corroboration)
+        "n_features": len(feature_columns),  # HOUSE-01 (Pitfall #12 corroboration)
         "best_params": serializable_params,
         "metrics": serializable_metrics,
         "cutoff_date": cutoff_date,
@@ -259,9 +273,7 @@ def save_contract_json(
     contract_path = dir_path / f"xgb_{version}-contract.json"
 
     if not model_path.exists():
-        raise FileNotFoundError(
-            f"save_contract_json: model joblib not found: {model_path}"
-        )
+        raise FileNotFoundError(f"save_contract_json: model joblib not found: {model_path}")
 
     model_sha = hashlib.sha256(model_path.read_bytes()).hexdigest()
     contract = {

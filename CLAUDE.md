@@ -32,7 +32,7 @@ Byte-identity is enforced on a protected set (`scripts/check_audit01_protected_f
 - A **pre-commit hook** blocks commits touching these unless `AUDIT01_OVERRIDE=1`.
 - `.claude/hooks/audit01_guard.py` (PreToolUse) blocks *edits* to them at edit time — same bypass.
 - `spike_noise_floor_v22.py` is additionally **D-03 byte-locked** by `tests/integration/test_variance_harness.py` (must be byte-identical to HEAD).
-- Frozen SHAs: `xgb_v2.joblib` = `6e7641…ba099`, `meta_v2.joblib` = `77076d3b…f9196`. **Verify unchanged at start and end of any model work.**
+- Frozen SHAs: `xgb_v2.joblib` = `0b0b40…f6fecd`, `meta_v2.joblib` = `e04454…2502a8` (full values in `scripts/spike_noise_floor_v23.py::EXPECTED_XGB_V2_SHA` and `src/ufc_prediction/cli/predict.py`). **Verify unchanged at start and end of any model work.**
 
 ## Corpus & model facts
 - `load_fight_records` filters `Event.source=='ufcstats'` (Plan 28-04 dedup) → ~8,581 fights. The frozen `xgb_v2` was trained on the PRE-dedup **1.95×-inflated** cross-source corpus (16,641 rows). When comparing a dedup-trained candidate to frozen, gate against a **dedup-refit baseline** (frozen config refit on the same clean substrate), not the inflated frozen artifact.

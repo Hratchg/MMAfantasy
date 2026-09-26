@@ -97,11 +97,11 @@ def test_meta_v22_baseline_per_slice_present() -> None:
     for slc in PER_SLICE_KEYS:
         assert slc in META_V22_BASELINE_BRIER
         assert isinstance(META_V22_BASELINE_BRIER[slc], float)
-    # Phase 73 (DEBT-V261-01): values reconciled with current META_V22_SPIKE.json::median_per_slice.
-    # The stale 0.213/0.213/0.187 values were Phase 26 OOF; current file is v2.6 close baseline.
-    assert abs(META_V22_BASELINE_BRIER["most_recent_12mo"] - 0.15465991222123496) < 1e-9
-    assert abs(META_V22_BASELINE_BRIER["most_recent_24mo"] - 0.15935635076986582) < 1e-9
-    assert abs(META_V22_BASELINE_BRIER["random_15pct"] - 0.14167626892373050) < 1e-9
+    # Values reconciled with current META_V22_SPIKE.json::median_per_slice
+    # (2026-09-25 substrate: opp_adj leak fix + per-domain Elo bookkeeping fix).
+    assert abs(META_V22_BASELINE_BRIER["most_recent_12mo"] - 0.13259296636537393) < 1e-9
+    assert abs(META_V22_BASELINE_BRIER["most_recent_24mo"] - 0.13875065056589686) < 1e-9
+    assert abs(META_V22_BASELINE_BRIER["random_15pct"] - 0.12609749093558936) < 1e-9
 
 
 # ───────────────────────────── Path A (all 3 legs clear) ─────────────────────

@@ -37,7 +37,7 @@ The 4 tests assert (per Plan 30-02 `<behavior>`):
     live data path (no fixture override available for the canonical-
     lineage anchor; ResearchQ10 binds against the real Plan 29-03 data
     path), parses the emitted `30-VARIANCE-REPORT.md` frontmatter, and
-    asserts `abs(brier_random_15pct - 0.1409) < 0.0001`. Cleans up the
+    asserts `abs(brier_random_15pct - PLAN_29_03_RANDOM_15PCT_BRIER) < 0.0001`. Cleans up the
     test artifact after.
 
 Pitfall 3 reminder (30-RESEARCH.md): distinct-Brier set membership uses
@@ -66,7 +66,8 @@ FIXTURE_NPZ: Path = REPO_ROOT / "tests" / "fixtures" / "variance" / "meta_train_
 FIXTURE_SLICES: Path = REPO_ROOT / "tests" / "fixtures" / "variance" / "eval_slices.json"
 
 EXPECTED_XGB_V2_SHA: str = "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
-PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.155699
+# Re-anchored 2026-09-25 on the corrected substrate (see spike_noise_floor_v23.py).
+PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.126097
 PLAN_29_03_TOLERANCE: float = 0.0001
 
 
@@ -318,13 +319,14 @@ def test_zero_variance_halt(tmp_path) -> None:
     )
 
 
-# ── 30-02-06: canonical-lineage 0.1409 ───────────────────────────────
+# ── 30-02-06: canonical-lineage anchor ───────────────────────────────
 
 
 @pytest.mark.slow  # exact-brier reproduction is platform/BLAS-dependent (CI != local)
 def test_seed42_deterministic_matches_plan_29_03(tmp_path) -> None:
-    """30-02-06 — spike_v23 seed=42 --no-bootstrap matches Plan 29-03 random_15pct
-    Brier 0.1409 to 4-decimal precision (ResearchQ10 canonical-lineage anchor).
+    """30-02-06 — spike_v23 seed=42 --no-bootstrap matches the anchored random_15pct
+    Brier (PLAN_29_03_RANDOM_15PCT_BRIER) to 4-decimal precision (ResearchQ10
+    canonical-lineage anchor; re-anchored whenever the substrate is regenerated).
 
     Invokes the spike via subprocess to write the report to a tmp location
     (so the canonical 10-seed run in Task 3 isn't overwritten). Parses the
@@ -333,12 +335,12 @@ def test_seed42_deterministic_matches_plan_29_03(tmp_path) -> None:
 
     Skipped if `DATABASE_URL` is unset or the live DB is unreachable; the
     canonical-lineage anchor binds against the REAL Plan 29-03 data path
-    (synthetic fixtures do not reproduce 0.1409 — that's the binding).
+    (synthetic fixtures do not reproduce the anchor — that's the binding).
     """
     if not os.environ.get("DATABASE_URL") and not os.environ.get("RUN_LIVE_DB_TESTS"):
         pytest.skip(
             "test_seed42_deterministic_matches_plan_29_03 requires the live "
-            "DB to reproduce Plan 29-03's 0.1409 anchor. Set DATABASE_URL or "
+            "DB to reproduce the canonical-lineage anchor. Set DATABASE_URL or "
             "RUN_LIVE_DB_TESTS=1 to enable; otherwise the canonical run in "
             "Task 3 covers this assertion."
         )

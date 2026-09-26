@@ -8,7 +8,7 @@ Phase 19 substrate verbatim where applicable. Edits limited to:
   3. Pitfall #2 guard: explicit `assert X_oof.shape[1] == 72` at OOF call site
   4. Coefficient stability report (META-V22-04)
   5. Hard-gate-then-save w/ `meta_version="v2_candidate"` (D-10 carries Plan 26-04)
-  6. Sibling contract artifact `models/meta/meta_v2-contract.json`
+  6. Sibling contract artifact `models/meta/meta_v2_candidate-contract.json`
   7. META_V22_SPIKE.json + AUDIT-01 MID checkpoint emission
   8. Stepwise mode (--mode stepwise) for REF + TRAVEL forward-stepwise (Plan 26-03)
 
@@ -217,7 +217,7 @@ def _persist_candidate_and_contract(
     hurdle_failures: list[str],
     cache_path: Path,
 ) -> tuple[Path, Path, Path]:
-    """Persist meta_v2_candidate.{joblib,_meta.json} + meta_v2-contract.json.
+    """Persist meta_v2_candidate.{joblib,_meta.json} + meta_v2_candidate-contract.json.
 
     Returns: (candidate_joblib_path, candidate_meta_path, contract_path)
     """
@@ -279,7 +279,11 @@ def _persist_candidate_and_contract(
         "created_at": datetime.now(tz=UTC).date().isoformat(),
         "candidate_or_promoted": "candidate",
     }
-    contract_path = META_DIR / "meta_v2-contract.json"
+    # Named after the CANDIDATE. This used to be written to meta_v2-contract.json,
+    # the promoted model's shipped contract, so every spike run (including the
+    # one tests/regression/test_eval_slice_sizes.py triggers) clobbered the
+    # promoted sha with the candidate sha. Promotion copies this file over.
+    contract_path = META_DIR / "meta_v2_candidate-contract.json"
     contract_path.write_text(
         json.dumps(contract, indent=2) + "\n", encoding="utf-8",
     )

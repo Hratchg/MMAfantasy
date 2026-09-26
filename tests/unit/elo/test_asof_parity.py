@@ -174,13 +174,11 @@ def test_seeded_debutant_matches_engine(corpus):
         assert pre_fight_rating([], firsts[fid].fight_date, firsts[fid].division, seed=seed) == seed
 
 
-@pytest.mark.parametrize(
-    ("elo_type", "adjust"),
-    [("striking", True), ("grappling", False)],
-)
-def test_domain_replay_matches_domain_computer(corpus, elo_type, adjust):
-    """Striking sees regression + transfer; grappling never does because the
-    domain computer shares last-fight bookkeeping across its two loops."""
+@pytest.mark.parametrize("elo_type", ["striking", "grappling"])
+def test_domain_replay_matches_domain_computer(corpus, elo_type):
+    """Both domains see regression + transfer: the domain computer keeps
+    per-domain bookkeeping, so the default replay flags reproduce
+    ``elo_before`` for striking and grappling alike."""
     _, _, _, domain = corpus
     snaps = [s for s in domain if s.elo_type == elo_type]
     assert snaps
@@ -191,8 +189,6 @@ def test_domain_replay_matches_domain_computer(corpus, elo_type, adjust):
             snap.division,
             config=EloConfig(),
             seed=None,
-            regress=adjust,
-            transfer=adjust,
         )
         assert got == pytest.approx(snap.elo_before, abs=1e-9), (
             f"{elo_type} fighter {snap.fighter_id} fight {snap.fight_id}: "
@@ -200,11 +196,13 @@ def test_domain_replay_matches_domain_computer(corpus, elo_type, adjust):
         )
 
 
-def test_grappling_would_diverge_with_adjustments(corpus):
-    """Guard against 'fixing' the grappling flags: applying regression to
-    grappling breaks parity with the stored snapshots."""
+@pytest.mark.parametrize("elo_type", ["striking", "grappling"])
+def test_domain_replay_diverges_without_adjustments(corpus, elo_type):
+    """Guard against regressing the domain computer to shared bookkeeping:
+    skipping regression + transfer must break parity for BOTH domains. Before
+    the per-domain fix, grappling only matched with the adjustments off."""
     _, _, _, domain = corpus
-    snaps = [s for s in domain if s.elo_type == "grappling"]
+    snaps = [s for s in domain if s.elo_type == elo_type]
     mismatches = sum(
         1
         for snap in snaps
@@ -212,8 +210,8 @@ def test_grappling_would_diverge_with_adjustments(corpus):
             _history(snaps, snap.fighter_id, snap.fight_date),
             snap.fight_date,
             snap.division,
-            regress=True,
-            transfer=True,
+            regress=False,
+            transfer=False,
         )
         != pytest.approx(snap.elo_before, abs=1e-9)
     )

@@ -142,10 +142,8 @@ def _get_latest_elo(
     engine's own semantics per Elo type:
 
     - ``overall``: regression + transfer, debutant seed on a fresh key.
-    - ``striking``: regression + transfer, no seed.
-    - ``grappling``: neither — ``DomainEloComputer`` shares its last-fight
-      bookkeeping across the striking and grappling loops, so the grappling
-      loop always sees "fought today, same division" and never adjusts.
+    - ``striking`` / ``grappling``: regression + transfer, no seed
+      (``DomainEloComputer`` keeps per-domain bookkeeping).
 
     ``as_of`` defaults to today; ``division`` ``None`` resolves to the
     fighter's most recent transferable division.
@@ -154,21 +152,13 @@ def _get_latest_elo(
     """
     as_of = as_of or date.today()
     history = _load_elo_history(session, fighter_id, elo_type, as_of)
-    if elo_type == "overall":
-        seed: float | None = _load_debutant_seeds().get(fighter_id)
-        adjust = True
-    elif elo_type == "striking":
-        seed, adjust = None, True
-    else:
-        seed, adjust = None, False
+    seed: float | None = _load_debutant_seeds().get(fighter_id) if elo_type == "overall" else None
     return pre_fight_rating(
         history,
         as_of,
         division,
         config=EloConfig(),
         seed=seed,
-        regress=adjust,
-        transfer=adjust,
     )
 
 

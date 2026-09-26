@@ -96,10 +96,11 @@ def pre_fight_rating(
         seed: Debutant seed for a ``(fighter, division)`` key with no rating,
             exactly like ``EloEngine._lookup_initial_rating``. ``None`` means
             ``config.initial_rating``. Domain Elo never seeds.
-        regress: Apply inactivity regression (overall + striking). The
-            grappling domain never sees it because ``DomainEloComputer``
-            shares its last-fight bookkeeping across the two domain loops.
-        transfer: Apply division transfer (overall + striking; same caveat).
+        regress: Apply inactivity regression. Every Elo type (overall,
+            striking, grappling) applies it; the flag exists so callers can
+            replay legacy snapshot sets written before ``DomainEloComputer``
+            kept per-domain bookkeeping.
+        transfer: Apply division transfer (same scope as ``regress``).
     """
     cfg = config or EloConfig()
     ratings: dict[str, float] = {}

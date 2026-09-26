@@ -113,12 +113,20 @@ class DomainEloComputer:
         # (fighter_id, division) -> current raw domain Elo
         self._striking_ratings: dict[tuple[int, str], float] = {}
         self._grappling_ratings: dict[tuple[int, str], float] = {}
+        # Bookkeeping is keyed by (domain, fighter_id). It used to be keyed by
+        # fighter_id alone and shared between the striking and grappling
+        # loops of ``_process_domain_fight``: the striking loop ran first and
+        # stamped the fighter with "fought today, in this division", so the
+        # grappling loop always saw a zero-day gap and no division change and
+        # never regressed or transferred, while the shared fight counter was
+        # bumped twice per fight and shrank both domains twice as fast as
+        # the overall engine.
         # Independent fight counts for domain K-factor decay (Pitfall 5 / D-08)
-        self._domain_fight_counts: dict[int, int] = {}
+        self._domain_fight_counts: dict[tuple[str, int], int] = {}
         # Independent last_fight_date for domain inactivity regression (Pitfall 4 / A2)
-        self._domain_last_fight_date: dict[int, date] = {}
+        self._domain_last_fight_date: dict[tuple[str, int], date] = {}
         # Last division for domain-specific division transfers
-        self._domain_last_division: dict[int, str] = {}
+        self._domain_last_division: dict[tuple[str, int], str] = {}
 
     def compute_all(
         self,
@@ -196,14 +204,16 @@ class DomainEloComputer:
 
         for domain_name, ratio, ratings_dict in domain_configs:
             for fighter_id, overall_snap in fighter_snaps:
+                book = (domain_name, fighter_id)
+
                 # Pre-fight adjustments
                 self._apply_domain_inactivity_regression(
-                    fighter_id,
+                    book,
                     fight.event_date,
                     ratings_dict,
                 )
                 self._check_domain_division_transfer(
-                    fighter_id,
+                    book,
                     division,
                     ratings_dict,
                 )
@@ -220,18 +230,16 @@ class DomainEloComputer:
                 elo_after = elo_before + domain_delta
                 ratings_dict[key] = elo_after
 
-                # Increment domain fight count
-                self._domain_fight_counts[fighter_id] = (
-                    self._domain_fight_counts.get(fighter_id, 0) + 1
-                )
-                count_after = self._domain_fight_counts[fighter_id]
+                # Increment this domain's fight count
+                self._domain_fight_counts[book] = self._domain_fight_counts.get(book, 0) + 1
+                count_after = self._domain_fight_counts[book]
 
-                # Update domain last_fight_date
-                self._domain_last_fight_date[fighter_id] = fight.event_date
+                # Update this domain's last_fight_date
+                self._domain_last_fight_date[book] = fight.event_date
 
-                # Update domain last_division (skip Catch Weight / Open Weight)
+                # Update this domain's last_division (skip Catch Weight / Open Weight)
                 if division not in _NON_TRANSFER_DIVISIONS:
-                    self._domain_last_division[fighter_id] = division
+                    self._domain_last_division[book] = division
 
                 # Compute shrinkage (same formula as EloEngine, per D-08)
                 elo_after_shrinkage = self._compute_shrinkage(elo_after, count_after)
@@ -257,16 +265,18 @@ class DomainEloComputer:
 
     def _apply_domain_inactivity_regression(
         self,
-        fighter_id: int,
+        book: tuple[str, int],
         current_date: date,
         ratings_dict: dict[tuple[int, str], float],
     ) -> None:
         """Regress domain rating toward initial if fighter inactive > threshold.
 
         Same logic as EloEngine._apply_inactivity_regression but operates
-        on domain rating dict using domain_last_fight_date (D-08).
+        on domain rating dict using this domain's last_fight_date (D-08).
+        ``book`` is the ``(domain, fighter_id)`` bookkeeping key.
         """
-        last_date = self._domain_last_fight_date.get(fighter_id)
+        fighter_id = book[1]
+        last_date = self._domain_last_fight_date.get(book)
         if last_date is None:
             return  # first domain fight, no regression
 
@@ -289,19 +299,21 @@ class DomainEloComputer:
 
     def _check_domain_division_transfer(
         self,
-        fighter_id: int,
+        book: tuple[str, int],
         current_division: str,
         ratings_dict: dict[tuple[int, str], float],
     ) -> None:
-        """Carry 75% of domain Elo delta to new division if fighter changed divisions.
+        """Carry the configured share of domain Elo delta to a new division.
 
         Same logic as EloEngine._check_division_transfer but operates on
-        domain rating dict using domain_last_division (D-08).
+        domain rating dict using this domain's last_division (D-08).
+        ``book`` is the ``(domain, fighter_id)`` bookkeeping key.
         """
         if current_division in _NON_TRANSFER_DIVISIONS:
             return
 
-        last_div = self._domain_last_division.get(fighter_id)
+        fighter_id = book[1]
+        last_div = self._domain_last_division.get(book)
         if last_div is None or last_div == current_division:
             return
 

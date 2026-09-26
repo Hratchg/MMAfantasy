@@ -1,9 +1,20 @@
 # UFC Corpus v3.0 Seed — Provenance
 
 **Artifact:** `data/seed/ufc_corpus_v30.dump`
-**Generated:** 2026-07-06 (re-baselined — `RETRAIN-V31-01` / `SEED-REBASE-01`)
+**Generated:** 2026-09-25 (regenerated after the opp_adj leak fix + per-domain Elo bookkeeping fix; previously 2026-07-06 `RETRAIN-V31-01` / `SEED-REBASE-01`)
 **Phase:** 88 — HANDOFF-V30-02 DB Dump Packaging (regenerated on the promoted substrate)
 
+> **Regeneration note (2026-09-25):** this dump was regenerated on the same
+> corpus after two substrate fixes: `features compute` no longer leaks the
+> current fight into the opponent-adjusted (`opp_adj_*`) rates, and the domain
+> Elo computer keeps per-domain bookkeeping so grappling ratings now regress
+> after inactivity and transfer between divisions like striking does (and both
+> domains shrink on their own fight count). Overall Elo rows are byte-identical
+> to the 2026-07-06 dump; 12,853 grappling `elo_before`/`elo_after` values,
+> the domain `elo_after_shrinkage` values, the four `opp_adj_*` feature keys and
+> 2,917 `style_tag` values changed. Row counts are unchanged. The frozen
+> `xgb_v2` (sha256 `0b0b40…fecd`) was NOT re-promoted on this substrate.
+>
 > **Re-baseline note (2026-07-06):** this dump was regenerated on the corrected,
 > promoted substrate that produced the re-baselined `xgb_v2` (sha256
 > `0b0b40…fecd`): the deduplicated `ufcstats` corpus current to 2026-06-27,
@@ -19,7 +30,7 @@
 |-------|-------|
 | Container | `mmafantasy-db-1` |
 | Image | `postgres:18` |
-| Host port | `5433` |
+| Host port | `5433` (any host port works; the dump is taken from inside the container) |
 | Database | `ufc_prediction` |
 | User | `ufc` |
 | Postgres server version | `PostgreSQL 18.4 (Debian 18.4-1.pgdg13+1)` |
@@ -52,14 +63,14 @@ with the exact per-table counts below.
 
 | Field | Value |
 |-------|-------|
-| Compressed dump size | 11,125,102 bytes (10.61 MB) |
-| SHA256 | `fcd7a55c4e95008225ef7846f884e5416db19cd998007c04854079314eeb9be4` |
+| Compressed dump size | 11,194,884 bytes (10.68 MB) |
+| SHA256 | `8ea95041f60bc8fae698496688e9b19c851d556649d8fdc3a054e29f3c7a1901` |
 
 ## Hosting route
 
 Committed in repo (≤ 30 MB threshold per D-B1).
 
-The compressed dump (10.61 MB) sits well under the 30 MB cutoff, so the
+The compressed dump (10.68 MB) sits well under the 30 MB cutoff, so the
 binary lives directly in the repo alongside this provenance file and the
 SHA256 sidecar. No external GitHub Release hosting required for v3.0.
 

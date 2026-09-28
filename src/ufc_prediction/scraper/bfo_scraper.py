@@ -54,6 +54,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 
+import httpx
 from bs4 import BeautifulSoup, Tag
 from rapidfuzz import fuzz
 from sqlalchemy import select
@@ -164,7 +165,7 @@ def _safe_fetch_bfo(
     """
     try:
         return (url, client.get(url), None)  # type: ignore[attr-defined]
-    except (RuntimeError, ValueError) as exc:
+    except (RuntimeError, ValueError, httpx.HTTPError) as exc:
         return (url, None, exc)
 
 
@@ -1074,7 +1075,7 @@ class BFOScraper:
         for url in event_urls:
             try:
                 html = self._client.get(url)  # type: ignore[attr-defined]
-            except (RuntimeError, ValueError) as exc:
+            except (RuntimeError, ValueError, httpx.HTTPError) as exc:
                 logger.warning(
                     "BFO event fetch failed for %s: %s",
                     url,

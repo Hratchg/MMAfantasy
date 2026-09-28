@@ -22,7 +22,7 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 
-from ufc_prediction.api.auth import partner_label_from_request
+from ufc_prediction.api.auth import partner_label_from_header, partner_label_from_request
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +46,22 @@ def is_exempt(request: Request) -> bool:
 def _key_func(request: Request) -> str:
     """slowapi key_func — bucket by partner label, not IP.
 
-    Falls back to "anonymous" when the auth dependency hasn't populated
-    `request.state.partner_label` (defensive — normally a 401 from
-    `require_api_key` would short-circuit before slowapi runs).
+    ``SlowAPIMiddleware`` enforces ``default_limits`` BEFORE route
+    dependencies run, so ``request.state.partner_label`` (set by
+    ``require_api_key``) is never populated at middleware time. Reading
+    only the state would put every caller in one shared "anonymous"
+    bucket. The label is therefore resolved from the ``X-API-Key`` header
+    directly (constant-time match against ``settings.api_keys``); the
+    state is consulted first so per-route ``@limiter.limit`` decorators
+    (which run after auth) keep working without a second key match.
+
+    Unauthenticated / unknown keys share the "anonymous" bucket — they
+    only ever receive 401s, so throttling them together is harmless.
     """
-    return partner_label_from_request(request) or "anonymous"
+    label = partner_label_from_request(request)
+    if label is None:
+        label = partner_label_from_header(request.headers.get("X-API-Key"))
+    return label or "anonymous"
 
 
 def build_limiter(default_limits: list[str] | None = None) -> Limiter:

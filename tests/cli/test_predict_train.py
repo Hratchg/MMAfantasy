@@ -53,6 +53,7 @@ def test_coverage_aborts_below_50pct(
     mock_elo: MagicMock,
     mock_fr: MagicMock,
     mock_sl: MagicMock,
+    tmp_path: Path,
 ) -> None:
     """1000 training fights, only 100 with odds → 10% coverage → abort."""
     # All training-era fights (well before any sane cutoff)
@@ -67,7 +68,7 @@ def test_coverage_aborts_below_50pct(
     mock_round.return_value = {}
     mock_pre.return_value = {}
 
-    result = runner.invoke(app, ["predict", "train", "--trials", "1"])
+    result = runner.invoke(app, ["predict", "train", "--trials", "1", "--model-dir", str(tmp_path)])
     assert result.exit_code == 1, result.output
     # Output names the threshold and the escape hatch
     assert "< 50% threshold" in result.output
@@ -96,6 +97,7 @@ def test_force_flag_overrides_coverage_check(
     mock_fr: MagicMock,
     mock_sl: MagicMock,
     mock_cdm: MagicMock,
+    tmp_path: Path,
 ) -> None:
     """--force bypasses the coverage check.
 
@@ -123,7 +125,9 @@ def test_force_flag_overrides_coverage_check(
     sentinel = "FORCE_BYPASSED_COVERAGE_CHECK"
     mock_cdm.side_effect = RuntimeError(sentinel)
 
-    result = runner.invoke(app, ["predict", "train", "--trials", "1", "--force"])
+    result = runner.invoke(
+        app, ["predict", "train", "--trials", "1", "--force", "--model-dir", str(tmp_path)]
+    )
 
     # Assertion 1: coverage threshold abort message NOT in output
     assert "< 50% threshold" not in result.output, (
@@ -285,3 +289,77 @@ class TestRelaxedGateDerivation:
             or "D-04(P15.1) supersedes D-07(P15)" in predict_py
             or "D-04(P15.1) supersedes" in predict_py
         ), "D-04 supersession of D-07 not annotated in docstring"
+
+
+# ── Frozen-model protection + feature-set width (code review 2026-09-25) ────
+
+
+class TestTrainOverwriteGuardAndFeatureSets:
+    def test_train_refuses_existing_version_before_touching_db(self, tmp_path):
+        """`ufc predict train` defaulted to --version v2 and save_model had no
+        exists-guard, so a routine retrain overwrote models/xgb_v2.joblib.
+        The refusal must fire before any data is loaded."""
+        (tmp_path / "xgb_v2.joblib").write_bytes(b"frozen")
+        with patch("ufc_prediction.cli.predict.SessionLocal") as session_cls:
+            result = runner.invoke(
+                app, ["predict", "train", "--model-dir", str(tmp_path), "--trials", "1"]
+            )
+        assert result.exit_code == 1
+        assert "Refusing to overwrite" in result.output
+        assert (tmp_path / "xgb_v2.joblib").read_bytes() == b"frozen"
+        session_cls.assert_not_called()
+
+    def test_train_rejects_unknown_feature_set(self, tmp_path):
+        with patch("ufc_prediction.cli.predict.SessionLocal") as session_cls:
+            result = runner.invoke(
+                app,
+                ["predict", "train", "--model-dir", str(tmp_path), "--feature-set", "v9"],
+            )
+        assert result.exit_code == 1
+        assert "Unknown --feature-set" in result.output
+        session_cls.assert_not_called()
+
+    def test_train_signature_exposes_overwrite_and_feature_set(self):
+        params = inspect.signature(predict_train).parameters
+        assert "overwrite" in params and params["overwrite"].default is not True
+        assert "feature_set" in params
+        assert "model_dir" in params
+
+    def test_feature_set_for_columns_resolves_each_known_width(self):
+        from ufc_prediction.cli.predict import _feature_set_for_columns
+        from ufc_prediction.ml.config import get_feature_columns
+
+        for name in ("v2.1-no-net", "v1.0", "v2.2", "v2.5-travel"):
+            assert _feature_set_for_columns(get_feature_columns(feature_set=name)) == name
+        with pytest.raises(ValueError, match="no known feature set"):
+            _feature_set_for_columns(["elo_overall_diff"])
+
+    def test_extract_importances_uses_model_width_not_default_columns(self):
+        """xgb_v2 has 72 importances; zipping strictly against the 75-col
+        FEATURE_COLUMNS raised and silently returned all-zero importances."""
+        from ufc_prediction.cli.predict import _extract_importances
+        from ufc_prediction.ml.config import FEATURE_COLUMNS_NO_NET
+
+        n = len(FEATURE_COLUMNS_NO_NET)
+        base = MagicMock()
+        base.feature_importances_ = [float(i) for i in range(n)]
+        calibrated = MagicMock()
+        calibrated.estimator.estimator = base
+        model = MagicMock()
+        model.calibrated_classifiers_ = [calibrated]
+
+        inferred = _extract_importances(model)
+        assert list(inferred) == FEATURE_COLUMNS_NO_NET
+        assert inferred["elo_overall_diff"] == 0.0 and inferred[
+            FEATURE_COLUMNS_NO_NET[-1]
+        ] == float(n - 1)
+        explicit = _extract_importances(model, FEATURE_COLUMNS_NO_NET)
+        assert explicit == inferred
+
+    def test_relax_gate_no_longer_self_edits_source(self):
+        """The command rewrote its own file with str.replace targets that no
+        longer exist and then appended to a planning RUN-LOG that is not in
+        the tree. It must not reference either any more."""
+        src = Path("src/ufc_prediction/cli/predict.py").read_text()
+        assert "predict_py_path.write_text" not in src
+        assert "15.1-RUN-LOG.md" not in src

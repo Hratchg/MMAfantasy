@@ -81,11 +81,14 @@ META_V22_SPIKE_PATH: Path = (
     Path(".planning/phases/26-forward-stepwise-candidate-promotion") / "META_V22_SPIKE.json"
 )
 META_V22_BASELINE_BRIER: dict[str, float] = {
-    # Phase 73 (DEBT-V261-01): reconciled with .planning/phases/26-…/META_V22_SPIKE.json::median_per_slice.
-    # Drift from Phase 26 → v2.6 close was a stale constant; SPIKE.json is the canonical source of truth.
-    "most_recent_12mo": 0.15465991222123496,
-    "most_recent_24mo": 0.15935635076986582,
-    "random_15pct": 0.14167626892373050,
+    # Reconciled with .planning/phases/26-…/META_V22_SPIKE.json::median_per_slice
+    # (5-seed spike 42..46 via scripts/train_meta_v22.py). SPIKE.json is the canonical
+    # source of truth; re-anchor these whenever the training substrate changes.
+    # 2026-09-25: re-anchored after the opp_adj leak fix and the per-domain Elo
+    # bookkeeping fix regenerated elo_snapshots + computed_features.
+    "most_recent_12mo": 0.13259296636537393,
+    "most_recent_24mo": 0.13875065056589686,
+    "random_15pct": 0.12609749093558936,
 }
 
 

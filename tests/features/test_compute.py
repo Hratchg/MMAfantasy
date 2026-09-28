@@ -492,3 +492,39 @@ class TestFeatureKeys:
         assert "feature_set_version" in row
         assert row["feature_set_version"] == "v1"
         assert row["as_of_date"] == date(2020, 2, 1)
+
+
+class TestOpponentAdjustedNoLeak:
+    """Regression (code review 2026-09): fighter B's ``opp_adj_*`` features at
+    fight N must be built from fighter A's PRE-fight accumulator. Previously A's
+    accumulator absorbed fight N before B's features were built, so B's
+    opponent-adjusted columns encoded how B actually performed in fight N."""
+
+    @staticmethod
+    def _run(a_stats_in_fight_101: dict) -> dict:
+        from ufc_prediction.features.compute import FeatureComputer
+        from ufc_prediction.features.config import FeatureConfig
+
+        config = FeatureConfig(shrinkage_min_fights=1)
+        fights = [
+            _make_fight(100, date(2020, 1, 1), FIGHTER_A, FIGHTER_B),
+            _make_fight(101, date(2020, 6, 1), FIGHTER_A, FIGHTER_B),
+        ]
+        rs = _build_round_stats_by_fight(
+            (100, FIGHTER_A, {"sig_strikes_landed": 10, "head_strikes_landed": 10}),
+            (100, FIGHTER_B, {"sig_strikes_landed": 10, "head_strikes_landed": 10}),
+            (101, FIGHTER_A, a_stats_in_fight_101),
+            (101, FIGHTER_B, {"sig_strikes_landed": 10, "head_strikes_landed": 10}),
+        )
+        results = FeatureComputer(config).compute_all(fights, rs, {})
+        (row_b,) = [r for r in results if r["fighter_id"] == FIGHTER_B and r["fight_id"] == 101]
+        return row_b["features"]
+
+    def test_fighter_b_opp_adj_independent_of_current_fight(self) -> None:
+        quiet = self._run({"sig_strikes_landed": 1, "head_strikes_landed": 1})
+        loud = self._run({"sig_strikes_landed": 200, "head_strikes_landed": 200})
+        for key in ("opp_adj_sig_str", "opp_adj_td", "opp_adj_strike_def", "opp_adj_ctrl_time"):
+            assert quiet.get(key) == loud.get(key), (
+                f"{key} for fighter B at fight 101 changed with fight 101's own stats: "
+                f"{quiet.get(key)} vs {loud.get(key)}"
+            )

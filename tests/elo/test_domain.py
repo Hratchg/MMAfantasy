@@ -540,3 +540,202 @@ class TestDomainEloComputer:
 
         snap_grp = next(s for s in result if s.fighter_id == 1 and s.elo_type == "grappling")
         assert snap_grp.k_factor_used == pytest.approx(60.0 * 0.0)
+
+
+class TestPerDomainBookkeeping:
+    """The striking and grappling loops keep independent bookkeeping.
+
+    Regression guard for the shared-dict bug: last-fight date, last division
+    and fight count used to be keyed by fighter only, so the striking loop
+    (which runs first) stamped the fighter as "fought today, this division"
+    and the grappling loop never regressed, never transferred, and shrank
+    twice as fast. Every test here drives a Submission fight so the whole
+    overall delta lands on grappling.
+    """
+
+    @staticmethod
+    def _overall(
+        fighter_id: int,
+        fight_id: int,
+        *,
+        elo_before: float,
+        elo_after: float,
+        division: str,
+        fight_date: date,
+    ) -> SnapshotRecord:
+        return SnapshotRecord(
+            fighter_id=fighter_id,
+            fight_id=fight_id,
+            division=division,
+            elo_type="overall",
+            elo_before=elo_before,
+            elo_after=elo_after,
+            elo_after_shrinkage=elo_after,
+            k_factor_used=60.0,
+            fight_date=fight_date,
+        )
+
+    def _submission(
+        self,
+        computer: DomainEloComputer,
+        *,
+        fight_id: int,
+        fight_date: date,
+        division: str,
+        opponent_id: int,
+        elo_before: float,
+    ) -> list[SnapshotRecord]:
+        fight = make_fight(
+            fight_id=fight_id,
+            event_date=fight_date,
+            fighter_a_id=1,
+            fighter_b_id=opponent_id,
+            weight_class=division,
+            method="Submission",
+        )
+        snaps = [
+            self._overall(
+                1,
+                fight_id,
+                elo_before=elo_before,
+                elo_after=elo_before + 20.0,
+                division=division,
+                fight_date=fight_date,
+            ),
+            self._overall(
+                opponent_id,
+                fight_id,
+                elo_before=1500.0,
+                elo_after=1480.0,
+                division=division,
+                fight_date=fight_date,
+            ),
+        ]
+        stats = {fight_id: [make_round_stats(fight_id=fight_id, fighter_id=1)]}
+        return computer.compute_all([fight], snaps, stats)
+
+    def test_grappling_regresses_after_inactivity(self) -> None:
+        config = EloConfig()
+        computer = DomainEloComputer(config)
+        self._submission(
+            computer,
+            fight_id=1,
+            fight_date=date(2018, 1, 1),
+            division="Lightweight",
+            opponent_id=2,
+            elo_before=1500.0,
+        )
+        # Two years later: past the threshold by far, so the cap applies.
+        result = self._submission(
+            computer,
+            fight_id=2,
+            fight_date=date(2020, 1, 1),
+            division="Lightweight",
+            opponent_id=3,
+            elo_before=1520.0,
+        )
+        grp = next(s for s in result if s.fighter_id == 1 and s.elo_type == "grappling")
+        expected = 1500.0 + 20.0 * (1.0 - config.inactivity_regression_cap)
+        assert grp.elo_before == pytest.approx(expected, abs=1e-9)
+
+    def test_grappling_transfers_between_divisions(self) -> None:
+        config = EloConfig()
+        computer = DomainEloComputer(config)
+        self._submission(
+            computer,
+            fight_id=1,
+            fight_date=date(2020, 1, 1),
+            division="Lightweight",
+            opponent_id=2,
+            elo_before=1500.0,
+        )
+        result = self._submission(
+            computer,
+            fight_id=2,
+            fight_date=date(2020, 6, 1),
+            division="Welterweight",
+            opponent_id=3,
+            elo_before=1520.0,
+        )
+        grp = next(s for s in result if s.fighter_id == 1 and s.elo_type == "grappling")
+        expected = 1500.0 + config.division_transfer_pct * 20.0
+        assert grp.elo_before == pytest.approx(expected, abs=1e-9)
+
+    def test_fight_count_is_per_domain(self) -> None:
+        """One fight is one fight in each domain, so shrinkage after the
+        first fight uses factor 1/shrinkage_min_fights for BOTH domains."""
+        config = EloConfig()
+        computer = DomainEloComputer(config)
+        result = self._submission(
+            computer,
+            fight_id=1,
+            fight_date=date(2020, 1, 1),
+            division="Lightweight",
+            opponent_id=2,
+            elo_before=1500.0,
+        )
+        factor = 1.0 / config.shrinkage_min_fights
+        grp = next(s for s in result if s.fighter_id == 1 and s.elo_type == "grappling")
+        assert grp.elo_after == pytest.approx(1520.0)
+        assert grp.elo_after_shrinkage == pytest.approx(1500.0 + 20.0 * factor, abs=1e-9)
+        assert computer._domain_fight_counts == {
+            ("striking", 1): 1,
+            ("striking", 2): 1,
+            ("grappling", 1): 1,
+            ("grappling", 2): 1,
+        }
+
+    def test_striking_bookkeeping_unaffected_by_grappling_loop(self) -> None:
+        """Striking still regresses on its own last-fight date (it ran first
+        before the fix too, so this pins that nothing regressed)."""
+        config = EloConfig()
+        computer = DomainEloComputer(config)
+        fight1 = make_fight(
+            fight_id=1, event_date=date(2018, 1, 1), fighter_a_id=1, fighter_b_id=2, method="KO/TKO"
+        )
+        snaps1 = [
+            self._overall(
+                1,
+                1,
+                elo_before=1500.0,
+                elo_after=1520.0,
+                division="Lightweight",
+                fight_date=date(2018, 1, 1),
+            ),
+            self._overall(
+                2,
+                1,
+                elo_before=1500.0,
+                elo_after=1480.0,
+                division="Lightweight",
+                fight_date=date(2018, 1, 1),
+            ),
+        ]
+        computer.compute_all([fight1], snaps1, {1: [make_round_stats(fight_id=1, fighter_id=1)]})
+        fight2 = make_fight(
+            fight_id=2, event_date=date(2020, 1, 1), fighter_a_id=1, fighter_b_id=3, method="KO/TKO"
+        )
+        snaps2 = [
+            self._overall(
+                1,
+                2,
+                elo_before=1520.0,
+                elo_after=1540.0,
+                division="Lightweight",
+                fight_date=date(2020, 1, 1),
+            ),
+            self._overall(
+                3,
+                2,
+                elo_before=1500.0,
+                elo_after=1480.0,
+                division="Lightweight",
+                fight_date=date(2020, 1, 1),
+            ),
+        ]
+        result = computer.compute_all(
+            [fight2], snaps2, {2: [make_round_stats(fight_id=2, fighter_id=1)]}
+        )
+        strk = next(s for s in result if s.fighter_id == 1 and s.elo_type == "striking")
+        expected = 1500.0 + 20.0 * (1.0 - config.inactivity_regression_cap)
+        assert strk.elo_before == pytest.approx(expected, abs=1e-9)

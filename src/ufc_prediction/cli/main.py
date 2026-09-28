@@ -48,7 +48,10 @@ from ufc_prediction.elo.seed import load_seeds
 # compute_elo loads seeds from this CSV at engine construction. Missing-file
 # fallback returns {} (load_seeds contract) so the engine degrades cleanly
 # to the pre-Phase-43 flat-1500 default.
-_SHERDOG_PRE_UFC_CSV = Path("data/sherdog/pre_ufc_records.csv")
+# Anchored to the repo root (not the CWD) so `ufc elo compute` finds the seeds
+# from any working directory; mirrors ml/inference_features._SHERDOG_PRE_UFC_CSV.
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_SHERDOG_PRE_UFC_CSV = _REPO_ROOT / "data" / "sherdog" / "pre_ufc_records.csv"
 from ufc_prediction.elo.fighter_queries import (
     get_division_rankings,
     get_fighter_detail,
@@ -67,6 +70,7 @@ from ufc_prediction.elo.queries import (
 from ufc_prediction.ml.predictor import _prefer_canonical
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.scraper.bfo_scraper import BFOScraper
+from ufc_prediction.scraper.browser_fetch import AntiBotChallengeError
 from ufc_prediction.scraper.client import ScraperClient
 from ufc_prediction.scraper.ingest import scrape_all_events, scrape_latest_events
 from ufc_prediction.scraper.sherdog import SherdogScraper
@@ -386,6 +390,10 @@ def scrape_all(
         table.add_row("Events rejected", str(result.rejected))
         console.print(table)
 
+    except AntiBotChallengeError as exc:
+        session.rollback()
+        console.print(f"[red]HALT: anti-bot challenge persisted — no data ingested: {exc}[/red]")
+        raise SystemExit(2) from exc
     except Exception as exc:
         session.rollback()
         console.print(f"[red]Scrape failed: {exc}[/red]")
@@ -447,6 +455,10 @@ def scrape_latest(
             table.add_row("Events rejected", str(result.rejected))
             console.print(table)
 
+    except AntiBotChallengeError as exc:
+        session.rollback()
+        console.print(f"[red]HALT: anti-bot challenge persisted — no data ingested: {exc}[/red]")
+        raise SystemExit(2) from exc
     except Exception as exc:
         session.rollback()
         console.print(f"[red]Scrape failed: {exc}[/red]")
@@ -993,8 +1005,10 @@ def compute_elo(
         snapshots = engine.compute_all(fights)
         elapsed = time.perf_counter() - start
 
+        # Overall + domain snapshots are committed together at the end so a
+        # failure in the domain pass cannot leave the table with new overall
+        # rows next to stale domain rows.
         count = flush_snapshots(session, snapshots)
-        session.commit()
         unique_fighters = len({s.fighter_id for s in snapshots})
         console.print(f"Wrote {count} snapshots in {elapsed:.2f}s")
         console.print(f"Unique fighters rated: {unique_fighters}")
@@ -1018,12 +1032,12 @@ def compute_elo(
             domain_elapsed = time.perf_counter() - domain_start
 
             domain_count = flush_domain_snapshots(session, domain_snaps)
-            session.commit()
             fights_with_domain = len({s.fight_id for s in domain_snaps}) // 2
             console.print(
                 f"Wrote {domain_count} domain snapshots in {domain_elapsed:.2f}s "
                 f"({fights_with_domain} fights with round data)"
             )
+        session.commit()
     except Exception as exc:
         session.rollback()
         console.print(f"[red]Error computing Elo ratings: {exc}[/red]")

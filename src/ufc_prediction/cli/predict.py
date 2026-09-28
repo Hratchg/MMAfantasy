@@ -28,7 +28,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from ufc_prediction.db.session import SessionLocal
-from ufc_prediction.ml.config import FEATURE_COLUMNS, MLConfig
+from ufc_prediction.ml.config import FEATURE_COLUMNS, MLConfig, get_feature_columns
 from ufc_prediction.ml.evaluator import evaluate_model, format_evaluation_report
 from ufc_prediction.ml.feature_matrix import (
     FeatureMatrixAssembler,
@@ -845,15 +845,12 @@ def predict_relax_gate(
     ),
 ) -> None:
     """Path B (Phase 15.1 D-04 / D-09 / D-10 / D-11): re-evaluate xgb_v1 on the
-    existing test fold, derive relaxed thresholds, and (on operator confirmation)
-    persist them as the new D-07 hard gate constants in source.
+    existing test fold, derive relaxed thresholds, and print the constants to
+    apply. Never edits source or planning files.
 
     NO --force / --yes bypass. Operator MUST type 'y' interactively per
     Phase 15.1 D-02 (operator-decides) + RESEARCH.md Pitfall 7.
     """
-    from datetime import datetime
-    from pathlib import Path
-
     # Step 1: rebuild the same test fold predict_train uses (no --train-lower
     # per orchestrator CRITICAL CONTEXT #2)
     config = MLConfig()
@@ -920,7 +917,7 @@ def predict_relax_gate(
     # Step 5: Operator-decides (D-02(P15.1)). NO --yes bypass (RESEARCH Pitfall 7).
     try:
         typer.confirm(
-            "Persist these as the new D-07 hard gate?",
+            "Print the source lines to apply these as the new D-07 hard gate?",
             default=False,
             abort=True,
         )
@@ -928,73 +925,41 @@ def predict_relax_gate(
         console.print("[yellow]Aborted — original gate preserved.[/yellow]")
         raise SystemExit(0) from None
 
-    # Step 6: In-place source edit (D-04(P15.1) persistence)
-    # FOUR substitutions in one atomic read-write cycle:
-    #   (a) helper defaults block (lines 42-46)
-    #   (b) Typer Option brier_max block
-    #   (c) Typer Option acc_min block
-    #   (d) docstring (Warning 6 fix — supersession trace)
-    predict_py_path = Path(__file__)  # this very file
-    original_text = predict_py_path.read_text(encoding="utf-8")
-    new_text = original_text
-
-    # (a) Helper defaults (predict.py:42-46) — bare floats
-    new_text = new_text.replace(
-        "    brier_max: float = 0.21,\n    acc_min: float = 0.65,\n",
-        f"    brier_max: float = {new_brier_max:.4f},\n    acc_min: float = {new_acc_min:.4f},\n",
-    )
-    # (b) Typer Option brier_max
-    new_text = new_text.replace(
-        '    brier_max: float = typer.Option(\n        0.21,\n        "--brier-max",\n        help="Hard upper bound for Brier score (D-07).",\n    ),',
-        f'    brier_max: float = typer.Option(\n        {new_brier_max:.4f},\n        "--brier-max",\n        help="Hard upper bound for Brier score (Phase 15.1 D-04 supersedes D-07).",\n    ),',
-    )
-    # (c) Typer Option acc_min
-    new_text = new_text.replace(
-        '    acc_min: float = typer.Option(\n        0.65,\n        "--acc-min",\n        help="Hard lower bound for accuracy (D-07).",\n    ),',
-        f'    acc_min: float = typer.Option(\n        {new_acc_min:.4f},\n        "--acc-min",\n        help="Hard lower bound for accuracy (Phase 15.1 D-04 supersedes D-07).",\n    ),',
-    )
-    # (d) Docstring (Warning 6 fix) — must include literal new threshold values
-    new_text = new_text.replace(
-        "Hard accuracy gate (Brier <= 0.2202 AND accuracy >= 0.6391, D-04(P15.1) supersedes D-07(P15))",
-        f"Hard accuracy gate (Brier <= {new_brier_max:.4f} AND accuracy >= {new_acc_min:.4f}, D-04(P15.1) supersedes D-07(P15))",
-    )
-
-    if new_text == original_text:
-        console.print(
-            "[red]ERROR: source-edit produced zero changes. Constants may already "
-            "be relaxed or block format mismatched. Aborting without write.[/red]"
-        )
-        raise SystemExit(1)
-
-    predict_py_path.write_text(new_text, encoding="utf-8")
+    # Step 6: report, do not self-edit. This command used to rewrite its own
+    # source file with str.replace against literal blocks that no longer
+    # exist (the 0.21 / 0.65 constants were swapped in Phase 15.1) and then
+    # append to a planning RUN-LOG that is not in the tree, so it crashed
+    # after the confirmation. The derivation is the operator's input to an
+    # ordinary reviewed commit; the constants live in ``_enforce_accuracy_gate``
+    # and the ``predict train`` --brier-max / --acc-min defaults.
     console.print(
-        "[green]Persisted relaxed thresholds + docstring update to predict.py "
-        "per D-04(P15.1) supersession of D-07(P15).[/green]"
+        Panel(
+            "Apply in src/ufc_prediction/cli/predict.py (reviewed commit, not a self-edit):\n"
+            f"  _enforce_accuracy_gate defaults:   brier_max={new_brier_max:.4f}, "
+            f"acc_min={new_acc_min:.4f}\n"
+            f"  predict train option defaults:     --brier-max {new_brier_max:.4f}, "
+            f"--acc-min {new_acc_min:.4f}\n"
+            "  docstring: 'Hard accuracy gate (Brier <= {b} AND accuracy >= {a}, ...)'".format(
+                b=f"{new_brier_max:.4f}", a=f"{new_acc_min:.4f}"
+            )
+            + "\n\nSource file preserved; nothing was written.",
+            title="Relaxed gate — apply manually",
+            border_style="green",
+        )
     )
 
-    # Step 7: Append derivation to RUN-LOG
-    runlog_path = Path(".planning/phases/15.1-odds-03-coverage-closure/15.1-RUN-LOG.md")
-    runlog = runlog_path.read_text(encoding="utf-8")
-    ts = datetime.now().isoformat(timespec="seconds")
-    addendum = (
-        f"\n\nDerivation timestamp: {ts}\n"
-        f"v1 baseline (D-11(P15.1)): "
-        f"Brier={v1_metrics['brier_score']:.4f}, "
-        f"Acc={v1_metrics['accuracy']:.4f}\n"
-        f"D-10(P15.1) formula: (Brier-0.010, Acc+0.020)\n"
-        f"new_brier_max = {new_brier_max:.4f}\n"
-        f"new_acc_min   = {new_acc_min:.4f}\n"
-        f"Operator confirmation: YES\n"
-        f"predict.py constants swapped (D-04(P15.1) supersession of D-07(P15)): COMPLETE\n"
-        f"predict.py:120 docstring rewritten with literal relaxed thresholds: COMPLETE\n"
-    )
-    runlog_path.write_text(
-        runlog.replace(
-            "### Task 4: Relaxed-gate derivation + operator confirmation (D-04(P15.1), D-10(P15.1))",
-            "### Task 4: Relaxed-gate derivation + operator confirmation (D-04(P15.1), D-10(P15.1))"
-            + addendum,
-        ),
-        encoding="utf-8",
+
+_KNOWN_FEATURE_SETS: tuple[str, ...] = ("v2.1-no-net", "v1.0", "v2.2", "v2.5-travel")
+
+
+def _feature_set_for_columns(columns: list[str]) -> str:
+    """Resolve which ``feature_set`` produced a saved model's column list."""
+    for name in _KNOWN_FEATURE_SETS:
+        if list(columns) == get_feature_columns(feature_set=name):
+            return name
+    raise ValueError(
+        f"model feature_columns ({len(columns)} cols) match no known feature set "
+        f"{_KNOWN_FEATURE_SETS}; cannot assemble a matching evaluation matrix"
     )
 
 
@@ -1002,6 +967,23 @@ def predict_relax_gate(
 def predict_train(
     trials: int = typer.Option(50, help="Number of Optuna trials"),
     version: str = typer.Option("v2", help="Model version tag (Phase 15: default v2)"),
+    model_dir: str | None = typer.Option(
+        None,
+        "--model-dir",
+        help="Directory to write xgb_{version}.joblib into (default: MLConfig.model_dir).",
+    ),
+    feature_set: str = typer.Option(
+        "v2.1-no-net",
+        "--feature-set",
+        help="Column list to train on: v2.1-no-net (72, xgb_v2 baseline), v1.0 (75, +NET), "
+        "v2.2 (90, +REF/TRAVEL/META), v2.5-travel (92).",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Replace an existing xgb_{version}.joblib. Without it, training refuses to "
+        "clobber a persisted model (the AUDIT-01 frozen xgb_v2 in particular).",
+    ),
     force: bool = typer.Option(
         False,
         "--force",
@@ -1035,8 +1017,25 @@ def predict_train(
         runs after evaluate_model and BEFORE save_model so regressed
         models are never persisted.
       - Default --version is 'v2' (D-09); 'v1' artifacts remain untouched.
+      - An existing xgb_{version}.joblib is never overwritten unless
+        --overwrite is passed; the check runs before any data is loaded.
     """
+    if feature_set not in _KNOWN_FEATURE_SETS:
+        console.print(
+            f"[red]Unknown --feature-set {feature_set!r}; expected one of {_KNOWN_FEATURE_SETS}[/red]"
+        )
+        raise SystemExit(1)
     config = MLConfig(n_optuna_trials=trials)
+    if model_dir is not None:
+        config = dataclasses.replace(config, model_dir=model_dir)
+    existing = Path(config.model_dir) / f"xgb_{version}.joblib"
+    if existing.exists() and not overwrite:
+        console.print(
+            f"[red]{existing} already exists. Refusing to overwrite a persisted model "
+            "(models/xgb_v2.joblib is the AUDIT-01 frozen artifact). Pass --overwrite "
+            "to replace it or choose another --version.[/red]"
+        )
+        raise SystemExit(1)
     # Phase 15.1 D-05/D-06/D-07: --train-lower CLI flag overrides MLConfig field if set.
     effective_train_lower_str = train_lower or config.train_lower_bound_date
     train_lower_obj: date | None = (
@@ -1095,7 +1094,8 @@ def predict_train(
     )
 
     # Assemble feature matrix
-    console.print("[bold]Assembling feature matrix...[/bold]")
+    console.print(f"[bold]Assembling feature matrix ({feature_set})...[/bold]")
+    feature_columns = get_feature_columns(feature_set=feature_set)
     assembler = FeatureMatrixAssembler(config)
     X, y, fight_dates = assembler.assemble(
         fight_records,
@@ -1106,6 +1106,7 @@ def predict_train(
         round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
+        feature_set=feature_set,
     )
     console.print(f"  Matrix shape: {X.shape}")
 
@@ -1133,13 +1134,14 @@ def predict_train(
     model_path = save_model(
         model=calibrated_model,
         metrics=metrics,
-        feature_columns=FEATURE_COLUMNS,
+        feature_columns=feature_columns,
         best_params=best_params,
         model_dir=config.model_dir,
         version=version,
         cutoff_date=config.cutoff_date,
         n_training_fights=len(X_train),
         n_test_fights=len(X_test),
+        overwrite=overwrite,
     )
     console.print(f"[green]Model saved to {model_path}[/green]")
 
@@ -1159,7 +1161,14 @@ def predict_evaluate(
 
     console.print(f"[bold]Loading model {version}...[/bold]")
     model = load_model(model_dir, version)
-    _ = load_metadata(model_dir, version)  # Validate metadata exists
+    metadata = load_metadata(model_dir, version)
+    # The evaluation matrix must have the model's own column list: xgb_v2 is
+    # the 72-col v2.1-no-net set, while the assembler's default is the 75-col
+    # v1.0 set. Assembling the wrong width made this command die on
+    # predict_proba for every shipped model.
+    model_columns: list[str] = list(metadata.get("feature_columns") or FEATURE_COLUMNS)
+    feature_set = _feature_set_for_columns(model_columns)
+    console.print(f"  feature_set: {feature_set} ({len(model_columns)} cols)")
 
     console.print("[bold]Loading data...[/bold]")
     session = SessionLocal()
@@ -1191,6 +1200,7 @@ def predict_evaluate(
         round_stats,
         pre_ufc_records=pre_ufc,
         fight_odds=fight_odds,
+        feature_set=feature_set,
     )
     _, X_test, _, y_test = split_temporal(X, y, fight_dates, cutoff)
 
@@ -1198,7 +1208,7 @@ def predict_evaluate(
     metrics = evaluate_model(model, X_test, y_test)
 
     # Get feature importances from metadata or model
-    feature_importances = _extract_importances(model)
+    feature_importances = _extract_importances(model, model_columns)
 
     console.print(format_evaluation_report(metrics, feature_importances))
 
@@ -1404,11 +1414,25 @@ def _display_prediction(result: dict) -> None:
         console.print(imp_table)
 
 
-def _extract_importances(model) -> dict[str, float]:
-    """Extract feature importances from a calibrated model."""
+def _extract_importances(model, feature_columns: list[str] | None = None) -> dict[str, float]:
+    """Extract feature importances from a calibrated model.
+
+    ``feature_columns`` is the model's own column list (from its metadata);
+    when omitted it is inferred from the importance vector's width so a
+    72-col model is never zipped against the 75-col default.
+    """
     try:
         base_estimator = model.calibrated_classifiers_[0].estimator.estimator
-        raw = base_estimator.feature_importances_
-        return dict(zip(FEATURE_COLUMNS, [float(v) for v in raw], strict=True))
+        raw = [float(v) for v in base_estimator.feature_importances_]
     except (AttributeError, IndexError):
-        return {col: 0.0 for col in FEATURE_COLUMNS}
+        return {col: 0.0 for col in (feature_columns or FEATURE_COLUMNS)}
+    if feature_columns is None:
+        feature_columns = next(
+            (
+                get_feature_columns(feature_set=name)
+                for name in _KNOWN_FEATURE_SETS
+                if len(get_feature_columns(feature_set=name)) == len(raw)
+            ),
+            [f"f{i}" for i in range(len(raw))],
+        )
+    return dict(zip(feature_columns, raw, strict=True))

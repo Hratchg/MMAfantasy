@@ -1,19 +1,22 @@
 #!/usr/bin/env python
 """Re-retrain xgb_v2 candidate on the corrected+dedup+odds-complete corpus and
-gate it FAIRLY against a DEDUP-REFIT baseline (handles the 1.88x inflation).
+gate it FAIRLY against a DEDUP-REFIT baseline.
 
-Key idea (leakage handling): the frozen xgb_v2 was trained on the PRE-dedup
-1.95x-inflated cross-source corpus. Comparing candidate(dedup) vs frozen(inflated)
-is confounded. The fair baseline is the frozen CONFIG (locked best_params, 72-col)
-refit on the SAME dedup substrate as the candidate — the dedup-refit baseline.
-Under that comparison the elo-seeding state and dedup both cancel; only the
-odds-correction + corpus-extension effect remains.
+Key idea: the fair baseline is the frozen CONFIG (locked best_params, 72-col)
+refit on the SAME substrate as the candidate — the dedup-refit baseline — so
+substrate changes cancel and only the candidate's own effect remains. (The
+original motivation was the PRE-dedup 1.95x-inflated corpus the first frozen
+model was trained on; since the 2026-07 re-baseline the frozen model is itself
+dedup-trained, so "frozen" below is simply the currently promoted xgb_v2.)
+
+Recency slices are cut relative to date.today(), so per-slice numbers move
+with the calendar even when the corpus is unchanged.
 
 Outputs, per slice (Brier):
-  - frozen (inflated-trained) reference
+  - frozen (currently promoted) reference
   - candidate seed-42 (the promote artifact)
   - dedup-refit baseline distribution (seeds 42..51): mean±std, min, max
-  - z of frozen within the dedup-refit distribution (how much the inflation buys)
+  - z of frozen within the dedup-refit distribution
 Also the hard operator gate (brier<=0.30, acc>=0.70 style floors via evaluator).
 Saves candidate (seed 42) to models/xgb_v2_corrected.joblib (frozen untouched).
 """
@@ -134,7 +137,7 @@ def main():
 
     print(f"\n=== [{TAG}] OVERALL ===")
     print(
-        f"  frozen(inflated)  brier={fz_overall['brier_score']:.5f} "
+        f"  frozen(promoted)  brier={fz_overall['brier_score']:.5f} "
         f"auc={fz_overall['auc_roc']:.4f} acc={fz_overall['accuracy']:.4f}"
     )
     print(
@@ -142,7 +145,7 @@ def main():
         f"auc={cand_overall['auc_roc']:.4f} acc={cand_overall['accuracy']:.4f}"
     )
 
-    print(f"\n=== [{TAG}] PER-SLICE: frozen(inflated) vs DEDUP-REFIT baseline (fair) ===")
+    print(f"\n=== [{TAG}] PER-SLICE: frozen(promoted) vs DEDUP-REFIT baseline (fair) ===")
     print(
         f"{'slice':<18}{'frozen':>9}{'cand42':>9}{'refit_mean':>11}{'refit_std':>10}"
         f"{'refit_min':>10}{'refit_max':>10}{'z(froz)':>9}{'verdict':>16}"
@@ -154,15 +157,15 @@ def main():
         z = (fz[k] - mean) / std if std > 0 else float("nan")
         # fair verdict: is the frozen advantage within the dedup-refit noise band?
         # (|z|<=2 => within noise => candidate at parity with the correct pipeline)
-        verdict = "PARITY" if fz[k] >= a.min() or abs(z) <= 2 else "frozen<refit(infl)"
+        verdict = "PARITY" if fz[k] >= a.min() or abs(z) <= 2 else "frozen<refit"
         print(
             f"{k:<18}{fz[k]:>9.5f}{per[k][0]:>9.5f}{mean:>11.5f}{std:>10.5f}"
             f"{a.min():>10.5f}{a.max():>10.5f}{z:>9.2f}{verdict:>16}"
         )
     print(
-        "\nNote: 'frozen' was trained on the 1.95x-inflated pre-dedup corpus; the "
-        "dedup-refit baseline is the frozen CONFIG on the SAME clean substrate as "
-        "the candidate. Candidate == a member of that distribution by construction."
+        "\nNote: 'frozen' is the currently promoted xgb_v2; the dedup-refit "
+        "baseline is the frozen CONFIG refit on the SAME substrate as the "
+        "candidate. Candidate == a member of that distribution by construction."
     )
     return 0
 

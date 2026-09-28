@@ -44,7 +44,7 @@ What's NEW vs. v2.2 (Plan 30 scope):
     `variance.bootstrap_resample` and fits on the raw `(X_meta_train,
     y_meta_train)` rows. Used by the canonical-lineage test
     (`test_seed42_deterministic_matches_plan_29_03`) to reproduce Plan
-    29-03 META-V22 random_15pct Brier 0.1409 +/- 0.0001.
+    29-03 META-V22 random_15pct Brier PLAN_29_03_RANDOM_15PCT_BRIER +/- 0.0001.
   - Output artifact paths under `.planning/phases/30-multi-seed-variance-
     harness/`:
       - `30-VARIANCE-REPORT.md` (always; final report with Path A or B
@@ -85,7 +85,7 @@ import numpy as np
 # MID + END SHA assertions (Phase 30 MID artifact was emitted by Plan 30-01;
 # this script emits the END artifact at completion).
 EXPECTED_XGB_V2_SHA: str = (
-    "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+    "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
 )
 
 # D-08 formula hash binding — preserved verbatim from v2.2 spike. The reduction
@@ -105,9 +105,13 @@ EXPECTED_FORMULA_HASH: str = (
 SEEDS_DEFAULT: tuple[int, ...] = (42, 43, 44, 45, 46, 47, 48, 49, 50, 51)
 
 # Canonical-lineage anchor (ResearchQ10 per 30-RESEARCH.md). The deterministic
-# path (seed=42, --no-bootstrap) MUST reproduce Plan 29-03's META-V22
-# random_15pct Brier within PLAN_29_03_TOLERANCE for AUDIT-01 lineage.
-PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.1409
+# path (seed=42, --no-bootstrap) MUST reproduce the META-V22 random_15pct
+# Brier measured on the promoted substrate within PLAN_29_03_TOLERANCE for
+# AUDIT-01 lineage. Plan 29-03 measured 0.1409; the value moved to 0.1244 at
+# the 2026-07 xgb_v2 re-baseline (never re-anchored) and to 0.126097 on
+# 2026-09-25 after the opp_adj leak fix + per-domain Elo bookkeeping fix
+# regenerated elo_snapshots, computed_features and the META OOF cache.
+PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.126097
 PLAN_29_03_TOLERANCE: float = 0.0001
 
 # Per-slice keys (mirrors evaluator.PER_SLICE_KEYS).
@@ -373,7 +377,7 @@ def _no_bootstrap_metrics(
     pair to fit_fn for each seed. The deterministic LR solver means N seeds
     produce N IDENTICAL metric tuples on this path — that's the POINT:
     seed=42 deterministic reproduces Plan 29-03 META-V22 random_15pct
-    Brier = 0.1409 to 4-decimal precision (ResearchQ10 canonical-lineage
+    Brier = PLAN_29_03_RANDOM_15PCT_BRIER to 4-decimal precision (ResearchQ10 canonical-lineage
     anchor).
 
     DO NOT call `assert_distinct_seed_brier` on the output of this function
@@ -735,7 +739,7 @@ def main(argv: list[str] | None = None) -> int:
             "Deterministic path: skip bootstrap_resample and fit on the raw "
             "(X_meta_train, y_meta_train) rows. Used by the canonical-"
             "lineage test to reproduce Plan 29-03 META-V22 random_15pct "
-            "Brier 0.1409 +/- 0.0001 at seed=42."
+            f"Brier {PLAN_29_03_RANDOM_15PCT_BRIER:.4f} +/- 0.0001 at seed=42."
         ),
     )
     parser.add_argument(

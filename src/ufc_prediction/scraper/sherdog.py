@@ -29,6 +29,7 @@ import logging
 import re
 from datetime import date
 
+import httpx
 from bs4 import BeautifulSoup, Tag
 from rapidfuzz import fuzz
 
@@ -494,7 +495,7 @@ def _safe_fetch_sherdog(
     """
     try:
         return (url, client.get(url), None)  # type: ignore[attr-defined]
-    except (RuntimeError, ValueError) as exc:
+    except (RuntimeError, ValueError, httpx.HTTPError) as exc:
         return (url, None, exc)
 
 
@@ -672,6 +673,10 @@ class SherdogScraper:
                     sherdog_name, sherdog_url = match
 
                     if dry_run:
+                        # Search-and-match only: no DB write. Persisting
+                        # ``sherdog_url`` here would make a later real run
+                        # skip the fighter as "already processed" without
+                        # ever fetching ``pre_ufc_record``.
                         logger.info(
                             "DRY RUN match: %s -> %s (%s)",
                             fighter.name,
@@ -679,10 +684,6 @@ class SherdogScraper:
                             sherdog_url,
                         )
                         matched += 1
-                        fighter.sherdog_url = sherdog_url
-                        self._session.flush()
-                        processed_since_commit += 1
-                        _maybe_commit()
                         continue
 
                     # Fetch and parse Sherdog profile
@@ -795,6 +796,7 @@ class SherdogScraper:
                     continue
 
                 if dry_run:
+                    # Search-and-match only: no DB write (see serial path).
                     for fighter, _first, sherdog_url, sherdog_name in matches_to_fetch:
                         logger.info(
                             "DRY RUN match: %s -> %s (%s)",
@@ -802,11 +804,7 @@ class SherdogScraper:
                             sherdog_name,
                             sherdog_url,  # type: ignore[attr-defined]
                         )
-                        fighter.sherdog_url = sherdog_url  # type: ignore[attr-defined]
-                        self._session.flush()
                         matched += 1
-                        processed_since_commit += 1
-                    _maybe_commit()
                     continue
 
                 # Stage C: parallel profile fetch
@@ -855,7 +853,9 @@ class SherdogScraper:
                 _maybe_commit()
 
         # Final commit flushes any remaining work from the last partial batch.
-        self._session.commit()
+        # A dry run wrote nothing, so there is nothing to commit.
+        if not dry_run:
+            self._session.commit()
 
         if progress_callback:
             progress_callback(total, total)

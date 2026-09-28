@@ -27,12 +27,38 @@ def upsert_fighter(
     source: str,
     **profile_fields: object,
 ) -> Fighter:
-    """Lookup fighter by name+source; update if exists, insert if not.
+    """Lookup fighter by natural key; update if exists, insert if not.
 
-    Only overwrites existing fields with non-None new values.
+    Natural key precedence:
+      1. ``(source, source_id)`` when a non-None ``source_id`` is supplied
+         (UFCStats hex id) — this is the fighter's identity, so two fighters
+         who share a display name never merge.
+      2. ``(name, source)`` otherwise — Kaggle sources carry no source_id.
+         A name match whose row already holds a DIFFERENT ``source_id`` is a
+         different fighter and is NOT reused; a name match with NULL
+         ``source_id`` (legacy row) is adopted and back-filled.
+
+    Only overwrites existing fields with non-None new values; the stored
+    ``name`` is kept on a ``source_id`` hit (display names drift between
+    event cards, the row's name stays stable for lookups).
     Returns the Fighter instance (flushed, has id).
     """
-    fighter = session.query(Fighter).filter(Fighter.name == name, Fighter.source == source).first()
+    source_id = profile_fields.get("source_id")
+    fighter: Fighter | None = None
+    if source_id is not None:
+        fighter = (
+            session.query(Fighter)
+            .filter(Fighter.source == source, Fighter.source_id == source_id)
+            .first()
+        )
+    if fighter is None:
+        by_name = (
+            session.query(Fighter).filter(Fighter.name == name, Fighter.source == source).first()
+        )
+        if by_name is not None and (
+            source_id is None or by_name.source_id is None or by_name.source_id == source_id
+        ):
+            fighter = by_name
     if fighter is not None:
         for field_name, value in profile_fields.items():
             if value is not None:

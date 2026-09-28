@@ -84,3 +84,32 @@ def test_n_features_int_serializable(tmp_path, trained_model):
     assert isinstance(meta["n_features"], int)
     # Round-trip — if the field were numpy-typed the prior read would have raised.
     assert meta["n_features"] > 0
+
+
+# ── Overwrite guard ─────────────────────────────────────────────────────────
+
+
+def test_save_model_refuses_to_overwrite_existing_version(tmp_path, trained_model):
+    """A second save of the same version must not clobber the first unless
+    the caller opts in — the guard that keeps ``ufc predict train`` from
+    replacing the AUDIT-01 frozen xgb_v2."""
+    kwargs = dict(
+        model=trained_model,
+        metrics={"brier_score": 0.2},
+        feature_columns=FEATURE_COLUMNS,
+        best_params={"max_depth": 3},
+        model_dir=str(tmp_path),
+        version="vguard",
+    )
+    path = persistence.save_model(**kwargs)
+    before = path.read_bytes()
+    with pytest.raises(FileExistsError, match="refusing to overwrite"):
+        persistence.save_model(**kwargs)
+    assert path.read_bytes() == before
+    meta_before = (tmp_path / "xgb_vguard_meta.json").read_text()
+
+    persistence.save_model(**kwargs, overwrite=True)
+    assert (tmp_path / "xgb_vguard.joblib").exists()
+    meta_after = json.loads((tmp_path / "xgb_vguard_meta.json").read_text())
+    assert meta_after["version"] == "vguard"
+    assert meta_after["trained_at"] >= json.loads(meta_before)["trained_at"]

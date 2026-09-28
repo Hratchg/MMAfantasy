@@ -118,3 +118,39 @@ def test_is_exempt_predicate():
     for p in ("/health", "/ready", "/docs", "/redoc", "/openapi.json"):
         assert is_exempt(_FakeRequest(p)) is True
     assert is_exempt(_FakeRequest("/api/v1/predict")) is False
+
+
+def test_default_limits_bucket_per_partner_with_production_wiring(monkeypatch):
+    """Regression (code review 2026-09): ``create_app`` enforces
+    ``default_limits`` via ``SlowAPIMiddleware``, which runs BEFORE the
+    ``require_api_key`` dependency populates ``request.state``. The key
+    function must therefore derive the partner from the header itself, or
+    every partner shares one "anonymous" bucket."""
+    monkeypatch.setattr(
+        auth_module.settings,
+        "api_keys",
+        ["partner-a:secret-a", "partner-b:secret-b"],
+    )
+    limiter = build_limiter(default_limits=["3/hour"])  # middleware-enforced, no decorator
+    app = FastAPI()
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
+
+    @app.get("/api/v1/test", dependencies=[Depends(require_api_key)])
+    async def limited_route(request: Request):
+        return {"ok": True}
+
+    client = TestClient(app)
+    for _ in range(3):
+        assert (
+            client.get("/api/v1/test", headers={"X-API-Key": "partner-a:secret-a"}).status_code
+            == 200
+        )
+    assert (
+        client.get("/api/v1/test", headers={"X-API-Key": "partner-a:secret-a"}).status_code == 429
+    )
+    # Partner-B must still have a full quota of its own.
+    assert (
+        client.get("/api/v1/test", headers={"X-API-Key": "partner-b:secret-b"}).status_code == 200
+    )

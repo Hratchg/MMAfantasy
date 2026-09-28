@@ -86,7 +86,7 @@ def _patch_session_with_snapshots(
     pa = perf_a if perf_a is not None else perf_a_default
     pb = perf_b if perf_b is not None else perf_b_default
 
-    def fake_get_elo(session, fighter_id, elo_type):
+    def fake_get_elo(session, fighter_id, elo_type, *args, **kwargs):
         is_a = fighter_id == 1
         if elo_type == "overall":
             return elo_a if is_a else elo_b
@@ -105,6 +105,12 @@ def _patch_session_with_snapshots(
     monkeypatch.setattr(inference_features, "_get_latest_elo", fake_get_elo)
     monkeypatch.setattr(inference_features, "_get_latest_computed_features", fake_get_perf)
     monkeypatch.setattr(inference_features, "_get_cached_odds", fake_get_cached_odds)
+    # No prior fights: career replay sees two debutants.
+    monkeypatch.setattr(
+        inference_features,
+        "_load_career_inputs",
+        lambda *a, **kw: inference_features.CareerInputs(),
+    )
     return MagicMock()
 
 

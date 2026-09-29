@@ -18,7 +18,7 @@ uv run python scripts/retrain_and_gate.py FINAL
 ```
 This: assembles the dedup ufcstats corpus (72-col `FEATURE_COLUMNS_NO_NET`), refits the locked `best_params` candidate across seeds 42–51 (the **dedup-refit baseline distribution**), saves seed-42 to `models/xgb_v2_corrected.joblib` (frozen untouched; `save_model` refuses to overwrite, so move or delete a previous candidate first), evaluates the frozen model on the same test set, and prints overall + per-slice (`most_recent_12mo`, `most_recent_24mo`, `random_15pct`) Brier with the z of frozen within the dedup-refit distribution.
 
-The script's `frozen` column is the currently promoted `xgb_v2`. Since the 2026-07 re-baseline that model was itself trained on the dedup corpus, so the comparison is same-substrate; the script's older "inflated" wording predates that. Recency slices are cut relative to `date.today()`, so per-slice numbers move with the calendar even on an unchanged corpus.
+The script's `frozen` column is the currently promoted `xgb_v2`. Since the 2026-07 re-baseline that model was itself trained on the dedup corpus, so the comparison is same-substrate; the script's older "inflated" wording predates that. Recency slices are cut relative to the latest test-set event date (`evaluator.gate_reference_date`, printed as `slice_anchor`), so per-slice numbers only move when the corpus changes, not with the calendar.
 
 ## Interpret / report
 - **Fair gate:** candidate must be parity-or-better vs the dedup-refit baseline on all 3 slices (frozen `|z| ≲ 2` = parity; the frozen model was trained on the inflated corpus, so it is NOT the bar).

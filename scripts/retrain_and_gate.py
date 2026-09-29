@@ -9,8 +9,9 @@ original motivation was the PRE-dedup 1.95x-inflated corpus the first frozen
 model was trained on; since the 2026-07 re-baseline the frozen model is itself
 dedup-trained, so "frozen" below is simply the currently promoted xgb_v2.)
 
-Recency slices are cut relative to date.today(), so per-slice numbers move
-with the calendar even when the corpus is unchanged.
+Recency slices are cut relative to the latest test-set event date
+(evaluator.gate_reference_date), so per-slice numbers only move when the
+corpus changes, not with the calendar.
 
 Outputs, per slice (Brier):
   - frozen (currently promoted) reference
@@ -43,7 +44,11 @@ from ufc_prediction.cli.predict import (
 )
 from ufc_prediction.db.session import SessionLocal
 from ufc_prediction.ml.config import FEATURE_COLUMNS_NO_NET, MLConfig
-from ufc_prediction.ml.evaluator import evaluate_model, evaluate_per_slice
+from ufc_prediction.ml.evaluator import (
+    evaluate_model,
+    evaluate_per_slice,
+    gate_reference_date,
+)
 from ufc_prediction.ml.feature_matrix import FeatureMatrixAssembler, split_temporal
 from ufc_prediction.ml.persistence import load_model, save_model
 from ufc_prediction.ml.trainer import _pick_calibration_method
@@ -100,10 +105,14 @@ def main():
     Xtr, Xte, ytr, yte = split_temporal(X, y, fd, cutoff)
     fdte = np.array(fd)[np.array([d >= cutoff for d in fd])]
     n_odds_test = sum(1 for (_f, fid) in odds if True)  # noqa
-    print(f"[{TAG}] n_train={len(Xtr)} n_test={len(Xte)} odds_rows={len(odds)}")
+    slice_anchor = gate_reference_date(fdte)
+    print(
+        f"[{TAG}] n_train={len(Xtr)} n_test={len(Xte)} odds_rows={len(odds)} "
+        f"slice_anchor={slice_anchor}"
+    )
 
     def sl(m):
-        d = evaluate_per_slice(m, Xte, yte, fdte, today=date.today())
+        d = evaluate_per_slice(m, Xte, yte, fdte, today=slice_anchor)
         return {k: d[k]["brier_score"] for k in SLICES}
 
     frozen = load_model("models", "v2")

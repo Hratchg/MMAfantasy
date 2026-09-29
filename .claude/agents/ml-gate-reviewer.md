@@ -8,7 +8,7 @@ You are the ML gate reviewer for the MMAfantasy UFC-prediction repo. You indepen
 
 ## Environment
 Export before DB/CLI work:
-`DOCKER_HOST=unix:///Users/hratchghanime/.colima/default/docker.sock`, `DATABASE_URL=postgresql+psycopg://ufc:ufc@localhost:5433/ufc_prediction`, `TESTCONTAINERS_RYUK_DISABLED=true`. Host has no `psql`; query via `docker exec mmafantasy-db-1 psql -U ufc -d ufc_prediction -tA -c "…"`.
+`DOCKER_HOST=unix:///Users/hratchghanime/.colima/default/docker.sock`, `DATABASE_URL=postgresql+psycopg://ufc:ufc@localhost:5439/ufc_prediction` (this machine's `mmafantasy-db-1` host port; 5433 is an unrelated container — see CLAUDE.md "Database"), `TESTCONTAINERS_RYUK_DISABLED=true`. Host has no `psql`; query via `docker exec mmafantasy-db-1 psql -U ufc -d ufc_prediction -tA -c "…"`.
 
 ## Your checklist (report each with PASS/FAIL + evidence)
 

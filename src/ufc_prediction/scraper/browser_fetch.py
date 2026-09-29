@@ -215,6 +215,33 @@ class BrowserFetcher:
         """Exponential backoff between challenge retries (5s, 10s, 20s)."""
         time.sleep(2**attempt * 5)
 
+    def _retry_or_raise_navigation_error(self, url: str, attempt: int, exc: Exception) -> None:
+        """Back off before retrying a Playwright navigation error, or give up.
+
+        Playwright errors (``TimeoutError``, ``Error``) subclass ``Exception``,
+        not ``RuntimeError``, so left raw they escape the ingest pipeline's
+        per-page isolation (``ingest._safe_fetch``, ``_ensure_fighter``) and
+        abort a whole scrape. After the retries are exhausted we therefore
+        raise ``RuntimeError`` — one bad page, skippable — mirroring
+        ``ScraperClient.get`` on transport errors. ``AntiBotChallengeError``
+        stays reserved for a persistent challenge (the HALT case).
+        """
+        if attempt < self._max_retries:
+            logger.warning(
+                "browser navigation error on %s (%s: %s), attempt %d/%d",
+                url,
+                type(exc).__name__,
+                exc,
+                attempt + 1,
+                self._max_retries,
+            )
+            self._backoff(attempt)
+            return
+        msg = (
+            f"Failed to fetch {url} after {self._max_retries} retries: {type(exc).__name__}: {exc}"
+        )
+        raise RuntimeError(msg) from exc
+
     # ── Fetch ────────────────────────────────────────────────────────────
 
     def get(self, url: str, wait_selector: str | None | object = _UNSET) -> str:
@@ -236,6 +263,8 @@ class BrowserFetcher:
 
         Raises:
             AntiBotChallengeError: If the challenge persists after all retries.
+            RuntimeError: If a Playwright navigation error (goto timeout,
+                connection reset, ...) persists after all retries.
         """
         # Resolve the effective selector: explicit per-call arg > constructor
         # override > URL-derived default.
@@ -245,6 +274,8 @@ class BrowserFetcher:
                 if self._wait_selector_override is not _UNSET
                 else _default_selector_for(url)
             )
+
+        from playwright.sync_api import Error as PlaywrightError  # lazy: heavy import
 
         self._ensure_browser()
 
@@ -257,8 +288,14 @@ class BrowserFetcher:
                     wait_until="domcontentloaded",
                     timeout=self._timeout_ms,
                 )
-            finally:
+            except PlaywrightError as exc:
+                # Navigation failure (goto timeout, net::ERR_CONNECTION_RESET,
+                # ...). Transient like an httpx TransportError: retry with the
+                # same backoff, then surface as a per-page RuntimeError.
                 self._last_request_time = time.monotonic()
+                self._retry_or_raise_navigation_error(url, attempt, exc)
+                continue
+            self._last_request_time = time.monotonic()
 
             status = getattr(response, "status", 200) if response is not None else 200
             last_status = status
@@ -278,7 +315,11 @@ class BrowserFetcher:
                     selector_ok = False
                     logger.debug("selector %s not found on %s: %s", wait_selector, url, exc)
 
-            html: str = self._page.content()
+            try:
+                html: str = self._page.content()
+            except PlaywrightError as exc:
+                self._retry_or_raise_navigation_error(url, attempt, exc)
+                continue
 
             # Block decision. NOTE: after the browser solves a JS proof-of-work
             # challenge, ``response.status`` still reflects the INITIAL 403

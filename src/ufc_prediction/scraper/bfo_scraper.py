@@ -107,6 +107,11 @@ class BFOParsedFight:
 
     Moneylines are American (e.g. ``-200``, ``+150``). ``None`` means the
     cell was blank on the BFO page (upcoming or absent line).
+
+    ``opponent_*`` hold the opponent (detail) row's three cells. The batch
+    CSV path ignores them (each side is emitted from its own profile page);
+    the single-shot live path (``bfo_live``) needs them because it only
+    fetches fighter A's page.
     """
 
     event_date: date
@@ -115,6 +120,9 @@ class BFOParsedFight:
     opening: int | None
     closing_range_min: int | None
     closing_range_max: int | None
+    opponent_opening: int | None = None
+    opponent_closing_range_min: int | None = None
+    opponent_closing_range_max: int | None = None
 
 
 @dataclass(frozen=True)
@@ -225,6 +233,21 @@ def _moneyline_cells(row: Tag) -> list[Tag]:
     """
     cells = row.find_all("td", class_="moneyline")
     return cells[:3]
+
+
+def _three_moneylines(row: Tag) -> tuple[int | None, int | None, int | None]:
+    """Parse a row's ``(opening, closing_min, closing_max)`` moneylines.
+
+    Returns all-``None`` when the row does not carry three moneyline cells.
+    """
+    cells = _moneyline_cells(row)
+    if len(cells) < 3:
+        return None, None, None
+    return (
+        _parse_moneyline(cells[0].get_text(strip=True)),
+        _parse_moneyline(cells[1].get_text(strip=True)),
+        _parse_moneyline(cells[2].get_text(strip=True)),
+    )
 
 
 # ── Public parsers ───────────────────────────────────────────────────────────
@@ -614,7 +637,7 @@ def parse_bfo_fighter_page(html: str, fighter_url: str) -> BFOFighterPage:
         2. ``<tr class="main-row">`` — fighter side: oppcell name link
            + 3 ``<td.moneyline>`` (opening, closing_min, closing_max).
         3. ``<tr>`` (no class) — opponent side: oppcell name link + 3
-           ``<td.moneyline>`` (opponent's odds — we ignore these) +
+           ``<td.moneyline>`` (opponent's odds, kept as ``opponent_*``) +
            ``<td.item-non-mobile>`` containing the date string
            ("Mar 4th 2023") for past fights, blank for upcoming.
 
@@ -688,13 +711,10 @@ def parse_bfo_fighter_page(html: str, fighter_url: str) -> BFOFighterPage:
         opp_href = opp_link.get("href", "") if opp_link is not None else ""
         opponent_bfo_id = _id_from_href(opp_href)
 
-        # Moneylines: 3 fighter-side cells in the main row.
-        ml_cells = _moneyline_cells(row)
-        opening = closing_min = closing_max = None
-        if len(ml_cells) >= 3:
-            opening = _parse_moneyline(ml_cells[0].get_text(strip=True))
-            closing_min = _parse_moneyline(ml_cells[1].get_text(strip=True))
-            closing_max = _parse_moneyline(ml_cells[2].get_text(strip=True))
+        # Moneylines: 3 fighter-side cells in the main row, and the
+        # opponent's 3 cells in the detail row.
+        opening, closing_min, closing_max = _three_moneylines(row)
+        opp_opening, opp_closing_min, opp_closing_max = _three_moneylines(detail)
 
         # Date parsing — if the date is missing the fight is upcoming /
         # has no committed event date. We synthesize date.max as a
@@ -724,6 +744,9 @@ def parse_bfo_fighter_page(html: str, fighter_url: str) -> BFOFighterPage:
                 opening=opening,
                 closing_range_min=closing_min,
                 closing_range_max=closing_max,
+                opponent_opening=opp_opening,
+                opponent_closing_range_min=opp_closing_min,
+                opponent_closing_range_max=opp_closing_max,
             )
         )
 

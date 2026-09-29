@@ -1193,10 +1193,10 @@ def _populate_odds(
     cl_b: float | None = None
 
     if live_odds is not None:
-        # Live BFO path: A's row contains both A and B moneylines after the
-        # ingest pipeline. The bfo_live single-shot only populates A's
-        # moneylines from the parsed fighter-page row; B-side often arrives
-        # as None and must NaN out per Pattern D.
+        # Live BFO path: bfo_live fills A from fighter A's profile row and B
+        # from the opponent row of the same fight, and only returns a live
+        # hit when at least one two-sided (opening or closing) pair exists.
+        # Any individual side still missing must NaN out per Pattern D.
         #
         # Bad-data resilience (review #12): the devig helpers raise
         # InvalidMoneylineError on an out-of-domain moneyline (|ml| < 100). Per

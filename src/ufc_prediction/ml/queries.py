@@ -23,6 +23,10 @@ from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.models.round_stats import RoundStats
 from ufc_prediction.models.venue import Venue
 
+# Opponent-network keys persisted by ``features compute`` (Phase 16-03
+# NET-01/02) and consumed by the 75-col ``v1.0`` feature matrix.
+NET_FEATURE_KEYS: tuple[str, ...] = ("pagerank", "sos_2hop", "is_debutant_in_graph")
+
 
 def load_elo_features(
     session: Session,
@@ -74,6 +78,13 @@ def load_computed_features(
     Extracts the 20 numeric features from CANONICAL_FEATURE_ORDER
     (excluding style_tag). None values are preserved (XGBoost handles NaN).
 
+    Also carries the 3 opponent-network keys (``NET_FEATURE_KEYS``:
+    ``pagerank`` / ``sos_2hop`` / ``is_debutant_in_graph``) that the 75-col
+    ``v1.0`` feature set reads. These are always float: JSON ``null`` (the
+    persisted form of the NaN debutant sentinel) and legacy rows without the
+    keys both map to NaN, matching the assembler's own NaN default. The
+    72-col ``v2.1-no-net`` layout never reads them, so it is unaffected.
+
     TEMPORAL-V24-01: rows are filtered such that the feature's ``as_of_date``
     is not later than the joined ``Event.date``. Future-dated rows
     (operator-bug temporal leaks) are excluded from the training + inference
@@ -110,7 +121,13 @@ def load_computed_features(
     for row in rows:
         key = (row[0], row[1])
         features_json = row[2]
-        result[key] = {feat: features_json.get(feat) for feat in PERFORMANCE_FEATURE_KEYS}
+        feats: dict[str, float | None] = {
+            feat: features_json.get(feat) for feat in PERFORMANCE_FEATURE_KEYS
+        }
+        for feat in NET_FEATURE_KEYS:
+            value = features_json.get(feat)
+            feats[feat] = float(value) if value is not None else float("nan")
+        result[key] = feats
     return result
 
 

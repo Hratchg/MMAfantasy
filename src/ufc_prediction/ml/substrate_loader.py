@@ -110,8 +110,10 @@ def load_substrate_snapshot(path: Path) -> dict[str, EvalSlice]:
             Width mismatch surfaces downstream when
             ``predict_proba`` rejects the array.
         A2. NaN allowed inside ``feature_vector`` elements. The gate
-            verifier handles NaN tolerance via the canonical Pipeline's
-            training-time scaler / imputer.
+            verifier applies the canonical META-V22 NaN policy
+            (``gate_verifier.apply_canonical_nan_policy``: drop rows with
+            NaN in the baseline cols 0/1, impute the rest with fit-set
+            medians) before any refit or ``predict_proba``.
 
     Per-slice ``substrate_sha`` strings pass through byte-identical to
     the input parquet value (preserved on ``EvalSlice.substrate_sha``)

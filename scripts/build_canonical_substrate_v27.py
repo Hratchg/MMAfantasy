@@ -81,7 +81,10 @@ if str(_SCRIPTS_DIR) not in sys.path:
 # Module-level import of canonical META-V22 column contract so the import-time
 # assertion below catches accidental drift between this builder's col[0]
 # expectation and the canonical META-V22 source-of-truth.
-from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
+from ufc_prediction.ml.meta_features_v22 import (
+    META_V22_FEATURE_COLUMNS,
+    elo_prob_from_v22_matrix,
+)
 
 # ── LOCKED constants (Phase 75 CONTEXT §D-01 / §D-02 / §D-06) ──────────────
 
@@ -453,9 +456,9 @@ def build_eval_matrix(
 
     # Build the 13-col canonical META-V22 substrate.
     #   - col[0] (xgb_oof_prob): per-fight lookup from canonical OOF map.
-    #   - col[1] (elo_prob): deterministic per-fight seed (same RNG plumbing
-    #     as REF builder line 397-399 so the synthetic distribution lines up
-    #     across substrates).
+    #   - col[1] (elo_prob): live mode = real as-of-fight Elo P(row's A wins)
+    #     from the row's elo_overall_diff; synthetic mode = deterministic
+    #     per-fight seed (same RNG plumbing as the REF builder).
     #   - cols[2..12]: 11 internal META-V22 cols by name lookup against
     #     FEATURE_COLUMNS_V22.
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
@@ -488,9 +491,15 @@ def build_eval_matrix(
         else:
             xgb_oof_prob[i] = float(fallback_oof[i])
 
-    # col[1] = elo_prob: deterministic per-fight seed.
+    # col[1] = elo_prob. Synthetic mode: deterministic per-fight seed.
+    # Live mode replaces it with the real as-of-fight Elo P(row's A wins),
+    # derived from the row's own elo_overall_diff so it shares the row's
+    # (post A/B-swap) orientation with the outcome. Synthetic mode keeps the
+    # seeded RNG (explicit: DB-free fixture, byte-stable across re-runs).
     elo_rng = np.random.default_rng(RANDOM_15PCT_SEED + 2)
     elo_prob = elo_rng.uniform(0.2, 0.8, size=n_rows)
+    if source == "live":
+        elo_prob = elo_prob_from_v22_matrix(X_v22)
 
     # Cols[2..12] = 11 internal META-V22 cols by name lookup. Verbatim
     # recipe from REF builder lines 402-407.

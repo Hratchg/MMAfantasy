@@ -3,7 +3,7 @@
 Before this fix ``verify_candidate_vs_canonical`` fit the refit baseline on
 the concatenation of every eval slice and then scored it on those same rows.
 That in-sample Brier is optimistic (measured on the live REF substrate at
-+0.0095 summed across the 3 slices, ~3x the 0.003 total-margin hurdle), so
++0.0113 summed across the 3 slices, ~3.8x the 0.003 total-margin hurdle), so
 every candidate was graded against a baseline that looked better than it
 was. The refit also used ``StandardScaler + LR`` instead of the canonical
 ``MetaLearnerLogistic`` architecture (``PolynomialFeatures`` interactions +

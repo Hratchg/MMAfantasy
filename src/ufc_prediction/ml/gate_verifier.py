@@ -402,10 +402,10 @@ def _cross_fit_baseline_predictions(
 
     S11 fix for the in-sample aligned baseline. The refit used to be fit on
     the concatenation of all slices and then scored on those same rows,
-    which is optimistic: +0.0095 Brier summed over the 3 slices on the live
-    REF substrate (5-fold, 2026-09-28), about 3x the 0.003 total-margin
-    hurdle, so every candidate was graded against a baseline that looked
-    better than it was.
+    which is optimistic: +0.0113 Brier summed over the 3 slices on the live
+    REF substrate (real elo_prob, canonical NaN policy; 5-fold x 5 repeats,
+    2026-09-29), about 3.8x the 0.003 total-margin hurdle, so every
+    candidate was graded against a baseline that looked better than it was.
 
     Procedure: de-duplicate the slice rows (a fight in both 12mo and 24mo
     is ONE row, so it cannot sit in the training fold that scores its own

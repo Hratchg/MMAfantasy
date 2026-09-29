@@ -108,6 +108,11 @@ def load_seeds(csv_path: Path | str) -> dict[int, float]:
 
     Returns an empty dict if `csv_path` does not exist — this is the graceful
     fallback contract that Plan 43-03's EloEngine dispatch logic depends on.
+    An empty result means flat-1500 debutants, which diverges from the seeded
+    stored substrate, so callers must not accept it silently: ``ufc elo
+    compute`` exits 1 unless ``--allow-unseeded`` is passed, and the serve
+    path (``ml.inference_features._load_debutant_seeds``) logs an error and
+    does not cache the empty result.
 
     Raises SeedDerivationError if any row is missing one of the required
     columns ({fighter_id, n_pre_ufc_fights, win_rate, org_tier}) or holds an

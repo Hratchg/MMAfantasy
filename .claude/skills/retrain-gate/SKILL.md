@@ -10,7 +10,7 @@ Repeatable, STOP-before-promotion retrain + fair gate for `xgb_v2`. **Never swap
 
 ## Preconditions
 - Env set (see CLAUDE.md): `DOCKER_HOST` (colima socket), `DATABASE_URL` (5433 by default; whatever host port `mmafantasy-db-1` is bound to), `TESTCONTAINERS_RYUK_DISABLED=true`; `uv sync --frozen`.
-- Substrate current: run `ufc elo compute` + `ufc features compute` after any ingest/scrape, and confirm `data/sherdog/pre_ufc_records.csv` exists (else elo silently falls back to flat-1500 and degrades the candidate).
+- Substrate current: run `ufc elo compute` + `ufc features compute` after any ingest/scrape, and confirm `data/sherdog/pre_ufc_records.csv` exists (else `elo compute` exits 1; `--allow-unseeded` would fall back to flat-1500 and degrade the candidate).
 
 ## Run
 ```bash

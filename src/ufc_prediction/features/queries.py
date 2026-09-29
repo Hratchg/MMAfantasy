@@ -12,6 +12,7 @@ import math
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ufc_prediction.elo.queries import order_tournament_bouts
 from ufc_prediction.models.computed_feature import ComputedFeature
 from ufc_prediction.models.elo_snapshot import EloSnapshot
 from ufc_prediction.models.event import Event
@@ -81,7 +82,12 @@ def load_fights_with_duration(session: Session) -> list[dict[str, object]]:
     """Load fights joined with events for chronological ordering.
 
     Returns list of dicts ordered by event date, then fight ID
-    (deterministic within same date, same pattern as elo/queries.py).
+    (deterministic within same date, same pattern as elo/queries.py), with
+    ufcstats one-night-tournament cards put into real bout order.
+
+    ``winner_id`` and ``method`` are required by the NET (PageRank / 2-hop
+    SOS) pass in ``FeatureComputer.compute_all``: without them every fight
+    looks non-decisive and the fight graph is empty.
     """
     stmt = (
         select(
@@ -93,12 +99,23 @@ def load_fights_with_duration(session: Session) -> list[dict[str, object]]:
             Fight.round_finished,
             Fight.time_finished,
             Fight.num_rounds,
+            Fight.winner_id,
+            Fight.method,
+            Fight.event_id,
+            Event.source,
         )
         .join(Event, Fight.event_id == Event.id)
         .order_by(Event.date, Fight.id)
     )
 
-    rows = session.execute(stmt).all()
+    # Same bout-sequence fix as the Elo loader so the sequential feature
+    # accumulators see one-night-tournament rounds in real order.
+    rows = order_tournament_bouts(
+        session.execute(stmt).all(),
+        event_of=lambda r: r[10],
+        source_of=lambda r: r[11],
+        fighters_of=lambda r: (r[2], r[3]),
+    )
     return [
         {
             "fight_id": row[0],
@@ -109,6 +126,8 @@ def load_fights_with_duration(session: Session) -> list[dict[str, object]]:
             "round_finished": row[5],
             "time_finished": row[6],
             "num_rounds": row[7],
+            "winner_id": row[8],
+            "method": row[9],
         }
         for row in rows
     ]

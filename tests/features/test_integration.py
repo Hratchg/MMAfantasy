@@ -6,6 +6,7 @@ Tests: feature storage, idempotent recomputation, temporal integrity, JSON keys.
 
 from __future__ import annotations
 
+import math
 from datetime import date
 
 from ufc_prediction.features.compute import FeatureComputer
@@ -264,3 +265,66 @@ def test_feature_json_has_expected_keys(session):
     # style_tag should be a string
     assert isinstance(feats["style_tag"], str)
     assert feats["style_tag"] in ("striker", "grappler", "balanced")
+
+
+def test_load_fights_with_duration_carries_outcome_fields(session):
+    """The loader must expose winner_id + method for the NET (PageRank) pass."""
+    data = _seed_feature_data(session)
+    fights = load_fights_with_duration(session)
+
+    by_id = {f["fight_id"]: f for f in fights}
+    fight_1 = data["fights"][0]
+    assert by_id[fight_1.id]["winner_id"] == fight_1.winner_id
+    assert by_id[fight_1.id]["method"] == "KO/TKO"
+
+
+def test_load_fights_with_duration_orders_ufcstats_tournament_bouts(session):
+    """Same bout-order fix as the Elo loader: the final must come after the semis.
+
+    ufcstats inserts cards main-event-first, so a one-night tournament's final
+    has the lowest Fight.id; the sequential feature accumulator must still see
+    the earlier rounds first.
+    """
+    a, b, c = (Fighter(name=f"Tourney Feat {x}", source="test") for x in "ABC")
+    session.add_all([a, b, c])
+    session.flush()
+    event = Event(name="Tourney Feat Night", date=date(1994, 3, 11), source="ufcstats")
+    session.add(event)
+    session.flush()
+    ids = []
+    for x, y in ((a, b), (a, c)):  # final first (card order), then the semi
+        fight = Fight(
+            event_id=event.id,
+            fighter_a_id=x.id,
+            fighter_b_id=y.id,
+            winner_id=x.id,
+            weight_class="Open Weight",
+            method="SUB",
+            source="ufcstats",
+        )
+        session.add(fight)
+        session.flush()
+        ids.append(fight.id)
+    final_id, semi_id = ids
+
+    order = [f["fight_id"] for f in load_fights_with_duration(session)]
+    assert order.index(semi_id) < order.index(final_id)
+
+
+def test_network_features_populated_from_real_loader(session):
+    """End-to-end: real loader output -> compute_all yields finite PageRank.
+
+    Fighter A beat B (2020-01-01) and C (2020-06-01), so at both of A's
+    feature snapshots A is already in the pre-fight fight graph and must not
+    be flagged as a graph debutant.
+    """
+    data = _seed_feature_data(session)
+    feature_rows = _run_pipeline(session)
+
+    fighter_a_id = data["fighters"][0].id
+    a_rows = [r for r in feature_rows if r["fighter_id"] == fighter_a_id]
+    assert len(a_rows) == 2
+    for row in a_rows:
+        feats = row["features"]
+        assert feats["is_debutant_in_graph"] == 0.0
+        assert math.isfinite(feats["pagerank"])

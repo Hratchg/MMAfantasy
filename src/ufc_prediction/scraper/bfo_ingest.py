@@ -53,6 +53,12 @@ from ufc_prediction.scraper.bfo_models import BFOFighterName, BFOOddsRow
 
 logger = logging.getLogger(__name__)
 
+# The corpus holds the same fighters/fights under ufcstats AND the two kaggle
+# sources. Training (``load_fight_records``) and serving read only the ufcstats
+# lineage, so odds must attach to ufcstats fighters + fights — never to a kaggle
+# duplicate (which would leave the ufcstats fight's odds features NaN).
+_CANONICAL_SOURCE = "ufcstats"
+
 
 @dataclass
 class IngestSummary:
@@ -239,23 +245,30 @@ class BFOOddsIngester:
         ``match_bfo_name`` only when ``database_id`` is blank/None on the
         preferred ``ufcstats`` linkage row. Counts canonical vs fuzzy
         resolutions on the IngestSummary so Plan 41-03 can audit the split.
+
+        Both paths are scoped to ``ufcstats`` fighters: an unscoped pool let a
+        same-name kaggle duplicate (lower id, wins the fuzzy tie) capture the
+        odds, orphaning the ufcstats fight that training/serving read.
         """
         db_candidates: list[tuple[int, str]] = [
             (row.id, row.name)
-            for row in self._session.execute(select(Fighter.id, Fighter.name)).all()
+            for row in self._session.execute(
+                select(Fighter.id, Fighter.name).where(Fighter.source == _CANONICAL_SOURCE)
+            ).all()
         ]
         # Existence + semantics guards for the canonical path (see below). The
         # two producers of fighters_names.csv disagree on database_id semantics:
         # refresh_fighters_names_v26.py writes the int Fighter.id PK, while the
         # operator-curated fixture stores ufcstats hex source_id hashes. Accept
-        # BOTH — but only when the referenced fighter actually exists — so a
+        # BOTH — but only when the referenced fighter exists as a ufcstats row
+        # (a kaggle PK would resolve to a fight training never reads) — so a
         # bogus/stale id can never be trusted as a PK (was: cast to int and used
         # unchecked, silently mis-attributing or undercounting canonical hits).
         valid_ids: set[int] = {fid for fid, _ in db_candidates}
         sourceid_to_id: dict[str, int] = {
             src_id: fid
             for fid, src_id in self._session.execute(
-                select(Fighter.id, Fighter.source_id).where(Fighter.source == "ufcstats")
+                select(Fighter.id, Fighter.source_id).where(Fighter.source == _CANONICAL_SOURCE)
             ).all()
             if src_id is not None
         }
@@ -321,7 +334,8 @@ class BFOOddsIngester:
         upserts overwrite each other on the ``pk_fight_odds`` conflict
         target. With the date filter:
 
-          - All candidate fights for the pair (either order) are loaded.
+          - All ``ufcstats`` candidate fights for the pair (either order)
+            are loaded — kaggle duplicates are never odds targets.
           - The candidate with ``min |candidate.date - event_date|`` wins.
           - If that minimum exceeds ``self._date_window``, returns
             ``None`` — refuse to attach odds to a fight that's not
@@ -344,6 +358,7 @@ class BFOOddsIngester:
                 ((Fight.fighter_a_id == db_fighter_a) & (Fight.fighter_b_id == db_fighter_b))
                 | ((Fight.fighter_a_id == db_fighter_b) & (Fight.fighter_b_id == db_fighter_a))
             )
+            .where(Event.source == _CANONICAL_SOURCE)
         )
         candidates = list(self._session.execute(stmt).all())
         if not candidates:

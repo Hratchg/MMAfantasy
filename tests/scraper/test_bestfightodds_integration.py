@@ -41,12 +41,12 @@ def _seed_basic_fighters(session: Session) -> dict[str, Fighter]:
     Returns a name -> Fighter map for assertion use.
     """
     fighters = {
-        "jones": Fighter(name="Jon Jones", source="test"),
-        "gus": Fighter(name="Alexander Gustafsson", source="test"),
-        "khabib": Fighter(name="Khabib Nurmagomedov", source="test"),
-        "mcgregor": Fighter(name="Conor McGregor", source="test"),
-        "adesanya": Fighter(name="Israel Adesanya", source="test"),
-        "whittaker": Fighter(name="Robert Whittaker", source="test"),
+        "jones": Fighter(name="Jon Jones", source="ufcstats"),
+        "gus": Fighter(name="Alexander Gustafsson", source="ufcstats"),
+        "khabib": Fighter(name="Khabib Nurmagomedov", source="ufcstats"),
+        "mcgregor": Fighter(name="Conor McGregor", source="ufcstats"),
+        "adesanya": Fighter(name="Israel Adesanya", source="ufcstats"),
+        "whittaker": Fighter(name="Robert Whittaker", source="ufcstats"),
     }
     session.add_all(list(fighters.values()))
     session.flush()
@@ -60,9 +60,9 @@ def _seed_events_and_fights(session: Session, fighters: dict[str, Fighter]) -> d
     Fight 2: Khabib vs McGregor  (UFC 229, 2018)
     Fight 3: Adesanya vs Whittaker (UFC 243, 2019)
     """
-    ev1 = Event(name="UFC 165", date=date(2013, 9, 21), source="test")
-    ev2 = Event(name="UFC 229", date=date(2018, 10, 6), source="test")
-    ev3 = Event(name="UFC 243", date=date(2019, 10, 5), source="test")
+    ev1 = Event(name="UFC 165", date=date(2013, 9, 21), source="ufcstats")
+    ev2 = Event(name="UFC 229", date=date(2018, 10, 6), source="ufcstats")
+    ev3 = Event(name="UFC 243", date=date(2019, 10, 5), source="ufcstats")
     session.add_all([ev1, ev2, ev3])
     session.flush()
 
@@ -71,21 +71,21 @@ def _seed_events_and_fights(session: Session, fighters: dict[str, Fighter]) -> d
         fighter_a_id=fighters["jones"].id,
         fighter_b_id=fighters["gus"].id,
         weight_class="Light Heavyweight",
-        source="test",
+        source="ufcstats",
     )
     fight_km = Fight(
         event_id=ev2.id,
         fighter_a_id=fighters["khabib"].id,
         fighter_b_id=fighters["mcgregor"].id,
         weight_class="Lightweight",
-        source="test",
+        source="ufcstats",
     )
     fight_aw = Fight(
         event_id=ev3.id,
         fighter_a_id=fighters["adesanya"].id,
         fighter_b_id=fighters["whittaker"].id,
         weight_class="Middleweight",
-        source="test",
+        source="ufcstats",
     )
     session.add_all([fight_jg, fight_km, fight_aw])
     session.flush()
@@ -399,12 +399,12 @@ class TestBFOOddsIngester:
 
         # Seed only the Jones/Gus pair; others in the fixture have no DB
         # counterpart so match_bfo_name should return None (threshold=80).
-        jones = Fighter(name="Jon Jones", source="test")
-        gus = Fighter(name="Alexander Gustafsson", source="test")
+        jones = Fighter(name="Jon Jones", source="ufcstats")
+        gus = Fighter(name="Alexander Gustafsson", source="ufcstats")
         session.add_all([jones, gus])
         session.flush()
 
-        ev = Event(name="UFC 165", date=date(2013, 9, 21), source="test")
+        ev = Event(name="UFC 165", date=date(2013, 9, 21), source="ufcstats")
         session.add(ev)
         session.flush()
         session.add(
@@ -413,7 +413,7 @@ class TestBFOOddsIngester:
                 fighter_a_id=jones.id,
                 fighter_b_id=gus.id,
                 weight_class="Light Heavyweight",
-                source="test",
+                source="ufcstats",
             )
         )
         session.flush()
@@ -440,7 +440,7 @@ class TestBFOOddsIngester:
         early_event = Event(
             name="Fictional Early",
             date=date(2018, 4, 10),
-            source="test",
+            source="ufcstats",
         )
         session.add(early_event)
         session.flush()
@@ -449,7 +449,7 @@ class TestBFOOddsIngester:
             fighter_a_id=fighters["khabib"].id,
             fighter_b_id=fighters["mcgregor"].id,
             weight_class="Lightweight",
-            source="test",
+            source="ufcstats",
         )
         session.add(early_fight)
         session.flush()
@@ -503,13 +503,13 @@ class TestBFOOddsIngester:
         """
         from ufc_prediction.scraper.bfo_ingest import BFOOddsIngester
 
-        fa = Fighter(name="Daniel Cormier", source="test")
-        fb = Fighter(name="Jon Jones", source="test")
+        fa = Fighter(name="Daniel Cormier", source="ufcstats")
+        fb = Fighter(name="Jon Jones", source="ufcstats")
         session.add_all([fa, fb])
         session.flush()
 
-        ev_i = Event(name="UFC 182", date=date(2015, 1, 3), source="test")
-        ev_ii = Event(name="UFC 214", date=date(2017, 7, 29), source="test")
+        ev_i = Event(name="UFC 182", date=date(2015, 1, 3), source="ufcstats")
+        ev_ii = Event(name="UFC 214", date=date(2017, 7, 29), source="ufcstats")
         session.add_all([ev_i, ev_ii])
         session.flush()
 
@@ -518,14 +518,14 @@ class TestBFOOddsIngester:
             fighter_a_id=fa.id,
             fighter_b_id=fb.id,
             weight_class="Light Heavyweight",
-            source="test",
+            source="ufcstats",
         )
         fight_ii = Fight(
             event_id=ev_ii.id,
             fighter_a_id=fa.id,
             fighter_b_id=fb.id,
             weight_class="Light Heavyweight",
-            source="test",
+            source="ufcstats",
         )
         session.add_all([fight_i, fight_ii])
         session.flush()
@@ -543,12 +543,12 @@ class TestBFOOddsIngester:
         """
         from ufc_prediction.scraper.bfo_ingest import BFOOddsIngester
 
-        fa = Fighter(name="Conor McGregor", source="test")
-        fb = Fighter(name="Nate Diaz", source="test")
+        fa = Fighter(name="Conor McGregor", source="ufcstats")
+        fb = Fighter(name="Nate Diaz", source="ufcstats")
         session.add_all([fa, fb])
         session.flush()
 
-        ev = Event(name="UFC 202", date=date(2017, 7, 29), source="test")
+        ev = Event(name="UFC 202", date=date(2017, 7, 29), source="ufcstats")
         session.add(ev)
         session.flush()
 
@@ -557,7 +557,7 @@ class TestBFOOddsIngester:
             fighter_a_id=fa.id,
             fighter_b_id=fb.id,
             weight_class="Welterweight",
-            source="test",
+            source="ufcstats",
         )
         session.add(fight)
         session.flush()
@@ -574,12 +574,12 @@ class TestBFOOddsIngester:
         """
         from ufc_prediction.scraper.bfo_ingest import BFOOddsIngester
 
-        fa = Fighter(name="Max Holloway", source="test")
-        fb = Fighter(name="Alexander Volkanovski", source="test")
+        fa = Fighter(name="Max Holloway", source="ufcstats")
+        fb = Fighter(name="Alexander Volkanovski", source="ufcstats")
         session.add_all([fa, fb])
         session.flush()
 
-        ev = Event(name="UFC 245", date=date(2017, 7, 29), source="test")
+        ev = Event(name="UFC 245", date=date(2017, 7, 29), source="ufcstats")
         session.add(ev)
         session.flush()
 
@@ -588,7 +588,7 @@ class TestBFOOddsIngester:
             fighter_a_id=fa.id,
             fighter_b_id=fb.id,
             weight_class="Featherweight",
-            source="test",
+            source="ufcstats",
         )
         session.add(fight)
         session.flush()
@@ -597,3 +597,190 @@ class TestBFOOddsIngester:
 
         # ~58 days off — well outside the 14-day window.
         assert ingester._resolve_fight(fa.id, fb.id, date(2017, 6, 1)) is None
+
+
+# ── Source scoping: odds must attach to the ufcstats lineage ───────────────
+
+
+def _write_bfo_csvs(folder: Path, names_rows: list[str], odds_rows: list[str]) -> None:
+    """Write a minimal ufcscraper-format CSV pair into ``folder``."""
+    (folder / "fighters_names.csv").write_text(
+        "fighter_id,database,name,database_id\n" + "\n".join(names_rows) + "\n"
+    )
+    (folder / "BestFightOdds_odds.csv").write_text(
+        "fight_id,fighter_id,opening,closing_range_min,closing_range_max\n"
+        + "\n".join(odds_rows)
+        + "\n"
+    )
+
+
+class TestBFOSourceScoping:
+    """The corpus carries the same fighters/fights under ufcstats and the two
+    kaggle sources. Training and serving read only the ufcstats lineage
+    (``Event.source == 'ufcstats'``), so BFO odds must attach to the ufcstats
+    fighter + fight, never to a kaggle duplicate (e.g. Alexandre Pantoja is
+    both id 2440 kaggle-rajeevw and id 5771 ufcstats in the live DB).
+    """
+
+    @staticmethod
+    def _seed_pantoja_van_duplicates(session: Session) -> dict[str, int]:
+        # Kaggle rows first so they get the LOWER ids — match_bfo_name keeps the
+        # first candidate on a score tie, which is exactly the production bug.
+        k_pantoja = Fighter(name="Alexandre Pantoja", source="kaggle-rajeevw")
+        k_van = Fighter(name="Joshua Van", source="kaggle-rajeevw")
+        session.add_all([k_pantoja, k_van])
+        session.flush()
+        u_pantoja = Fighter(name="Alexandre Pantoja", source="ufcstats")
+        u_van = Fighter(name="Joshua Van", source="ufcstats")
+        session.add_all([u_pantoja, u_van])
+        session.flush()
+
+        k_event = Event(name="UFC 323", date=date(2025, 12, 6), source="kaggle-mdabbert")
+        u_event = Event(name="UFC 323", date=date(2025, 12, 6), source="ufcstats")
+        session.add_all([k_event, u_event])
+        session.flush()
+
+        k_fight = Fight(
+            event_id=k_event.id,
+            fighter_a_id=k_van.id,
+            fighter_b_id=k_pantoja.id,
+            weight_class="Flyweight",
+            source="kaggle-mdabbert",
+        )
+        u_fight = Fight(
+            event_id=u_event.id,
+            fighter_a_id=u_van.id,
+            fighter_b_id=u_pantoja.id,
+            weight_class="Flyweight",
+            source="ufcstats",
+        )
+        session.add_all([k_fight, u_fight])
+        session.flush()
+        return {
+            "k_pantoja": k_pantoja.id,
+            "k_van": k_van.id,
+            "u_pantoja": u_pantoja.id,
+            "u_van": u_van.id,
+            "k_fight": k_fight.id,
+            "u_fight": u_fight.id,
+        }
+
+    def test_fuzzy_match_resolves_to_ufcstats_not_kaggle_duplicate(
+        self, session: Session, tmp_path: Path
+    ) -> None:
+        from ufc_prediction.scraper.bfo_ingest import BFOOddsIngester, IngestSummary
+        from ufc_prediction.scraper.bfo_models import BFOFighterName
+
+        ids = self._seed_pantoja_van_duplicates(session)
+        bfo_names = {
+            "bfo-pantoja": [
+                BFOFighterName(
+                    fighter_id="bfo-pantoja",
+                    database="ufcstats",
+                    name="Alexandre Pantoja",
+                    database_id=None,
+                )
+            ]
+        }
+
+        summary = IngestSummary()
+        bfo_to_db = BFOOddsIngester(session, tmp_path)._match_fighters(bfo_names, summary)
+
+        assert bfo_to_db["bfo-pantoja"] == ids["u_pantoja"]
+        assert summary.fighters_matched_fuzzy == 1
+
+    def test_canonical_int_id_of_kaggle_row_is_not_trusted(
+        self, session: Session, tmp_path: Path
+    ) -> None:
+        """A database_id naming a kaggle PK must not be accepted as canonical —
+        it falls through to the (ufcstats-scoped) fuzzy matcher instead."""
+        from ufc_prediction.scraper.bfo_ingest import BFOOddsIngester, IngestSummary
+        from ufc_prediction.scraper.bfo_models import BFOFighterName
+
+        ids = self._seed_pantoja_van_duplicates(session)
+        bfo_names = {
+            "bfo-pantoja": [
+                BFOFighterName(
+                    fighter_id="bfo-pantoja",
+                    database="ufcstats",
+                    name="Alexandre Pantoja",
+                    database_id=str(ids["k_pantoja"]),
+                )
+            ]
+        }
+
+        summary = IngestSummary()
+        bfo_to_db = BFOOddsIngester(session, tmp_path)._match_fighters(bfo_names, summary)
+
+        assert bfo_to_db["bfo-pantoja"] == ids["u_pantoja"]
+        assert summary.fighters_matched_canonical == 0
+        assert summary.fighters_matched_fuzzy == 1
+
+    def test_resolve_fight_ignores_non_ufcstats_fights(
+        self, session: Session, tmp_path: Path
+    ) -> None:
+        """Even when a kaggle fight references the same fighter ids and sits
+        closer to the BFO date, only the ufcstats fight may be returned; with
+        no ufcstats candidate the resolver returns None."""
+        from ufc_prediction.scraper.bfo_ingest import BFOOddsIngester
+
+        fa = Fighter(name="Merab Dvalishvili", source="ufcstats")
+        fb = Fighter(name="Sean O'Malley", source="ufcstats")
+        session.add_all([fa, fb])
+        session.flush()
+        k_event = Event(name="UFC 306", date=date(2024, 9, 14), source="kaggle-mdabbert")
+        u_event = Event(name="UFC 306", date=date(2024, 9, 15), source="ufcstats")
+        session.add_all([k_event, u_event])
+        session.flush()
+        k_fight = Fight(
+            event_id=k_event.id,
+            fighter_a_id=fa.id,
+            fighter_b_id=fb.id,
+            weight_class="Bantamweight",
+            source="kaggle-mdabbert",
+        )
+        u_fight = Fight(
+            event_id=u_event.id,
+            fighter_a_id=fa.id,
+            fighter_b_id=fb.id,
+            weight_class="Bantamweight",
+            source="ufcstats",
+        )
+        session.add_all([k_fight, u_fight])
+        session.flush()
+
+        ingester = BFOOddsIngester(session, tmp_path, date_window_days=14)
+        assert ingester._resolve_fight(fa.id, fb.id, date(2024, 9, 14)) == u_fight.id
+
+        session.delete(u_fight)
+        session.flush()
+        assert ingester._resolve_fight(fa.id, fb.id, date(2024, 9, 14)) is None
+
+    def test_ingest_all_attaches_odds_to_ufcstats_fight(
+        self, session: Session, tmp_path: Path
+    ) -> None:
+        """End-to-end reproduction of the Van vs Pantoja (2025-12-06) miss:
+        odds must land on the ufcstats fight/fighters, not the kaggle twin."""
+        from ufc_prediction.scraper.bfo_ingest import BFOOddsIngester
+
+        ids = self._seed_pantoja_van_duplicates(session)
+        _write_bfo_csvs(
+            tmp_path,
+            names_rows=[
+                "bfo-van,ufcstats,Joshua Van,",
+                "bfo-pantoja,ufcstats,Alexandre Pantoja,",
+            ],
+            odds_rows=[
+                "2025-12-06|bfo-van|bfo-pantoja,bfo-van,150,140,160",
+                "2025-12-06|bfo-van|bfo-pantoja,bfo-pantoja,-170,-180,-160",
+            ],
+        )
+
+        summary = BFOOddsIngester(session, tmp_path).ingest_all()
+
+        assert summary.fights_matched == 1
+        rows = session.query(FightOdds).all()
+        assert {(r.fight_id, r.fighter_id) for r in rows} == {
+            (ids["u_fight"], ids["u_van"]),
+            (ids["u_fight"], ids["u_pantoja"]),
+        }

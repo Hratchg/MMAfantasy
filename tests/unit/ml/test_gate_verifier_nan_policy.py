@@ -139,3 +139,27 @@ def test_verifier_runs_on_substrate_with_non_baseline_nan(tmp_path: Path) -> Non
     ):
         assert set(per_slice) == set(slices)
         assert all(np.isfinite(v) for v in per_slice.values())
+
+
+def test_medians_use_the_deduplicated_union_the_refit_trains_on() -> None:
+    """Overlapping slices (12mo is a subset of 24mo) count each row once.
+
+    The aligned refit baseline is cross-fit on the de-duplicated slice union
+    (S11), so the imputation fit set is that same union: a recent fight
+    present in both 12mo and 24mo must not be double-weighted in the median.
+    """
+    nan = float("nan")
+    old = np.array([[0.6, 0.5, 1.0], [0.4, 0.5, 2.0]])
+    recent = np.array([[0.7, 0.5, 9.0], [0.3, 0.5, nan]])
+    slices = {
+        "most_recent_12mo": _slice(recent, np.array([1, 0]), "s12"),
+        "most_recent_24mo": _slice(np.vstack([old, recent]), np.array([1, 0, 1, 0]), "s24"),
+    }
+
+    clean, medians = apply_canonical_nan_policy(slices)
+
+    # Union col2 = {1, 2, 9} -> 2.0 (the concatenation {9, 1, 2, 9} gives 5.5).
+    assert medians == {2: 2.0}
+    # The shared NaN row is imputed identically in both slices.
+    assert clean["most_recent_12mo"].feature_vectors[1] == (0.3, 0.5, 2.0)
+    assert clean["most_recent_24mo"].feature_vectors[3] == (0.3, 0.5, 2.0)

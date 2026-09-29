@@ -23,7 +23,6 @@ monkey-patch them without spinning up Postgres.
 
 from __future__ import annotations
 
-import functools
 import logging
 import math
 from dataclasses import dataclass, field
@@ -90,15 +89,36 @@ _REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 _SHERDOG_PRE_UFC_CSV: Path = _REPO_ROOT / "data" / "sherdog" / "pre_ufc_records.csv"
 
 
-@functools.lru_cache(maxsize=1)
+# Only a non-empty seed map is cached: an empty result (missing CSV) is
+# re-checked on every call so a file restored while a long-running API
+# process is up gets picked up instead of being masked for the process life.
+_debutant_seeds_cache: dict[int, float] | None = None
+_warned_missing_seeds: bool = False
+
+
 def _load_debutant_seeds() -> dict[int, float]:
     """Debutant Elo seeds (DEBUT-V25-03), the same CSV ``elo compute`` reads.
 
-    ``load_seeds`` returns ``{}`` when the file is absent, so a serve host
-    without the Sherdog substrate degrades to the flat-1500 default exactly
-    as the engine does.
+    ``load_seeds`` returns ``{}`` when the file is absent. Serving still
+    works then, but debutants get the flat-1500 default while the stored
+    ``elo_before`` substrate was built with seeds (train/serve skew on
+    ``elo_overall_diff``), so the miss is logged at ERROR (once per process).
     """
-    return load_seeds(_SHERDOG_PRE_UFC_CSV)
+    global _debutant_seeds_cache, _warned_missing_seeds
+    if _debutant_seeds_cache is not None:
+        return _debutant_seeds_cache
+    seeds = load_seeds(_SHERDOG_PRE_UFC_CSV)
+    if seeds:
+        _debutant_seeds_cache = seeds
+    elif not _warned_missing_seeds:
+        _warned_missing_seeds = True
+        logger.error(
+            "No debutant Elo seeds loaded from %s (file missing or empty): debutant "
+            "overall Elo falls back to flat 1500 while the stored elo_snapshots "
+            "substrate is seeded, skewing elo_overall_diff for debutants.",
+            _SHERDOG_PRE_UFC_CSV,
+        )
+    return seeds
 
 
 def _load_elo_history(

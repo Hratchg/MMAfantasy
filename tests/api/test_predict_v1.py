@@ -159,6 +159,84 @@ class TestPredictV1NoDB:
             )
         assert resp.status_code == 404
 
+    _BOUT = {"weight_class": "Welterweight", "num_rounds": 5, "is_title_fight": True}
+
+    def test_bout_context_forwarded_when_predictor_accepts_it(self):
+        """Serve-bout-context: weight class / rounds / title reach the
+        predictor (both order-invariant runs) once predict() accepts them."""
+        calls = []
+
+        class _ContextPredictor(_FakePredictor):
+            def predict(
+                self,
+                db,
+                fighter_a_name,
+                fighter_b_name,
+                *,
+                event_date=None,
+                refresh=False,
+                weight_class=None,
+                num_rounds=None,
+                is_title_fight=None,
+            ):
+                calls.append((weight_class, num_rounds, is_title_fight))
+                return super().predict(db, fighter_a_name, fighter_b_name, event_date=event_date)
+
+        c = _standalone_app_client()
+        with patch(
+            "ufc_prediction.api.v1.predict._get_predictor",
+            return_value=_ContextPredictor(),
+        ):
+            resp = c.post(
+                "/api/v1/predict",
+                json={"fighter_a": "Khabib Nurmagomedov", "fighter_b": "Conor McGregor"}
+                | self._BOUT,
+            )
+        assert resp.status_code == 200, resp.text
+        assert calls == [("Welterweight", 5, True)] * 2
+
+    def test_omitted_bout_context_not_forwarded(self):
+        calls = []
+
+        class _KwargsPredictor(_FakePredictor):
+            def predict(self, db, fighter_a_name, fighter_b_name, **kwargs):
+                calls.append(kwargs)
+                return super().predict(db, fighter_a_name, fighter_b_name)
+
+        c = _standalone_app_client()
+        with patch(
+            "ufc_prediction.api.v1.predict._get_predictor",
+            return_value=_KwargsPredictor(),
+        ):
+            resp = c.post(
+                "/api/v1/predict",
+                json={"fighter_a": "Khabib Nurmagomedov", "fighter_b": "Conor McGregor"},
+            )
+        assert resp.status_code == 200, resp.text
+        assert all(set(kw) == {"event_date"} for kw in calls)
+
+    def test_bout_context_dropped_for_predictor_without_it(self):
+        """The AUDIT-01 predictor has no bout-context parameters yet; the
+        route must not crash it with unexpected kwargs."""
+        c = _standalone_app_client()
+        with patch(
+            "ufc_prediction.api.v1.predict._get_predictor",
+            return_value=_FakePredictor(),
+        ):
+            resp = c.post(
+                "/api/v1/predict",
+                json={"fighter_a": "Khabib Nurmagomedov", "fighter_b": "Conor McGregor"}
+                | self._BOUT,
+            )
+        assert resp.status_code == 200, resp.text
+
+    def test_bout_context_validation(self):
+        c = _standalone_app_client()
+        base = {"fighter_a": "Khabib Nurmagomedov", "fighter_b": "Conor McGregor"}
+        for bad in ({"num_rounds": 4}, {"num_rounds": 0}, {"weight_class": "W" * 51}):
+            resp = c.post("/api/v1/predict", json=base | bad)
+            assert resp.status_code == 422, bad
+
     def test_distinct_inputs_resolving_to_same_fighter_rejected_400(self):
         """WR-01 regression: two different inputs that resolve to the same
         Fighter row must be rejected 400 (mirrors api/routers/matchup.py:74).

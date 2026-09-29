@@ -7,8 +7,11 @@ D-02 forward-compat).
 
 from __future__ import annotations
 
+import inspect
+import logging
 from datetime import date
 from functools import cache
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -22,6 +25,8 @@ from ufc_prediction.api.v1.models import (
 from ufc_prediction.elo.fighter_queries import search_fighters
 from ufc_prediction.ml.order_invariant import predict_order_invariant
 from ufc_prediction.ml.predictor import ModelPredictor
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["predict"])
 
@@ -45,6 +50,30 @@ def _get_predictor() -> ModelPredictor:
     To reset between tests, call `_get_predictor.cache_clear()`.
     """
     return ModelPredictor(model_dir="models", version="v2")
+
+
+_BOUT_CONTEXT_FIELDS = ("weight_class", "num_rounds", "is_title_fight")
+
+
+def _bout_context_kwargs(predictor: Any, body: PredictMatchupRequestV1) -> dict[str, Any]:
+    """Bout-context kwargs from the request that ``predictor.predict`` accepts.
+
+    Only fields the caller actually set are forwarded. ``ModelPredictor``
+    (AUDIT-01 protected) does not take them yet; until it does they are
+    dropped here rather than crashing the call, and the feature builder falls
+    back to the stored fight row for the matchup.
+    """
+    requested = body.model_dump(include=set(_BOUT_CONTEXT_FIELDS), exclude_none=True)
+    if not requested:
+        return {}
+    params = inspect.signature(predictor.predict).parameters
+    if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
+        return requested
+    accepted = {k: v for k, v in requested.items() if k in params}
+    dropped = sorted(set(requested) - set(accepted))
+    if dropped:
+        logger.warning("predictor.predict does not accept bout context %s; ignored", dropped)
+    return accepted
 
 
 @router.post("/predict", response_model=PredictorOutputV1)
@@ -84,13 +113,15 @@ def predict(
             )
 
     ev_date = body.event_date or date.today()
+    predictor = _get_predictor()
     try:
         result = predict_order_invariant(
-            _get_predictor(),
+            predictor,
             db,
             body.fighter_a,
             body.fighter_b,
             event_date=ev_date,
+            **_bout_context_kwargs(predictor, body),
         )
     except ValueError as exc:
         # Predictor raises ValueError on unknown fighter / no Elo / etc.

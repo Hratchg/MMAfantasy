@@ -16,7 +16,9 @@ from ufc_prediction.data.schemas import FighterRow, FightRow, IngestResult
 from ufc_prediction.models.event import Event
 from ufc_prediction.models.fight import Fight
 from ufc_prediction.models.fighter import Fighter
+from ufc_prediction.models.round_stats import RoundStats
 from ufc_prediction.scraper.models import (
+    EventSummary,
     FightDetailPage,
     FighterProfile,
     FightSummary,
@@ -131,9 +133,54 @@ def _make_event_detail_html(name: str, date_str: str, location: str) -> str:
     return base
 
 
+# Fight URLs listed on the event_detail.html fixture, in page order.
+_FIGHT_URL_ULBERG = "http://ufcstats.com/fight-details/a031f062b7ffefee"  # Ulberg vs Prochazka
+_FIGHT_URL_BRADY = "http://ufcstats.com/fight-details/bb22cc33dd44ee55"  # Brady vs Holland
+_FIGHT_URL_MORALES = "http://ufcstats.com/fight-details/cc33dd44ee55ff66"  # Morales vs Matthews
+
+_ULBERG = ("Carlos Ulberg", "9014c02eff8b3d62")
+_PROCHAZKA = ("Jiri Prochazka", "1122334455667788")
+
+
+def _swap_fighter_identities(html: str, a: tuple[str, str], b: tuple[str, str]) -> str:
+    """Swap two fighters' names and hex ids everywhere in a fight-detail page.
+
+    The stat cells stay where they are, so the result is a fight-detail page
+    that lists fighter ``b`` FIRST, credited with the first-row stats — i.e.
+    the page order is reversed relative to the event page, as happens on live
+    UFCStats (event page lists the winner first; the fight-detail page uses
+    its own corner order).
+    """
+    (name_a, id_a), (name_b, id_b) = a, b
+    for old, tmp in ((name_a, "\x00NA\x00"), (id_a, "\x00IA\x00")):
+        html = html.replace(old, tmp)
+    html = html.replace(name_b, name_a).replace(id_b, id_a)
+    return html.replace("\x00NA\x00", name_b).replace("\x00IA\x00", id_b)
+
+
+def _fight_detail_exact_map() -> dict[str, str]:
+    """Map each fixture fight URL to a fight-detail page for THAT fight.
+
+    The event page lists Ulberg/Prochazka, Brady/Holland and Morales/Matthews;
+    the fight-detail pages list the same fighters in the same order.
+    """
+    morales = (
+        _load_fixture("fight_detail_draw.html")
+        .replace("Niko Price", "Michael Morales")
+        .replace("aabb112233445566", "ff88aa99bb00cc11")
+        .replace("Alex Oliveira", "Jake Matthews")
+        .replace("ccdd556677889900", "dd22ee33ff44aa55")
+    )
+    return {
+        _FIGHT_URL_ULBERG: _load_fixture("fight_detail_1round.html"),
+        _FIGHT_URL_BRADY: _load_fixture("fight_detail_3round.html"),
+        _FIGHT_URL_MORALES: morales,
+    }
+
+
 def _make_mock_client() -> MockScraperClient:
     """Create a mock client with per-event detail pages matching the event listing fixture."""
-    exact_map = {}
+    exact_map = _fight_detail_exact_map()
     for url, name, date_str, location in _EVENT_URLS:
         exact_map[url] = _make_event_detail_html(name, date_str, location)
 
@@ -552,7 +599,7 @@ class TestScrapeConcurrencyIntegration:
 
         # Pick one of the three event URLs as the one that will fail.
         failing_url = _EVENT_URLS[0][0]
-        exact_map = {}
+        exact_map = _fight_detail_exact_map()
         for url, name, date_str, location in _EVENT_URLS:
             exact_map[url] = _make_event_detail_html(name, date_str, location)
 
@@ -643,10 +690,9 @@ class _DispatchPage:
 def _make_browser_fetcher() -> object:
     from ufc_prediction.scraper.browser_fetch import BrowserFetcher
 
-    exact_map = {
-        url: _make_event_detail_html(name, date_str, location)
-        for url, name, date_str, location in _EVENT_URLS
-    }
+    exact_map = _fight_detail_exact_map()
+    for url, name, date_str, location in _EVENT_URLS:
+        exact_map[url] = _make_event_detail_html(name, date_str, location)
     page = _DispatchPage(
         exact_map=exact_map,
         fixture_map={
@@ -793,3 +839,201 @@ class TestPerPageIsolationAndIdentity:
         url = "http://ufcstats.com/fighter-details/dddd3333"
         assert _ensure_fighter(client, session, "Anyone", url, {url: 4242}) == 4242
         assert client._call_log == []
+
+
+# ── Fight-detail fighter orientation (code review 2026-09-28, finding 1) ─────
+
+
+_STAT_FIELDS = (
+    "knockdowns",
+    "sig_strikes_landed",
+    "sig_strikes_attempted",
+    "takedowns_landed",
+    "takedowns_attempted",
+    "submission_attempts",
+    "control_time_seconds",
+    "head_strikes_landed",
+    "body_strikes_landed",
+    "leg_strikes_landed",
+    "distance_strikes_landed",
+    "clinch_strikes_landed",
+    "ground_strikes_landed",
+)
+
+
+def _stat_tuple(obj: object) -> tuple[object, ...]:
+    return tuple(getattr(obj, f) for f in _STAT_FIELDS)
+
+
+def _first_event_summary() -> EventSummary:
+    url, name, date_str, location = _EVENT_URLS[0]
+    return EventSummary(name=name, date_str=date_str, location=location, url=url)
+
+
+def _scrape_first_event(
+    session: Session, client: MockScraperClient
+) -> tuple[IngestResult, dict[str, int]]:
+    """Run ``_scrape_event`` over the first fixture event only."""
+    from ufc_prediction.scraper.ingest import _scrape_event
+
+    summary = _first_event_summary()
+    result = IngestResult()
+    cache: dict[str, int] = {}
+    _scrape_event(client, session, summary, client.get(summary.url), cache, result)
+    return result, cache
+
+
+def _round_stats_for(session: Session, hex_id: str) -> dict[int, RoundStats]:
+    fighter = session.query(Fighter).filter(Fighter.source_id == hex_id).one()
+    rows = session.query(RoundStats).filter(RoundStats.fighter_id == fighter.id).all()
+    return {r.round_number: r for r in rows}
+
+
+class TestFightDetailOrientation:
+    """The event page lists the winner first; the fight-detail page uses its
+    own (corner) order. Stats must follow the fighter's hex id, not position."""
+
+    def test_reversed_fight_detail_stats_land_on_the_right_fighter(self, session: Session) -> None:
+        from ufc_prediction.scraper.ingest import _build_fight_stats
+        from ufc_prediction.scraper.parse_fight_detail import parse_fight_detail
+
+        original_html = _load_fixture("fight_detail_1round.html")
+        orig = parse_fight_detail(original_html)
+        # Row-1 stats (first listed) and row-2 stats of the original page.
+        row1_total = _stat_tuple(_build_fight_stats(orig.totals[0], orig.sig_strikes[0]))
+        row2_total = _stat_tuple(_build_fight_stats(orig.totals[1], orig.sig_strikes[1]))
+        row1_r1 = _stat_tuple(
+            _build_fight_stats(orig.per_round_totals[0][0], orig.per_round_sig_strikes[0][0])
+        )
+        row2_r1 = _stat_tuple(
+            _build_fight_stats(orig.per_round_totals[0][1], orig.per_round_sig_strikes[0][1])
+        )
+        assert row1_total != row2_total  # precondition: the swap is observable
+
+        # Fight-detail page lists Prochazka FIRST (with the row-1 stats) while
+        # the event page lists Ulberg (the winner) first.
+        reversed_html = _swap_fighter_identities(original_html, _ULBERG, _PROCHAZKA)
+        client = _make_mock_client()
+        client._exact_map[_FIGHT_URL_ULBERG] = reversed_html
+
+        result, _ = _scrape_first_event(session, client)
+        assert result.accepted == 3
+        assert result.rejected == 0
+
+        ulberg = _round_stats_for(session, _ULBERG[1])
+        prochazka = _round_stats_for(session, _PROCHAZKA[1])
+        assert _stat_tuple(prochazka[0]) == row1_total
+        assert _stat_tuple(ulberg[0]) == row2_total
+        assert _stat_tuple(prochazka[1]) == row1_r1
+        assert _stat_tuple(ulberg[1]) == row2_r1
+
+        # Fight row keeps the event-page orientation (winner = fighter_a).
+        fight = session.query(Fight).filter(Fight.source_url == _FIGHT_URL_ULBERG).one()
+        ulberg_id = session.query(Fighter).filter(Fighter.source_id == _ULBERG[1]).one().id
+        assert fight.fighter_a_id == ulberg_id
+        assert fight.winner_id == ulberg_id
+
+    def test_same_order_fight_detail_is_unchanged(self, session: Session) -> None:
+        from ufc_prediction.scraper.ingest import _build_fight_stats
+        from ufc_prediction.scraper.parse_fight_detail import parse_fight_detail
+
+        orig = parse_fight_detail(_load_fixture("fight_detail_1round.html"))
+        _scrape_first_event(session, _make_mock_client())
+
+        ulberg = _round_stats_for(session, _ULBERG[1])
+        prochazka = _round_stats_for(session, _PROCHAZKA[1])
+        assert _stat_tuple(ulberg[0]) == _stat_tuple(
+            _build_fight_stats(orig.totals[0], orig.sig_strikes[0])
+        )
+        assert _stat_tuple(prochazka[0]) == _stat_tuple(
+            _build_fight_stats(orig.totals[1], orig.sig_strikes[1])
+        )
+
+    def test_fight_detail_for_other_fighters_is_rejected(self, session: Session) -> None:
+        client = _make_mock_client()
+        # Ulberg/Prochazka fight URL serves the Brady/Holland page.
+        client._exact_map[_FIGHT_URL_ULBERG] = _load_fixture("fight_detail_3round.html")
+
+        result, _ = _scrape_first_event(session, client)
+
+        assert result.rejected == 1
+        assert result.accepted == 2
+        assert session.query(Fight).filter(Fight.source_url == _FIGHT_URL_ULBERG).count() == 0
+        assert (
+            session.query(Fighter).filter(Fighter.source_id == _ULBERG[1]).one_or_none() is None
+        ), "a rejected fight must not write its fighters"
+
+    def test_orient_fight_detail_swaps_every_per_fighter_field(self) -> None:
+        from ufc_prediction.scraper.ingest import _orient_fight_detail
+        from ufc_prediction.scraper.parse_fight_detail import parse_fight_detail
+
+        detail = parse_fight_detail(_load_fixture("fight_detail_3round.html"))
+        brady_url, holland_url = detail.fighter_a_url, detail.fighter_b_url
+
+        same = _orient_fight_detail(detail, brady_url, holland_url)
+        assert same is detail
+
+        swapped = _orient_fight_detail(detail, holland_url, brady_url)
+        assert swapped is not None
+        assert swapped.fighter_a_url == holland_url
+        assert swapped.fighter_a_name == detail.fighter_b_name
+        assert swapped.fighter_a_status == detail.fighter_b_status
+        assert swapped.totals == (detail.totals[1], detail.totals[0])
+        assert swapped.sig_strikes == (detail.sig_strikes[1], detail.sig_strikes[0])
+        assert swapped.per_round_totals == [(b, a) for a, b in detail.per_round_totals]
+        assert swapped.per_round_sig_strikes == [(b, a) for a, b in detail.per_round_sig_strikes]
+        # Fight-level metadata is not per-fighter and must be untouched.
+        assert swapped.method == detail.method
+        assert swapped.referee == detail.referee
+
+        other = "http://ufcstats.com/fighter-details/0000000000000000"
+        assert _orient_fight_detail(detail, brady_url, other) is None
+        assert _orient_fight_detail(detail, "", "") is None
+
+
+# ── Partially-ingested events (code review 2026-09-28, finding 2) ────────────
+
+
+class TestPartialEventIngest:
+    def test_fight_fetch_failure_leaves_event_unwritten_so_latest_retries(
+        self, session: Session
+    ) -> None:
+        from ufc_prediction.scraper.ingest import scrape_all_events, scrape_latest_events
+
+        base = _make_mock_client()
+        flaky = _RaisingMockScraperClient(
+            fixture_map=base._fixture_map,
+            exact_map=base._exact_map,
+            raising_urls={_FIGHT_URL_BRADY},
+        )
+
+        first = scrape_all_events(session, flaky)
+
+        # Every fixture event lists the Brady fight, so every event is
+        # incomplete: none may be committed, all are reported as rejected.
+        assert first.accepted == 0
+        assert first.rejected == len(_EVENT_URLS)
+        assert session.query(Event).filter(Event.source == "ufcstats").count() == 0
+
+        # The page recovers: `scrape latest` must now pick the events up.
+        second = scrape_latest_events(session, _make_mock_client())
+
+        assert second.accepted == 3 * len(_EVENT_URLS)
+        events = session.query(Event).filter(Event.source == "ufcstats").all()
+        assert len(events) == len(_EVENT_URLS)
+        for event in events:
+            assert session.query(Fight).filter(Fight.event_id == event.id).count() == 3
+
+    def test_unparseable_fight_is_counted_as_rejected(self, session: Session) -> None:
+        from ufc_prediction.scraper.ingest import scrape_all_events
+
+        client = _make_mock_client()
+        client._exact_map[_FIGHT_URL_BRADY] = "<html><body>no persons here</body></html>"
+
+        result = scrape_all_events(session, client)
+
+        # A deterministic parse failure will not fix itself on retry: the rest
+        # of the event is committed, and the dropped fight is surfaced.
+        assert result.accepted == 2 * len(_EVENT_URLS)
+        assert result.rejected == len(_EVENT_URLS)
+        assert session.query(Event).filter(Event.source == "ufcstats").count() == len(_EVENT_URLS)

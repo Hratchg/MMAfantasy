@@ -277,3 +277,91 @@ def test_antibot_error_escapes_per_page_isolation() -> None:
 
     with pytest.raises(AntiBotChallengeError):
         _safe_fetch(Blocked(), "http://ufcstats.com/fight-details/x")
+
+
+# ── Playwright navigation errors are retried, then isolated per page ──────
+
+
+class FlakyPage(FakePage):
+    """``FakePage`` whose first ``fail_gotos`` navigations (and first
+    ``fail_contents`` content reads) raise Playwright errors."""
+
+    def __init__(
+        self,
+        contents: list[str],
+        *,
+        fail_gotos: int = 0,
+        fail_contents: int = 0,
+    ) -> None:
+        super().__init__(contents)
+        self._fail_gotos = fail_gotos
+        self._fail_contents = fail_contents
+
+    def goto(self, url: str, **kwargs: object) -> MagicMock:
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+        resp = super().goto(url, **kwargs)
+        if self._fail_gotos > 0:
+            self._fail_gotos -= 1
+            msg = "Timeout 45000ms exceeded."
+            raise PlaywrightTimeoutError(msg)
+        return resp
+
+    def content(self) -> str:
+        from playwright.sync_api import Error as PlaywrightError
+
+        if self._fail_contents > 0:
+            self._fail_contents -= 1
+            msg = "Target page, context or browser has been closed"
+            raise PlaywrightError(msg)
+        return super().content()
+
+
+def test_get_retries_navigation_timeout_then_succeeds() -> None:
+    """A transient Playwright goto timeout is retried with backoff."""
+    real = "<html><body>real fighter page</body></html>"
+    page = FlakyPage([real], fail_gotos=2)
+    fetcher = _fetcher_with_page(page, max_retries=3)
+
+    result = fetcher.get("http://ufcstats.com/fighter-details/abc")
+
+    assert result == real
+    assert len(page.goto_calls) == 3
+
+
+def test_get_retries_content_error_then_succeeds() -> None:
+    """A Playwright error reading ``page.content()`` is retried too."""
+    real = "<html><body>real fighter page</body></html>"
+    page = FlakyPage([real], fail_contents=1)
+    fetcher = _fetcher_with_page(page, max_retries=3)
+
+    assert fetcher.get("http://ufcstats.com/fighter-details/abc") == real
+    assert len(page.goto_calls) == 2
+
+
+def test_get_raises_runtime_error_after_navigation_retries() -> None:
+    """Persistent navigation failure → RuntimeError (per-page, isolatable),
+    NOT AntiBotChallengeError (reserved for the challenge HALT) and not a
+    raw Playwright error that would escape the ingest isolation handlers."""
+    page = FlakyPage(["<html></html>"], fail_gotos=99)
+    fetcher = _fetcher_with_page(page, max_retries=2)
+
+    with pytest.raises(RuntimeError) as exc:
+        fetcher.get("http://ufcstats.com/fighter-details/abc")
+
+    assert not isinstance(exc.value, AntiBotChallengeError)
+    assert len(page.goto_calls) == 3  # 1 attempt + 2 retries
+
+
+def test_navigation_failure_is_isolated_by_safe_fetch() -> None:
+    """One dead page must not abort the whole browser-backend scrape."""
+    from ufc_prediction.scraper.ingest import _safe_fetch
+
+    page = FlakyPage(["<html></html>"], fail_gotos=99)
+    fetcher = _fetcher_with_page(page, max_retries=1)
+
+    url, html, err = _safe_fetch(fetcher, "http://ufcstats.com/fight-details/x")
+
+    assert url == "http://ufcstats.com/fight-details/x"
+    assert html is None
+    assert isinstance(err, RuntimeError)

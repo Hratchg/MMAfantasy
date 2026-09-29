@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ufc_prediction.ml.meta_persistence import get_latest_meta_version
+from ufc_prediction.ml.meta_persistence import PROMOTED_META_VERSIONS, get_latest_meta_version
 
 
 def _touch(p: Path) -> None:
@@ -62,7 +62,29 @@ def test_get_latest_meta_version_double_digit(tmp_path: Path) -> None:
     """Edge case — numeric ordering, not lexicographic ('v10' > 'v2')."""
     _touch(tmp_path / "meta_v2.joblib")
     _touch(tmp_path / "meta_v10.joblib")
-    assert get_latest_meta_version(str(tmp_path)) == "v10"
+    assert (
+        get_latest_meta_version(str(tmp_path), allowed_versions=frozenset({"v2", "v10"})) == "v10"
+    )
+
+
+def test_get_latest_meta_version_ignores_unpromoted_version(tmp_path: Path) -> None:
+    """A meta_vN written to disk is NOT served until the operator promotes it.
+
+    Regression: compose_v23 Path A used to write ``meta_v3.joblib`` with no
+    operator step; highest-N discovery then served it and predictor.py (which
+    only validates v1/v2 column lists) halted with ``meta_feature_columns
+    drift``. Only versions on the promoted allow-list are discoverable.
+    """
+    _touch(tmp_path / "meta_v2.joblib")
+    _touch(tmp_path / "meta_v3.joblib")
+    assert "v3" not in PROMOTED_META_VERSIONS
+    assert get_latest_meta_version(str(tmp_path)) == "v2"
+
+
+def test_get_latest_meta_version_only_unpromoted_returns_none(tmp_path: Path) -> None:
+    """A dir holding only an unpromoted meta_vN has no servable meta version."""
+    _touch(tmp_path / "meta_v3.joblib")
+    assert get_latest_meta_version(str(tmp_path)) is None
 
 
 def test_get_latest_meta_version_ignores_non_joblib(tmp_path: Path) -> None:

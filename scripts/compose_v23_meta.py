@@ -4,8 +4,11 @@
 FORK SOURCE: ``scripts/train_meta_v22.py::run_stepwise`` (lines 723-999).
 The source is READ-ONLY per AUDIT-01 + Phase 32 fork-not-mutate binding.
 This module PREPENDS META baseline + CALIB steps in front of the existing
-REF + TRAVEL composition + adds a triple-gate decision tree + conditional
-``models/meta/meta_v3.joblib`` promotion per D-07(P15) hard-gate-then-save.
+REF + TRAVEL composition + adds a triple-gate decision tree + a conditional
+``models/meta/meta_v3_compose_candidate.joblib`` save per D-07(P15)
+hard-gate-then-save. The script never writes the promoted ``meta_v3`` name:
+promotion (renaming + adding "v3" to
+``meta_persistence.PROMOTED_META_VERSIONS``) is an explicit operator step.
 
 Per CONTEXT.md D-02 (operator-locked): META → CALIB → REF → TRAVEL ordering.
 NO CAMP step (Phase 29 audit MISSED top-30 at 45.92% < 60%).
@@ -19,8 +22,9 @@ Per CONTEXT.md D-03 (operator-locked): triple-gate hard-AND for promotion:
   3. Per-step hurdle: each composition step (META→CALIB, CALIB→REF,
      REF→TRAVEL) clears >= 0.003 Brier improvement over prior step.
 
-  If ALL THREE clear → promote to ``models/meta/meta_v3.joblib`` per
-  D-07(P15) hard-gate-then-save. If ANY fails → Path C materializes:
+  If ALL THREE clear → save the promotion CANDIDATE
+  ``models/meta/meta_v3_compose_candidate.joblib`` per D-07(P15)
+  hard-gate-then-save (operator promotes). If ANY fails → Path C materializes:
   META-V22 stays canonical; STEPWISE-V23-03 "tried and didn't help"
   documented in SUMMARY frontmatter.
 
@@ -125,10 +129,17 @@ COMPOSITION_REPORT_PATH: Path = PHASE32_DIR / "COMPOSITION_V23_REPORT.json"
 SHA_MID_PATH: Path = PHASE32_DIR / "32-XGB-V2-SHA-PHASE-32-MID-PLAN-01.txt"
 SHA_END_PATH: Path = PHASE32_DIR / "32-XGB-V2-SHA-PHASE-32-END-PLAN-01.txt"
 META_DIR: Path = Path("models/meta")
+# Path A writes a CANDIDATE, never the promoted ``meta_v3`` name: a promoted
+# meta_vN is served by predictor.py, so writing one here would auto-promote
+# without operator approval. Distinct from the tracked Phase 45/48
+# ``meta_v3_candidate.joblib`` so a Path A run cannot clobber that artifact.
+META_V3_CANDIDATE_VERSION: str = "v3_compose_candidate"
 
-# Cached fixtures path (fork source uses this for OOF reuse).
-PHASE26_DIR: Path = Path(".planning/phases/26-forward-stepwise-candidate-promotion")
-META_OOF_PARQUET_PATH: Path = PHASE26_DIR / "oof_predictions_v22.parquet"
+# Cached fixtures path. compose runs a 365-day meta_eval window while
+# train_meta_v22.py / spike_noise_floor_v23.py run 730 days, so each window
+# keeps its own OOF cache instead of sharing oof_predictions_v22.parquet
+# (a shared cache flips between row sets and fails its identity check).
+META_OOF_PARQUET_PATH: Path = PHASE32_DIR / "oof_predictions_v23_compose_365d.parquet"
 
 
 # ─────────────────────── Pure functions (importable by tests) ───────────────
@@ -527,7 +538,8 @@ def run_composition(args) -> dict:
     """Main orchestration — runs 4-step composition + triple-gate decision.
 
     Returns the full report dict (also written to COMPOSITION_V23_REPORT.json).
-    On Path A, also saves models/meta/meta_v3.joblib via save_meta_model.
+    On Path A, also saves models/meta/meta_v3_compose_candidate.joblib via
+    save_meta_model (a candidate — promotion is an operator step).
     """
     from sklearn.calibration import CalibratedClassifierCV
 
@@ -1193,11 +1205,12 @@ def run_composition(args) -> dict:
     )
 
     triple_gate_pass = verdict == "promote"
-    meta_v3_promoted = False
+    meta_v3_candidate_path: str | None = None
     meta_v3_sha256: str | None = None
 
-    # ────────────────────── Conditional meta_v3 promotion ─────────────────
-    # Path A only: save_meta_model per D-07(P15) hard-gate-then-save.
+    # ────────────────────── Conditional meta_v3 candidate save ────────────
+    # Path A only: save_meta_model per D-07(P15) hard-gate-then-save. Saved
+    # under META_V3_CANDIDATE_VERSION — never auto-promoted.
     if outcome_path == "path_a":
         # Pick the seed=42 model as canonical (per train_meta_v22 convention).
         chosen_seed = seeds[0]
@@ -1224,7 +1237,7 @@ def run_composition(args) -> dict:
         model_path, meta_path = save_meta_model(
             final_model,
             meta_kind="logistic",
-            meta_version="v3",
+            meta_version=META_V3_CANDIDATE_VERSION,
             base_model_version="v2",
             base_model_sha256=EXPECTED_XGB_V2_SHA256,
             meta_feature_columns=final_feature_columns,
@@ -1252,11 +1265,12 @@ def run_composition(args) -> dict:
             trained_by_script="scripts/compose_v23_meta.py",
             phase="32",
         )
-        meta_v3_promoted = True
+        meta_v3_candidate_path = str(model_path)
         meta_v3_sha256 = hashlib.sha256(model_path.read_bytes()).hexdigest()
         print(
-            f"[compose_v23] PATH A: meta_v3 promoted → {model_path} "
-            f"(sha256={meta_v3_sha256[:12]}...)"
+            f"[compose_v23] PATH A: meta_v3 candidate saved → {model_path} "
+            f"(sha256={meta_v3_sha256[:12]}...). NOT promoted — operator "
+            "approval required to serve it."
         )
 
     # ────────────────────── Build report ──────────────────────────────────
@@ -1281,7 +1295,9 @@ def run_composition(args) -> dict:
         "triple_gate_pass": bool(triple_gate_pass),
         "outcome_path": outcome_path,
         "failures": failures,
-        "meta_v3_promoted": meta_v3_promoted,
+        # Promotion is operator-only; this script never promotes.
+        "meta_v3_promoted": False,
+        "meta_v3_candidate_path": meta_v3_candidate_path,
         "meta_v3_sha256": meta_v3_sha256,
         "n_seeds": len(seeds),
         "short_circuited": False,

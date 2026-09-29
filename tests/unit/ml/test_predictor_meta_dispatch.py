@@ -245,3 +245,40 @@ def test_predict_meta_feature_columns_drift_halts(tmp_path):
         predictor.ModelPredictor(
             model_dir=str(model_dir), version="vmeta", meta_dir=str(tmp_path / "models" / "meta")
         )
+
+
+def test_unpromoted_meta_v3_on_disk_is_not_served(tmp_path):
+    """A meta_v3.joblib written without operator promotion must not break serving.
+
+    Regression: compose_v23 Path A wrote ``meta_v3.joblib`` (13+ composition
+    columns) automatically. Highest-N discovery then picked it up and
+    ModelPredictor.__init__ raised ``meta_feature_columns drift ... Halt.``, so
+    every prediction failed. Discovery is now restricted to promoted versions,
+    so the predictor keeps serving the promoted v1 meta.
+    """
+    import hashlib
+
+    model_dir = _save_xgb_v2(tmp_path)
+    meta_dir = _save_meta_v1(tmp_path)
+    base_sha = hashlib.sha256((model_dir / "xgb_vmeta.joblib").read_bytes()).hexdigest()
+    rng = np.random.default_rng(7)
+    m3 = meta_learner.MetaLearnerLogistic().fit(
+        rng.uniform(0.1, 0.9, size=(80, 13)), rng.integers(0, 2, size=80)
+    )
+    meta_persistence.save_meta_model(
+        m3,
+        meta_kind="logistic",
+        meta_version="v3",
+        base_model_version="vmeta",
+        base_model_sha256=base_sha,
+        meta_feature_columns=[f"composition_col_{i}" for i in range(13)],
+        meta_input_distribution_hash="d" * 64,
+        meta_oof_parquet_sha256="c" * 64,
+        meta_learner_brier_delta_vs_logistic=0.0,
+        best_params={"C": 1.0},
+        metrics={},
+        meta_dir=str(meta_dir),
+    )
+    p = predictor.ModelPredictor(model_dir=str(model_dir), version="vmeta", meta_dir=str(meta_dir))
+    assert p.meta_metadata is not None
+    assert p.meta_metadata["meta_version"] == "v1"

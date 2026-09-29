@@ -25,12 +25,22 @@ Schema written to <cache_path>.meta.json sidecar (canonical readable form):
     "trained_at": str,            # ISO timestamp
     "cv_kind": "TimeSeriesSplit", # literal — Pitfall #11 tripwire
     "meta_train_fight_ids": list[int],  # for D-01(P19) disjoint persistence
+    "seed": int,                  # per-fold XGBClassifier random_state
+    "input_sha256": str,          # sha256 of (X, y) keyed by fight_id
   }
+
+Cache-hit contract: a cache is reused only when it describes EXACTLY the
+caller's rows — same fight_id set (row count + membership), same X/y content
+(``input_sha256``), same n_splits/seed/n_features. The cached probabilities are
+then re-keyed by fight_id into the caller's date-sorted order, so callers'
+positional ``xgb_oof_aligned[sort_idx] = xgb_oof_prob`` realignment stays valid.
+Legacy sidecars without ``seed`` / ``input_sha256`` skip only those checks.
 """
 
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -147,8 +157,56 @@ def _read_cache_metadata(cache_path: Path) -> dict | None:
     return json.loads(sidecar.read_text(encoding="utf-8"))
 
 
-def _check_cache_invariants(meta: dict, *, fight_dates: np.ndarray) -> None:
-    """Raise InvariantCheckError if any of the 4 invariants drift."""
+def _input_sha256(X_sorted: np.ndarray, y_sorted: np.ndarray, sorted_ids: list) -> str:
+    """sha256 over (X, y) rows ordered by fight_id — invariant to input row order."""
+    order = np.argsort(np.asarray(sorted_ids), kind="stable")
+    buf = io.BytesIO()
+    np.save(buf, np.asarray(X_sorted, dtype=np.float64)[order], allow_pickle=False)
+    np.save(buf, np.asarray(y_sorted, dtype=np.int64)[order], allow_pickle=False)
+    return hashlib.sha256(buf.getvalue()).hexdigest()
+
+
+def _rekey_cached_oof(df: pd.DataFrame, sorted_ids: list, cache_path: Path) -> np.ndarray:
+    """Return cached OOF probs in the caller's date-sorted row order, keyed by fight_id.
+
+    Raises InvariantCheckError unless the cache holds exactly the caller's rows.
+    """
+    cached_ids = df["fight_id"].tolist()
+    probs = df["xgb_oof_prob"].to_numpy()
+    if len(cached_ids) != len(sorted_ids):
+        raise InvariantCheckError(
+            f"OOF cache row count drift: cached={len(cached_ids)} rows "
+            f"input={len(sorted_ids)} rows ({cache_path.name}); the cache was built for a "
+            "different meta_train row set (e.g. another meta_eval_window_days); "
+            "rebuild required (--no-cache-oof)"
+        )
+    unique = len(set(cached_ids)) == len(cached_ids) and len(set(sorted_ids)) == len(sorted_ids)
+    if not unique:
+        # Duplicate keys cannot be re-keyed; require exact positional identity.
+        if cached_ids != list(sorted_ids):
+            raise InvariantCheckError(
+                f"OOF cache fight_id sequence drift ({cache_path.name}); rebuild required"
+            )
+        return probs
+    by_id = dict(zip(cached_ids, probs, strict=True))
+    missing = [fid for fid in sorted_ids if fid not in by_id]
+    if missing:
+        raise InvariantCheckError(
+            f"OOF cache fight_id membership drift: {len(missing)} input fight_ids not in "
+            f"cache (e.g. {missing[:5]!r}) ({cache_path.name}); rebuild required"
+        )
+    return np.array([by_id[fid] for fid in sorted_ids], dtype=float)
+
+
+def _check_cache_invariants(
+    meta: dict,
+    *,
+    fight_dates: np.ndarray,
+    n_features: int | None = None,
+    n_splits: int | None = None,
+    seed: int | None = None,
+) -> None:
+    """Raise InvariantCheckError if any cache invariant drifts from the current call."""
     actual_sha = _read_xgb_v2_sha256()
     if meta.get("xgb_v2_sha256") != actual_sha:
         raise InvariantCheckError(
@@ -179,6 +237,30 @@ def _check_cache_invariants(meta: dict, *, fight_dates: np.ndarray) -> None:
                 )
         except (TypeError, ValueError):
             pass  # date comparison best-effort; non-fatal
+    if n_features is not None and meta.get("n_features") != n_features:
+        raise InvariantCheckError(
+            f"OOF cache n_features drift: cached={meta.get('n_features')!r} "
+            f"input={n_features}; rebuild required"
+        )
+    if n_splits is not None and meta.get("n_splits") != n_splits:
+        raise InvariantCheckError(
+            f"OOF cache n_splits drift: cached={meta.get('n_splits')!r} "
+            f"requested={n_splits}; rebuild required (--no-cache-oof)"
+        )
+    if seed is not None and "seed" in meta and meta["seed"] != seed:
+        raise InvariantCheckError(
+            f"OOF cache seed drift: cached={meta['seed']!r} requested={seed}; rebuild required"
+        )
+
+
+def _check_input_fingerprint(meta: dict, input_sha256: str) -> None:
+    """Raise InvariantCheckError if X/y changed for the cached fights (legacy: skip)."""
+    if meta.get("input_sha256", input_sha256) != input_sha256:
+        raise InvariantCheckError(
+            f"OOF cache input drift: cached input_sha256={meta['input_sha256'][:12]} "
+            f"current={input_sha256[:12]} — X/y changed for the same fights "
+            "(feature/Elo recompute or result change); rebuild required (--no-cache-oof)"
+        )
 
 
 def _make_oof_estimator(seed: int = 42) -> XGBClassifier:
@@ -233,6 +315,18 @@ def generate_oof_predictions(
         (xgb_proba_oof, oof_metadata) where xgb_proba_oof is (n_train,) array
         of OOF positive-class probabilities sorted by fight_dates.
     """
+    # Pre-sort by fight_dates (TimeSeriesSplit assumes chronological order).
+    # Callers re-align with the same np.argsort(fight_dates), so the returned
+    # array is always in this order — for fresh AND cached predictions.
+    sort_idx = np.argsort(fight_dates)
+    X_sorted = X[sort_idx]
+    y_sorted = y[sort_idx]
+    dates_sorted = fight_dates[sort_idx]
+    sorted_fight_ids = (
+        [fight_ids[int(i)] for i in sort_idx] if fight_ids is not None else list(range(len(y)))
+    )
+    input_sha256 = _input_sha256(X_sorted, y_sorted, sorted_fight_ids)
+
     if cache_path is not None and cache_path.exists() and not force_rebuild:
         cached_meta = _read_cache_metadata(cache_path)
         if cached_meta is None:
@@ -240,15 +334,18 @@ def generate_oof_predictions(
                 f"OOF cache parquet exists at {cache_path} but sidecar "
                 f"{_meta_sidecar_path(cache_path).name} missing"
             )
-        _check_cache_invariants(cached_meta, fight_dates=fight_dates)
+        _check_cache_invariants(
+            cached_meta,
+            fight_dates=fight_dates,
+            n_features=int(X.shape[1]),
+            n_splits=n_splits,
+            seed=seed,
+        )
         df = pd.read_parquet(cache_path)
-        return df["xgb_oof_prob"].to_numpy(), cached_meta
-
-    # Pre-sort by fight_dates (TimeSeriesSplit assumes chronological order)
-    sort_idx = np.argsort(fight_dates)
-    X_sorted = X[sort_idx]
-    y_sorted = y[sort_idx]
-    dates_sorted = fight_dates[sort_idx]
+        cached_oof = _rekey_cached_oof(df, sorted_fight_ids, cache_path)
+        # Same rows — now require the same X/y content for them.
+        _check_input_fingerprint(cached_meta, input_sha256)
+        return cached_oof, cached_meta
 
     # Build estimator per OQ-2: raw XGBClassifier with xgb_v2 best_params.
     def _new_estimator():
@@ -312,15 +409,12 @@ def generate_oof_predictions(
         "trained_at": datetime.now(tz=UTC).isoformat(),
         "cv_kind": "TimeSeriesSplit",
         "meta_train_fight_ids": list(fight_ids) if fight_ids is not None else [],
+        "seed": int(seed),
+        "input_sha256": input_sha256,
     }
 
     if cache_path is not None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
-        sorted_fight_ids = (
-            [fight_ids[int(i)] for i in sort_idx]
-            if fight_ids is not None
-            else list(range(len(xgb_proba_oof)))
-        )
         df = pd.DataFrame(
             {
                 "fight_id": sorted_fight_ids,

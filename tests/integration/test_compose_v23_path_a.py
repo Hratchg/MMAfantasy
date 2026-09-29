@@ -2,10 +2,11 @@
 
 Wave 0 RED state: tests that the orchestration entrypoint of
 ``scripts/compose_v23_meta.py`` exists and the synthetic Path A / Path C
-harness materializes the expected artifacts (meta_v3.joblib +
-meta_v3_meta.json on Path A; nothing on Path C).
+harness materializes the expected artifacts (meta_v3_compose_candidate.joblib
++ its _meta.json on Path A; nothing on Path C). Path A never writes the
+promoted ``meta_v3`` name — promotion is an operator step.
 
-Per Pitfall 3 binding: Path A promotion MUST inspect meta_v3_meta.json
+Per Pitfall 3 binding: Path A MUST inspect the candidate's _meta.json
 for required schema fields (the sidecar JSON populated by
 ``meta_persistence.save_meta_model``). Bypassing save_meta_model
 (e.g. raw joblib.dump) is forbidden.
@@ -35,6 +36,7 @@ import pytest
 
 from scripts.compose_v23_meta import (
     EXPECTED_XGB_V2_SHA256,
+    META_V3_CANDIDATE_VERSION,
     META_V22_BASELINE_BRIER,
     PER_SLICE_KEYS,
     triple_gate_decision,
@@ -80,7 +82,7 @@ def _median_passes() -> dict:
 
 
 def test_meta_v3_promotion_path_a(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """When triple_gate clears all 3 legs → meta_v3.joblib + meta_v3_meta.json saved.
+    """When triple_gate clears all 3 legs → the meta_v3 candidate + sidecar are saved.
 
     Per Pitfall 3 binding: meta_v3_meta.json sidecar MUST contain required
     schema fields. We do NOT bypass save_meta_model.
@@ -126,7 +128,7 @@ def test_meta_v3_promotion_path_a(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     model_path, meta_path = save_meta_model(
         model,
         meta_kind="logistic",
-        meta_version="v3",
+        meta_version=META_V3_CANDIDATE_VERSION,
         base_model_version="v2",
         base_model_sha256=EXPECTED_XGB_V2_SHA256,
         meta_feature_columns=feature_columns_v3,
@@ -144,7 +146,7 @@ def test_meta_v3_promotion_path_a(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 
     sidecar = json.loads(meta_path.read_text(encoding="utf-8"))
     # Per Pitfall 3 binding — required schema fields populated correctly.
-    assert sidecar["meta_version"] == "v3"
+    assert sidecar["meta_version"] == META_V3_CANDIDATE_VERSION
     assert sidecar["meta_kind"] == "logistic"
     assert sidecar["meta_feature_columns"] == feature_columns_v3
     assert sidecar["base_model_version"] == "v2"

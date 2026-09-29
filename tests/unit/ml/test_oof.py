@@ -164,3 +164,111 @@ def test_oof_training_accuracy_assertion():
         mock_cvp.return_value = np.column_stack([1 - perfect_probs, perfect_probs])
         with pytest.raises(oof.OOFLeakageError, match="in-sample"):
             oof.generate_oof_predictions(X, y, dates, trainer, n_splits=5)
+
+
+# ── Cache row-identity invariants (code-review finding: OOF cache returned a
+# stale array for a different row set; callers re-align it positionally) ──
+
+
+def _write_cache(tmp_path, *, n=120, n_splits=5, fight_ids=None, dates=None, y=None, X=None):
+    """Populate an OOF cache via the real generator and return its inputs."""
+    X0, y0, dates0 = _make_synthetic_data(n=n)
+    X = X0 if X is None else X
+    y = y0 if y is None else y
+    dates = dates0 if dates is None else dates
+    fight_ids = list(range(1000, 1000 + n)) if fight_ids is None else fight_ids
+    cache_path = tmp_path / "oof_predictions.parquet"
+    proba, _ = oof.generate_oof_predictions(
+        X,
+        y,
+        dates,
+        _make_base_trainer(),
+        n_splits=n_splits,
+        cache_path=cache_path,
+        fight_ids=fight_ids,
+    )
+    return cache_path, X, y, dates, fight_ids, proba
+
+
+def test_oof_cache_hit_same_inputs_returns_cached(tmp_path):
+    """Sanity: an identical call is a cache hit returning the cached array."""
+    cache_path, X, y, dates, ids, proba = _write_cache(tmp_path)
+    trainer = _make_base_trainer()
+    with patch("ufc_prediction.ml.oof.cross_val_predict") as mock_cvp:
+        got, _ = oof.generate_oof_predictions(
+            X, y, dates, trainer, n_splits=5, cache_path=cache_path, fight_ids=ids
+        )
+        mock_cvp.assert_not_called()
+    np.testing.assert_array_equal(got, proba)
+
+
+def test_oof_cache_rejects_row_subset_within_cached_date_range(tmp_path):
+    """A 730d-window caller hitting a 365d-window cache (or vice versa) must not
+    receive an array for a different row set. The date-range containment check
+    alone passed here and an N_cached array came back for N_input rows."""
+    cache_path, X, y, dates, ids, _ = _write_cache(tmp_path)
+    sub = slice(10, 100)  # dates strictly inside the cached range
+    with pytest.raises(oof.InvariantCheckError, match="row"):
+        oof.generate_oof_predictions(
+            X[sub],
+            y[sub],
+            dates[sub],
+            _make_base_trainer(),
+            n_splits=5,
+            cache_path=cache_path,
+            fight_ids=ids[sub],
+        )
+
+
+def test_oof_cache_rejects_same_count_different_membership(tmp_path):
+    """Same row count but a different fight set (re-link / dedup) → error,
+    not silently mis-attached OOF probabilities."""
+    cache_path, X, y, dates, ids, _ = _write_cache(tmp_path)
+    ids2 = list(ids)
+    ids2[50] = 999_999
+    with pytest.raises(oof.InvariantCheckError, match="fight_id"):
+        oof.generate_oof_predictions(
+            X, y, dates, _make_base_trainer(), n_splits=5, cache_path=cache_path, fight_ids=ids2
+        )
+
+
+def test_oof_cache_rekeys_predictions_by_fight_id(tmp_path):
+    """Same fights, different input row order (same-date ties) → the cached
+    probabilities are re-keyed by fight_id into the caller's sort order."""
+    n = 120
+    X, y, _ = _make_synthetic_data(n=n)
+    # Four fights per event date → many ties for argsort to order arbitrarily.
+    dates = np.array([np.datetime64("2023-01-01") + np.timedelta64(i // 4, "D") for i in range(n)])
+    cache_path, X, y, dates, ids, proba = _write_cache(tmp_path, X=X, y=y, dates=dates)
+    cached_by_id = {
+        fid: p for fid, p in zip([ids[int(i)] for i in np.argsort(dates)], proba, strict=True)
+    }
+
+    perm = np.random.default_rng(3).permutation(n)
+    X_p, y_p, dates_p = X[perm], y[perm], dates[perm]
+    ids_p = [ids[int(i)] for i in perm]
+    got, _ = oof.generate_oof_predictions(
+        X_p, y_p, dates_p, _make_base_trainer(), n_splits=5, cache_path=cache_path, fight_ids=ids_p
+    )
+    expected = np.array([cached_by_id[ids_p[int(i)]] for i in np.argsort(dates_p)])
+    np.testing.assert_array_equal(got, expected)
+
+
+def test_oof_cache_rejects_n_splits_mismatch(tmp_path):
+    """Cache hits must honor the requested n_splits."""
+    cache_path, X, y, dates, ids, _ = _write_cache(tmp_path, n_splits=5)
+    with pytest.raises(oof.InvariantCheckError, match="n_splits"):
+        oof.generate_oof_predictions(
+            X, y, dates, _make_base_trainer(), n_splits=3, cache_path=cache_path, fight_ids=ids
+        )
+
+
+def test_oof_cache_rejects_label_change_for_same_fights(tmp_path):
+    """A winner_id change inside the range (same fights, different y) → stale cache."""
+    cache_path, X, y, dates, ids, _ = _write_cache(tmp_path)
+    y2 = y.copy()
+    y2[40] = 1 - y2[40]
+    with pytest.raises(oof.InvariantCheckError, match="input"):
+        oof.generate_oof_predictions(
+            X, y2, dates, _make_base_trainer(), n_splits=5, cache_path=cache_path, fight_ids=ids
+        )

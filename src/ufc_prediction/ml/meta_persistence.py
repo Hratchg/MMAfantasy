@@ -46,9 +46,19 @@ DEFAULT_META_DIR: str = "models/meta"
 # to the promoted-vN naming convention count as discoverable versions.
 _META_VERSION_RE: re.Pattern[str] = re.compile(r"^meta_v(\d+)\.joblib$")
 
+# Operator-promoted meta versions the serve path may pick up. A meta_vN.joblib
+# that merely exists on disk is NOT served until its version is added here —
+# adding it is the explicit (reviewed) promotion step. predictor.py only knows
+# how to validate the v1 and v2 meta_feature_columns lists, so serving any
+# other version would halt ModelPredictor init with a column-drift error.
+PROMOTED_META_VERSIONS: frozenset[str] = frozenset({"v1", "v2"})
 
-def get_latest_meta_version(meta_dir: str = DEFAULT_META_DIR) -> str | None:
-    """Return the highest 'vN' meta version present in `meta_dir`, or None if absent.
+
+def get_latest_meta_version(
+    meta_dir: str = DEFAULT_META_DIR,
+    allowed_versions: frozenset[str] | None = PROMOTED_META_VERSIONS,
+) -> str | None:
+    """Return the highest promoted 'vN' meta version present in `meta_dir`, or None.
 
     Phase 26 Plan 26-04 (RESEARCH §Runtime State Inventory Pitfall #5): replaces the
     hardcoded `meta_v1.joblib` lookup in `predictor.py` so the predictor auto-picks
@@ -60,9 +70,12 @@ def get_latest_meta_version(meta_dir: str = DEFAULT_META_DIR) -> str | None:
         - dir=[meta_v1.joblib]                            -> "v1"
         - dir=[meta_v1.joblib, meta_v2.joblib]            -> "v2"
         - dir=[meta_v1.joblib, meta_v2_candidate.joblib]  -> "v1"  (candidate ignored)
+        - dir=[meta_v2.joblib, meta_v3.joblib]            -> "v2"  (v3 not promoted)
 
     Args:
         meta_dir: Path to the meta directory. Defaults to `DEFAULT_META_DIR`.
+        allowed_versions: Versions eligible for discovery. Defaults to
+            `PROMOTED_META_VERSIONS`; pass None to consider every meta_vN file.
 
     Returns:
         Highest-numbered promoted version string (e.g., "v2") or None if directory
@@ -74,7 +87,7 @@ def get_latest_meta_version(meta_dir: str = DEFAULT_META_DIR) -> str | None:
     versions: list[int] = []
     for entry in p.iterdir():
         m = _META_VERSION_RE.match(entry.name)
-        if m:
+        if m and (allowed_versions is None or f"v{m.group(1)}" in allowed_versions):
             versions.append(int(m.group(1)))
     if not versions:
         return None
@@ -151,6 +164,7 @@ def save_meta_model(
     meta_dir: str = DEFAULT_META_DIR,
     trained_by_script: str = "scripts/train_meta_v1.py",
     phase: str = "19",
+    overwrite: bool = False,
 ) -> tuple[Path, Path]:
     """Save meta model + meta JSON.
 
@@ -160,11 +174,21 @@ def save_meta_model(
 
     Validates meta_kind ∈ SUPPORTED_META_KINDS at save time (fail-fast).
 
+    Args:
+        overwrite: Replace an existing promoted-name ``meta_vN.joblib``. Off by
+            default (mirrors ``persistence.save_model``) so a re-run can never
+            silently clobber a promoted/frozen artifact such as the AUDIT-01
+            ``meta_v2.joblib``. Non-promoted names (``v2_candidate`` etc.) are
+            per-run scratch artifacts that scripts re-emit by design and that
+            ``get_latest_meta_version`` never serves, so they are not guarded.
+
     Returns:
         (model_path, meta_path)
 
     Raises:
         MetaSchemaError if meta_kind is invalid.
+        FileExistsError if a promoted ``meta_vN.joblib`` exists and
+            ``overwrite`` is False.
     """
     if meta_kind not in SUPPORTED_META_KINDS:
         raise MetaSchemaError(f"meta_kind={meta_kind!r} not in {sorted(SUPPORTED_META_KINDS)}")
@@ -173,6 +197,12 @@ def save_meta_model(
     dir_path.mkdir(parents=True, exist_ok=True)
     model_path = dir_path / f"meta_{meta_version}.joblib"
     meta_path = dir_path / f"meta_{meta_version}_meta.json"
+    if _META_VERSION_RE.match(model_path.name) and model_path.exists() and not overwrite:
+        raise FileExistsError(
+            f"{model_path} already exists; refusing to overwrite a promoted meta model. "
+            "Write a candidate name (e.g. meta_version='v3_candidate') or pass "
+            "overwrite=True explicitly."
+        )
     joblib.dump(meta_model, model_path)
 
     metadata: dict = {

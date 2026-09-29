@@ -16,8 +16,12 @@ from ufc_prediction.elo.config import EloConfig
 # Weight classes that never trigger division transfers (per D-06)
 _NON_TRANSFER_DIVISIONS = frozenset({"Catch Weight", "Open Weight"})
 
-# Methods that indicate a no-contest / should be skipped (per D-02)
-_SKIP_METHODS = frozenset({None, "Other", "No Contest"})
+# Methods that indicate a no-contest / should be skipped (per D-02) when the
+# fight has no winner. Kaggle sources use "No Contest" / "Other"; the ufcstats
+# scraper stores no-contests as "CNC" (could not continue) or "Overturned".
+# Decision methods with winner_id=None (e.g. "M-DEC", "S-DEC") are genuine
+# scorecard draws and are NOT in this set.
+_SKIP_METHODS = frozenset({None, "Other", "No Contest", "CNC", "Overturned"})
 
 
 @dataclass

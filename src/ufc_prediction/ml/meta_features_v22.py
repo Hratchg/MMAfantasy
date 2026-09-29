@@ -71,3 +71,25 @@ def build_meta_features_v22(
         idx = FEATURE_COLUMNS_V22.index(name)
         cols_internal.append(X_v22[:, idx])
     return np.column_stack([xgb_oof_prob, elo_prob, *cols_internal])
+
+
+def elo_prob_from_v22_matrix(X_v22: np.ndarray) -> np.ndarray:
+    """As-of-fight-date Elo P(row's fighter A wins) from an assembled matrix.
+
+    Reads the row's own ``elo_overall_diff`` (``elo_before`` overall ratings,
+    1500 default — the same inputs the per-fight ``_compute_elo_prob_for_fight``
+    driver helpers use) and applies ``EloEngine.expected_win_probability``.
+    Deriving it from the assembled row keeps it in the row's orientation: the
+    assembler swaps fighter A/B for ~half the fights (md5(fight_id) coin flip)
+    and labels the row from the swapped A, whereas a helper keyed on
+    ``fight_record["fighter_a_id"]`` returns ``1 - p`` on every swapped row.
+    """
+    from ufc_prediction.elo.config import EloConfig
+    from ufc_prediction.elo.engine import EloEngine
+
+    engine = EloEngine(EloConfig())
+    diffs = X_v22[:, FEATURE_COLUMNS_V22.index("elo_overall_diff")]
+    return np.array(
+        [engine.expected_win_probability(float(d), 0.0) for d in diffs],
+        dtype=float,
+    )

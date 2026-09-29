@@ -218,7 +218,10 @@ def build_eval_matrix(*, source: str = "synthetic") -> tuple[np.ndarray, np.ndar
     # plausible signals (uniform random with a fixed RNG, anchored to the
     # synthetic V22 substrate so re-runs are deterministic).
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
-    from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
+    from ufc_prediction.ml.meta_features_v22 import (
+        META_V22_FEATURE_COLUMNS,
+        elo_prob_from_v22_matrix,
+    )
 
     # Deterministic xgb_oof_prob + elo_prob from a seeded RNG so the
     # 15-wide matrix is byte-stable across re-runs.
@@ -226,6 +229,14 @@ def build_eval_matrix(*, source: str = "synthetic") -> tuple[np.ndarray, np.ndar
     n_rows = X_v25.shape[0]
     xgb_oof_prob = eval_rng.uniform(0.05, 0.95, size=n_rows)
     elo_prob = eval_rng.uniform(0.2, 0.8, size=n_rows)
+    # Live mode replaces elo_prob with the real as-of-fight Elo P(row's A wins),
+    # derived from the row's own elo_overall_diff so it shares the row's
+    # (post A/B-swap) orientation with the outcome. Synthetic mode keeps the
+    # seeded RNG (explicit: DB-free fixture, byte-stable across re-runs).
+    # (The RNG draw above still happens in live mode so the draw order is
+    # unchanged; xgb_oof_prob remains RNG-filled in both modes.)
+    if source == "live":
+        elo_prob = elo_prob_from_v22_matrix(X_v22)
 
     # Build the 11 internal META-V22 cols by name lookup against FEATURE_COLUMNS_V22.
     internal_cols: list[np.ndarray] = []

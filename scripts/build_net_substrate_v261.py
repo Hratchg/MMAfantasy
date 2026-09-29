@@ -335,7 +335,10 @@ def build_eval_matrix(
     # lookup. Cols[1..12] are byte-identical to Phase 65 builder lines
     # 365-410 (which is byte-identical to canonical compose_v23_meta).
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
-    from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
+    from ufc_prediction.ml.meta_features_v22 import (
+        META_V22_FEATURE_COLUMNS,
+        elo_prob_from_v22_matrix,
+    )
 
     # col[0] = xgb_v2_netd_oof: per-fight lookup from Plan 66-01's parquet.
     # Synthetic mode: fight_ids from the synthetic fixture are 0..n-1; some
@@ -377,11 +380,17 @@ def build_eval_matrix(
             xgb_v2_netd_oof[i] = float(fallback_oof[i])
             # debutant_indicator stays False
 
-    # col[1] = elo_prob: deterministic per-fight seed (same seed plumbing as
-    # Phase 64 / Phase 65 builders so the v22 sub-cols line up against the
-    # same synthetic distribution).
+    # col[1] = elo_prob. Synthetic mode: deterministic per-fight seed (same
+    # seed plumbing as Phase 64 / Phase 65 builders so the v22 sub-cols line
+    # up against the same synthetic distribution).
+    # Live mode replaces it with the real as-of-fight Elo P(row's A wins),
+    # derived from the row's own elo_overall_diff so it shares the row's
+    # (post A/B-swap) orientation with the outcome. Synthetic mode keeps the
+    # seeded RNG (explicit: DB-free fixture, byte-stable across re-runs).
     elo_rng = np.random.default_rng(RANDOM_15PCT_SEED + 2)
     elo_prob = elo_rng.uniform(0.2, 0.8, size=n_rows)
+    if source == "live":
+        elo_prob = elo_prob_from_v22_matrix(X_v22)
 
     # Cols[2..12] = the 11 internal META-V22 cols by name lookup against
     # FEATURE_COLUMNS_V22 — verbatim from Phase 65 builder lines 403-406.

@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from ufc_prediction.api.middleware.access_log import AccessLogMiddleware
 from ufc_prediction.api.middleware.request_id import (
     RequestIDMiddleware,
+    partner_label_ctxvar,
     request_id_ctxvar,
 )
 
@@ -196,3 +197,52 @@ def test_access_log_record_includes_request_id_via_contextvar(
     # After the request completes, the contextvar resets (per
     # RequestIDMiddleware ``finally``) — verify symmetry.
     assert request_id_ctxvar.get() == "-"
+
+
+# ─── partner_label on log records (S09 finding 6) ─────────────────────────
+
+
+@pytest.fixture()
+def json_access_log(monkeypatch):
+    """Capture ufc_prediction.access records through the real JSON formatter."""
+    import io
+
+    from ufc_prediction.api import auth as auth_module
+    from ufc_prediction.obs.logging import ContextEnrichingJsonFormatter
+
+    monkeypatch.setattr(auth_module.settings, "api_keys", ["acme:secret-abc", "bare-key"])
+    stream = io.StringIO()
+    handler = logging.StreamHandler(stream)
+    handler.setFormatter(ContextEnrichingJsonFormatter())
+    logger = logging.getLogger("ufc_prediction.access")
+    saved_level = logger.level
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    yield stream
+    logger.removeHandler(handler)
+    logger.setLevel(saved_level)
+
+
+def _json_records(stream) -> list[dict]:
+    import json
+
+    return [json.loads(line) for line in stream.getvalue().splitlines() if line.strip()]
+
+
+def test_access_log_carries_partner_label_for_valid_key(access_log_client, json_access_log):
+    resp = access_log_client.get("/ok", headers={"X-API-Key": "acme:secret-abc"})
+    assert resp.status_code == 200
+    records = _json_records(json_access_log)
+    assert len(records) == 1
+    assert records[0]["partner_label"] == "acme"
+    # Reset after the request so labels never leak between requests.
+    assert partner_label_ctxvar.get() is None
+
+
+def test_access_log_partner_label_null_for_unknown_or_missing_key(
+    access_log_client, json_access_log
+):
+    access_log_client.get("/ok", headers={"X-API-Key": "not-a-key"})
+    access_log_client.get("/ok")
+    records = _json_records(json_access_log)
+    assert [r["partner_label"] for r in records] == [None, None]

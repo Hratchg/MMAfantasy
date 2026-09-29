@@ -6,7 +6,8 @@ every entry in `settings.api_keys`, and on a match populates two
 request-scoped attributes for downstream consumers:
 
 - `request.state.partner_label` — used by slowapi key_func (rate-limit
-  bucketing) and the JSON log formatter (audit trail).
+  bucketing). The JSON log formatter's audit-trail label comes from
+  `partner_label_ctxvar`, bound by `RequestIDMiddleware`.
 - `request.state.api_key_raw` — the matched key string itself; useful
   for debugging from inside a route handler.
 

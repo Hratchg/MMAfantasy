@@ -74,3 +74,45 @@ def test_meta_kind_validation(tmp_path, trained_meta):
     args["meta_kind"] = "random"
     with pytest.raises(meta_persistence.MetaSchemaError, match="meta_kind"):
         meta_persistence.save_meta_model(trained_meta, meta_dir=str(tmp_path), **args)
+
+
+def test_save_refuses_to_overwrite_promoted_version(tmp_path, trained_meta):
+    """A promoted meta_vN.joblib is never silently clobbered (mirrors save_model).
+
+    Regression: save_meta_model used to joblib.dump over an existing
+    meta_{version}.joblib — a re-run with meta_version='v2' would overwrite the
+    AUDIT-01 frozen meta_v2.joblib.
+    """
+    meta_persistence.save_meta_model(trained_meta, meta_dir=str(tmp_path), **_save_args())
+    model_path = tmp_path / "meta_v1.joblib"
+    meta_path = tmp_path / "meta_v1_meta.json"
+    before_model = model_path.read_bytes()
+    before_meta = meta_path.read_bytes()
+    with pytest.raises(FileExistsError, match=r"meta_v1\.joblib"):
+        meta_persistence.save_meta_model(trained_meta, meta_dir=str(tmp_path), **_save_args())
+    assert model_path.read_bytes() == before_model
+    assert meta_path.read_bytes() == before_meta
+
+
+def test_save_overwrite_true_replaces_promoted_version(tmp_path, trained_meta):
+    """overwrite=True is the explicit opt-in to replace a promoted version."""
+    meta_persistence.save_meta_model(trained_meta, meta_dir=str(tmp_path), **_save_args())
+    args = _save_args()
+    args["metrics"] = {"per_slice": {}, "median_brier_overall": 0.199}
+    meta_persistence.save_meta_model(trained_meta, meta_dir=str(tmp_path), overwrite=True, **args)
+    _, loaded_meta = meta_persistence.load_meta_model(meta_dir=str(tmp_path), version="v1")
+    assert loaded_meta["metrics"]["median_brier_overall"] == pytest.approx(0.199)
+
+
+def test_save_candidate_version_may_be_rewritten(tmp_path, trained_meta):
+    """Non-promoted names (e.g. v2_candidate) are scratch artifacts re-emitted per run.
+
+    scripts/train_meta_v22.py persists meta_v2_candidate on every run by design;
+    get_latest_meta_version never serves these names, so re-writing them cannot
+    promote anything.
+    """
+    args = _save_args()
+    args["meta_version"] = "v2_candidate"
+    meta_persistence.save_meta_model(trained_meta, meta_dir=str(tmp_path), **args)
+    meta_persistence.save_meta_model(trained_meta, meta_dir=str(tmp_path), **args)
+    assert (tmp_path / "meta_v2_candidate.joblib").exists()

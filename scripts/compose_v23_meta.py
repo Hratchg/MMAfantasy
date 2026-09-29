@@ -135,9 +135,11 @@ META_DIR: Path = Path("models/meta")
 # ``meta_v3_candidate.joblib`` so a Path A run cannot clobber that artifact.
 META_V3_CANDIDATE_VERSION: str = "v3_compose_candidate"
 
-# Cached fixtures path (fork source uses this for OOF reuse).
-PHASE26_DIR: Path = Path(".planning/phases/26-forward-stepwise-candidate-promotion")
-META_OOF_PARQUET_PATH: Path = PHASE26_DIR / "oof_predictions_v22.parquet"
+# Cached fixtures path. compose runs a 365-day meta_eval window while
+# train_meta_v22.py / spike_noise_floor_v23.py run 730 days, so each window
+# keeps its own OOF cache instead of sharing oof_predictions_v22.parquet
+# (a shared cache flips between row sets and fails its identity check).
+META_OOF_PARQUET_PATH: Path = PHASE32_DIR / "oof_predictions_v23_compose_365d.parquet"
 
 
 # ─────────────────────── Pure functions (importable by tests) ───────────────

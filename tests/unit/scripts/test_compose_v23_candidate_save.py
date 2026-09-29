@@ -27,3 +27,10 @@ def test_path_a_candidate_does_not_clobber_tracked_meta_v3_candidate() -> None:
     """models/meta/meta_v3_candidate.joblib is a tracked Phase 45/48 artifact."""
     assert compose_v23_meta.META_V3_CANDIDATE_VERSION != "v3_candidate"
 
+
+def test_compose_oof_cache_is_not_shared_with_730d_window_scripts() -> None:
+    """compose (365d window) must not share the 730d scripts' OOF cache file."""
+    shared_730d = Path(
+        ".planning/phases/26-forward-stepwise-candidate-promotion/oof_predictions_v22.parquet"
+    )
+    assert compose_v23_meta.META_OOF_PARQUET_PATH != shared_730d

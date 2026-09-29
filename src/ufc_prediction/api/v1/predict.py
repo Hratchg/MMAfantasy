@@ -19,7 +19,7 @@ from ufc_prediction.api.v1.models import (
     PredictMatchupRequestV1,
     PredictorOutputV1,
 )
-from ufc_prediction.elo.fighter_queries import search_fighters
+from ufc_prediction.elo.fighter_queries import resolve_fighter_candidates
 from ufc_prediction.ml.order_invariant import predict_order_invariant
 from ufc_prediction.ml.predictor import ModelPredictor
 
@@ -59,10 +59,13 @@ def predict(
     # V11 ASVS — reject same-fighter matchup. Two-tier check (WR-01 Phase 25
     # review-fix): (1) raw-string compare catches identical inputs without
     # any DB round-trip, including in tests/no-DB harnesses; (2) when a DB
-    # session is available, resolve via search_fighters and compare ORM ids
-    # — this matches api/routers/matchup.py:74 and catches the case where
-    # two different inputs (e.g. "Khabib" vs "Khabib Nurmagomedov") both
-    # resolve to the same Fighter row. Resolution failures are swallowed
+    # session is available, resolve via resolve_fighter_candidates and
+    # compare ORM ids — the same canonical resolution the fighter / matchup
+    # routes use (api/routers/_lookup.py). It collapses cross-source twins
+    # (one person with a ufcstats row and a same-name Kaggle row) to the
+    # canonical row, so two different inputs (e.g. "Khabib" vs "Khabib
+    # Nurmagomedov") that name the same person are caught even though a raw
+    # search returns both twin rows. Resolution failures are swallowed
     # here so the route falls through to predictor.predict() (which raises
     # ValueError → 404), preserving the existing error envelope.
     if body.fighter_a.strip().lower() == body.fighter_b.strip().lower():
@@ -73,8 +76,8 @@ def predict(
 
     if db is not None:
         try:
-            matches_a = search_fighters(db, body.fighter_a)
-            matches_b = search_fighters(db, body.fighter_b)
+            matches_a = resolve_fighter_candidates(db, body.fighter_a)
+            matches_b = resolve_fighter_candidates(db, body.fighter_b)
         except Exception:
             matches_a = matches_b = []
         if len(matches_a) == 1 and len(matches_b) == 1 and matches_a[0].id == matches_b[0].id:

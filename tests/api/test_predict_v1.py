@@ -163,16 +163,17 @@ class TestPredictV1NoDB:
         """WR-01 regression: two different inputs that resolve to the same
         Fighter row must be rejected 400 (mirrors api/routers/matchup.py:74).
 
-        Mocks search_fighters to return a single Fighter row with the same
-        id for both inputs ("Khabib" vs "Khabib Nurmagomedov"), simulating
-        the post-resolution collision case that the raw-string compare alone
-        would miss.
+        Mocks resolve_fighter_candidates to return a single canonical Fighter
+        row with the same id for both inputs ("Khabib" vs "Khabib
+        Nurmagomedov"), simulating the post-resolution collision case that the
+        raw-string compare alone would miss.
         """
         from types import SimpleNamespace
 
         # Build an app that exposes a real (but no-op) DB session so the
         # resolution branch is reached. Using SimpleNamespace as a sentinel
-        # — search_fighters is patched, so the session contents do not matter.
+        # — resolve_fighter_candidates is patched, so the session contents do
+        # not matter.
         app = FastAPI()
         app.include_router(v1_predict.router, prefix="/api/v1")
 
@@ -186,7 +187,7 @@ class TestPredictV1NoDB:
         shared_fighter = SimpleNamespace(id=42, name="Khabib Nurmagomedov")
 
         with patch(
-            "ufc_prediction.api.v1.predict.search_fighters",
+            "ufc_prediction.api.v1.predict.resolve_fighter_candidates",
             return_value=[shared_fighter],
         ):
             resp = c.post(
@@ -250,6 +251,41 @@ class TestPredictV1:
                 json={"fighter_a": "Khabib Nurmagomedov", "fighter_b": "khabib nurmagomedov"},
             )
         assert resp.status_code == 400
+
+    def test_cross_source_twin_names_rejected_400(
+        self, client: TestClient, cross_source_duplicates
+    ):
+        """The same person entered via two inputs must 400 even when he has a
+        ufcstats row AND a same-name Kaggle row.
+
+        "Khabib" substring-matches both rows, so a plain search sees two
+        candidates and cannot tell the inputs name one fighter; canonical
+        resolution collapses the twins to the ufcstats row on both sides.
+        """
+        with patch(
+            "ufc_prediction.api.v1.predict._get_predictor",
+            return_value=_FakePredictor(),
+        ):
+            resp = client.post(
+                "/api/v1/predict",
+                json={"fighter_a": "Khabib", "fighter_b": "Khabib Nurmagomedov"},
+            )
+        assert resp.status_code == 400, resp.text
+        assert "different fighters" in resp.json()["detail"]
+
+    def test_distinct_fighters_with_cross_source_twins_allowed(
+        self, client: TestClient, cross_source_duplicates
+    ):
+        """Twin rows on both sides must not make two different people collide."""
+        with patch(
+            "ufc_prediction.api.v1.predict._get_predictor",
+            return_value=_FakePredictor(),
+        ):
+            resp = client.post(
+                "/api/v1/predict",
+                json={"fighter_a": "Khabib Nurmagomedov", "fighter_b": "Conor McGregor"},
+            )
+        assert resp.status_code == 200, resp.text
 
     def test_unknown_fighter_returns_404(self, client: TestClient, seed_api_data):
         """ValueError from predictor → 404."""

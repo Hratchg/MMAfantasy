@@ -1037,3 +1037,81 @@ class TestPartialEventIngest:
         assert result.accepted == 2 * len(_EVENT_URLS)
         assert result.rejected == len(_EVENT_URLS)
         assert session.query(Event).filter(Event.source == "ufcstats").count() == len(_EVENT_URLS)
+
+
+# ── JS proof-of-work challenge pages (2026-09-29) ─────────────────────────────
+
+
+class TestChallengePageIsFetchFailure:
+    """ufcstats serves an HTTP-200 "Checking your browser..." proof-of-work page
+    to plain HTTP clients. It must count as a failed FETCH (event skipped and
+    retried by the next scrape), never as an unparseable page (which would drop
+    the fight and commit the rest of the event)."""
+
+    def test_safe_fetch_returns_failure_for_challenge_page(self) -> None:
+        from ufc_prediction.scraper.antibot import ChallengePageError
+        from ufc_prediction.scraper.ingest import _safe_fetch
+
+        client = MockScraperClient({"fight-details": _load_fixture("ufcstats_pow_challenge.html")})
+        url, html, err = _safe_fetch(client, _FIGHT_URL_BRADY)
+        assert url == _FIGHT_URL_BRADY
+        assert html is None
+        assert isinstance(err, ChallengePageError)
+
+    def test_challenged_fight_page_skips_whole_event_so_latest_retries(
+        self, session: Session
+    ) -> None:
+        from ufc_prediction.scraper.ingest import scrape_all_events, scrape_latest_events
+
+        client = _make_mock_client()
+        client._exact_map[_FIGHT_URL_BRADY] = _load_fixture("ufcstats_pow_challenge.html")
+
+        first = scrape_all_events(session, client)
+
+        # Pre-fix, the challenge page was a parse failure: the Brady fight was
+        # dropped and the other two fights of every event were committed.
+        assert first.accepted == 0
+        assert first.rejected == len(_EVENT_URLS)
+        assert session.query(Event).filter(Event.source == "ufcstats").count() == 0
+        assert session.query(Fight).count() == 0
+
+        second = scrape_latest_events(session, _make_mock_client())
+        assert second.accepted == 3 * len(_EVENT_URLS)
+
+    def test_challenged_event_page_is_rejected_without_writes(self, session: Session) -> None:
+        from ufc_prediction.scraper.ingest import scrape_all_events
+
+        client = _make_mock_client()
+        challenged_event = _EVENT_URLS[0][0]
+        client._exact_map[challenged_event] = _load_fixture("ufcstats_pow_challenge.html")
+
+        result = scrape_all_events(session, client)
+
+        assert result.rejected == 1
+        assert result.accepted == 3 * (len(_EVENT_URLS) - 1)
+        assert session.query(Event).filter(Event.source_url == challenged_event).count() == 0
+
+    def test_challenged_event_listing_raises_a_clear_error(self, session: Session) -> None:
+        from ufc_prediction.scraper.antibot import ChallengePageError
+        from ufc_prediction.scraper.ingest import scrape_all_events
+
+        client = MockScraperClient(
+            {"statistics/events/completed": _load_fixture("ufcstats_pow_challenge.html")}
+        )
+        with pytest.raises(ChallengePageError):
+            scrape_all_events(session, client)
+
+    def test_challenged_fighter_profile_is_a_fetch_failure(self, session: Session) -> None:
+        """Same contract as any failed profile fetch (name-only fallback) - the
+        challenge page is never handed to the profile parser."""
+        from ufc_prediction.scraper.ingest import _ensure_fighter
+
+        client = MockScraperClient(
+            {"fighter-details": _load_fixture("ufcstats_pow_challenge.html")}
+        )
+        url = "http://ufcstats.com/fighter-details/9014c02eff8b3d62"
+        fid = _ensure_fighter(client, session, "Carlos Ulberg", url, {})
+        fighter = session.get(Fighter, fid)
+        assert fighter is not None
+        assert fighter.name == "Carlos Ulberg"
+        assert fighter.height_inches is None

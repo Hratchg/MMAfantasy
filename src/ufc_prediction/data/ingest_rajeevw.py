@@ -380,84 +380,99 @@ def ingest_rajeevw_fights(csv_path: Path, session: Session) -> IngestResult:
                 fighter_b_stats=fighter_b_stats,
             )
 
-            # 2. Upsert Event
-            event = upsert_event(
-                session,
-                name=fight_row.event_name,
-                event_date=fight_row.event_date,
-                location=fight_row.location,
-                source=SOURCE,
-            )
-
-            # 3. Upsert Fighters (create minimal if not found)
-            fighter_a = upsert_fighter(session, fight_row.fighter_a_name, SOURCE)
-            fighter_b = upsert_fighter(session, fight_row.fighter_b_name, SOURCE)
-
-            # Determine winner_id
-            winner_id = None
-            if fight_row.winner_name == fight_row.fighter_a_name:
-                winner_id = fighter_a.id
-            elif fight_row.winner_name == fight_row.fighter_b_name:
-                winner_id = fighter_b.id
-
-            # 4. Upsert Fight (natural key: fighter_a_id, fighter_b_id, event_id)
-            existing_fight = (
-                session.query(Fight)
-                .filter(
-                    Fight.fighter_a_id == fighter_a.id,
-                    Fight.fighter_b_id == fighter_b.id,
-                    Fight.event_id == event.id,
-                )
-                .first()
-            )
-
-            if existing_fight is not None:
-                existing_fight.winner_id = winner_id
-                existing_fight.weight_class = fight_row.weight_class
-                existing_fight.method = fight_row.method
-                existing_fight.method_detail = fight_row.method_detail
-                existing_fight.round_finished = fight_row.round_finished
-                existing_fight.time_finished = fight_row.time_finished
-                existing_fight.is_title_fight = fight_row.is_title_fight
-                existing_fight.num_rounds = fight_row.num_rounds
-                fight = existing_fight
-                result.updated += 1
-            else:
-                fight = Fight(
-                    event_id=event.id,
-                    fighter_a_id=fighter_a.id,
-                    fighter_b_id=fighter_b.id,
-                    winner_id=winner_id,
-                    weight_class=fight_row.weight_class,
-                    method=fight_row.method,
-                    method_detail=fight_row.method_detail,
-                    round_finished=fight_row.round_finished,
-                    time_finished=fight_row.time_finished,
-                    is_title_fight=fight_row.is_title_fight,
-                    num_rounds=fight_row.num_rounds,
+            # 2-5. DB writes run in a per-row SAVEPOINT: a failure undoes only
+            # this row's partial writes, never the earlier uncommitted rows of
+            # the batch (a session-wide rollback silently dropped up to 499
+            # rows already counted as accepted).
+            with session.begin_nested():
+                # 2. Upsert Event
+                event = upsert_event(
+                    session,
+                    name=fight_row.event_name,
+                    event_date=fight_row.event_date,
+                    location=fight_row.location,
                     source=SOURCE,
                 )
-                session.add(fight)
-                session.flush()
+
+                # 3. Upsert Fighters (create minimal if not found)
+                fighter_a = upsert_fighter(session, fight_row.fighter_a_name, SOURCE)
+                fighter_b = upsert_fighter(session, fight_row.fighter_b_name, SOURCE)
+
+                # Determine winner_id
+                winner_id = None
+                if fight_row.winner_name == fight_row.fighter_a_name:
+                    winner_id = fighter_a.id
+                elif fight_row.winner_name == fight_row.fighter_b_name:
+                    winner_id = fighter_b.id
+
+                # 4. Upsert Fight (natural key: fighter_a_id, fighter_b_id, event_id)
+                existing_fight = (
+                    session.query(Fight)
+                    .filter(
+                        Fight.fighter_a_id == fighter_a.id,
+                        Fight.fighter_b_id == fighter_b.id,
+                        Fight.event_id == event.id,
+                    )
+                    .first()
+                )
+
+                if existing_fight is not None:
+                    existing_fight.winner_id = winner_id
+                    existing_fight.weight_class = fight_row.weight_class
+                    existing_fight.method = fight_row.method
+                    existing_fight.method_detail = fight_row.method_detail
+                    existing_fight.round_finished = fight_row.round_finished
+                    existing_fight.time_finished = fight_row.time_finished
+                    existing_fight.is_title_fight = fight_row.is_title_fight
+                    existing_fight.num_rounds = fight_row.num_rounds
+                    fight = existing_fight
+                    is_new = False
+                else:
+                    fight = Fight(
+                        event_id=event.id,
+                        fighter_a_id=fighter_a.id,
+                        fighter_b_id=fighter_b.id,
+                        winner_id=winner_id,
+                        weight_class=fight_row.weight_class,
+                        method=fight_row.method,
+                        method_detail=fight_row.method_detail,
+                        round_finished=fight_row.round_finished,
+                        time_finished=fight_row.time_finished,
+                        is_title_fight=fight_row.is_title_fight,
+                        num_rounds=fight_row.num_rounds,
+                        source=SOURCE,
+                    )
+                    session.add(fight)
+                    session.flush()
+                    is_new = True
+
+                # 5. Upsert fight-level stats as RoundStats with round_number=0
+                if fight_row.fighter_a_stats is not None:
+                    _upsert_round_stats(
+                        session, fight.id, fighter_a.id, 0, fight_row.fighter_a_stats
+                    )
+                if fight_row.fighter_b_stats is not None:
+                    _upsert_round_stats(
+                        session, fight.id, fighter_b.id, 0, fight_row.fighter_b_stats
+                    )
+
+            if is_new:
                 result.accepted += 1
-
-            # 5. Upsert fight-level stats as RoundStats with round_number=0
-            if fight_row.fighter_a_stats is not None:
-                _upsert_round_stats(session, fight.id, fighter_a.id, 0, fight_row.fighter_a_stats)
-            if fight_row.fighter_b_stats is not None:
-                _upsert_round_stats(session, fight.id, fighter_b.id, 0, fight_row.fighter_b_stats)
-
-            # Batch commit for performance
-            if (idx + 1) % _BATCH_SIZE == 0:
-                session.commit()
-                logger.info("Committed %d fight rows...", idx + 1)
+            else:
+                result.updated += 1
 
         except Exception as exc:
-            # Per D-06: catch ANY exception, log rejection, continue
-            session.rollback()
+            # Per D-06: catch ANY exception, log rejection, continue. The row's
+            # savepoint has already been rolled back; earlier rows are kept.
             result.log_rejection(idx, row.to_dict(), str(exc))
             logger.warning("Rejected fight row %d: %s", idx, exc)
             continue
+
+        # Batch commit for performance (outside the per-row try: a commit
+        # failure is not a row rejection and must not be swallowed).
+        if (idx + 1) % _BATCH_SIZE == 0:
+            session.commit()
+            logger.info("Committed %d fight rows...", idx + 1)
 
     # Final commit
     session.commit()

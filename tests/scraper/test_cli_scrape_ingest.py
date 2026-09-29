@@ -16,6 +16,8 @@ populate Event + Venue rows in-memory.
 from __future__ import annotations
 
 import csv
+import subprocess
+import sys
 from datetime import date
 from pathlib import Path
 from unittest.mock import patch
@@ -95,6 +97,48 @@ class TestScrapeRefereesCLI:
             kwargs = mock_main.call_args.kwargs
             assert kwargs["delay"] == 2.0
             assert kwargs["workers"] == 8
+
+
+class TestCLIWithoutScriptsDir:
+    """Non-editable installs (the Dockerfile's `uv sync --no-editable`) ship no
+    `scripts/` dir. `ufc_prediction.cli.main` must still import so unrelated
+    subcommands work; only `ufc scrape referees` may fail, with a clear message.
+
+    Runs in a subprocess with `scrape_referees_full` blocked in sys.modules so
+    the import behaves exactly as if the file were absent.
+    """
+
+    _PRELUDE = (
+        "import sys\n"
+        "sys.modules['scrape_referees_full'] = None\n"
+        "from typer.testing import CliRunner\n"
+        "from ufc_prediction.cli.main import app\n"
+        "runner = CliRunner()\n"
+    )
+
+    def _run(self, body: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, "-c", self._PRELUDE + body],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+
+    def test_unrelated_subcommand_works_without_scripts(self) -> None:
+        proc = self._run("r = runner.invoke(app, ['db', '--help'])\nprint('EXIT', r.exit_code)\n")
+        assert proc.returncode == 0, proc.stderr
+        assert "EXIT 0" in proc.stdout
+
+    def test_referees_fails_cleanly_without_scripts(self) -> None:
+        proc = self._run(
+            "r = runner.invoke(app, ['scrape', 'referees', '--dry-run'])\n"
+            "print('EXIT', r.exit_code)\n"
+            "print(r.output)\n"
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "EXIT 1" in proc.stdout
+        assert "scrape_referees_full" in proc.stdout
 
 
 # ── Referee slim-driver dry-run unit test (no DB; pure stdout shape) ──────

@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+import pytest
 from sqlalchemy.orm import Session
 
 from ufc_prediction.data.ingest_mdabbert import ingest_mdabbert
@@ -264,3 +265,72 @@ def test_ingest_mdabbert_skips_existing_fights(
     assert new_fights == 1, f"Expected 1 new fight from mdabbert, got {new_fights}"
     assert mdabbert_result.accepted == 1
     assert mdabbert_result.updated >= 1  # The duplicate was detected
+
+
+# ── Per-row isolation: one bad row must not discard earlier rows in its batch ──
+
+
+def test_rajeevw_bad_row_does_not_roll_back_earlier_rows_in_batch(
+    session: Session,
+    rajeevw_fights_csv: Path,
+) -> None:
+    """A row rejected mid-batch (here: unparseable Fight_type -> FightRow
+    ValidationError) used to trigger a session-wide rollback, silently dropping
+    every earlier uncommitted row of the batch while still counting it accepted."""
+    lines = rajeevw_fights_csv.read_text(encoding="utf-8").splitlines()
+    bad = lines[2].replace("Middleweight Bout", "Garbage Bout")
+    rajeevw_fights_csv.write_text("\n".join([lines[0], lines[1], bad]), encoding="utf-8")
+
+    result = ingest_rajeevw_fights(rajeevw_fights_csv, session)
+
+    assert result.rejected == 1
+    assert result.accepted == 1
+    assert session.query(Fight).count() == 1
+    assert session.query(Event).filter(Event.name == "UFC 248").count() == 1
+
+
+def test_rajeevw_db_error_rolls_back_only_the_failing_row(
+    session: Session,
+    rajeevw_fights_csv: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A DB-stage failure after the Fight insert (round-stats upsert) must undo
+    only that row's writes and must not count it as accepted."""
+    import ufc_prediction.data.ingest_rajeevw as rj
+
+    real_upsert = rj._upsert_round_stats
+    calls = {"n": 0}
+
+    def flaky_upsert(*args: object, **kwargs: object) -> None:
+        calls["n"] += 1
+        if calls["n"] == 3:  # first stats call of the second fight
+            raise RuntimeError("simulated DB error")
+        real_upsert(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(rj, "_upsert_round_stats", flaky_upsert)
+
+    result = ingest_rajeevw_fights(rajeevw_fights_csv, session)
+
+    assert result.rejected == 1
+    assert result.accepted == 1
+    fights = session.query(Fight).all()
+    assert len(fights) == 1
+    assert session.query(RoundStats).filter(RoundStats.fight_id == fights[0].id).count() == 2
+    assert session.query(Event).filter(Event.name == "UFC 263").count() == 0
+
+
+def test_mdabbert_bad_row_does_not_roll_back_earlier_rows_in_batch(
+    session: Session,
+    mdabbert_csv: Path,
+) -> None:
+    lines = mdabbert_csv.read_text(encoding="utf-8").splitlines()
+    bad = lines[1].replace(",Middleweight,", ",Garbage,")
+    # Good (new) fight first, then the invalid row.
+    mdabbert_csv.write_text("\n".join([lines[0], lines[2], bad]), encoding="utf-8")
+
+    result = ingest_mdabbert(mdabbert_csv, session)
+
+    assert result.rejected == 1
+    assert result.accepted == 1
+    assert session.query(Fight).count() == 1
+    assert session.query(Fighter).filter(Fighter.name == "New Fighter").count() == 1

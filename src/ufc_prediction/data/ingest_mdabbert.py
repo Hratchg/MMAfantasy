@@ -294,90 +294,98 @@ def ingest_mdabbert(csv_path: Path, session: Session) -> IngestResult:
                 num_rounds=num_rounds,
             )
 
-            # 3. Supplement or create fighters
-            fighter_a = _supplement_or_create_fighter(
-                session, r_fighter, r_height, r_reach, r_stance, r_dob
-            )
-            fighter_b = _supplement_or_create_fighter(
-                session, b_fighter, b_height, b_reach, b_stance, b_dob
-            )
-
-            # 4. Upsert Event
-            event = upsert_event(session, event_name, event_date, location, SOURCE)
-
-            # 5. Check if fight already exists from ANY source
-            existing_fight = (
-                session.query(Fight)
-                .filter(
-                    Fight.fighter_a_id == fighter_a.id,
-                    Fight.fighter_b_id == fighter_b.id,
-                    Fight.event_id.in_(session.query(Event.id).filter(Event.date == event_date)),
+            # 3-5. DB writes run in a per-row SAVEPOINT: a failure undoes only
+            # this row's partial writes, never the earlier uncommitted rows of
+            # the batch (a session-wide rollback silently dropped up to 499
+            # rows already counted as accepted).
+            with session.begin_nested():
+                # 3. Supplement or create fighters
+                fighter_a = _supplement_or_create_fighter(
+                    session, r_fighter, r_height, r_reach, r_stance, r_dob
                 )
-                .first()
-            )
-            # Also check reversed fighter order
-            if existing_fight is None:
+                fighter_b = _supplement_or_create_fighter(
+                    session, b_fighter, b_height, b_reach, b_stance, b_dob
+                )
+
+                # 4. Upsert Event
+                event = upsert_event(session, event_name, event_date, location, SOURCE)
+
+                # 5. Check if fight already exists from ANY source
                 existing_fight = (
                     session.query(Fight)
                     .filter(
-                        Fight.fighter_a_id == fighter_b.id,
-                        Fight.fighter_b_id == fighter_a.id,
+                        Fight.fighter_a_id == fighter_a.id,
+                        Fight.fighter_b_id == fighter_b.id,
                         Fight.event_id.in_(
                             session.query(Event.id).filter(Event.date == event_date)
                         ),
                     )
                     .first()
                 )
+                # Also check reversed fighter order
+                if existing_fight is None:
+                    existing_fight = (
+                        session.query(Fight)
+                        .filter(
+                            Fight.fighter_a_id == fighter_b.id,
+                            Fight.fighter_b_id == fighter_a.id,
+                            Fight.event_id.in_(
+                                session.query(Event.id).filter(Event.date == event_date)
+                            ),
+                        )
+                        .first()
+                    )
 
-            if existing_fight is not None:
-                # Fight already exists (from rajeevw or earlier mdabbert)
+                # An existing fight (from rajeevw or earlier mdabbert) is only
+                # counted as updated; nothing is written for it.
+                is_new = existing_fight is None
+                if is_new:
+                    # Determine winner_id
+                    winner_id = None
+                    if winner_name == r_fighter:
+                        winner_id = fighter_a.id
+                    elif winner_name == b_fighter:
+                        winner_id = fighter_b.id
+
+                    # Insert new fight (only for fights not already in DB)
+                    fight = Fight(
+                        event_id=event.id,
+                        fighter_a_id=fighter_a.id,
+                        fighter_b_id=fighter_b.id,
+                        winner_id=winner_id,
+                        weight_class=weight_class,
+                        method=method,
+                        method_detail=method_detail,
+                        round_finished=round_finished,
+                        time_finished=time_finished,
+                        is_title_fight=is_title_fight,
+                        num_rounds=num_rounds,
+                        source=SOURCE,
+                    )
+                    session.add(fight)
+                    session.flush()
+
+            if is_new:
+                result.accepted += 1
+            else:
                 result.updated += 1
-                if (idx + 1) % _BATCH_SIZE == 0:
-                    session.commit()
-                    logger.info("Processed %d rows...", idx + 1)
-                continue
-
-            # Determine winner_id
-            winner_id = None
-            if winner_name == r_fighter:
-                winner_id = fighter_a.id
-            elif winner_name == b_fighter:
-                winner_id = fighter_b.id
-
-            # Insert new fight (only for fights not already in DB)
-            fight = Fight(
-                event_id=event.id,
-                fighter_a_id=fighter_a.id,
-                fighter_b_id=fighter_b.id,
-                winner_id=winner_id,
-                weight_class=weight_class,
-                method=method,
-                method_detail=method_detail,
-                round_finished=round_finished,
-                time_finished=time_finished,
-                is_title_fight=is_title_fight,
-                num_rounds=num_rounds,
-                source=SOURCE,
-            )
-            session.add(fight)
-            session.flush()
-            result.accepted += 1
 
             # NOTE: mdabbert does NOT have per-fight performance stats.
             # No RoundStats records created. Fight-level stats come from
             # rajeevw (pre-2021) or Phase 5 scraper (all fights).
 
-            # Batch commit for performance
-            if (idx + 1) % _BATCH_SIZE == 0:
-                session.commit()
-                logger.info("Committed %d rows...", idx + 1)
-
         except Exception as exc:
-            # Per D-06: catch ANY exception, log rejection, continue
-            session.rollback()
+            # Per D-06: catch ANY exception, log rejection, continue. The row's
+            # savepoint has already been rolled back; earlier rows are kept.
             result.log_rejection(idx, raw, str(exc))
             logger.warning("Rejected row %d: %s", idx, exc)
             continue
+
+        # Batch commit for performance (outside the per-row try: a commit
+        # failure is not a row rejection and must not be swallowed).
+        if (idx + 1) % _BATCH_SIZE == 0:
+            session.commit()
+            logger.info("Committed %d rows...", idx + 1)
 
     # Final commit
     session.commit()

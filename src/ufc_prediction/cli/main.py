@@ -737,9 +737,19 @@ _ensure_scripts_on_path()
 # Module-level import so unittest.mock.patch("...scripts.scrape_referees_full.main")
 # can resolve and substitute the driver entry-point during tests.
 # Use importlib because `scripts/` lacks __init__.py and isn't a real package.
+# Non-editable installs (the Dockerfile's `uv sync --no-editable`) ship no
+# scripts/ dir, so a missing driver must not break every other subcommand at
+# import time; only `ufc scrape referees` fails, with a clear message.
 import importlib as _importlib
+from types import ModuleType as _ModuleType
 
-_scrape_referees_full = _importlib.import_module("scrape_referees_full")
+_scrape_referees_full: _ModuleType | None
+try:
+    _scrape_referees_full = _importlib.import_module("scrape_referees_full")
+except ModuleNotFoundError as _exc:
+    if _exc.name != "scrape_referees_full":
+        raise
+    _scrape_referees_full = None
 
 
 @scrape_app.command("referees")
@@ -774,6 +784,13 @@ def scrape_referees_cmd(
     (CR-01 binding from Phase 22: never overwrites a previously-set
     referee_id).
     """
+    if _scrape_referees_full is None:
+        console.print(
+            "[red]scripts/scrape_referees_full.py is not available in this install "
+            "(non-editable installs ship no scripts/ dir). Run `ufc scrape referees` "
+            "from a source checkout.[/red]"
+        )
+        raise typer.Exit(1)
     exit_code = _scrape_referees_full.main(
         delay=delay,
         workers=workers,

@@ -130,7 +130,11 @@ def patched_predictor(stub_fighters):
     # Patch the heavy DB readers that inference_features pulls from
     with (
         patch.object(inf, "_get_latest_elo", fake_get_elo),
-        patch.object(inf, "_get_latest_computed_features", fake_get_perf),
+        patch.object(
+            inf,
+            "_get_pre_fight_performance",
+            lambda s, a, b, d: (fake_get_perf(s, a), fake_get_perf(s, b)),
+        ),
         patch.object(pred_mod, "_resolve_fighter", fake_resolve_fighter),
         patch.object(pred_mod, "_get_latest_elo", fake_get_elo),
     ):

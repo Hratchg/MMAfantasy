@@ -179,6 +179,108 @@ def _predict_proba_with_pipeline(
     return [float(p) for p in proba[:, 1]]
 
 
+# ── Canonical META-V22 NaN policy ─────────────────────────────────────────
+#
+# Live substrates carry NaN in non-baseline Level-1 columns
+# (closing_prob_diff / sharp_money_signal without odds,
+# days_since_last_fight_diff / age_diff for debuts or missing DOBs, the TRAVEL
+# cols), which neither the refit LogisticRegression nor the canonical
+# PolynomialFeatures pipeline accept. The verifier applies the SAME policy the
+# canonical meta_v2 training path uses (scripts/train_meta_v22.py, Plan 29-02
+# / EVAL-V23-01): ``ml.oof.apply_nan_drop_policy`` with
+# ``per_feature_strict_baseline`` drops rows whose baseline columns are NaN,
+# then remaining non-baseline NaN are imputed with fit-set column medians
+# (computed after the drop; 0.0 when a column has no finite value).
+NAN_DROP_POLICY: str = "per_feature_strict_baseline"
+
+# Every META-V22-family substrate leads with the two baseline columns:
+# col[0] = the xgb OOF probability (canonical or candidate-aligned) and
+# col[1] = elo_prob. The substrate format is positional (no column names), so
+# the baseline columns are pinned by position.
+_BASELINE_COLUMN_NAMES: tuple[str, ...] = ("xgb_oof_prob", "elo_prob")
+
+
+def apply_canonical_nan_policy(
+    eval_slices: dict[str, EvalSlice],
+) -> tuple[dict[str, EvalSlice], dict[int, float]]:
+    """Apply the canonical META-V22 NaN policy to every eval slice.
+
+    The fit set is the refit baseline's training substrate: all slices
+    aggregated in sorted slice-name order (exactly what
+    ``verify_candidate_vs_canonical`` refits on). Its surviving rows supply
+    the imputation medians, and the SAME medians are applied to every slice so
+    the canonical, refit and candidate pipelines all score identical inputs.
+
+    Returns:
+        ``(clean_slices, medians)`` — slices with baseline-NaN rows dropped and
+        non-baseline NaN imputed (``substrate_sha`` passes through unchanged
+        for the audit trail), and ``{column_index: median}`` for every column
+        that needed imputation.
+
+    Raises:
+        ValueError: if the baseline drop leaves a slice with no rows.
+    """
+    import numpy as np
+
+    from ufc_prediction.ml.oof import apply_nan_drop_policy
+
+    kept: dict[str, tuple[Any, tuple[int, ...]]] = {}
+    for slice_name in sorted(eval_slices):
+        sl = eval_slices[slice_name]
+        X = np.array(sl.feature_vectors, dtype=float)
+        if X.ndim != 2 or X.shape[0] == 0:
+            kept[slice_name] = (X, sl.outcomes)
+            continue
+        width = X.shape[1]
+        n_baseline = min(len(_BASELINE_COLUMN_NAMES), width)
+        columns = [
+            *_BASELINE_COLUMN_NAMES[:n_baseline],
+            *(f"col_{i}" for i in range(n_baseline, width)),
+        ]
+        mask = apply_nan_drop_policy(
+            X,
+            columns,
+            policy=NAN_DROP_POLICY,
+            baseline_columns=_BASELINE_COLUMN_NAMES[:n_baseline],
+        )
+        if not mask.any():
+            raise ValueError(
+                f"slice {slice_name!r}: no rows survive the {NAN_DROP_POLICY} "
+                f"NaN drop (every row has NaN in a baseline column)"
+            )
+        kept[slice_name] = (
+            X[mask],
+            tuple(o for o, keep in zip(sl.outcomes, mask, strict=True) if keep),
+        )
+
+    fit_rows = [X for X, _ in kept.values() if X.ndim == 2 and X.shape[0] > 0]
+    medians: dict[int, float] = {}
+    if fit_rows and len({X.shape[1] for X in fit_rows}) == 1:
+        fit_set = np.vstack(fit_rows)
+        n_baseline = min(len(_BASELINE_COLUMN_NAMES), fit_set.shape[1])
+        for idx in range(n_baseline, fit_set.shape[1]):
+            if not any(np.isnan(X[:, idx]).any() for X in fit_rows):
+                continue
+            col = fit_set[:, idx]
+            finite = col[~np.isnan(col)]
+            medians[idx] = float(np.median(finite)) if finite.size else 0.0
+
+    clean: dict[str, EvalSlice] = {}
+    for slice_name, sl in eval_slices.items():
+        X, outcomes = kept[slice_name]
+        if (not medians and len(outcomes) == len(sl.outcomes)) or X.ndim != 2:
+            clean[slice_name] = sl
+            continue
+        for idx, median in medians.items():
+            X[np.isnan(X[:, idx]), idx] = median
+        clean[slice_name] = EvalSlice(
+            feature_vectors=tuple(tuple(float(v) for v in row) for row in X),
+            outcomes=outcomes,
+            substrate_sha=sl.substrate_sha,
+        )
+    return clean, medians
+
+
 def _refit_baseline_on_substrate(
     substrate_features: tuple[tuple[float, ...], ...],
     substrate_outcomes: tuple[int, ...],
@@ -300,6 +402,10 @@ def verify_candidate_vs_canonical(
     #
     # Width-matched cases fall through to the unchanged Phase 55 logic.
     substrate_sha = _aggregate_substrate_sha(eval_slices)
+    # Canonical META-V22 NaN policy (drop baseline-NaN rows, impute the rest
+    # with fit-set medians) BEFORE any refit / predict_proba — see
+    # apply_canonical_nan_policy. Per-slice substrate SHAs are unchanged.
+    eval_slices, _nan_imputation_medians = apply_canonical_nan_policy(eval_slices)
     width_mismatch = _detect_pipeline_width_mismatch(
         canonical_pipeline,
         eval_slices,

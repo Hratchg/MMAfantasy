@@ -1,7 +1,7 @@
 {
   "env": {
     "DOCKER_HOST": "unix:///Users/hratchghanime/.colima/default/docker.sock",
-    "DATABASE_URL": "postgresql+psycopg://ufc:ufc@localhost:5433/ufc_prediction",
+    "DATABASE_URL": "postgresql+psycopg://ufc:ufc@localhost:5439/ufc_prediction",
     "TESTCONTAINERS_RYUK_DISABLED": "true"
   },
   "hooks": {

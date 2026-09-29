@@ -47,6 +47,7 @@ from pathlib import Path
 
 from ufc_prediction.api.app import create_app
 from ufc_prediction.api.v1.models import PredictorOutputV1
+from ufc_prediction.cli.predict import EXPECTED_XGB_V2_SHA
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONTRACTS_DIR = REPO_ROOT / "src" / "ufc_prediction" / "contracts"
@@ -76,8 +77,12 @@ V120_FROZEN = True  # Phase 69 API-V261-01 binding — do NOT overwrite v1.2.0 f
 SCHEMA_V130_PATH = CONTRACTS_DIR / "predictor.schema.v1.3.0.json"
 OPENAPI_V130_PATH = CONTRACTS_DIR / "openapi.v1.3.0.json"
 
-# Canonical xgb_v2.joblib SHA — AUDIT-01 chain leaf invariant.
-XGB_V2_CANONICAL_SHA = "6e7641109524177c2f4efe556f6e29c38baa1ea996d68fac59879f4d6a1ba099"
+# Canonical xgb_v2.joblib SHA — AUDIT-01 chain leaf invariant. Re-exported
+# from the single source of truth in `ufc_prediction.cli.predict` (the same
+# value as `scripts/spike_noise_floor_v23.py::EXPECTED_XGB_V2_SHA`) so this
+# check cannot go stale on the next re-baseline. A hardcoded copy here drifted
+# to the pre-2026-07-06 `6e7641…` SHA and made every emit run raise.
+XGB_V2_CANONICAL_SHA: str = EXPECTED_XGB_V2_SHA
 
 
 def _check_audit01_xgb_v2_sha(repo_root: Path) -> str:

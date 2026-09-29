@@ -12,7 +12,7 @@
 ## Environment
 ```
 export DOCKER_HOST="unix:///Users/hratchghanime/.colima/default/docker.sock"
-export DATABASE_URL="postgresql+psycopg://ufc:ufc@localhost:5433/ufc_prediction"
+export DATABASE_URL="postgresql+psycopg://ufc:ufc@localhost:5439/ufc_prediction"  # mmafantasy-db-1 host port (see CLAUDE.md "Database")
 export TESTCONTAINERS_RYUK_DISABLED=true
 cd /Users/hratchghanime/MMAfantasy && uv sync --frozen
 # DB already seeded (6820 fighters / 16902 fights / 25632 fight_odds). Re-seed if needed:

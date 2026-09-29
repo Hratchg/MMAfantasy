@@ -45,10 +45,15 @@ _DECISION_METHODS: frozenset[str] = frozenset(
         "Decision - Unanimous",
         "Decision - Split",
         "Decision - Majority",
+        # ufcstats scraper tokens (the only source in the dedup training
+        # corpus): unanimous / split / majority decision.
+        "U-DEC",
+        "S-DEC",
+        "M-DEC",
     }
 )
 
-# All other strings (No Contest, DQ, Disqualification, Overturned, None,
+# All other strings (No Contest, CNC, DQ, Disqualification, Overturned, None,
 # unknown) collapse to "no_action" — defensive default per Q2 RESOLVED.
 
 OutcomeCategory = Literal["finish", "decision", "no_action"]
@@ -58,7 +63,7 @@ def classify_outcome(method: str | None) -> OutcomeCategory:
     """Classify a fight's ``method`` string into one of 3 REF categories.
 
     - ``finish``: KO / TKO / Submission / SUB
-    - ``decision``: any Decision variant
+    - ``decision``: any Decision variant, including ufcstats U-DEC / S-DEC / M-DEC
     - ``no_action``: No Contest / DQ / Disqualification / Overturned / None /
       any unknown method string (defensive default per Q2 RESOLVED).
 

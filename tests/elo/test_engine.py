@@ -276,6 +276,37 @@ class TestSkipLogic:
         snapshots = elo_engine.compute_all([fight])
         assert len(snapshots) == 0
 
+    @pytest.mark.parametrize("method", ["CNC", "Overturned"])
+    def test_ufcstats_no_contest_tokens_skipped(self, elo_engine: EloEngine, method: str) -> None:
+        """ufcstats stores no-contests as 'CNC' / 'Overturned' with winner_id=None.
+
+        They must be skipped like Kaggle's 'No Contest' / 'Other', not applied
+        as a draw (which would move ratings, bump the K-tier fight count and
+        reset the inactivity clock).
+        """
+        fight = make_fight(
+            fighter_a_id=1,
+            fighter_b_id=2,
+            winner_id=None,
+            method=method,
+            method_detail=None,
+        )
+        snapshots = elo_engine.compute_all([fight])
+        assert len(snapshots) == 0
+
+    @pytest.mark.parametrize("method", ["M-DEC", "S-DEC", "U-DEC"])
+    def test_ufcstats_decision_draw_still_applied(self, elo_engine: EloEngine, method: str) -> None:
+        """Scorecard draws (decision method, winner_id=None) remain draw updates."""
+        fight = make_fight(
+            fighter_a_id=1,
+            fighter_b_id=2,
+            winner_id=None,
+            method=method,
+            method_detail=None,
+        )
+        snapshots = elo_engine.compute_all([fight])
+        assert len(snapshots) == 2
+
 
 class TestDivisionTransfer:
     """Test division transfer mechanics.

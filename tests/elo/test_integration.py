@@ -275,3 +275,70 @@ def test_calibration_on_seeded_data(session):
             assert "predicted_rate" in data
             assert "observed_rate" in data
             assert "gap" in data
+
+
+def _seed_one_night_tournament(session, *, source: str):
+    """Seed a UFC-2-style one-night tournament plus a same-day regular card.
+
+    ufcstats lists bouts main-event-first, so rows are inserted in card
+    order: the final (A beats B) gets the lowest id, then the semi-finals
+    (A beats C, B beats D). A second, non-tournament event on the same date
+    (E beats F, G beats H) must keep its ascending-id order.
+    """
+    fighters = [Fighter(name=f"Tourney {c}", source="test") for c in "ABCDEFGH"]
+    session.add_all(fighters)
+    session.flush()
+    a, b, c, d, e, f, g, h = fighters
+
+    tourney = Event(name="Tournament Night", date=date(1994, 3, 11), source=source)
+    regular = Event(name="Regular Card", date=date(1994, 3, 11), source=source)
+    session.add_all([tourney, regular])
+    session.flush()
+
+    seeded: list[Fight] = []
+    for event, x, y in (
+        (tourney, a, b),  # final
+        (tourney, a, c),  # semi 1
+        (tourney, b, d),  # semi 2
+        (regular, e, f),
+        (regular, g, h),
+    ):
+        fight = Fight(
+            event_id=event.id,
+            fighter_a_id=x.id,
+            fighter_b_id=y.id,
+            winner_id=x.id,
+            weight_class="Open Weight",
+            method="SUB",
+            source=source,
+        )
+        session.add(fight)
+        session.flush()  # one flush per row -> ids follow card order
+        seeded.append(fight)
+    final, semi_1, semi_2, reg_1, reg_2 = seeded
+    return {"final": final, "semis": [semi_1, semi_2], "regular": [reg_1, reg_2]}
+
+
+def test_ufcstats_tournament_bouts_processed_in_bout_order(session):
+    """Early-round tournament bouts must be loaded before the final.
+
+    Regression: ordering by (date, Fight.id) replayed the final first because
+    ufcstats inserts the card main-event-first.
+    """
+    seeded = _seed_one_night_tournament(session, source="ufcstats")
+    order = [fr.fight_id for fr in load_fights_chronological(session)]
+
+    final_pos = order.index(seeded["final"].id)
+    for semi in seeded["semis"]:
+        assert order.index(semi.id) < final_pos
+    # Non-tournament same-day event keeps its ascending-id order.
+    reg_1, reg_2 = seeded["regular"]
+    assert order.index(reg_1.id) < order.index(reg_2.id)
+
+
+def test_non_ufcstats_tournament_order_unchanged(session):
+    """Card-order reversal only applies to ufcstats (known main-event-first)."""
+    seeded = _seed_one_night_tournament(session, source="kaggle-rajeevw")
+    order = [fr.fight_id for fr in load_fights_chronological(session)]
+    assert order == sorted(order)
+    assert order[0] == seeded["final"].id

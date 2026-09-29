@@ -69,6 +69,24 @@ class TestClassifyOutcome:
         assert classify_outcome("Decision - Majority") == "decision"
         assert classify_outcome("Decision") == "decision"
 
+    @pytest.mark.parametrize("method", ["U-DEC", "S-DEC", "M-DEC"])
+    def test_classify_outcome_ufcstats_decision_tokens(self, method: str) -> None:
+        """ufcstats (the dedup training corpus) stores decisions as U-/S-/M-DEC.
+
+        They must classify as ``decision``; otherwise every ufcstats decision
+        lands in ``no_action`` and ref_decision_rate_shrunk is 0 in training.
+        """
+        from ufc_prediction.ml.features_v22 import classify_outcome
+
+        assert classify_outcome(method) == "decision"
+
+    def test_classify_outcome_ufcstats_no_contest_tokens(self) -> None:
+        """ufcstats no-contest tokens stay ``no_action``."""
+        from ufc_prediction.ml.features_v22 import classify_outcome
+
+        assert classify_outcome("CNC") == "no_action"
+        assert classify_outcome("Overturned") == "no_action"
+
     def test_classify_outcome_no_action(self) -> None:
         """Test 6: NC / DQ / None / unknown → no_action (defensive default)."""
         from ufc_prediction.ml.features_v22 import classify_outcome

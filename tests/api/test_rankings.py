@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
+
+
+@pytest.mark.parametrize("division", ["Heavyweight", "Flyweight", "Bantamweight", "Featherweight"])
+def test_rankings_exact_mens_division_is_not_ambiguous(client: TestClient, division: str):
+    """Finding 2: exact men's division names resolve instead of 400 'Ambiguous'."""
+    response = client.get(f"/api/v1/rankings/{division}")
+    assert response.status_code == 200, response.json()
+    assert response.json()["division"] == division
 
 
 def test_rankings_lightweight(client: TestClient):

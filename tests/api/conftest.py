@@ -359,10 +359,11 @@ def seed_matchup_api_data(session, seed_api_data):
     session.flush()
 
     for i in range(10):
+        # ufcstats: get_style_matchup_counts only counts canonical-source bouts.
         ev = Event(
             name=f"UFC Style Test {i}",
             date=date(2020, 1, 1 + i),
-            source="test",
+            source="ufcstats",
         )
         events.append(ev)
     session.add_all(events)
@@ -439,6 +440,24 @@ def seed_matchup_api_data(session, seed_api_data):
 
     data["style_fights"] = fights
     return data
+
+
+@pytest.fixture()
+def cross_source_duplicates(session, seed_api_data):
+    """Mirror production: every ufcstats fighter also has a same-name Kaggle row.
+
+    Relabels the seeded (Elo-bearing) rows as ``ufcstats`` and adds a bare
+    ``kaggle-rajeevw`` twin for each, so an exact name hits two rows.
+    """
+    twins = {}
+    for key in ("khabib", "anderson", "antonio", "conor", "dustin"):
+        fighter = seed_api_data[key]
+        fighter.source = "ufcstats"
+        twin = Fighter(name=fighter.name, source="kaggle-rajeevw")
+        session.add(twin)
+        twins[key] = twin
+    session.flush()
+    return {"canonical": seed_api_data, "twins": twins}
 
 
 def _bypass_api_key(request: Request) -> None:

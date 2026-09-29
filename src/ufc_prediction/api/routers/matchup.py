@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ufc_prediction.api.deps import get_db
+from ufc_prediction.api.routers._lookup import resolve_fighter_or_candidates
 from ufc_prediction.api.schemas import (
     EloComparisonModel,
     FighterSearchResponse,
-    FighterSearchResult,
     GrapplingModel,
     MatchupResponse,
     PhysicalModel,
@@ -17,33 +17,9 @@ from ufc_prediction.api.schemas import (
     StyleMatchupWinRateModel,
     StyleModel,
 )
-from ufc_prediction.elo.fighter_queries import get_fighter_detail, search_fighters
 from ufc_prediction.matchup.compare import build_matchup
-from ufc_prediction.models.fighter import Fighter
 
 router = APIRouter(tags=["matchup"])
-
-
-def _resolve_single_fighter(db: Session, name: str) -> Fighter | FighterSearchResponse | None:
-    """Resolve a name to a single fighter, or return None / search response."""
-    matches = search_fighters(db, name)
-    if not matches:
-        return None
-    if len(matches) == 1:
-        return matches[0]
-    # Multiple matches -- return search response for caller to handle
-    results = []
-    for fighter in matches:
-        detail = get_fighter_detail(db, fighter.id)
-        results.append(
-            FighterSearchResult(
-                name=fighter.name,
-                id=fighter.id,
-                division=detail.get("division"),
-                elo=detail.get("elo"),
-            )
-        )
-    return FighterSearchResponse(count=len(results), results=results)
 
 
 @router.get("/matchup")
@@ -58,16 +34,12 @@ def get_matchup(
     matrices, and style analysis.
     """
     # Resolve fighter A
-    result_a = _resolve_single_fighter(db, a)
-    if result_a is None:
-        raise HTTPException(status_code=404, detail=f"Fighter '{a}' not found")
+    result_a = resolve_fighter_or_candidates(db, a)
     if isinstance(result_a, FighterSearchResponse):
         return result_a
 
     # Resolve fighter B
-    result_b = _resolve_single_fighter(db, b)
-    if result_b is None:
-        raise HTTPException(status_code=404, detail=f"Fighter '{b}' not found")
+    result_b = resolve_fighter_or_candidates(db, b)
     if isinstance(result_b, FighterSearchResponse):
         return result_b
 

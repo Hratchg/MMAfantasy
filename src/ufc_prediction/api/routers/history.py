@@ -2,21 +2,17 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from ufc_prediction.api.deps import get_db
+from ufc_prediction.api.routers._lookup import resolve_fighter_or_candidates
 from ufc_prediction.api.schemas import (
     EloHistoryPoint,
     EloHistoryResponse,
     FighterSearchResponse,
-    FighterSearchResult,
 )
-from ufc_prediction.elo.fighter_queries import (
-    get_elo_history,
-    get_fighter_detail,
-    search_fighters,
-)
+from ufc_prediction.elo.fighter_queries import get_elo_history
 
 router = APIRouter(tags=["history"])
 
@@ -32,26 +28,10 @@ def get_fighter_history(
 
     Optionally filter by division and elo_type (overall, striking, grappling).
     """
-    matches = search_fighters(db, name)
+    fighter = resolve_fighter_or_candidates(db, name)
+    if isinstance(fighter, FighterSearchResponse):
+        return fighter
 
-    if not matches:
-        raise HTTPException(status_code=404, detail=f"Fighter '{name}' not found")
-
-    if len(matches) > 1:
-        results = []
-        for fighter in matches:
-            detail = get_fighter_detail(db, fighter.id)
-            results.append(
-                FighterSearchResult(
-                    name=fighter.name,
-                    id=fighter.id,
-                    division=detail.get("division"),
-                    elo=detail.get("elo"),
-                )
-            )
-        return FighterSearchResponse(count=len(results), results=results)
-
-    fighter = matches[0]
     history_data = get_elo_history(db, fighter.id, division=division, elo_type=elo_type)
 
     history = [

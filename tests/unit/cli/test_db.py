@@ -164,11 +164,11 @@ def test_preflight_5_target_not_empty_without_force(
 @patch("ufc_prediction.cli.db.subprocess.run")
 @patch("ufc_prediction.cli.db._row_counts", return_value={t: 1 for t in CANONICAL_TABLES})
 @patch("ufc_prediction.cli.db._print_row_table")
-@patch("ufc_prediction.cli.db._alembic_stamp_head")
+@patch("ufc_prediction.cli.db._alembic_upgrade_head")
 @patch("ufc_prediction.cli.db._predictor_sanity_check")
 def test_seed_skips_alembic_when_no_migrate(
     mock_sanity,
-    mock_stamp,
+    mock_migrate,
     mock_print,
     mock_counts,
     mock_run,
@@ -183,7 +183,7 @@ def test_seed_skips_alembic_when_no_migrate(
     mock_run.return_value = MagicMock(returncode=0, stderr="")
     result = runner.invoke(db_app, ["seed", "--from", str(dump), "--no-migrate"])
     assert result.exit_code == 0
-    mock_stamp.assert_not_called()
+    mock_migrate.assert_not_called()
     mock_sanity.assert_called_once()
 
 
@@ -194,11 +194,11 @@ def test_seed_skips_alembic_when_no_migrate(
 @patch("ufc_prediction.cli.db.subprocess.run")
 @patch("ufc_prediction.cli.db._row_counts", return_value={t: 1 for t in CANONICAL_TABLES})
 @patch("ufc_prediction.cli.db._print_row_table")
-@patch("ufc_prediction.cli.db._alembic_stamp_head")
+@patch("ufc_prediction.cli.db._alembic_upgrade_head")
 @patch("ufc_prediction.cli.db._predictor_sanity_check")
 def test_seed_runs_alembic_by_default(
     mock_sanity,
-    mock_stamp,
+    mock_migrate,
     mock_print,
     mock_counts,
     mock_run,
@@ -213,7 +213,7 @@ def test_seed_runs_alembic_by_default(
     mock_run.return_value = MagicMock(returncode=0, stderr="")
     result = runner.invoke(db_app, ["seed", "--from", str(dump)])
     assert result.exit_code == 0
-    mock_stamp.assert_called_once()
+    mock_migrate.assert_called_once()
     mock_sanity.assert_called_once()
 
 
@@ -245,9 +245,9 @@ def test_seed_surfaces_pg_restore_failure(
 @patch("ufc_prediction.cli.db.subprocess.run")
 @patch("ufc_prediction.cli.db._row_counts", return_value={t: 1 for t in CANONICAL_TABLES})
 @patch("ufc_prediction.cli.db._print_row_table")
-@patch("ufc_prediction.cli.db._alembic_stamp_head")
+@patch("ufc_prediction.cli.db._alembic_upgrade_head")
 def test_seed_exit_2_on_predictor_failure(
-    mock_stamp,
+    mock_migrate,
     mock_print,
     mock_counts,
     mock_run,
@@ -269,3 +269,60 @@ def test_seed_exit_2_on_predictor_failure(
     assert result.exit_code == 2
     assert "Predictor sanity check FAILED" in result.stdout
     assert "KNOWN_ISSUES" in result.stdout
+
+
+@patch.dict("os.environ", {"DATABASE_URL": "postgres://u:p@localhost:5433/x"})
+@patch("ufc_prediction.cli.db.psycopg.connect")
+@patch("ufc_prediction.cli.db.shutil.which", return_value="/usr/bin/pg_restore")
+@patch("ufc_prediction.cli.db._session_for")
+@patch("ufc_prediction.cli.db.subprocess.run")
+@patch("ufc_prediction.cli.db._row_counts", return_value={t: 1 for t in CANONICAL_TABLES})
+@patch("ufc_prediction.cli.db._print_row_table")
+@patch("ufc_prediction.cli.db._predictor_sanity_check")
+def test_seed_upgrades_rather_than_stamps_after_restore(
+    mock_sanity,
+    mock_print,
+    mock_counts,
+    mock_run,
+    mock_session,
+    mock_which,
+    mock_connect,
+    tmp_path,
+):
+    """The dump carries its own alembic_version. `stamp head` would overwrite it
+    with the repo head without applying newer migrations (masking schema drift);
+    `upgrade head` applies them and is a no-op when the dump is already at head."""
+    dump = tmp_path / "x.dump"
+    dump.write_bytes(b"PGDMP")
+    mock_session.return_value.__enter__.return_value.execute.return_value.scalar.return_value = 0
+    mock_run.return_value = MagicMock(returncode=0, stderr="")
+    result = runner.invoke(db_app, ["seed", "--from", str(dump)])
+    assert result.exit_code == 0, result.stdout
+    alembic_calls = [c.args[0] for c in mock_run.call_args_list if c.args[0][0] == "alembic"]
+    assert alembic_calls == [["alembic", "upgrade", "head"]]
+
+
+@patch.dict("os.environ", {"DATABASE_URL": "postgres://u:p@localhost:5433/x"})
+@patch("ufc_prediction.cli.db.psycopg.connect")
+@patch("ufc_prediction.cli.db.shutil.which", return_value="/usr/bin/pg_restore")
+@patch("ufc_prediction.cli.db._session_for")
+@patch("ufc_prediction.cli.db.subprocess.run")
+@patch("ufc_prediction.cli.db._predictor_sanity_check")
+def test_seed_surfaces_alembic_upgrade_failure(
+    mock_sanity,
+    mock_run,
+    mock_session,
+    mock_which,
+    mock_connect,
+    tmp_path,
+):
+    dump = tmp_path / "x.dump"
+    dump.write_bytes(b"PGDMP")
+    mock_session.return_value.__enter__.return_value.execute.return_value.scalar.return_value = 0
+    mock_run.side_effect = lambda cmd, **kw: MagicMock(
+        returncode=1 if cmd[0] == "alembic" else 0, stderr="boom"
+    )
+    result = runner.invoke(db_app, ["seed", "--from", str(dump)])
+    assert result.exit_code == 1
+    assert "alembic upgrade head FAILED" in result.stdout
+    mock_sanity.assert_not_called()

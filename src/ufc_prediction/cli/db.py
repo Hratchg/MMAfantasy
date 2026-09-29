@@ -190,14 +190,18 @@ def _print_row_table(counts: dict[str, int], title: str) -> None:
     console.print(table)
 
 
-def _alembic_stamp_head() -> None:
+def _alembic_upgrade_head() -> None:
+    # The dump restores its own alembic_version (data/seed/PROVENANCE.md).
+    # `upgrade head` applies any migrations newer than that stamp and is a
+    # no-op when they match; `stamp head` would instead relabel an older
+    # schema as head and mask the drift.
     result = subprocess.run(
-        ["alembic", "stamp", "head"],
+        ["alembic", "upgrade", "head"],
         capture_output=True,
         text=True,
     )
     if result.returncode != 0:
-        console.print(f"[red]alembic stamp head FAILED:[/red] {result.stderr}")
+        console.print(f"[red]alembic upgrade head FAILED:[/red] {result.stderr}")
         raise typer.Exit(1)
 
 
@@ -228,7 +232,7 @@ def seed(
     ),
     force: bool = typer.Option(False, "--force", help="Restore over non-empty target DB"),
     no_migrate: bool = typer.Option(
-        False, "--no-migrate", help="Skip `alembic stamp head` after restore"
+        False, "--no-migrate", help="Skip `alembic upgrade head` after restore"
     ),
 ) -> None:
     """Restore the corpus snapshot into the local Postgres."""
@@ -257,7 +261,7 @@ def seed(
         raise typer.Exit(1)
 
     if not no_migrate:
-        _alembic_stamp_head()
+        _alembic_upgrade_head()
 
     _print_row_table(_row_counts(url), title="ufc db seed — row counts")
     _predictor_sanity_check()

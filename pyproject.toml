@@ -197,6 +197,7 @@ files = [
     # dedup/
     "src/ufc_prediction/dedup/__init__.py",
     "src/ufc_prediction/dedup/source_priority.py",
+    "src/ufc_prediction/dedup/twins.py",
     # elo/
     "src/ufc_prediction/elo/__init__.py",
     "src/ufc_prediction/elo/calibration.py",  # Phase 68 fix

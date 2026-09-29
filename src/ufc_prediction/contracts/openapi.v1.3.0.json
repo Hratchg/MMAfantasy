@@ -996,6 +996,63 @@
             "title": "Event Date",
             "description": "As-of date for the prediction. Defaults to today() if omitted."
           },
+          "weight_class": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Strawweight",
+                  "Flyweight",
+                  "Bantamweight",
+                  "Featherweight",
+                  "Lightweight",
+                  "Welterweight",
+                  "Middleweight",
+                  "Light Heavyweight",
+                  "Heavyweight",
+                  "Women's Strawweight",
+                  "Women's Flyweight",
+                  "Women's Bantamweight",
+                  "Women's Featherweight",
+                  "Catch Weight",
+                  "Open Weight"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Class",
+            "description": "Weight class of the bout. Omit to use the scheduled fight's, or else the fighters' most recent shared division."
+          },
+          "num_rounds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "enum": [
+                  3,
+                  5
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Rounds",
+            "description": "Scheduled rounds (3, or 5 for main events and title fights)."
+          },
+          "is_title_fight": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Title Fight",
+            "description": "Whether the bout is for a title."
+          },
           "accept_schema_version": {
             "type": "string",
             "enum": [

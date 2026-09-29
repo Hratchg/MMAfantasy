@@ -281,9 +281,9 @@ def test_previously_dead_columns_are_now_populated(parity_setup):
         assert not np.isnan(vec[_COLS.index(col)]), col
 
 
-def test_weight_class_defaults_to_fighter_a_latest_division(parity_setup):
-    """No weight_class passed → A's most recent division; the Elo replay
-    receives the same division."""
+def test_weight_class_defaults_to_resolved_prior_division(parity_setup):
+    """No weight_class passed (and no stored Fight row) → a division resolved
+    from the fighters' prior fights; the Elo replay receives the same one."""
     _, target, physicals = parity_setup
     seen = {}
 
@@ -309,6 +309,62 @@ def test_weight_class_defaults_to_fighter_a_latest_division(parity_setup):
     )
     assert vec[_COLS.index("num_rounds")] == 3.0
     assert vec[_COLS.index("is_title_fight")] == 0.0
+
+
+def test_missing_physicals_imputed_like_training(monkeypatch):
+    """A fighter with no reach/height: training imputes the division median
+    before differencing (D-01); serve must produce the same row."""
+    all_records, target, elo_features, computed, round_stats, physicals, medians, pre_ufc = (
+        _corpus()
+    )
+    physicals[2] = {**physicals[2], "reach_inches": None, "height_inches": None}
+    X, _y, _dates = FeatureMatrixAssembler().assemble(
+        all_records,
+        elo_features,
+        computed,
+        physicals,
+        medians,
+        round_stats=round_stats,
+        pre_ufc_records=pre_ufc,
+        feature_set="v2.1-no-net",
+    )
+    train_row = X[-1]
+    tid = target["fight_id"]
+    monkeypatch.setattr(
+        inference_features,
+        "_load_career_inputs",
+        lambda s, fa, fb, d: _serve_inputs(
+            all_records, target, elo_features, computed, round_stats, pre_ufc
+        ),
+    )
+    monkeypatch.setattr(
+        inference_features,
+        "_get_latest_elo",
+        lambda s, fid, et, *a, **kw: elo_features[(fid, tid)][f"elo_{et}"],
+    )
+    monkeypatch.setattr(
+        inference_features,
+        "_get_pre_fight_performance",
+        lambda s, fa, fb, d: (dict(computed[(fa, tid)]), dict(computed[(fb, tid)])),
+    )
+    monkeypatch.setattr(inference_features, "_get_cached_odds", lambda *a: (None, None))
+    monkeypatch.setattr(
+        inference_features, "_query_division_physical_medians", lambda s, wc, cutoff: medians[wc]
+    )
+    vec = inference_features.build(
+        MagicMock(),
+        _stub_fighter(1, physicals),
+        _stub_fighter(2, physicals),
+        target["event_date"],
+        feature_set="v2.1-no-net",
+        weight_class=target["weight_class"],
+        num_rounds=target["num_rounds"],
+        is_title_fight=target["is_title_fight"],
+    )[0]
+    for col in ("reach_diff", "height_diff", "leg_reach_diff"):
+        i = _COLS.index(col)
+        assert not np.isnan(train_row[i]), col
+        assert vec[i] == pytest.approx(train_row[i]), col
 
 
 def test_two_debutants_match_training_semantics(monkeypatch):

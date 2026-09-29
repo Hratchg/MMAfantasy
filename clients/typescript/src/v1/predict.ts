@@ -193,6 +193,28 @@ export interface components {
             last_fight_date?: string | null;
         };
         /**
+         * EloComparisonModel
+         * @description Elo comparison across overall and domain ratings.
+         */
+        EloComparisonModel: {
+            /** Fighter A Overall */
+            fighter_a_overall?: number | null;
+            /** Fighter B Overall */
+            fighter_b_overall?: number | null;
+            /** Fighter A Striking */
+            fighter_a_striking?: number | null;
+            /** Fighter B Striking */
+            fighter_b_striking?: number | null;
+            /** Fighter A Grappling */
+            fighter_a_grappling?: number | null;
+            /** Fighter B Grappling */
+            fighter_b_grappling?: number | null;
+            /** Fighter A Division */
+            fighter_a_division?: string | null;
+            /** Fighter B Division */
+            fighter_b_division?: string | null;
+        };
+        /**
          * EloHistoryPoint
          * @description A single point in a fighter's Elo trajectory.
          */
@@ -259,10 +281,65 @@ export interface components {
             /** Elo */
             elo?: number | null;
         };
+        /**
+         * GrapplingModel
+         * @description Grappling matchup matrix.
+         */
+        GrapplingModel: {
+            /** A Td Rate */
+            a_td_rate?: number | null;
+            /** A Td Accuracy */
+            a_td_accuracy?: number | null;
+            /** A Td Defense */
+            a_td_defense?: number | null;
+            /** B Td Rate */
+            b_td_rate?: number | null;
+            /** B Td Accuracy */
+            b_td_accuracy?: number | null;
+            /** B Td Defense */
+            b_td_defense?: number | null;
+            /** A Ctrl Time */
+            a_ctrl_time?: number | null;
+            /** B Ctrl Time */
+            b_ctrl_time?: number | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * MatchupResponse
+         * @description Full matchup comparison between two fighters.
+         */
+        MatchupResponse: {
+            /** Fighter A Name */
+            fighter_a_name: string;
+            /** Fighter B Name */
+            fighter_b_name: string;
+            physical: components["schemas"]["PhysicalModel"];
+            elo: components["schemas"]["EloComparisonModel"];
+            striking: components["schemas"]["StrikingModel"];
+            grappling: components["schemas"]["GrapplingModel"];
+            style: components["schemas"]["StyleModel"];
+        };
+        /**
+         * PhysicalModel
+         * @description Physical attribute differentials between two fighters.
+         */
+        PhysicalModel: {
+            /** Height Diff */
+            height_diff?: number | null;
+            /** Reach Diff */
+            reach_diff?: number | null;
+            /** Leg Reach Diff */
+            leg_reach_diff?: number | null;
+            /** Age Diff */
+            age_diff?: number | null;
+            /** Fighter A Age */
+            fighter_a_age?: number | null;
+            /** Fighter B Age */
+            fighter_b_age?: number | null;
         };
         /**
          * PredictMatchupRequestV1
@@ -284,6 +361,21 @@ export interface components {
              * @description As-of date for the prediction. Defaults to today() if omitted.
              */
             event_date?: string | null;
+            /**
+             * Weight Class
+             * @description Weight class of the bout. Omit to use the scheduled fight's, or else the fighters' most recent shared division.
+             */
+            weight_class?: ("Strawweight" | "Flyweight" | "Bantamweight" | "Featherweight" | "Lightweight" | "Welterweight" | "Middleweight" | "Light Heavyweight" | "Heavyweight" | "Women's Strawweight" | "Women's Flyweight" | "Women's Bantamweight" | "Women's Featherweight" | "Catch Weight" | "Open Weight") | null;
+            /**
+             * Num Rounds
+             * @description Scheduled rounds (3, or 5 for main events and title fights).
+             */
+            num_rounds?: (3 | 5) | null;
+            /**
+             * Is Title Fight
+             * @description Whether the bout is for a title.
+             */
+            is_title_fight?: boolean | null;
             /**
              * Accept Schema Version
              * @description Response schema_version to emit. Default 1.2.0; partners on older contracts pass '1.0.0' or '1.1.0' to opt out of new fields. v1.3.0 is identical to v1.2.0 on the success path (byte-identical via forward-compat lock); v1.3.0 partners additionally opt in to the RFC 7807 application/problem+json error wrapper by sending `Accept: application/problem+json` on the request. See Phase 52 API-V26-01 / API-V26-02.
@@ -458,6 +550,62 @@ export interface components {
             /** Fighters */
             fighters: components["schemas"]["RankedFighter"][];
         };
+        /**
+         * StrikingModel
+         * @description Striking matchup matrix.
+         */
+        StrikingModel: {
+            /** A Sig Str Per Min */
+            a_sig_str_per_min?: number | null;
+            /** A Striking Accuracy */
+            a_striking_accuracy?: number | null;
+            /** A Strike Defense */
+            a_strike_defense?: number | null;
+            /** B Sig Str Per Min */
+            b_sig_str_per_min?: number | null;
+            /** B Striking Accuracy */
+            b_striking_accuracy?: number | null;
+            /** B Strike Defense */
+            b_strike_defense?: number | null;
+        };
+        /**
+         * StyleMatchupWinRateModel
+         * @description Win rate for a specific style matchup type.
+         */
+        StyleMatchupWinRateModel: {
+            /** Style A */
+            style_a: string;
+            /** Style B */
+            style_b: string;
+            /** Style A Wins */
+            style_a_wins: number;
+            /** Style B Wins */
+            style_b_wins: number;
+            /** Total */
+            total: number;
+            /** Style A Win Pct */
+            style_a_win_pct?: number | null;
+            /** Sufficient Data */
+            sufficient_data: boolean;
+        };
+        /**
+         * StyleModel
+         * @description Style analysis section of a matchup comparison.
+         */
+        StyleModel: {
+            /** Fighter A Style */
+            fighter_a_style?: string | null;
+            /** Fighter B Style */
+            fighter_b_style?: string | null;
+            /** Fighter A Index */
+            fighter_a_index?: number | null;
+            /** Fighter B Index */
+            fighter_b_index?: number | null;
+            /** Matchup Win Rates */
+            matchup_win_rates: components["schemas"]["StyleMatchupWinRateModel"][];
+            /** Cross Division Warning */
+            cross_division_warning?: string | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -612,7 +760,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["MatchupResponse"] | components["schemas"]["FighterSearchResponse"];
                 };
             };
             /** @description Validation Error */

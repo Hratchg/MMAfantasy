@@ -31,12 +31,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.orm import Session
 
 from ufc_prediction.dedup.source_priority import prefer_canonical
 from ufc_prediction.elo.asof import RatedFight, pre_fight_rating
 from ufc_prediction.elo.config import EloConfig
+from ufc_prediction.elo.engine import _NON_TRANSFER_DIVISIONS
 from ufc_prediction.elo.seed import load_seeds
 from ufc_prediction.features import queries as feature_queries
 from ufc_prediction.features.compute import FeatureComputer
@@ -44,10 +45,11 @@ from ufc_prediction.ml import queries as ml_queries
 from ufc_prediction.ml.config import (
     FEATURE_COLUMNS_V22,
     PERFORMANCE_FEATURE_KEYS,
+    MLConfig,
     encode_stance_matchup,
     get_feature_columns,
 )
-from ufc_prediction.ml.feature_matrix import FeatureMatrixAssembler
+from ufc_prediction.ml.feature_matrix import FeatureMatrixAssembler, compute_division_medians
 from ufc_prediction.ml.features_v22.meta import (
     age_at_fight,
     division_finish_rate_shrunk,
@@ -330,6 +332,94 @@ def _get_cached_odds(
         return None, None
 
 
+def _query_scheduled_bout(
+    session: Session,
+    fa_id: int,
+    fb_id: int,
+    event_date: date,
+) -> tuple[str, int, bool] | None:
+    """``(weight_class, num_rounds, is_title_fight)`` of the stored ``Fight``
+    row for ``(A, B)`` on ``event_date``, either orientation.
+
+    This is the bout context training reads off the same row. A ufcstats row
+    wins over a kaggle duplicate. Returns ``None`` when no row exists (an
+    unscheduled hypothetical matchup) or on any lookup failure.
+    """
+    try:
+        stmt = (
+            select(Fight.weight_class, Fight.num_rounds, Fight.is_title_fight)
+            .join(Event, Fight.event_id == Event.id)
+            .where(
+                ((Fight.fighter_a_id == fa_id) & (Fight.fighter_b_id == fb_id))
+                | ((Fight.fighter_a_id == fb_id) & (Fight.fighter_b_id == fa_id))
+            )
+            .where(Event.date == event_date)
+            .order_by(case((Event.source == "ufcstats", 0), else_=1), Fight.id)
+            .limit(1)
+        )
+        row = session.execute(stmt).first()
+        if row is None:
+            return None
+        weight_class, num_rounds, is_title_fight = row
+        if not isinstance(weight_class, str) or not weight_class:
+            return None
+        return (
+            weight_class,
+            num_rounds if isinstance(num_rounds, int) else 3,
+            bool(is_title_fight) if isinstance(is_title_fight, bool) else False,
+        )
+    except Exception as exc:
+        logger.warning("inference_features scheduled-bout lookup failed: %s", exc)
+        return None
+
+
+def _query_division_physical_medians(
+    session: Session,
+    weight_class: str | None,
+    cutoff: date,
+) -> dict[str, float]:
+    """Training's D-01 imputation medians for one division.
+
+    Feeds ``feature_matrix.compute_division_medians`` exactly what training
+    does for ``weight_class``: the fighters of ufcstats fights with a winner
+    in that division before ``cutoff``, with their physicals. Returns ``{}``
+    when the division has no such fights (training then leaves the
+    difference NaN) or on any lookup failure.
+    """
+    if not weight_class:
+        return {}
+    try:
+        fight_stmt = _training_scope(
+            select(Fight.fighter_a_id, Fight.fighter_b_id, Event.date)
+            .join(Event, Fight.event_id == Event.id)
+            .where(Fight.weight_class == weight_class)
+            .where(Event.date < cutoff)
+        )
+        records = [
+            {
+                "fighter_a_id": a_id,
+                "fighter_b_id": b_id,
+                "event_date": event_date,
+                "weight_class": weight_class,
+            }
+            for a_id, b_id, event_date in session.execute(fight_stmt).all()
+        ]
+        if not records:
+            return {}
+        fighter_ids = {r["fighter_a_id"] for r in records} | {r["fighter_b_id"] for r in records}
+        phys_stmt = select(
+            Fighter.id, Fighter.height_inches, Fighter.reach_inches, Fighter.leg_reach_inches
+        ).where(Fighter.id.in_(fighter_ids))
+        physicals = {
+            fid: {"height_inches": h, "reach_inches": r, "leg_reach_inches": lr}
+            for fid, h, r, lr in session.execute(phys_stmt).all()
+        }
+        return compute_division_medians(physicals, records, cutoff).get(weight_class, {})
+    except Exception as exc:
+        logger.warning("inference_features division-median lookup failed: %s", exc)
+        return {}
+
+
 def _resolve_fighter_id(session: Session, name: str) -> int | None:
     """Resolve fighter name → single canonical id. Used only by ``build``
     when the caller passes Fighter ORM rows that haven't been written yet.
@@ -459,6 +549,16 @@ def _populate_network(
 # live path mirrors the training path's as-of-date guard.
 
 
+def _training_scope(stmt: Any) -> Any:
+    """Restrict a Fight⋈Event select to the fights training sees.
+
+    ``ml.queries.load_fight_records`` keeps ufcstats fights with a winner
+    (Plan 28-04 dedup). Without this the v2.2 serve helpers counted kaggle
+    duplicates (~1.95x) and NC / scheduled rows that training never sees.
+    """
+    return stmt.where(Event.source == "ufcstats").where(Fight.winner_id.is_not(None))
+
+
 def _query_ref_state(
     session: Session,
     referee_id: int | None,
@@ -483,7 +583,7 @@ def _query_ref_state(
 
     try:
         # Global rates: all fights at events strictly before the_event_date.
-        global_stmt = (
+        global_stmt = _training_scope(
             select(Fight.method, Event.date)
             .join(Event, Fight.event_id == Event.id)
             .where(Event.date < the_event_date)
@@ -502,7 +602,7 @@ def _query_ref_state(
 
         # Per-referee history: fights at events officiated by this referee
         # strictly before the_event_date.
-        ref_stmt = (
+        ref_stmt = _training_scope(
             select(Event.date, Fight.method)
             .join(Event, Fight.event_id == Event.id)
             .where(Event.referee_id == referee_id)
@@ -602,15 +702,20 @@ def _query_fighter_prior_venue(
 
     Returns ``{"lat", "lon", "timezone_iana", "event_date"}`` or ``None``
     (debut fighter — no prior UFC fight). Strict ``<`` cutoff matches the
-    training path's Pitfall #4 leakage guard.
+    training path's Pitfall #4 leakage guard. Like
+    ``feature_matrix._build_fighter_prior_venues``, only training-scope
+    fights at an event with a usable venue count.
     """
     try:
-        stmt = (
+        stmt = _training_scope(
             select(Venue.lat, Venue.lon, Venue.timezone_iana, Event.date)
             .join(Event, Event.venue_id == Venue.id)
             .join(Fight, Fight.event_id == Event.id)
             .where((Fight.fighter_a_id == fighter_id) | (Fight.fighter_b_id == fighter_id))
             .where(Event.date < before_date)
+            .where(Venue.lat.is_not(None))
+            .where(Venue.lon.is_not(None))
+            .where(Venue.timezone_iana.is_not(None))
             .order_by(Event.date.desc())
             .limit(1)
         )
@@ -697,7 +802,7 @@ def _query_fighter_prior_fight_date(
     ``before_date``). ``None`` for debut fighters → ``layoff_days`` returns
     0 sentinel (Q4 + D-06)."""
     try:
-        stmt = (
+        stmt = _training_scope(
             select(Event.date)
             .join(Fight, Fight.event_id == Event.id)
             .where((Fight.fighter_a_id == fighter_id) | (Fight.fighter_b_id == fighter_id))
@@ -739,8 +844,12 @@ def _query_elo_history(
         from sqlalchemy import distinct
 
         # Step 1: find the last `limit` distinct fight_dates for this fighter.
-        date_stmt = (
+        # Only snapshots of training-scope fights (ufcstats, winner present),
+        # the same fights ``_build_elo_histories`` walks.
+        date_stmt = _training_scope(
             select(distinct(EloSnapshot.fight_date))
+            .join(Fight, EloSnapshot.fight_id == Fight.id)
+            .join(Event, Fight.event_id == Event.id)
             .where(EloSnapshot.fighter_id == fighter_id)
             .where(EloSnapshot.fight_date < before_date)
             .order_by(EloSnapshot.fight_date.desc())
@@ -751,12 +860,14 @@ def _query_elo_history(
             return []
 
         # Step 2: pull all elo_type snapshots for these dates.
-        snap_stmt = (
+        snap_stmt = _training_scope(
             select(
                 EloSnapshot.fight_date,
                 EloSnapshot.elo_type,
                 EloSnapshot.elo_before,
             )
+            .join(Fight, EloSnapshot.fight_id == Fight.id)
+            .join(Event, Fight.event_id == Event.id)
             .where(EloSnapshot.fighter_id == fighter_id)
             .where(EloSnapshot.fight_date.in_(fight_dates))
         )
@@ -811,8 +922,10 @@ def _query_division_state(
     try:
         # Per-class history: chronological list for the queried weight class.
         # Global rate: corpus-wide aggregate (matches training-path).
-        stmt = select(Fight.weight_class, Fight.method, Event.date).join(
-            Event, Fight.event_id == Event.id
+        stmt = _training_scope(
+            select(Fight.weight_class, Fight.method, Event.date).join(
+                Event, Fight.event_id == Event.id
+            )
         )
         div_hist: dict[str, list[dict]] = {}
         total_finishes = 0
@@ -842,7 +955,10 @@ def _query_division_mean_reach(
     session: Session,
     weight_class: str | None,
 ) -> float | None:
-    """Mean reach_inches across fighters who have fought in ``weight_class``.
+    """Mean reach_inches across the distinct fighters who have fought in
+    ``weight_class`` (training-scope fights), as
+    ``feature_matrix._build_division_mean_reaches`` computes it — one entry
+    per fighter, not one per fight appearance.
 
     Returns ``None`` when class is unknown or no fighters with known reach;
     caller treats as 0.0 → ``reach_diff_normalized`` → NaN (Pattern D).
@@ -851,15 +967,19 @@ def _query_division_mean_reach(
         return None
     try:
         from sqlalchemy import func as sa_func
+        from sqlalchemy import union
 
+        def _side(col: Any) -> Any:
+            return _training_scope(
+                select(col.label("fighter_id"))
+                .join(Event, Fight.event_id == Event.id)
+                .where(Fight.weight_class == weight_class)
+            )
+
+        fighter_ids = union(_side(Fight.fighter_a_id), _side(Fight.fighter_b_id)).subquery()
         stmt = (
             select(sa_func.avg(Fighter.reach_inches))
-            .select_from(Fighter)
-            .join(
-                Fight,
-                (Fight.fighter_a_id == Fighter.id) | (Fight.fighter_b_id == Fighter.id),
-            )
-            .where(Fight.weight_class == weight_class)
+            .where(Fighter.id.in_(select(fighter_ids.c.fighter_id)))
             .where(Fighter.reach_inches.is_not(None))
         )
         result = session.scalar(stmt)
@@ -876,20 +996,25 @@ def _query_fighter_division(
     session: Session,
     fighter_id: int,
 ) -> str | None:
-    """Resolve a fighter's most recent weight_class (best-effort).
+    """Resolve a fighter's most recent transferable weight_class (best-effort).
 
-    For unknown / unsigned fighters returns ``None`` → division-prior
-    falls back to global finish rate (Bayesian fallback).
+    Same scope as training (ufcstats fights with a winner). 'Catch Weight' /
+    'Open Weight' are skipped unless the fighter has fought nothing else (see
+    ``_resolve_division``). For unknown / unsigned fighters returns ``None``
+    → division-prior falls back to global finish rate (Bayesian fallback).
     """
     try:
-        stmt = (
+        stmt = _training_scope(
             select(Fight.weight_class)
             .join(Event, Fight.event_id == Event.id)
             .where((Fight.fighter_a_id == fighter_id) | (Fight.fighter_b_id == fighter_id))
-            .order_by(Event.date.desc())
-            .limit(1)
+            .order_by(Event.date.desc(), Fight.id.desc())
         )
-        return session.scalar(stmt)
+        divisions = [wc for wc in session.execute(stmt).scalars().all() if wc]
+        for wc in divisions:
+            if wc not in _NON_TRANSFER_DIVISIONS:
+                return wc
+        return divisions[0] if divisions else None
     except Exception as exc:
         logger.warning(
             "inference_features _query_fighter_division failed: %s",
@@ -1095,6 +1220,53 @@ def _synthetic_fight_id(records: list[dict[str, Any]]) -> int:
     return min(lowest, 0) - 1
 
 
+def _resolve_division(
+    records: list[dict[str, Any]],
+    fa_id: int,
+    fb_id: int,
+) -> str | None:
+    """Best guess at the division of an A-vs-B bout with no known weight class.
+
+    'Catch Weight' / 'Open Weight' are one-off bout labels, not divisions: the
+    Elo engine never transfers a rating into them, so resolving to one leaves
+    the opponent unrated there (seed / 1500) and ``weight_class_ordinal`` on
+    its default. Each fighter's most recent transferable division is a
+    candidate. When they differ, prefer the one both fighters have fought in,
+    else the one from the more recent fight, so the answer does not depend on
+    which fighter is listed first. Falls back to the last division of any
+    kind (A's, then B's) when neither has a transferable one.
+
+    ``records`` must be chronological.
+    """
+    last_transferable: dict[int, tuple[date, str]] = {}
+    last_any: dict[int, str] = {}
+    fought: dict[int, set[str]] = {fa_id: set(), fb_id: set()}
+    for r in records:
+        wc = r["weight_class"]
+        if not wc:
+            continue
+        for fid in (fa_id, fb_id):
+            if fid in (r["fighter_a_id"], r["fighter_b_id"]):
+                fought[fid].add(wc)
+                last_any[fid] = wc
+                if wc not in _NON_TRANSFER_DIVISIONS:
+                    last_transferable[fid] = (r["event_date"], wc)
+
+    cand_a = last_transferable.get(fa_id)
+    cand_b = last_transferable.get(fb_id)
+    if cand_a is None or cand_b is None or cand_a[1] == cand_b[1]:
+        chosen = cand_a or cand_b
+        if chosen is not None:
+            return chosen[1]
+        return last_any.get(fa_id) or last_any.get(fb_id)
+
+    a_shared = cand_a[1] in fought[fb_id]
+    b_shared = cand_b[1] in fought[fa_id]
+    if a_shared != b_shared:
+        return cand_a[1] if a_shared else cand_b[1]
+    return cand_b[1] if cand_b[0] > cand_a[0] else cand_a[1]
+
+
 def _diff(va: float, vb: float) -> float:
     if va != va or vb != vb:  # NaN on either side propagates
         return float("nan")
@@ -1121,16 +1293,12 @@ def _populate_career(
     construction, exactly what training computes for a fight on
     ``event_date`` — the builders only ever read pre-fight state.
 
-    Returns the weight class used (resolved from A's, then B's, most recent
-    fight when not given) so the Elo section can replay the same division.
+    Returns the weight class used (resolved by ``_resolve_division`` when not
+    given) so the Elo section can replay the same division.
     """
     records = sorted(inputs.fight_records, key=lambda r: (r["event_date"], r["fight_id"]))
     if weight_class is None:
-        for fid in (fa_id, fb_id):
-            mine = [r for r in records if fid in (r["fighter_a_id"], r["fighter_b_id"])]
-            if mine:
-                weight_class = mine[-1]["weight_class"]
-                break
+        weight_class = _resolve_division(records, fa_id, fb_id)
     upcoming_id = _synthetic_fight_id(records)
     upcoming = {
         "fight_id": upcoming_id,
@@ -1195,12 +1363,18 @@ def _populate_physical(
     fighter_b,
     feats: dict[str, float],
     event_date: date,
+    *,
+    session: Session | None = None,
+    weight_class: str | None = None,
 ) -> None:
     """Section 3: Physical differentials (4 features) + stance (1 feature).
 
     Reads attributes directly off the Fighter ORM rows (already loaded by
-    the predictor's ``_resolve_fighter`` call). Same nullable semantics as
-    ``feature_matrix.py:422-458`` — NaN on either side missing.
+    the predictor's ``_resolve_fighter`` call). Mirrors training's D-01
+    imputation (``feature_matrix.py`` section 3): a missing height / reach /
+    leg reach is replaced by the division median computed with the training
+    cutoff before differencing; the difference is NaN only when the division
+    has no median either. Medians are read only when a value is missing.
 
     Phase 23 Pitfall #5 fix: ``age_diff`` is computed from ``event_date``
     (NOT ``date.today()``) so backtests against historical events compute
@@ -1210,6 +1384,7 @@ def _populate_physical(
     (``feature_matrix.py:650-659`` already uses ``event_date``) for any
     ``event_date != today`` — a silent parity break for OOF generation.
     """
+    div_med: dict[str, float] | None = None
     for attr, key in (
         ("height_inches", "height_diff"),
         ("reach_inches", "reach_diff"),
@@ -1217,6 +1392,16 @@ def _populate_physical(
     ):
         val_a = getattr(fighter_a, attr, None)
         val_b = getattr(fighter_b, attr, None)
+        if (val_a is None or val_b is None) and session is not None:
+            if div_med is None:
+                div_med = _query_division_physical_medians(
+                    session, weight_class, date.fromisoformat(MLConfig().cutoff_date)
+                )
+            median_val = div_med.get(attr)
+            if val_a is None:
+                val_a = median_val
+            if val_b is None:
+                val_b = median_val
         if val_a is not None and val_b is not None:
             feats[key] = val_a - val_b
 
@@ -1329,8 +1514,8 @@ def build(
     referee_id: int | None = None,
     event_id: int | None = None,
     weight_class: str | None = None,
-    num_rounds: int = 3,
-    is_title_fight: bool = False,
+    num_rounds: int | None = None,
+    is_title_fight: bool | None = None,
 ) -> np.ndarray:
     """Build a ``(1, len(cols))`` feature vector from the fighters' stored
     history as of ``event_date`` + injected live/cached odds.
@@ -1364,11 +1549,16 @@ def build(
             graceful NaN degradation for the 6 TRAVEL cols. Debut fighters
             (no prior UFC fight) get the 0 sentinel per CONTEXT D-04.
         weight_class: Division of the upcoming fight. Drives
-            ``weight_class_ordinal``, ``division_fight_count_diff`` and the
-            per-division Elo replay. ``None`` falls back to fighter A's (then
-            B's) most recent division.
+            ``weight_class_ordinal``, ``division_fight_count_diff``, the
+            per-division Elo replay and the physical-median imputation.
         num_rounds: Scheduled rounds (3 or 5) → ``num_rounds`` column.
         is_title_fight: → ``is_title_fight`` column.
+
+            Any of the three left ``None`` is read from the stored ``Fight``
+            row for ``(A, B, event_date)`` when one exists (the same row
+            training reads). Without one, ``num_rounds`` defaults to 3,
+            ``is_title_fight`` to False and ``weight_class`` to
+            ``_resolve_division`` over both fighters' prior fights.
 
     Returns:
         ``np.ndarray`` of shape ``(1, len(cols))``, dtype ``float64``.
@@ -1387,6 +1577,20 @@ def build(
 
     cols = get_feature_columns(feature_set=feature_set)
     feats: dict[str, float] = {col: float("nan") for col in cols}
+
+    # Bout context: explicit args win, then the stored Fight row for this
+    # matchup and date, then the defaults / division fallback.
+    if weight_class is None or num_rounds is None or is_title_fight is None:
+        scheduled = _query_scheduled_bout(session, fighter_a.id, fighter_b.id, event_date)
+        if scheduled is not None:
+            sched_wc, sched_rounds, sched_title = scheduled
+            weight_class = weight_class if weight_class is not None else sched_wc
+            num_rounds = num_rounds if num_rounds is not None else sched_rounds
+            is_title_fight = is_title_fight if is_title_fight is not None else sched_title
+    if num_rounds is None:
+        num_rounds = 3
+    if is_title_fight is None:
+        is_title_fight = False
 
     # Sections 5, 7-12: career / context / pace / layoff / rolling / rematch /
     # pre-UFC — replayed from both fighters' prior fights with the assembler's
@@ -1421,7 +1625,9 @@ def build(
     )
 
     # Section 3: Physical + stance (Pitfall #5 fix — age uses event_date)
-    _populate_physical(fighter_a, fighter_b, feats, event_date)
+    _populate_physical(
+        fighter_a, fighter_b, feats, event_date, session=session, weight_class=weight_class
+    )
 
     # Section 4: 5-feature odds block (Gotcha 2). Live takes precedence;
     # cache is consulted only when live_odds is None.

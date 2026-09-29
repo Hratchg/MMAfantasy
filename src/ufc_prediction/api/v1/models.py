@@ -25,6 +25,26 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ufc_prediction.api.disclaimer import DISCLAIMER_200W
 
+# The divisions the model's weight-class ordinal knows, plus the two one-off
+# bout labels ufcstats uses ('Catch Weight', 'Open Weight').
+WeightClass = Literal[
+    "Strawweight",
+    "Flyweight",
+    "Bantamweight",
+    "Featherweight",
+    "Lightweight",
+    "Welterweight",
+    "Middleweight",
+    "Light Heavyweight",
+    "Heavyweight",
+    "Women's Strawweight",
+    "Women's Flyweight",
+    "Women's Bantamweight",
+    "Women's Featherweight",
+    "Catch Weight",
+    "Open Weight",
+]
+
 
 class PredictMatchupRequestV1(BaseModel):
     """Request body for POST /api/v1/predict."""
@@ -48,6 +68,28 @@ class PredictMatchupRequestV1(BaseModel):
     event_date: date | None = Field(
         None,
         description="As-of date for the prediction. Defaults to today() if omitted.",
+    )
+
+    # ── Bout context (serve/train parity) ─────────────────────────────────
+    # The model was trained with the bout's real division, scheduled rounds
+    # and title flag. Omitted fields are read from the stored fight row for
+    # (fighter_a, fighter_b, event_date) when one exists; otherwise rounds
+    # default to 3, title to false and the division is inferred from the
+    # fighters' recent bouts.
+    weight_class: WeightClass | None = Field(
+        None,
+        description=(
+            "Weight class of the bout. Omit to use the scheduled fight's, or "
+            "else the fighters' most recent shared division."
+        ),
+    )
+    num_rounds: Literal[3, 5] | None = Field(
+        None,
+        description="Scheduled rounds (3, or 5 for main events and title fights).",
+    )
+    is_title_fight: bool | None = Field(
+        None,
+        description="Whether the bout is for a title.",
     )
 
     # ── Phase 35 CONTRACT-V24-02 — schema-version negotiation ─────────────

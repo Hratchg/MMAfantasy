@@ -42,7 +42,9 @@ def test_twin_matches_on_date_and_canonical_names_in_either_order() -> None:
 
 
 def test_different_date_or_opponent_is_not_a_twin() -> None:
-    other_day = _f(2, "kaggle-rajeevw", (20, "BJ Penn"), (21, "Georges St-Pierre"), date(2020, 5, 17))
+    other_day = _f(
+        2, "kaggle-rajeevw", (20, "BJ Penn"), (21, "Georges St-Pierre"), date(2020, 5, 17)
+    )
     other_opp = _f(3, "kaggle-rajeevw", (22, "Matt Hughes"), (21, "Georges St-Pierre"))
     match = find_twins([UFC], [other_day, other_opp])
     assert match.twins == {1: []}

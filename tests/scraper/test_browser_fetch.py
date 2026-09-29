@@ -143,6 +143,21 @@ def test_get_retries_then_succeeds() -> None:
     assert len(page.goto_calls) == 2
 
 
+def test_pow_challenge_page_is_never_returned_as_a_fight_page() -> None:
+    """Detail pages have no settling selector, so before the PoW page was a
+    known signature the fetcher returned it as a successful fetch whenever it
+    read the content before the challenge's reload landed."""
+    challenge = _load("ufcstats_pow_challenge.html")
+    real = _load("fight_detail_1round.html")
+    page = FakePage([challenge, real])
+    fetcher = _fetcher_with_page(page, max_retries=3)
+
+    result = fetcher.get("http://ufcstats.com/fight-details/a031f062b7ffefee")
+
+    assert result == real
+    assert len(page.goto_calls) == 2
+
+
 def test_missing_selector_does_not_halt_when_clean() -> None:
     """A missing settling selector on clean HTML is non-fatal (no HALT).
 

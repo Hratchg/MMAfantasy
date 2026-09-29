@@ -40,6 +40,7 @@ from ufc_prediction.data.upsert import (
     upsert_round_stats,
 )
 from ufc_prediction.models.event import Event
+from ufc_prediction.scraper.antibot import raise_if_challenge
 from ufc_prediction.scraper.client import ScraperClient
 from ufc_prediction.scraper.models import (
     EventSummary,
@@ -78,6 +79,21 @@ def _extract_hex_id(url: str) -> str:
     return url.rsplit("/", 1)[-1]
 
 
+def _get_page(client: ScraperClient | object, url: str) -> str:
+    """``client.get(url)``, raising ``ChallengePageError`` on a challenge page.
+
+    UFCStats answers plain HTTP with an HTTP-200 JS proof-of-work page
+    ("Checking your browser..."). Handed to a parser it looks like an empty or
+    broken page — a deterministic PARSE failure, so ``_scrape_event`` would
+    drop the fight and commit the rest of the event. It is really a transient
+    FETCH failure; ``ChallengePageError`` is a ``RuntimeError`` so every
+    per-URL isolation path below treats it as one.
+    """
+    html: str = client.get(url)  # type: ignore[attr-defined]
+    raise_if_challenge(html, url)
+    return html
+
+
 def _safe_fetch(
     client: ScraperClient | object,
     url: str,
@@ -85,12 +101,14 @@ def _safe_fetch(
     """Fetch ``url`` via ``client.get`` with per-URL error isolation.
 
     Returns ``(url, html, None)`` on success or ``(url, None, exc)`` on any
-    fetch failure. Used inside ``client.map(...)`` so one bad URL does NOT
-    abort the whole batch (preserves the D-11 per-page error contract while
-    still getting the parallel-throughput win from ``client.map``).
+    fetch failure — including an anti-bot challenge page returned with HTTP
+    200 (``ChallengePageError``). Used inside ``client.map(...)`` so one bad
+    URL does NOT abort the whole batch (preserves the D-11 per-page error
+    contract while still getting the parallel-throughput win from
+    ``client.map``).
     """
     try:
-        return (url, client.get(url), None)
+        return (url, _get_page(client, url), None)
     except (RuntimeError, ValueError, httpx.HTTPError) as exc:
         # ``ScraperClient.get`` raises ``httpx.HTTPStatusError`` (an
         # ``httpx.HTTPError``) on non-retryable statuses such as 404 —
@@ -599,7 +617,7 @@ def _ensure_fighter(
     # Fetch and parse profile for physical attributes
     source_id = _extract_hex_id(url)
     try:
-        profile_html = client.get(url)
+        profile_html = _get_page(client, url)
         profile = parse_fighter_profile(profile_html)
         fighter_row = _convert_fighter_profile(profile)
 
@@ -667,7 +685,7 @@ def scrape_all_events(
         result = IngestResult()
 
         # Fetch and parse event listing
-        event_list_html = client.get(EVENT_LIST_URL)
+        event_list_html = _get_page(client, EVENT_LIST_URL)
         events = parse_event_list(event_list_html, min_events=1)
 
         # Filter out upcoming events
@@ -761,7 +779,7 @@ def scrape_latest_events(
         result = IngestResult()
 
         # Fetch and parse event listing
-        event_list_html = client.get(EVENT_LIST_URL)
+        event_list_html = _get_page(client, EVENT_LIST_URL)
         events = parse_event_list(event_list_html, min_events=1)
 
         # Filter out upcoming events

@@ -261,6 +261,7 @@ files = [
     "src/ufc_prediction/obs/sentry.py",
     # scraper/
     "src/ufc_prediction/scraper/__init__.py",
+    "src/ufc_prediction/scraper/antibot.py",
     "src/ufc_prediction/scraper/bfo_classify.py",
     "src/ufc_prediction/scraper/bfo_ingest.py",  # Phase 85 fix
     "src/ufc_prediction/scraper/bfo_live.py",  # Phase 68 fix

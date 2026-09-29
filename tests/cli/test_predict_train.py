@@ -309,6 +309,108 @@ class TestTrainOverwriteGuardAndFeatureSets:
         assert (tmp_path / "xgb_v2.joblib").read_bytes() == b"frozen"
         session_cls.assert_not_called()
 
+    def test_train_overwrite_refuses_frozen_sha_without_audit01_override(
+        self, tmp_path, monkeypatch
+    ):
+        """`--overwrite` alone must not replace the AUDIT-01 frozen xgb_v2 (by
+        content): that is a promotion, which needs AUDIT01_OVERRIDE=1."""
+        frozen = b"frozen-xgb-v2"
+        monkeypatch.delenv("AUDIT01_OVERRIDE", raising=False)
+        monkeypatch.setattr(
+            "ufc_prediction.cli.predict.EXPECTED_XGB_V2_SHA",
+            hashlib.sha256(frozen).hexdigest(),
+        )
+        (tmp_path / "xgb_v2.joblib").write_bytes(frozen)
+        with (
+            patch("ufc_prediction.cli.predict.SessionLocal") as session_cls,
+            patch("ufc_prediction.cli.predict.save_model") as save,
+        ):
+            result = runner.invoke(
+                app,
+                ["predict", "train", "--model-dir", str(tmp_path), "--trials", "1", "--overwrite"],
+            )
+        assert result.exit_code == 1
+        assert "AUDIT01_OVERRIDE" in result.output
+        assert (tmp_path / "xgb_v2.joblib").read_bytes() == frozen
+        session_cls.assert_not_called()
+        save.assert_not_called()
+
+    def test_train_overwrite_refuses_protected_repo_path_without_override(self, monkeypatch):
+        """models/xgb_v2.joblib in the repo is in PROTECTED_FILES; refuse by path
+        even if its bytes were to drift from the pinned SHA."""
+        from ufc_prediction.cli.predict import _REPO_ROOT, EXPECTED_XGB_V2_SHA
+
+        monkeypatch.delenv("AUDIT01_OVERRIDE", raising=False)
+        # Break the SHA match so only the path check can refuse.
+        monkeypatch.setattr("ufc_prediction.cli.predict.EXPECTED_XGB_V2_SHA", "0" * 64)
+        frozen_path = _REPO_ROOT / "models" / "xgb_v2.joblib"
+        with (
+            patch("ufc_prediction.cli.predict.SessionLocal") as session_cls,
+            patch("ufc_prediction.cli.predict.save_model") as save,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "predict",
+                    "train",
+                    "--model-dir",
+                    str(frozen_path.parent),
+                    "--trials",
+                    "1",
+                    "--overwrite",
+                ],
+            )
+        assert result.exit_code == 1
+        assert "AUDIT01_OVERRIDE" in result.output
+        session_cls.assert_not_called()
+        save.assert_not_called()
+        assert hashlib.sha256(frozen_path.read_bytes()).hexdigest() == EXPECTED_XGB_V2_SHA
+
+    def test_train_overwrite_of_frozen_proceeds_with_audit01_override(self, tmp_path, monkeypatch):
+        frozen = b"frozen-xgb-v2"
+        monkeypatch.setenv("AUDIT01_OVERRIDE", "1")
+        monkeypatch.setattr(
+            "ufc_prediction.cli.predict.EXPECTED_XGB_V2_SHA",
+            hashlib.sha256(frozen).hexdigest(),
+        )
+        (tmp_path / "xgb_v2.joblib").write_bytes(frozen)
+        with (
+            patch("ufc_prediction.cli.predict.SessionLocal") as session_cls,
+            patch("ufc_prediction.cli.predict.load_fight_records", return_value=[]),
+            patch("ufc_prediction.cli.predict.load_elo_features", return_value={}),
+            patch("ufc_prediction.cli.predict.load_computed_features", return_value={}),
+            patch("ufc_prediction.cli.predict.load_fighter_physicals", return_value={}),
+            patch("ufc_prediction.cli.predict.load_round_stats_for_ml", return_value={}),
+            patch("ufc_prediction.cli.predict.load_pre_ufc_records", return_value={}),
+            patch("ufc_prediction.cli.predict.load_fight_odds", return_value={}),
+        ):
+            result = runner.invoke(
+                app,
+                ["predict", "train", "--model-dir", str(tmp_path), "--trials", "1", "--overwrite"],
+            )
+        # Past the guard: data is loaded, then the (empty) coverage check stops it.
+        session_cls.assert_called_once()
+        assert "Coverage" in result.output
+
+    def test_train_overwrite_of_non_frozen_model_still_allowed(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("AUDIT01_OVERRIDE", raising=False)
+        (tmp_path / "xgb_v2.joblib").write_bytes(b"some-candidate")
+        with (
+            patch("ufc_prediction.cli.predict.SessionLocal") as session_cls,
+            patch("ufc_prediction.cli.predict.load_fight_records", return_value=[]),
+            patch("ufc_prediction.cli.predict.load_elo_features", return_value={}),
+            patch("ufc_prediction.cli.predict.load_computed_features", return_value={}),
+            patch("ufc_prediction.cli.predict.load_fighter_physicals", return_value={}),
+            patch("ufc_prediction.cli.predict.load_round_stats_for_ml", return_value={}),
+            patch("ufc_prediction.cli.predict.load_pre_ufc_records", return_value={}),
+            patch("ufc_prediction.cli.predict.load_fight_odds", return_value={}),
+        ):
+            runner.invoke(
+                app,
+                ["predict", "train", "--model-dir", str(tmp_path), "--trials", "1", "--overwrite"],
+            )
+        session_cls.assert_called_once()
+
     def test_train_rejects_unknown_feature_set(self, tmp_path):
         with patch("ufc_prediction.cli.predict.SessionLocal") as session_cls:
             result = runner.invoke(
@@ -363,3 +465,19 @@ class TestTrainOverwriteGuardAndFeatureSets:
         src = Path("src/ufc_prediction/cli/predict.py").read_text()
         assert "predict_py_path.write_text" not in src
         assert "15.1-RUN-LOG.md" not in src
+
+
+def test_predict_matchup_reports_predictor_integrity_error_cleanly():
+    """ModelPredictor raises RuntimeError when meta_v2's pinned base_model_sha256
+    no longer matches xgb_v2 (e.g. after an overwrite). `predict matchup` must
+    exit 1 with the message, not an uncaught traceback."""
+    msg = "meta_v2 trained against base_model_sha256=abc; current xgb_v2 sha256=def. Halt."
+    with (
+        patch("ufc_prediction.cli.predict.ModelPredictor", side_effect=RuntimeError(msg)),
+        patch("ufc_prediction.cli.predict.SessionLocal") as session_cls,
+    ):
+        result = runner.invoke(app, ["predict", "matchup", "Fighter A", "vs", "Fighter B"])
+    assert result.exit_code == 1
+    assert not isinstance(result.exception, RuntimeError)
+    assert "Halt." in result.output
+    session_cls.assert_not_called()

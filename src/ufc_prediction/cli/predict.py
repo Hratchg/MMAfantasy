@@ -16,6 +16,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from datetime import UTC, date, datetime
@@ -963,6 +964,27 @@ def _feature_set_for_columns(columns: list[str]) -> str:
     )
 
 
+def _is_audit01_frozen_model(path: Path) -> bool:
+    """True when ``path`` is an AUDIT-01 frozen model artifact.
+
+    Matched by repo-relative path against the pre-commit hook's PROTECTED_FILES
+    (single source of truth) and, independent of location, by content against
+    the pinned xgb_v2 SHA so a copy under another --model-dir (or a
+    non-editable install without scripts/) is still recognised.
+    """
+    try:
+        rel = path.resolve().relative_to(_REPO_ROOT).as_posix()
+    except ValueError:
+        rel = None
+    if rel is not None:
+        _ensure_scripts_on_path()
+        from check_audit01_protected_files import PROTECTED_FILES
+
+        if rel in PROTECTED_FILES:
+            return True
+    return hashlib.sha256(path.read_bytes()).hexdigest() == EXPECTED_XGB_V2_SHA
+
+
 @predict_app.command("train")
 def predict_train(
     trials: int = typer.Option(50, help="Number of Optuna trials"),
@@ -1036,6 +1058,18 @@ def predict_train(
             "to replace it or choose another --version.[/red]"
         )
         raise SystemExit(1)
+    if existing.exists() and _is_audit01_frozen_model(existing):
+        if os.environ.get("AUDIT01_OVERRIDE") != "1":
+            console.print(
+                f"[red]{existing} is the AUDIT-01 frozen artifact. --overwrite alone "
+                "will not replace it: that is a promotion, which requires the "
+                "/retrain-gate review and operator approval. Set AUDIT01_OVERRIDE=1 "
+                "to proceed, or train under another --version / --model-dir.[/red]"
+            )
+            raise SystemExit(1)
+        console.print(
+            f"[yellow]AUDIT01_OVERRIDE=1: {existing} (AUDIT-01 frozen) may be replaced.[/yellow]"
+        )
     # Phase 15.1 D-05/D-06/D-07: --train-lower CLI flag overrides MLConfig field if set.
     effective_train_lower_str = train_lower or config.train_lower_bound_date
     train_lower_obj: date | None = (
@@ -1311,6 +1345,11 @@ def predict_matchup(
     except FileNotFoundError:
         console.print("[red]No trained model found. Run 'ufc predict train' first.[/red]")
         raise typer.Exit(code=1) from None
+    except RuntimeError as e:
+        # Artifact-integrity halts (e.g. meta_v2's pinned base_model_sha256 no
+        # longer matching xgb_v2) — report cleanly instead of a traceback.
+        console.print(f"[red]Model load failed: {e}[/red]")
+        raise typer.Exit(code=1) from e
 
     session = SessionLocal()
     try:

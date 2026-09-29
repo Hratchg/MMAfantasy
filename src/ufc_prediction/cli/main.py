@@ -386,9 +386,9 @@ def scrape_all(
         table = Table(title="UFCStats Scrape Summary")
         table.add_column("Metric", style="cyan")
         table.add_column("Count", style="green", justify="right")
-        table.add_row("Events accepted", str(result.accepted))
+        table.add_row("Fights accepted", str(result.accepted))
         table.add_row("Events updated", str(result.updated))
-        table.add_row("Events rejected", str(result.rejected))
+        table.add_row("Rejected (events + fights)", str(result.rejected))
         console.print(table)
 
     except AntiBotChallengeError as exc:
@@ -452,8 +452,8 @@ def scrape_latest(
             table = Table(title="Incremental Scrape Summary")
             table.add_column("Metric", style="cyan")
             table.add_column("Count", style="green", justify="right")
-            table.add_row("New events scraped", str(result.accepted))
-            table.add_row("Events rejected", str(result.rejected))
+            table.add_row("New fights scraped", str(result.accepted))
+            table.add_row("Rejected (events + fights)", str(result.rejected))
             console.print(table)
 
     except AntiBotChallengeError as exc:

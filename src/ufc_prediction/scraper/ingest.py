@@ -180,6 +180,49 @@ def _build_fight_stats(
     )
 
 
+def _orient_fight_detail(
+    fight_detail: FightDetailPage,
+    fighter_a_url: str,
+    fighter_b_url: str,
+) -> FightDetailPage | None:
+    """Align ``fight_detail``'s fighter order with (``fighter_a_url``, ``fighter_b_url``).
+
+    The event-detail page lists the winner first, but the fight-detail page
+    uses its own (corner) order, so ``totals[0]`` / ``per_round_*[i][0]`` are
+    NOT necessarily the event page's fighter_a. Identity is the UFCStats hex
+    id in the fighter URL (the same key ``_ensure_fighter`` uses).
+
+    Returns ``fight_detail`` unchanged when the orders agree, a copy with every
+    per-fighter field swapped when they are reversed, and ``None`` when the
+    page is not for this pair of fighters (the caller must reject the fight).
+    """
+    want = (_extract_hex_id(fighter_a_url), _extract_hex_id(fighter_b_url))
+    have = (
+        _extract_hex_id(fight_detail.fighter_a_url),
+        _extract_hex_id(fight_detail.fighter_b_url),
+    )
+    if not all(want) or want[0] == want[1]:
+        return None
+    if have == want:
+        return fight_detail
+    if have == (want[1], want[0]):
+        return fight_detail.model_copy(
+            update={
+                "fighter_a_name": fight_detail.fighter_b_name,
+                "fighter_a_url": fight_detail.fighter_b_url,
+                "fighter_a_status": fight_detail.fighter_b_status,
+                "fighter_b_name": fight_detail.fighter_a_name,
+                "fighter_b_url": fight_detail.fighter_a_url,
+                "fighter_b_status": fight_detail.fighter_a_status,
+                "totals": (fight_detail.totals[1], fight_detail.totals[0]),
+                "sig_strikes": (fight_detail.sig_strikes[1], fight_detail.sig_strikes[0]),
+                "per_round_totals": [(b, a) for a, b in fight_detail.per_round_totals],
+                "per_round_sig_strikes": [(b, a) for a, b in fight_detail.per_round_sig_strikes],
+            }
+        )
+    return None
+
+
 def _convert_fight(
     event_name: str,
     event_date_str: str,
@@ -189,7 +232,9 @@ def _convert_fight(
 ) -> FightRow:
     """Convert scraper fight models to the shared FightRow schema.
 
-    Validates through Pydantic FightRow per D-12.
+    Validates through Pydantic FightRow per D-12. ``fight_detail`` must already
+    be oriented to ``fight_summary`` via ``_orient_fight_detail`` — its stats are
+    assigned by position.
     """
     event_date = parse_fight_date(event_date_str)
     if event_date is None:
@@ -299,6 +344,13 @@ def _scrape_event(
 
     Per D-11: parse failures on a page abort that page but continue to the next.
 
+    Completeness: if any fight-detail page fails to FETCH (a transient
+    condition), nothing is written for the event and it is counted as rejected,
+    so the next ``scrape latest`` — which skips events already in the DB —
+    retries it. Deterministic per-fight failures (unparseable page, a page for
+    the wrong fighters, schema rejection) drop only that fight; each dropped
+    fight is counted in ``result.rejected`` and the rest of the event commits.
+
     The caller is responsible for batch-fetching event_html via
     ``client.map(_safe_fetch, ...)``. If fetching failed upstream, pass
     ``event_html=None`` — we'll count this event as rejected and return.
@@ -334,6 +386,33 @@ def _scrape_event(
         result.rejected += 1
         return
 
+    # Batch-fetch all fight-detail HTMLs for this event in parallel. Using
+    # _safe_fetch so one bad URL doesn't abort the whole batch.
+    fight_urls = [f.fight_url for f in event_detail.fights]
+    fight_fetch_results = client.map(functools.partial(_safe_fetch, client), fight_urls)
+
+    # All-or-nothing on fetch failures: committing the event with the fetched
+    # subset would make `scrape latest` treat it as done and never retry the
+    # missing fights. Nothing has been written yet, so just skip the event.
+    fight_htmls: list[str] = []
+    fetch_failures = 0
+    for url, html, err in fight_fetch_results:
+        if html is None:
+            logger.error("Failed to fetch fight %s: %s", url, err)
+            fetch_failures += 1
+        else:
+            fight_htmls.append(html)
+    if fetch_failures:
+        logger.error(
+            "Event %s skipped: %d/%d fight pages failed to fetch; it will be retried "
+            "by the next scrape",
+            event_detail.name,
+            fetch_failures,
+            len(fight_urls),
+        )
+        result.rejected += 1
+        return
+
     # Upsert event
     db_event = upsert_event(
         session,
@@ -344,29 +423,40 @@ def _scrape_event(
         source_url=event_summary.url,
     )
 
-    # Batch-fetch all fight-detail HTMLs for this event in parallel. Using
-    # _safe_fetch so one bad URL doesn't abort the whole batch.
-    fight_urls = [f.fight_url for f in event_detail.fights]
-    fight_fetch_results = client.map(functools.partial(_safe_fetch, client), fight_urls)
-
     # Process each fight
     fights_accepted = 0
+    fights_dropped = 0
     # Phase 22 REF-V22-01 — collect per-fight referee raw names for per-event
     # most-frequent aggregation (CONTEXT D-10 lossy aggregation; per-fight
     # placement deferred to v2.3+).
     event_referee_raw_names: list[str] = []
-    for fight_summary, (_url, fight_html, fetch_err) in zip(
-        event_detail.fights, fight_fetch_results, strict=False
-    ):
-        if fight_html is None:
-            logger.warning("Failed to fetch fight %s: %s", fight_summary.fight_url, fetch_err)
-            continue
-
+    for fight_summary, fight_html in zip(event_detail.fights, fight_htmls, strict=False):
         try:
-            fight_detail = parse_fight_detail(fight_html)
+            parsed_detail = parse_fight_detail(fight_html)
         except (ValueError, RuntimeError) as exc:
             logger.warning("Failed to parse fight %s: %s", fight_summary.fight_url, exc)
+            fights_dropped += 1
             continue
+
+        # The fight-detail page lists the fighters in its own order, not the
+        # event page's (winner-first) order: re-key its per-fighter stats to
+        # fight_summary's fighter_a / fighter_b before anything is written.
+        oriented_detail = _orient_fight_detail(
+            parsed_detail, fight_summary.fighter_a_url, fight_summary.fighter_b_url
+        )
+        if oriented_detail is None:
+            logger.warning(
+                "Rejected fight %s: fight-detail fighters (%s, %s) do not match "
+                "event-page fighters (%s, %s)",
+                fight_summary.fight_url,
+                parsed_detail.fighter_a_url,
+                parsed_detail.fighter_b_url,
+                fight_summary.fighter_a_url,
+                fight_summary.fighter_b_url,
+            )
+            fights_dropped += 1
+            continue
+        fight_detail = oriented_detail
 
         # Phase 22 REF-V22-01 — accumulate raw referee names for per-event
         # most-frequent aggregation post-loop.
@@ -400,6 +490,7 @@ def _scrape_event(
             )
         except (ValidationError, ValueError) as exc:
             logger.warning("Rejected fight %s: %s", fight_summary.fight_url, exc)
+            fights_dropped += 1
             continue
 
         # Determine winner_id
@@ -472,7 +563,17 @@ def _scrape_event(
     # Atomic per event
     session.commit()
     result.accepted += fights_accepted
-    logger.info("Event %s: %d fights accepted", event_detail.name, fights_accepted)
+    result.rejected += fights_dropped
+    if fights_dropped:
+        logger.warning(
+            "Event %s partially ingested: %d/%d fights accepted, %d rejected",
+            event_detail.name,
+            fights_accepted,
+            len(event_detail.fights),
+            fights_dropped,
+        )
+    else:
+        logger.info("Event %s: %d fights accepted", event_detail.name, fights_accepted)
 
 
 def _ensure_fighter(

@@ -9,10 +9,11 @@ Per D-11: caller logs ``odds_source`` for distribution-shift observability.
 Per Pattern E + Gotcha 1: never raises; single-shot; non-batch.
 
 The 5s timeout (per CONTEXT.md D-09) is enforced by constructing a
-:class:`ScraperClient` whose ``timeout`` is 5.0 by default. The shipped
-client doesn't expose per-call timeout overrides — the contract is
-"client constructed in this module is configured for fast predict-time
-HTTP" and any transport error / timeout falls through to ``None``.
+:class:`ScraperClient` with ``timeout=5.0``, ``max_retries=0`` and
+``delay=0``. The shipped client doesn't expose per-call timeout
+overrides — the contract is "client constructed in this module is
+configured for fast predict-time HTTP" (at most ~5s per request, two
+requests) and any transport error / timeout falls through to ``None``.
 """
 
 from __future__ import annotations
@@ -157,15 +158,26 @@ def _try_cache(
 # ── Live HTTP (D-09 step 2) ─────────────────────────────────────────────────
 
 
-def _matches(parsed_fight: BFOParsedFight, opponent_name: str, event_date: date) -> bool:
+def _matches(
+    parsed_fight: BFOParsedFight,
+    opponent_name: str,
+    event_date: date,
+    *,
+    allow_undated: bool = False,
+) -> bool:
     """True when ``parsed_fight`` is the (opponent, date) row we're looking for.
 
     Opponent name matched via ``rapidfuzz.fuzz.ratio`` over normalized
     names at the BFO threshold (80, calibrated Phase 13). Event date
     must match exactly — we are looking up an upcoming or specific
-    bout, not a fuzzy date window.
+    bout, not a fuzzy date window — except that with ``allow_undated``
+    an undated row (BFO's "Future Events" section, which the parser
+    dates as the ``date.max`` sentinel) matches on opponent alone.
     """
-    if parsed_fight.event_date != event_date:
+    date_ok = parsed_fight.event_date == event_date or (
+        allow_undated and parsed_fight.event_date == date.max
+    )
+    if not date_ok:
         return False
     from rapidfuzz import fuzz
 
@@ -176,6 +188,22 @@ def _matches(parsed_fight: BFOParsedFight, opponent_name: str, event_date: date)
         normalize_name(parsed_fight.opponent_name),
     )
     return score >= MIN_FUZZ_SCORE
+
+
+def _has_usable_pair(odds: MatchupOdds) -> bool:
+    """True when both sides' opening, or both sides' closing range, are present.
+
+    Mirrors the minimum ``inference_features._populate_odds`` needs to
+    derive at least one odds feature from a live result.
+    """
+    opening_pair = odds.fighter_a_opening is not None and odds.fighter_b_opening is not None
+    closing_pair = None not in (
+        odds.fighter_a_closing_min,
+        odds.fighter_a_closing_max,
+        odds.fighter_b_closing_min,
+        odds.fighter_b_closing_max,
+    )
+    return opening_pair or closing_pair
 
 
 def _try_live(
@@ -221,29 +249,46 @@ def _try_live(
         prof_html = client.get(prof_url)
         page = parse_bfo_fighter_page(prof_html, prof_url)
 
-        # 3. Find the row matching B + event_date
+        # 3. Find the row matching B + event_date. An exact-date row wins;
+        # for an upcoming bout (event_date >= today) BFO lists the fight
+        # under "Future Events" with no date, so fall back to the undated
+        # (date.max sentinel) row for the same opponent.
         row = next(
             (f for f in page.fights if _matches(f, fb_name, event_date)),
             None,
         )
+        # date.today() (local) matches predictor.predict's default event_date.
+        if row is None and event_date >= date.today():
+            row = next(
+                (f for f in page.fights if _matches(f, fb_name, event_date, allow_undated=True)),
+                None,
+            )
         if row is None:
             return None
 
-        # B-side moneylines are NOT exposed by the parsed BFO row; we
-        # only have A's three cells. The cache path stores both sides
-        # post-Phase-15 ingest; the live path treats B-side as unknown
-        # and falls through to inference_features._populate_odds which
-        # treats missing values as NaN per Pattern D.
-        return MatchupOdds(
+        # A's lines come from A's main row, B's from the opponent (detail)
+        # row of the same fight.
+        odds = MatchupOdds(
             fighter_a_opening=row.opening,
             fighter_a_closing_min=row.closing_range_min,
             fighter_a_closing_max=row.closing_range_max,
-            fighter_b_opening=None,
-            fighter_b_closing_min=None,
-            fighter_b_closing_max=None,
+            fighter_b_opening=row.opponent_opening,
+            fighter_b_closing_min=row.opponent_closing_range_min,
+            fighter_b_closing_max=row.opponent_closing_range_max,
             fetched_at=datetime.now(UTC),
             source="live",
         )
+        if not _has_usable_pair(odds):
+            # No two-sided opening or closing pair → none of the odds
+            # features can be computed. Report a miss so the caller's
+            # cached-odds fallback (inference_features.build) still runs.
+            logger.info(
+                "bfo_live: %s vs %s row has no two-sided odds; treating as miss",
+                fa_name,
+                fb_name,
+            )
+            return None
+        return odds
     except BFOParseError as exc:
         logger.warning(
             "bfo_live: %s vs %s parse failed: %s",
@@ -298,8 +343,9 @@ def fetch_matchup_odds(
         session: Optional SQLAlchemy session for cache lookup. If
             ``None``, the cache step is skipped (live HTTP only).
         client: Optional :class:`ScraperClient`. If ``None``, a fresh
-            client is constructed with the project's default 5s-equivalent
-            ScraperClient defaults.
+            fail-fast client (5s timeout, no retries, no delay) is
+            constructed and closed before returning. A caller-supplied
+            client is not closed.
 
     Returns:
         :class:`MatchupOdds` with ``source`` ∈ {``"cache"``, ``"live"``},
@@ -311,8 +357,15 @@ def fetch_matchup_odds(
         if cached is not None:
             return cached
 
-    # Step 2: live HTTP (5s-equivalent timeout via ScraperClient defaults)
-    if client is None:
-        # ScraperClient default timeout=30s; for predict-time we want 5s.
-        client = ScraperClient(timeout=5.0)
-    return _try_live(client, fighter_a_name, fighter_b_name, event_date)
+    # Step 2: live HTTP. A caller-supplied client is used as-is (and left
+    # open); otherwise build a fail-fast predict-time client and close it.
+    if client is not None:
+        return _try_live(client, fighter_a_name, fighter_b_name, event_date)
+    # 5s timeout, no retries and no inter-request delay: the batch-scrape
+    # defaults (3 retries with 5/10/20s backoff + 1.5s delay) would let a
+    # failing BFO stall ``predict`` for about a minute per request.
+    live_client = ScraperClient(timeout=5.0, max_retries=0, delay=0)
+    try:
+        return _try_live(live_client, fighter_a_name, fighter_b_name, event_date)
+    finally:
+        live_client.close()

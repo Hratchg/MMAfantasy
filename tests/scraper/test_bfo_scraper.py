@@ -56,6 +56,34 @@ def test_parse_fighter_page_extracts_opening_closing(bfo) -> None:
     assert has_integer_odds, "expected at least one fight with full integer odds"
 
 
+def test_parse_fighter_page_captures_opponent_moneylines(bfo) -> None:
+    """The opponent (detail) row's 3 moneyline cells are kept on the parsed fight.
+
+    The live predict path (``bfo_live._try_live``) needs BOTH sides' lines to
+    compute any of the 5 odds features. On the Jon Jones fixture the first
+    upcoming row is Jones -250 / Pereira +210, and the Dec 31st 2025 row is
+    Jones -286 (-525..-286) / Pereira +210 (+210..+410).
+    """
+    html = (FIXTURES / "bfo_fighter.html").read_text(encoding="utf-8")
+    page = bfo.parse_bfo_fighter_page(html, "https://www.bestfightodds.com/fighters/Jon-Jones-819")
+
+    upcoming = page.fights[0]
+    assert upcoming.opponent_name == "Alex Pereira"
+    assert upcoming.opening == -250
+    assert upcoming.opponent_opening == 210
+    assert upcoming.opponent_closing_range_min == 210
+    assert upcoming.opponent_closing_range_max == 210
+
+    past = page.fights[2]
+    assert past.opponent_name == "Alex Pereira"
+    assert (past.opening, past.closing_range_min, past.closing_range_max) == (-286, -525, -286)
+    assert (
+        past.opponent_opening,
+        past.opponent_closing_range_min,
+        past.opponent_closing_range_max,
+    ) == (210, 210, 410)
+
+
 def test_parse_fighter_page_handles_blank_moneylines(bfo) -> None:
     """Blank ``<td.moneyline>`` cells map to ``None`` rather than 0."""
     html = (FIXTURES / "bfo_fighter_no_odds.html").read_text(encoding="utf-8")

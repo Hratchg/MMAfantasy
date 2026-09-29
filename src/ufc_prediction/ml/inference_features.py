@@ -1,8 +1,8 @@
 """Predict-time twin of feature_matrix.py (LIVE-02, closes 44/72 NaN-pad gap).
 
-Reads latest per-fighter ``ComputedFeature`` + ``EloSnapshot`` snapshots from
-the DB and builds a ``(1, len(FEATURE_COLUMNS))``-shaped feature vector for
-a single matchup.
+Replays both fighters' stored history as of ``event_date`` (performance
+accumulators, Elo, career stats) and builds a ``(1, len(FEATURE_COLUMNS))``-shaped
+feature vector for a single matchup.
 
 Per CONTEXT.md D-12: this module REPLACES the NaN-pad block at
 ``predictor.py:289-352``. The NaN-pad block is deleted in 16-02 Task 4.
@@ -16,7 +16,7 @@ via sparsity-aware split finding (D-04(P14)).
 Per Pitfall #12: column ordering is locked by ``FEATURE_COLUMNS``; a strict
 ``unknown_keys`` guard prevents silent positional drift.
 
-The DB-reading helpers (``_get_latest_elo``, ``_get_latest_computed_features``,
+The DB-reading helpers (``_get_latest_elo``, ``_get_pre_fight_performance``,
 ``_get_cached_odds``, ``_load_career_inputs``) are module-level so tests can
 monkey-patch them without spinning up Postgres.
 """
@@ -38,6 +38,8 @@ from ufc_prediction.dedup.source_priority import prefer_canonical
 from ufc_prediction.elo.asof import RatedFight, pre_fight_rating
 from ufc_prediction.elo.config import EloConfig
 from ufc_prediction.elo.seed import load_seeds
+from ufc_prediction.features import queries as feature_queries
+from ufc_prediction.features.compute import FeatureComputer
 from ufc_prediction.ml import queries as ml_queries
 from ufc_prediction.ml.config import (
     FEATURE_COLUMNS_V22,
@@ -60,7 +62,6 @@ from ufc_prediction.ml.features_v22.ref import (
 from ufc_prediction.ml.features_v22.travel import (
     compute_travel_features,
 )
-from ufc_prediction.models.computed_feature import ComputedFeature
 from ufc_prediction.models.elo_snapshot import EloSnapshot
 from ufc_prediction.models.event import Event
 from ufc_prediction.models.fight import Fight
@@ -182,37 +183,98 @@ def _get_latest_elo(
     )
 
 
-def _get_latest_computed_features(
-    session: Session,
-    fighter_id: int,
-) -> dict[str, float | None]:
-    """Read latest ``ComputedFeature.features`` JSON (lifted from
-    predictor.py:_get_latest_computed_features).
+_NET_KEYS: tuple[str, ...] = ("pagerank", "sos_2hop", "is_debutant_in_graph")
 
-    Returns empty dict on miss. Caller falls through to NaN per
-    Pattern D / Pitfall #3.
+# ``Session.info`` key for the per-session performance substrate cache.
+_PERFORMANCE_SUBSTRATE_KEY = "ufc_prediction.inference_features.performance_substrate"
 
-    Also lifts the 3 NET-* keys (``pagerank``, ``sos_2hop``,
-    ``is_debutant_in_graph``) from the JSONB so ``_populate_network``
-    can compute the 3 ``_diff`` columns. NaN/None propagates per
-    Pattern D for debutants (D-06).
+
+@dataclass(frozen=True)
+class PerformanceSubstrate:
+    """What ``features compute`` reads, plus the league means it derives.
+
+    ``fights`` / ``round_stats`` are the ``features.queries`` loader outputs
+    (every source, as ``features compute`` loads them); ``league_means`` are
+    the Pass 2 shrinkage targets over that whole corpus.
     """
-    stmt = (
-        select(ComputedFeature.features)
-        .where(ComputedFeature.fighter_id == fighter_id)
-        .order_by(ComputedFeature.as_of_date.desc())
-        .limit(1)
+
+    fights: list[dict[str, Any]]
+    round_stats: dict[int, list[dict[str, Any]]]
+    league_means: dict[str, float]
+
+
+def _load_performance_substrate(session: Session) -> PerformanceSubstrate:
+    """Load the ``features compute`` inputs once per session.
+
+    The league means need a Pass 1 over the whole corpus (~1-2 s on the
+    full DB), so the result is cached in ``session.info``: a card or an
+    order-invariant request (several ``build`` calls) pays for it once, and
+    a new session sees fresh data.
+    """
+    cached = session.info.get(_PERFORMANCE_SUBSTRATE_KEY)
+    if isinstance(cached, PerformanceSubstrate):
+        return cached
+    fights = feature_queries.load_fights_with_duration(session)
+    round_stats = feature_queries.load_all_round_stats(session)
+    substrate = PerformanceSubstrate(
+        fights=fights,
+        round_stats=round_stats,
+        league_means=FeatureComputer().league_means(fights, round_stats),
     )
-    features_json = session.scalar(stmt)
-    if features_json is None:
+    session.info[_PERFORMANCE_SUBSTRATE_KEY] = substrate
+    return substrate
+
+
+def _serve_keys(features: dict[str, Any] | None) -> dict[str, float | None]:
+    """The 20 performance keys + 3 NET keys; empty for a debutant (no row)."""
+    if not features:
         return {}
-    extracted: dict[str, float | None] = {
-        feat: features_json.get(feat) for feat in PERFORMANCE_FEATURE_KEYS
-    }
-    # NET-* keys (Phase 16-03) — written by Pass 4 of FeatureComputer.
-    for net_key in ("pagerank", "sos_2hop", "is_debutant_in_graph"):
-        extracted[net_key] = features_json.get(net_key)
-    return extracted
+    return {key: features.get(key) for key in (*PERFORMANCE_FEATURE_KEYS, *_NET_KEYS)}
+
+
+def _get_pre_fight_performance(
+    session: Session,
+    fa_id: int,
+    fb_id: int,
+    event_date: date,
+) -> tuple[dict[str, float | None], dict[str, float | None]]:
+    """Both fighters' performance + NET snapshot for a fight on ``event_date``.
+
+    ``features compute`` stores each ``computed_features`` row as the
+    PRE-fight snapshot of the fight it is keyed to, so a fighter's newest
+    row predates their last fight and a one-fight fighter has none. Reading
+    the newest row therefore served every performance column one fight
+    stale (all-NaN for a sophomore) and, with no date cutoff, leaked later
+    fights into a historical ``event_date``. Training reads the snapshot
+    keyed to the target fight.
+
+    This replays ``FeatureComputer`` over both fighters' fights dated
+    strictly before ``event_date`` plus the upcoming fight
+    (``FeatureComputer.compute_upcoming``), shrinking with the corpus-wide
+    league means, so the result is the row ``features compute`` would store
+    for this fight. Returns ``({}, …)`` for a debutant (NaN per Pattern D),
+    exactly as training has no row for a debut.
+    """
+    substrate = _load_performance_substrate(session)
+    prior = [
+        f
+        for f in substrate.fights
+        if f["event_date"] < event_date
+        and (
+            fa_id in (f["fighter_a_id"], f["fighter_b_id"])
+            or fb_id in (f["fighter_a_id"], f["fighter_b_id"])
+        )
+    ]
+    snapshots = FeatureComputer().compute_upcoming(
+        prior,
+        substrate.round_stats,
+        fa_id,
+        fb_id,
+        event_date,
+        substrate.league_means,
+        network_fights=substrate.fights,
+    )
+    return _serve_keys(snapshots.get(fa_id)), _serve_keys(snapshots.get(fb_id))
 
 
 def _get_cached_odds(
@@ -322,18 +384,19 @@ def _populate_performance(
     fa_id: int,
     fb_id: int,
     feats: dict[str, float],
+    event_date: date,
 ) -> tuple[dict[str, float | None], dict[str, float | None]]:
     """Section 2: Performance feature differentials (20 features, ``_diff`` suffix).
 
     Lifts the differential math from ``predictor.py:_build_feature_vector``
     (lines 293-301) — same NaN-on-either-side semantics as
-    ``feature_matrix.py:414-420``.
+    ``feature_matrix.py:414-420``. The per-fighter snapshots are the
+    pre-fight state as of ``event_date`` (``_get_pre_fight_performance``).
 
-    Returns the per-fighter latest features dicts so the caller can reuse
-    them for ``_populate_network`` without re-querying the DB.
+    Returns the per-fighter snapshot dicts so the caller can reuse them for
+    ``_populate_network`` without replaying again.
     """
-    feats_a = _get_latest_computed_features(session, fa_id)
-    feats_b = _get_latest_computed_features(session, fb_id)
+    feats_a, feats_b = _get_pre_fight_performance(session, fa_id, fb_id, event_date)
     for feat_key in PERFORMANCE_FEATURE_KEYS:
         val_a = feats_a.get(feat_key)
         val_b = feats_b.get(feat_key)
@@ -355,10 +418,9 @@ def _populate_network(
     (Pitfall #12 train/predict parity); both call into
     ``features.network.compute_network_diff_features`` for the math.
 
-    ``feats_a_latest`` / ``feats_b_latest`` are the latest
-    ``ComputedFeature.features`` JSONB dicts as returned by
-    ``_get_latest_computed_features`` (which lifts ``pagerank`` /
-    ``sos_2hop`` / ``is_debutant_in_graph`` keys when present).
+    ``feats_a_latest`` / ``feats_b_latest`` are the per-fighter pre-fight
+    snapshots returned by ``_get_pre_fight_performance`` (which carry the
+    ``pagerank`` / ``sos_2hop`` / ``is_debutant_in_graph`` keys).
 
     Per D-06: when the per-fighter feature is missing/None (debutant or
     pre-Phase-16 snapshot), value flows through as NaN — Pattern D
@@ -1287,9 +1349,10 @@ def build(
     Args:
         session: Open SQLAlchemy session for snapshot lookups.
         fighter_a, fighter_b: Resolved Fighter ORM rows (post-dedup).
-        event_date: As-of date for cache lookup. Snapshot reads take the
-            most recent snapshot regardless of ``event_date`` since they
-            are immutable per fight.
+        event_date: As-of date of the fight. Every section reads only
+            history strictly before it (performance / NET snapshots are
+            replayed as of this date, so a historical ``event_date`` never
+            sees later fights) and it keys the cached-odds lookup.
         live_odds: Output of ``bfo_live.fetch_matchup_odds``. ``None`` falls
             back to cache; cache miss falls back to NaN per Pattern D.
         feature_set: Which column list to materialize (v1.0/v2.1-no-net/v2.2).
@@ -1354,6 +1417,7 @@ def build(
         fighter_a.id,
         fighter_b.id,
         feats,
+        event_date,
     )
 
     # Section 3: Physical + stance (Pitfall #5 fix — age uses event_date)
@@ -1379,10 +1443,10 @@ def build(
     )
 
     # Section 5: 3-feature opponent-network block (NET-01/02, Phase 16-03).
-    # Reuses the same latest-feature dicts read by _populate_performance —
-    # NET-* keys live in the same ComputedFeature.features JSONB written by
-    # FeatureComputer Pass 4. Train/predict parity (Pitfall #12) is enforced
-    # by sharing compute_network_diff_features with feature_matrix.py.
+    # Reuses the same pre-fight snapshots _populate_performance replayed —
+    # NET-* keys come from FeatureComputer Pass 4 on that snapshot.
+    # Train/predict parity (Pitfall #12) is enforced by sharing
+    # compute_network_diff_features with feature_matrix.py.
     # Phase 18 NET-V2-01: when feature_set != "v1.0", this block is SKIPPED.
     if _include_net:
         _populate_network(feats, feats_a_latest, feats_b_latest)

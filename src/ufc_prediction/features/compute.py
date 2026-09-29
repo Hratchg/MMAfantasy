@@ -98,12 +98,125 @@ class FeatureComputer:
         Returns:
             List of dicts with: fighter_id, fight_id, as_of_date, feature_set_version, features.
         """
+        # ── Pass 1: Compute raw features ──────────────────────────────
+        raw_results, fight_count_at_feature = self._raw_snapshots(
+            fights, round_stats_by_fight, domain_elo_by_fighter_fight
+        )
+        if not raw_results:
+            return []
+
+        # ── Pass 2: League means + shrinkage ──────────────────────────
+        league_means = self._compute_league_means(raw_results)
+        self._shrink(raw_results, fight_count_at_feature, league_means)
+
+        # ── Pass 3: PCA embeddings on latest feature per fighter ──────
+        self._apply_embeddings(raw_results)
+
+        # ── Pass 4: Opponent-network features (NET-01/02, Phase 16) ──
+        # Operator-approved config: pan-mma + MOV-weighted per
+        # 16-03-NET-00-SPIKE-RESULTS.md gsd-checkpoint resolution.
+        # The graph is built from `fights`; subgraph is computed per
+        # (fighter_id, as_of_date) snapshot inside compute_pagerank_at /
+        # compute_2hop_sos_at — that is the Pitfall #1 / Gotcha 4
+        # countermeasure (NET-03 enforces it as a CI regression).
+        apply_network_features(raw_results, self._network_fights(fights))
+
+        return raw_results
+
+    def league_means(
+        self,
+        fights: list[dict[str, Any]],
+        round_stats_by_fight: dict[int, list[dict[str, Any]]],
+    ) -> dict[str, float]:
+        """The Pass 2 shrinkage targets ``compute_all`` derives from ``fights``.
+
+        Serving needs them to shrink an upcoming-fight snapshot the same way
+        the stored rows were shrunk; they are not persisted, so they are
+        recomputed from the same corpus. ``style_tag`` does not enter the
+        means, so no domain Elo is needed.
+        """
+        raw_results, _ = self._raw_snapshots(fights, round_stats_by_fight, {})
+        return self._compute_league_means(raw_results) if raw_results else {}
+
+    def compute_upcoming(
+        self,
+        prior_fights: list[dict[str, Any]],
+        round_stats_by_fight: dict[int, list[dict[str, Any]]],
+        fighter_a_id: int,
+        fighter_b_id: int,
+        event_date: Any,
+        league_means: dict[str, float],
+        *,
+        network_fights: list[dict[str, Any]] | None = None,
+    ) -> dict[int, dict[str, Any]]:
+        """Pre-fight snapshots for a fight that is not in the corpus yet.
+
+        Appends a synthetic ``fighter_a_id`` vs ``fighter_b_id`` fight on
+        ``event_date`` to ``prior_fights`` and replays Pass 1, so each
+        fighter's snapshot is taken from the same accumulator state
+        ``compute_all`` would reach for that fight: every prior fight folded
+        in, the opponent's accumulator feeding ``opp_adj_*``. Pass 2 shrinks
+        with ``league_means`` (``compute_all`` derives them from the whole
+        corpus, see ``league_means``) and Pass 4 adds the NET keys as of
+        ``event_date``. Pass 3 (embeddings) is skipped; nothing serves it.
+
+        ``prior_fights`` must hold every fight of either fighter dated before
+        ``event_date`` in the shape ``load_fights_with_duration`` returns.
+        Fights of other fighters only move their own accumulators, so they
+        may be omitted. ``network_fights`` (default ``prior_fights``) is the
+        graph input for Pass 4; pass the full corpus for the same graph
+        ``compute_all`` builds.
+
+        Returns ``{fighter_id: features}``. A debutant (no prior fight) is
+        absent, exactly as ``compute_all`` emits no row for a debut.
+        """
+        ordered = sorted(prior_fights, key=lambda f: (f["event_date"], f["fight_id"]))
+        upcoming_id = min(min((f["fight_id"] for f in ordered), default=0), 0) - 1
+        upcoming = {
+            "fight_id": upcoming_id,
+            "event_date": event_date,
+            "fighter_a_id": fighter_a_id,
+            "fighter_b_id": fighter_b_id,
+            "round_finished": None,
+            "time_finished": None,
+            "num_rounds": 3,
+        }
+        raw_results, fight_counts = self._raw_snapshots(
+            [*ordered, upcoming], round_stats_by_fight, {}
+        )
+        picked = [
+            (row, count)
+            for row, count in zip(raw_results, fight_counts, strict=True)
+            if row["fight_id"] == upcoming_id
+        ]
+        rows = [row for row, _ in picked]
+        self._shrink(rows, [count for _, count in picked], league_means)
+        graph_fights = network_fights if network_fights is not None else ordered
+        apply_network_features(rows, self._network_fights(graph_fights))
+        return {row["fighter_id"]: row["features"] for row in rows}
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _raw_snapshots(
+        self,
+        fights: list[dict[str, Any]],
+        round_stats_by_fight: dict[int, list[dict[str, Any]]],
+        domain_elo_by_fighter_fight: dict[tuple[int, int], dict[str, float | None]],
+    ) -> tuple[list[dict[str, Any]], list[int]]:
+        """Pass 1: pre-fight raw features for every fighter at every fight.
+
+        Returns the unshrunk rows and, parallel to them, the fighter's
+        ``fight_count`` at each row (the Pass 2 shrinkage weight). Shared by
+        ``compute_all`` and ``compute_upcoming`` so serving replays exactly
+        the accumulator logic the stored rows came from.
+        """
         accumulators: dict[int, FighterAccumulator] = {}
         raw_results: list[dict[str, Any]] = []
         # Track fight_count at time of feature creation for shrinkage pass
         fight_count_at_feature: list[int] = []
 
-        # ── Pass 1: Compute raw features ──────────────────────────────
         for fight in fights:
             fight_id = fight["fight_id"]
             event_date = fight["event_date"]
@@ -169,13 +282,16 @@ class FeatureComputer:
 
                 acc.fight_count += 1
 
-        if not raw_results:
-            return []
+        return raw_results, fight_count_at_feature
 
-        # ── Pass 2: League means + shrinkage ──────────────────────────
-        league_means = self._compute_league_means(raw_results)
-
-        for row, fcount in zip(raw_results, fight_count_at_feature, strict=True):
+    def _shrink(
+        self,
+        rows: list[dict[str, Any]],
+        fight_counts: list[int],
+        league_means: dict[str, float],
+    ) -> None:
+        """Pass 2: Bayesian shrinkage toward ``league_means``, in place."""
+        for row, fcount in zip(rows, fight_counts, strict=True):
             row["features"] = apply_shrinkage_to_features(
                 row["features"],
                 league_means,
@@ -183,17 +299,10 @@ class FeatureComputer:
                 min_fights=self.config.shrinkage_min_fights,
             )
 
-        # ── Pass 3: PCA embeddings on latest feature per fighter ──────
-        self._apply_embeddings(raw_results)
-
-        # ── Pass 4: Opponent-network features (NET-01/02, Phase 16) ──
-        # Operator-approved config: pan-mma + MOV-weighted per
-        # 16-03-NET-00-SPIKE-RESULTS.md gsd-checkpoint resolution.
-        # The graph is built from `fights`; subgraph is computed per
-        # (fighter_id, as_of_date) snapshot inside compute_pagerank_at /
-        # compute_2hop_sos_at — that is the Pitfall #1 / Gotcha 4
-        # countermeasure (NET-03 enforces it as a CI regression).
-        net_fights = [
+    @staticmethod
+    def _network_fights(fights: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Pass 4 graph input: winner/loser/method per fight."""
+        return [
             {
                 "fight_id": f["fight_id"],
                 "event_date": f["event_date"],
@@ -210,13 +319,6 @@ class FeatureComputer:
             }
             for f in fights
         ]
-        apply_network_features(raw_results, net_fights)
-
-        return raw_results
-
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
 
     def _build_features(
         self,

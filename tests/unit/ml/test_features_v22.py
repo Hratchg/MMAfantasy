@@ -302,8 +302,8 @@ class TestTrainInferenceParity:
         )
         monkeypatch.setattr(
             inference_features,
-            "_get_latest_computed_features",
-            lambda s, fid: {},
+            "_get_pre_fight_performance",
+            lambda s, fa, fb, d: ({}, {}),
         )
         monkeypatch.setattr(
             inference_features,
@@ -786,8 +786,8 @@ class TestTrainInferenceParityTravel:
         )
         monkeypatch.setattr(
             inference_features,
-            "_get_latest_computed_features",
-            lambda s, fid: {},
+            "_get_pre_fight_performance",
+            lambda s, fa, fb, d: ({}, {}),
         )
         monkeypatch.setattr(
             inference_features,
@@ -1440,8 +1440,8 @@ class TestTrainInferenceParityMeta:
         )
         monkeypatch.setattr(
             inference_features,
-            "_get_latest_computed_features",
-            lambda s, fid: {},
+            "_get_pre_fight_performance",
+            lambda s, fa, fb, d: ({}, {}),
         )
         monkeypatch.setattr(
             inference_features,

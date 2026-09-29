@@ -98,14 +98,14 @@ def _patch_session_with_snapshots(
             return elo_a_grappling if is_a else elo_b_grappling
         return 1500.0
 
-    def fake_get_perf(session, fighter_id):
-        return pa if fighter_id == 1 else pb
+    def fake_get_perf(session, fa_id, fb_id, event_date):
+        return (pa if fa_id == 1 else pb), (pa if fb_id == 1 else pb)
 
     def fake_get_cached_odds(session, fa_id, fb_id, event_date):
         return cached_odds_a, cached_odds_b
 
     monkeypatch.setattr(inference_features, "_get_latest_elo", fake_get_elo)
-    monkeypatch.setattr(inference_features, "_get_latest_computed_features", fake_get_perf)
+    monkeypatch.setattr(inference_features, "_get_pre_fight_performance", fake_get_perf)
     monkeypatch.setattr(inference_features, "_get_cached_odds", fake_get_cached_odds)
     # No prior fights: career replay sees two debutants.
     monkeypatch.setattr(
@@ -391,8 +391,8 @@ def test_debutant_with_no_snapshot_data_still_returns_shape(monkeypatch):
     monkeypatch.setattr(inference_features, "_get_latest_elo", lambda *a, **kw: 1500.0)
     monkeypatch.setattr(
         inference_features,
-        "_get_latest_computed_features",
-        lambda *a, **kw: {},
+        "_get_pre_fight_performance",
+        lambda *a, **kw: ({}, {}),
     )
     monkeypatch.setattr(
         inference_features,

@@ -198,10 +198,13 @@ def parity_setup(monkeypatch):
         "_get_latest_elo",
         lambda s, fid, et, *a, **kw: elo_features[(fid, tid)][f"elo_{et}"],
     )
+    # The performance block is stubbed with the target fight's own rows;
+    # its serve/train parity against real FeatureComputer rows is covered by
+    # tests/integration/test_serve_performance_snapshot.py.
     monkeypatch.setattr(
         inference_features,
-        "_get_latest_computed_features",
-        lambda s, fid: dict(computed[(fid, tid)]),
+        "_get_pre_fight_performance",
+        lambda s, fa, fb, d: (dict(computed[(fa, tid)]), dict(computed[(fb, tid)])),
     )
     monkeypatch.setattr(inference_features, "_get_cached_odds", lambda *a: (None, None))
     return train_row, target, physicals
@@ -313,7 +316,7 @@ def test_two_debutants_match_training_semantics(monkeypatch):
         inference_features, "_load_career_inputs", lambda *a: inference_features.CareerInputs()
     )
     monkeypatch.setattr(inference_features, "_get_latest_elo", lambda *a, **kw: 1500.0)
-    monkeypatch.setattr(inference_features, "_get_latest_computed_features", lambda *a: {})
+    monkeypatch.setattr(inference_features, "_get_pre_fight_performance", lambda *a: ({}, {}))
     monkeypatch.setattr(inference_features, "_get_cached_odds", lambda *a: (None, None))
     fa = MagicMock(
         id=1,

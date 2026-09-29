@@ -528,3 +528,100 @@ class TestOpponentAdjustedNoLeak:
                 f"{key} for fighter B at fight 101 changed with fight 101's own stats: "
                 f"{quiet.get(key)} vs {loud.get(key)}"
             )
+
+
+class TestComputeUpcoming:
+    """``compute_upcoming`` (the serve-time replay) must reproduce the row
+    ``compute_all`` stores for the same fight: same accumulators, same
+    corpus-wide shrinkage, same NET keys, and nothing dated on or after the
+    fight."""
+
+    @staticmethod
+    def _corpus() -> tuple[list[dict], dict[int, list[dict]]]:
+        import random
+
+        rng = random.Random(5)
+        pairs = [
+            (FIGHTER_A, FIGHTER_C),
+            (FIGHTER_B, FIGHTER_D),
+            (FIGHTER_A, FIGHTER_D),
+            (FIGHTER_C, FIGHTER_D),
+            (FIGHTER_A, FIGHTER_B),  # target (fight 104): A's 3rd, B's 2nd
+            (FIGHTER_B, FIGHTER_C),  # both keep fighting afterwards
+            (FIGHTER_A, FIGHTER_D),
+            (FIGHTER_A, FIGHTER_B),
+        ]
+        fights, entries = [], []
+        for i, (a, b) in enumerate(pairs):
+            fid = 100 + i
+            fights.append(_make_fight(fid, date(2020, 1 + i, 1), a, b))
+            for fighter in (a, b):
+                entries.append(
+                    (
+                        fid,
+                        fighter,
+                        {
+                            "sig_strikes_landed": rng.randint(2, 15),
+                            "head_strikes_landed": rng.randint(0, 8),
+                            "takedowns_landed": rng.randint(0, 2),
+                            "control_time_seconds": rng.randint(0, 120),
+                            "submission_attempts": rng.randint(0, 2),
+                        },
+                    )
+                )
+        return fights, _build_round_stats_by_fight(*entries)
+
+    def test_matches_stored_row_for_same_fight(self) -> None:
+        from ufc_prediction.features.compute import FeatureComputer
+
+        fights, rs = self._corpus()
+        target = next(f for f in fights if f["fight_id"] == 104)
+        stored = {
+            r["fighter_id"]: r["features"]
+            for r in FeatureComputer().compute_all(fights, rs, {})
+            if r["fight_id"] == 104
+        }
+        computer = FeatureComputer()
+        prior = [f for f in fights if f["event_date"] < target["event_date"]]
+        served = computer.compute_upcoming(
+            prior,
+            rs,
+            FIGHTER_A,
+            FIGHTER_B,
+            target["event_date"],
+            computer.league_means(fights, rs),
+            network_fights=fights,
+        )
+        assert set(served) == {FIGHTER_A, FIGHTER_B}
+        for fighter in (FIGHTER_A, FIGHTER_B):
+            for key, want in stored[fighter].items():
+                if key in ("style_tag", "embedding"):
+                    continue
+                got = served[fighter][key]
+                if isinstance(want, float) and want != want:
+                    assert got != got, (fighter, key)
+                else:
+                    assert got == pytest.approx(want, abs=1e-12), (fighter, key)
+
+    def test_league_means_are_the_ones_compute_all_shrinks_with(self, monkeypatch) -> None:
+        from ufc_prediction.features.compute import FeatureComputer
+
+        fights, rs = self._corpus()
+        seen: list[dict] = []
+        original = FeatureComputer._compute_league_means
+
+        def spy(results):
+            means = original(results)
+            seen.append(means)
+            return means
+
+        monkeypatch.setattr(FeatureComputer, "_compute_league_means", staticmethod(spy))
+        FeatureComputer().compute_all(fights, rs, {})
+        assert FeatureComputer().league_means(fights, rs) == seen[0]
+
+    def test_debutant_absent_like_compute_all(self) -> None:
+        from ufc_prediction.features.compute import FeatureComputer
+
+        fights, rs = self._corpus()
+        served = FeatureComputer().compute_upcoming(fights, rs, FIGHTER_A, 99, date(2021, 1, 1), {})
+        assert set(served) == {FIGHTER_A}

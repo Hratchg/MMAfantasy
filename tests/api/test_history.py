@@ -33,3 +33,13 @@ def test_history_not_found(client: TestClient):
     response = client.get("/api/v1/fighters/nonexistent_xyz_12345/history")
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()
+
+
+def test_history_exact_name_with_cross_source_twin(client: TestClient, cross_source_duplicates):
+    """Finding 1: history resolves the canonical row instead of listing twins."""
+    khabib = cross_source_duplicates["canonical"]["khabib"]
+    response = client.get("/api/v1/fighters/Khabib Nurmagomedov/history")
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("fighter_id") == khabib.id, data
+    assert len(data["history"]) == 2

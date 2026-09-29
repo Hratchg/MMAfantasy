@@ -2,21 +2,20 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ufc_prediction.api.deps import get_db
+from ufc_prediction.api.routers._lookup import resolve_fighter_or_candidates
 from ufc_prediction.api.schemas import (
     DivisionRating,
     FighterRatingResponse,
     FighterSearchResponse,
-    FighterSearchResult,
 )
 from ufc_prediction.elo.fighter_queries import (
     get_fighter_detail,
     get_fighter_divisions,
     get_fighter_domain_elo,
-    search_fighters,
 )
 
 router = APIRouter(tags=["fighters"])
@@ -31,27 +30,11 @@ def get_fighter(
     Returns full rating details for a single match, or a candidate list
     when multiple fighters match the search term (D-03, D-13).
     """
-    matches = search_fighters(db, name)
-
-    if not matches:
-        raise HTTPException(status_code=404, detail=f"Fighter '{name}' not found")
-
-    if len(matches) > 1:
-        results = []
-        for fighter in matches:
-            detail = get_fighter_detail(db, fighter.id)
-            results.append(
-                FighterSearchResult(
-                    name=fighter.name,
-                    id=fighter.id,
-                    division=detail.get("division"),
-                    elo=detail.get("elo"),
-                )
-            )
-        return FighterSearchResponse(count=len(results), results=results)
+    fighter = resolve_fighter_or_candidates(db, name)
+    if isinstance(fighter, FighterSearchResponse):
+        return fighter
 
     # Single match -- build full rating response
-    fighter = matches[0]
     divisions = get_fighter_divisions(db, fighter.id)
     division_ratings = []
 

@@ -38,3 +38,38 @@ def test_matchup_same_fighter(client_matchup: TestClient):
     response = client_matchup.get("/api/v1/matchup?a=Khabib&b=Khabib")
     assert response.status_code == 400
     assert "themselves" in response.json()["detail"].lower()
+
+
+def test_matchup_with_cross_source_twins_builds_matchup(
+    client_matchup: TestClient, cross_source_duplicates
+):
+    """Finding 1: full names that also exist as Kaggle rows still build the matchup."""
+    response = client_matchup.get(
+        "/api/v1/matchup",
+        params={"a": "Khabib Nurmagomedov", "b": "Conor McGregor"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("fighter_a_name") == "Khabib Nurmagomedov", data
+    assert data["fighter_b_name"] == "Conor McGregor"
+
+
+def test_matchup_style_win_rates_use_seeded_style_fights(client_matchup: TestClient):
+    """The 10 seeded ufcstats striker-vs-grappler bouts are counted exactly once."""
+    response = client_matchup.get("/api/v1/matchup?a=Khabib&b=Conor")
+    assert response.status_code == 200
+    rates = response.json()["style"]["matchup_win_rates"]
+    pair = next(r for r in rates if {r["style_a"], r["style_b"]} == {"grappler", "striker"})
+    assert pair["total"] == 10
+    assert pair["sufficient_data"] is True
+
+
+def test_matchup_same_person_via_different_names(
+    client_matchup: TestClient, cross_source_duplicates
+):
+    """A partial and a full name for the same person are a self-matchup."""
+    response = client_matchup.get(
+        "/api/v1/matchup",
+        params={"a": "Khabib", "b": "Khabib Nurmagomedov"},
+    )
+    assert response.status_code == 400

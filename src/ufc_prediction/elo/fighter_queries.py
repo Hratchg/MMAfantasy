@@ -7,12 +7,16 @@ structures (no Rich/Typer dependencies). Uses SQLAlchemy 2.0 select() style.
 
 from __future__ import annotations
 
+from collections import defaultdict
+from collections.abc import Sequence
+from datetime import date, timedelta
 from typing import Any
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
-from ufc_prediction.dedup.source_priority import prefer_canonical
+from ufc_prediction.dedup.source_priority import SOURCE_PRIORITY, prefer_canonical
+from ufc_prediction.elo.asof import RatedFight, pre_fight_rating
 from ufc_prediction.models.elo_snapshot import EloSnapshot
 from ufc_prediction.models.fight import Fight
 from ufc_prediction.models.fighter import Fighter, FighterAlias
@@ -53,24 +57,129 @@ _RANKABLE_DIVISIONS: list[str] = sorted(
 )
 
 
-def search_fighters(session: Session, name: str) -> list[Fighter]:
+_LIKE_ESCAPE = "\\"
+
+# Upper bound on the candidate list the API returns for an ambiguous name.
+MAX_FIGHTER_CANDIDATES = 25
+
+
+def _escape_like(value: str) -> str:
+    """Escape LIKE metacharacters so user input matches literally."""
+    return (
+        value.replace(_LIKE_ESCAPE, _LIKE_ESCAPE * 2)
+        .replace("%", _LIKE_ESCAPE + "%")
+        .replace("_", _LIKE_ESCAPE + "_")
+    )
+
+
+def _source_rank() -> Any:
+    """SQL expression ranking Fighter.source by SOURCE_PRIORITY (unknown last)."""
+    return case(SOURCE_PRIORITY, value=Fighter.source, else_=99)
+
+
+def _collapse_by_name(fighters: Sequence[Fighter]) -> list[Fighter]:
+    """Collapse same-name rows (one real person across ingest sources) to the
+    canonical row, preserving first-seen name order."""
+    by_name: dict[str, list[Fighter]] = {}
+    for f in fighters:
+        by_name.setdefault(f.name.lower(), []).append(f)
+    return [
+        prefer_canonical(group, source_key=lambda f: f.source, tiebreak_key=lambda f: f.id)
+        for group in by_name.values()
+    ]
+
+
+def search_fighters(session: Session, name: str, *, limit: int | None = None) -> list[Fighter]:
     """Search fighters by name or alias (case-insensitive ILIKE).
 
     Uses parameterized queries via SQLAlchemy bind parameters (T-04-01).
+    ``%``, ``_`` and ``\\`` in ``name`` match literally. Rows are ordered by
+    name, then source priority, then id, so a ``limit`` never keeps a
+    lower-priority duplicate while dropping its canonical twin.
     """
-    pattern = f"%{name}%"
+    pattern = f"%{_escape_like(name)}%"
+    alias_match = (
+        select(FighterAlias.id)
+        .where(FighterAlias.fighter_id == Fighter.id)
+        .where(FighterAlias.alias_name.ilike(pattern, escape=_LIKE_ESCAPE))
+        .exists()
+    )
     stmt = (
         select(Fighter)
-        .outerjoin(FighterAlias, Fighter.id == FighterAlias.fighter_id)
-        .where(
-            or_(
-                Fighter.name.ilike(pattern),
-                FighterAlias.alias_name.ilike(pattern),
-            )
-        )
-        .distinct()
+        .where(or_(Fighter.name.ilike(pattern, escape=_LIKE_ESCAPE), alias_match))
+        .order_by(func.lower(Fighter.name), _source_rank(), Fighter.id)
     )
+    if limit is not None:
+        stmt = stmt.limit(limit)
     return list(session.scalars(stmt).all())
+
+
+def resolve_fighter_candidates(
+    session: Session,
+    name: str,
+    *,
+    limit: int = MAX_FIGHTER_CANDIDATES,
+) -> list[Fighter]:
+    """Resolve a user-supplied name to canonical fighter candidates.
+
+    Cross-source duplicates (the same person ingested from ufcstats and a
+    Kaggle dataset) collapse to one canonical row via ``prefer_canonical``.
+    An exact case-insensitive name match wins outright over substring hits,
+    so a full name always resolves to a single fighter. Otherwise returns
+    at most ``limit`` distinct candidates.
+    """
+    needle = name.strip()
+    if not needle:
+        return []
+
+    exact_stmt = (
+        select(Fighter)
+        .where(func.lower(Fighter.name) == needle.lower())
+        .order_by(_source_rank(), Fighter.id)
+    )
+    exact = list(session.scalars(exact_stmt).all())
+    if exact:
+        return _collapse_by_name(exact)
+
+    # Each real person has at most one row per source, so over-fetching by
+    # the number of known sources keeps `limit` distinct names in range.
+    rows = search_fighters(session, needle, limit=limit * len(SOURCE_PRIORITY))
+    return _collapse_by_name(rows)[:limit]
+
+
+def get_latest_overall_elo_bulk(
+    session: Session,
+    fighter_ids: Sequence[int],
+) -> dict[int, tuple[float, str]]:
+    """Latest overall ``(elo_after_shrinkage, division)`` per fighter, in one query.
+
+    Fighters with no overall snapshot are absent from the result.
+    """
+    if not fighter_ids:
+        return {}
+    ranked = (
+        select(
+            EloSnapshot.fighter_id,
+            EloSnapshot.elo_after_shrinkage,
+            EloSnapshot.division,
+            func.row_number()
+            .over(
+                partition_by=EloSnapshot.fighter_id,
+                order_by=(EloSnapshot.fight_date.desc(), EloSnapshot.id.desc()),
+            )
+            .label("rn"),
+        )
+        .where(EloSnapshot.elo_type == "overall")
+        .where(EloSnapshot.fighter_id.in_(list(fighter_ids)))
+        .subquery()
+    )
+    stmt = select(ranked.c.fighter_id, ranked.c.elo_after_shrinkage, ranked.c.division).where(
+        ranked.c.rn == 1
+    )
+    return {
+        row.fighter_id: (float(row.elo_after_shrinkage), row.division)
+        for row in session.execute(stmt).all()
+    }
 
 
 def get_fighter_detail(
@@ -162,11 +271,20 @@ def get_division_rankings(
     session: Session,
     division: str,
     limit: int = 15,
+    *,
+    as_of: date | None = None,
 ) -> list[dict[str, Any]]:
-    """Get top fighters in a division ranked by Elo (elo_after_shrinkage desc).
+    """Get top fighters in a division ranked by current Elo.
 
-    Uses only the most recent snapshot per fighter to avoid duplicates.
+    Uses only the most recent snapshot per fighter to avoid duplicates, then
+    applies the engine's inactivity regression up to ``as_of`` (default
+    today) via ``elo.asof.pre_fight_rating``, so long-inactive fighters are
+    ranked on the rating they would carry into their next fight rather than
+    their last post-fight value. ``elo`` in the result is that regressed,
+    shrunk rating; ``last_date`` is still the fighter's last fight in the
+    division.
     """
+    as_of = as_of or date.today()
     # Subquery: latest fight_date per fighter in division
     latest = (
         select(
@@ -194,9 +312,10 @@ def get_division_rankings(
     # Main query: join snapshots with latest dates and fighter names.
     # DEDUP-03 (Phase 14): include Fighter.source so we can dedup duplicate
     # fighter rows (same real-world person across ingest sources) by source
-    # priority before truncating to `limit`. Over-fetch to limit*2 so
-    # post-dedup truncation cannot drop a real fighter from the top-N when
-    # duplicate pairs sit just above the cutoff.
+    # priority before truncating to `limit`. Every fighter in the division is
+    # fetched (no over-fetch window): a Kaggle twin can out-rate its ufcstats
+    # twin by hundreds of places, and any fixed window would let the Kaggle
+    # row through as canonical. A division is at most a few thousand rows.
     stmt = (
         select(
             EloSnapshot.elo_after_shrinkage,
@@ -216,7 +335,6 @@ def get_division_rankings(
         .where(EloSnapshot.elo_type == "overall")
         .where(EloSnapshot.division == division)
         .order_by(EloSnapshot.elo_after_shrinkage.desc())
-        .limit(limit * 2)
     )
 
     rows = session.execute(stmt).all()
@@ -240,30 +358,87 @@ def get_division_rankings(
         for group in by_name.values()
     ]
 
-    # Re-sort by Elo desc since dict insertion order may not match Elo order
-    # after dedup, then truncate to the original limit.
-    canonical_rows.sort(key=lambda r: r.elo_after_shrinkage, reverse=True)
-    canonical_rows = canonical_rows[:limit]
+    current = _current_division_ratings(
+        session, [r.fighter_id for r in canonical_rows], division, as_of
+    )
+    ranked = sorted(
+        ((current.get(r.fighter_id, float(r.elo_after_shrinkage)), r) for r in canonical_rows),
+        key=lambda pair: pair[0],
+        reverse=True,
+    )[:limit]
 
     return [
         {
             "name": row.name,
-            "elo": row.elo_after_shrinkage,
+            "elo": elo,
             "fighter_id": row.fighter_id,
             "fights": row.fight_count,
             "last_date": row.fight_date,
         }
-        for row in canonical_rows
+        for elo, row in ranked
     ]
+
+
+def _current_division_ratings(
+    session: Session,
+    fighter_ids: Sequence[int],
+    division: str,
+    as_of: date,
+) -> dict[int, float]:
+    """Each fighter's ``division`` rating carried forward to ``as_of``.
+
+    Replays the fighter's full overall history through
+    ``pre_fight_rating`` so inactivity regression matches the engine (every
+    gap past the threshold regresses all division ratings; the final gap is
+    measured from the last fight in any division). The replay is fed
+    ``elo_after_shrinkage``: shrinkage, regression and transfer are all linear
+    pulls toward the initial rating, so this yields the regressed display
+    rating directly.
+    """
+    if not fighter_ids:
+        return {}
+    stmt = (
+        select(
+            EloSnapshot.fighter_id,
+            EloSnapshot.fight_date,
+            EloSnapshot.division,
+            EloSnapshot.elo_after_shrinkage,
+        )
+        .where(EloSnapshot.elo_type == "overall")
+        .where(EloSnapshot.fighter_id.in_(list(fighter_ids)))
+        .order_by(EloSnapshot.fighter_id, EloSnapshot.fight_date, EloSnapshot.id)
+    )
+    history: dict[int, list[RatedFight]] = defaultdict(list)
+    for row in session.execute(stmt).all():
+        history[row.fighter_id].append(
+            RatedFight(
+                fight_date=row.fight_date,
+                division=row.division,
+                elo_after=float(row.elo_after_shrinkage),
+            )
+        )
+
+    result: dict[int, float] = {}
+    for fighter_id, fights in history.items():
+        # pre_fight_rating needs history strictly before its as_of; a fight
+        # dated on (or after) as_of means zero inactivity, so step past it.
+        effective = max(as_of, fights[-1].fight_date + timedelta(days=1))
+        result[fighter_id] = pre_fight_rating(fights, as_of=effective, division=division)
+    return result
 
 
 def resolve_weight_class(input_str: str) -> list[str]:
     """Resolve partial weight class input to matching divisions.
 
-    Excludes Catch Weight and Open Weight from results.
-    Case-insensitive substring matching.
+    Excludes Catch Weight and Open Weight from results. An exact
+    case-insensitive division name resolves to that division alone (so
+    'Heavyweight' is not ambiguous with 'Light Heavyweight'); otherwise
+    falls back to case-insensitive substring matching.
     """
-    needle = input_str.lower()
+    needle = input_str.strip().lower()
+    exact = [wc for wc in _RANKABLE_DIVISIONS if needle == wc.lower()]
+    if exact:
+        return exact
     return [wc for wc in _RANKABLE_DIVISIONS if needle in wc.lower()]
 
 

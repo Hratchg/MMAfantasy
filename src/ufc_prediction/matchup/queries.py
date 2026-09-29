@@ -12,6 +12,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session, aliased
 
 from ufc_prediction.models.computed_feature import ComputedFeature
+from ufc_prediction.models.event import Event
 from ufc_prediction.models.fight import Fight
 from ufc_prediction.models.round_stats import RoundStats
 
@@ -71,7 +72,10 @@ def get_style_matchup_counts(
     Joins fights with computed features for both fighters (at the time of
     the fight) to extract style tags. Excludes draws/no-contests where
     winner_id IS NULL (D-08). Normalizes style pairs alphabetically to
-    avoid double-counting.
+    avoid double-counting. Restricted to ``Event.source == 'ufcstats'``
+    (the Plan 28-04 dedup used by ``load_fight_records``): the Kaggle
+    sources re-ingest largely the same bouts, which would otherwise be
+    counted two or three times.
 
     Returns:
         Dict mapping (style_a, style_b) tuples (alphabetically sorted) to
@@ -114,6 +118,7 @@ def get_style_matchup_counts(
             func.sum(lo_won).label("lo_wins"),
         )
         .select_from(Fight)
+        .join(Event, Event.id == Fight.event_id)
         .join(
             cf_a,
             (cf_a.fight_id == Fight.id) & (cf_a.fighter_id == Fight.fighter_a_id),
@@ -122,6 +127,7 @@ def get_style_matchup_counts(
             cf_b,
             (cf_b.fight_id == Fight.id) & (cf_b.fighter_id == Fight.fighter_b_id),
         )
+        .where(Event.source == "ufcstats")
         .where(Fight.winner_id.is_not(None))
         .where(style_a_col != style_b_col)  # Only cross-style matchups
         .group_by(style_lo, style_hi)

@@ -171,6 +171,8 @@ def test_aggregate_variance_max() -> None:
         X_eval,
         y_eval,
         fight_dates_eval,
+        *,
+        today=None,
     ) -> dict[str, dict[str, float]]:
         # Return finite CIs > seed_std → std_used = ci_half.
         return {slc: {"brier_ci_half": 0.05, "acc_ci_half": 0.04} for slc in PER_SLICE_KEYS}
@@ -260,6 +262,8 @@ def test_pitfall_b_nan_fallback() -> None:
         X_eval,
         y_eval,
         fight_dates_eval,
+        *,
+        today=None,
     ) -> dict[str, dict[str, float]]:
         # Degenerate slice → NaN for both metrics on random_15pct only;
         # other slices have small finite CIs (less than seed_std).

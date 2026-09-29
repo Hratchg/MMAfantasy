@@ -37,7 +37,11 @@ The meta-gate operates **above** the D-18 LOCKED formula-gate. D-18 prevents pos
 
 ### Methodology (a) — refit-baseline (v2.6 standard)
 
-Operator-preferred (2026-06-03). Strip the canonical Pipeline of its frozen `StandardScaler` + `LogisticRegression`. Refit a fresh `StandardScaler` + `LogisticRegression` on the META-V22 architecture against the **current substrate's distribution**. The refit baseline is then directly comparable to the candidate (both fit on the same substrate; no OOD scaler response).
+Operator-preferred (2026-06-03). Strip the canonical Pipeline of its frozen fitted state. Refit a fresh copy of the canonical META-V22 architecture (`MetaLearnerLogistic`: `PolynomialFeatures(interaction_only)` + `StandardScaler` + `LogisticRegression(C=1.0)`, the same config as `meta_v2.joblib` and `meta_v2_refit_v2.6.joblib`) against the **current substrate's distribution**. The refit baseline is then directly comparable to the candidate (both fit on the same substrate; no OOD scaler response).
+
+**Scored out of sample (verifier v2.6.1).** The eval slices are the only substrate the verifier sees, so the aligned baseline is cross-fit: the slice rows are de-duplicated (`most_recent_12mo` is a subset of `most_recent_24mo`), split into 5 stratified folds with a fixed seed, and each row is scored by a refit trained on the other folds. Before v2.6.1 the refit was fit and scored on the same rows. That in-sample Brier was optimistic by +0.0113 summed over the 3 slices on the live REF substrate (real `elo_prob`, canonical NaN policy; 2026-09-29), about 3.8x the 0.003 total-margin hurdle, so it biased every verdict against the candidate.
+
+**NaN policy first.** Before any refit or `predict_proba`, the verifier applies the canonical META-V22 NaN policy (`apply_canonical_nan_policy`): rows with NaN in the baseline columns (col 0 xgb OOF prob, col 1 `elo_prob`) are dropped, and the remaining NaN are imputed with medians of the de-duplicated slice union (the same row set the cross-fit trains on). The medians are label-free, so computing them once over the union does not leak outcomes into the out-of-sample baseline.
 
 **Cost:** minutes (Level-1 substrate is small).
 **AUDIT-01 impact:** canonical `meta_v2.joblib` STAYS byte-identical; the refit ships as a SIBLING artifact `meta_v2_refit_v2.6.joblib`.

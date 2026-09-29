@@ -142,6 +142,31 @@ PER_SLICE_KEYS: tuple[str, str, str] = (
 )
 
 
+def gate_reference_date(fight_dates: Any) -> date | None:
+    """Substrate-derived anchor for the 12mo / 24mo gate slices.
+
+    Returns the latest event date in ``fight_dates``. Gate paths should
+    pass this as ``today`` to ``evaluate_per_slice`` /
+    ``bootstrap_per_slice_ci`` (and ``variance.multi_seed_metrics`` /
+    ``variance.aggregate_variance``) instead of letting them default to
+    ``date.today()``: a wall-clock anchor makes the slices, and every gate
+    metric and pinned baseline derived from them, slide daily on an
+    unchanged substrate. This anchor only moves when new fights enter the
+    substrate. (S11; the substrate builders pin a constant
+    ``*_REFERENCE_DATE`` for the same reason.)
+
+    Returns None for an empty ``fight_dates``: there is nothing to anchor
+    to, every date-window slice is empty whatever the anchor, and passing
+    None through keeps the callee's default.
+    """
+    dates = list(fight_dates)
+    if not dates:
+        return None
+    latest = max(dates)
+    anchor: date = latest.item() if hasattr(latest, "item") else latest
+    return anchor
+
+
 def evaluate_per_slice(
     model: Any,
     X_test: np.ndarray,
@@ -165,7 +190,9 @@ def evaluate_per_slice(
         fight_dates: ndarray of `datetime.date` (or any object with date
             comparison semantics) of length n_test.
         today: Reference date for the 12mo / 24mo windows. Defaults to
-            `date.today()` when None.
+            `date.today()` when None; gate paths should pass
+            `gate_reference_date(fight_dates)` so the slices do not slide
+            with the wall clock.
         random_seed: Seed for the random_15pct slice (deterministic per
             CONTEXT.md `<plan_specific_notes>`).
 
@@ -245,7 +272,8 @@ def bootstrap_per_slice_ci(
         X_test: Test feature matrix.
         y_test: Test target vector.
         fight_dates: ndarray of date-comparable values; length n_test.
-        today: Reference date for the 12mo/24mo windows. Defaults to date.today().
+        today: Reference date for the 12mo/24mo windows. Defaults to date.today();
+            gate paths should pass `gate_reference_date(fight_dates)`.
         confidence_level: BCa CI width (default 0.68 = one-sigma per D-05(P17)).
         n_resamples: BCa resample count (default 9999 per scipy convention).
         rng_seed: Seed for the bootstrap RNG (deterministic).

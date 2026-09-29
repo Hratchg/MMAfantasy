@@ -44,7 +44,9 @@ from ufc_prediction.ml.gate_contract import GateContract
 # Verifier version tag — embedded in every verdict for audit-trail
 # reproducibility. Bump when verifier logic changes (NOT when the
 # methodology spec is updated — that's `gate_methodology_v2.6.md` ownership).
-VERIFIER_VERSION: str = "v2.6.0"
+# v2.6.1 (S11): refit baseline uses the canonical MetaLearnerLogistic
+# architecture and is scored out of sample (cross-fit), not in-sample.
+VERIFIER_VERSION: str = "v2.6.1"
 
 SubstrateAlignStrategy = Literal["refit_baseline", "dual_test_set"]
 GateVerdict = Literal["path_a_promote", "path_b_reject", "confound_block"]
@@ -184,13 +186,15 @@ def _predict_proba_with_pipeline(
 # Live substrates carry NaN in non-baseline Level-1 columns
 # (closing_prob_diff / sharp_money_signal without odds,
 # days_since_last_fight_diff / age_diff for debuts or missing DOBs, the TRAVEL
-# cols), which neither the refit LogisticRegression nor the canonical
-# PolynomialFeatures pipeline accept. The verifier applies the SAME policy the
-# canonical meta_v2 training path uses (scripts/train_meta_v22.py, Plan 29-02
-# / EVAL-V23-01): ``ml.oof.apply_nan_drop_policy`` with
-# ``per_feature_strict_baseline`` drops rows whose baseline columns are NaN,
-# then remaining non-baseline NaN are imputed with fit-set column medians
-# (computed after the drop; 0.0 when a column has no finite value).
+# cols), which neither the refit baseline nor the canonical meta_v2 (both
+# MetaLearnerLogistic: PolynomialFeatures + StandardScaler + LR) accept. The
+# verifier applies the SAME policy the canonical meta_v2 training path uses
+# (scripts/train_meta_v22.py, Plan 29-02 / EVAL-V23-01):
+# ``ml.oof.apply_nan_drop_policy`` with ``per_feature_strict_baseline`` drops
+# rows whose baseline columns are NaN, then remaining non-baseline NaN are
+# imputed with fit-set column medians (computed after the drop; 0.0 when a
+# column has no finite value). It runs BEFORE the out-of-sample (cross-fit)
+# refit baseline and every predict_proba.
 NAN_DROP_POLICY: str = "per_feature_strict_baseline"
 
 # Every META-V22-family substrate leads with the two baseline columns:
@@ -205,11 +209,17 @@ def apply_canonical_nan_policy(
 ) -> tuple[dict[str, EvalSlice], dict[int, float]]:
     """Apply the canonical META-V22 NaN policy to every eval slice.
 
-    The fit set is the refit baseline's training substrate: all slices
-    aggregated in sorted slice-name order (exactly what
-    ``verify_candidate_vs_canonical`` refits on). Its surviving rows supply
-    the imputation medians, and the SAME medians are applied to every slice so
-    the canonical, refit and candidate pipelines all score identical inputs.
+    The fit set is the refit baseline's training substrate: the
+    de-duplicated union of the slices' surviving rows (exactly what
+    ``_refit_aligned_baseline`` fits on; a fight in both ``most_recent_12mo``
+    and ``most_recent_24mo`` counts once, so overlapping recent fights do not
+    pull the medians). It supplies the imputation medians, and the SAME
+    medians are applied to every slice so the canonical, refit and candidate
+    pipelines all score identical inputs — and a fight that appears in two
+    slices is imputed identically in both, so the cross-fit de-duplication
+    still sees it as one row. The medians are label-free, so computing them
+    once over the whole union (rather than per cross-fit fold) does not leak
+    outcomes into the out-of-sample aligned baseline.
 
     Returns:
         ``(clean_slices, medians)`` — slices with baseline-NaN rows dropped and
@@ -256,7 +266,16 @@ def apply_canonical_nan_policy(
     fit_rows = [X for X, _ in kept.values() if X.ndim == 2 and X.shape[0] > 0]
     medians: dict[int, float] = {}
     if fit_rows and len({X.shape[1] for X in fit_rows}) == 1:
-        fit_set = np.vstack(fit_rows)
+        # De-duplicated union (NaN-safe row key, sorted slice order) — the
+        # same row set the refit baseline trains on.
+        union: dict[tuple[str, ...], Any] = {}
+        for slice_name in sorted(kept):
+            X, outcomes = kept[slice_name]
+            if X.ndim != 2 or X.shape[0] == 0:
+                continue
+            for row, outcome in zip(X, outcomes, strict=True):
+                union.setdefault(_row_key(tuple(row), outcome), row)
+        fit_set = np.vstack(list(union.values()))
         n_baseline = min(len(_BASELINE_COLUMN_NAMES), fit_set.shape[1])
         for idx in range(n_baseline, fit_set.shape[1]):
             if not any(np.isnan(X[:, idx]).any() for X in fit_rows):
@@ -281,6 +300,15 @@ def apply_canonical_nan_policy(
     return clean, medians
 
 
+# Canonical meta_v2 hyperparameters (MetaLearnerLogistic defaults).
+REFIT_BASELINE_C: float = 1.0
+REFIT_BASELINE_RANDOM_STATE: int = 42
+# Cross-fitting for the out-of-sample aligned baseline. Fixed seed so the
+# fold assignment (and hence every aligned number) is byte-reproducible.
+REFIT_BASELINE_N_FOLDS: int = 5
+REFIT_BASELINE_FOLD_SEED: int = 0
+
+
 def _refit_baseline_on_substrate(
     substrate_features: tuple[tuple[float, ...], ...],
     substrate_outcomes: tuple[int, ...],
@@ -288,46 +316,145 @@ def _refit_baseline_on_substrate(
     """Refit the canonical META-V22 architecture on the supplied substrate.
 
     Per spec §3.1 methodology (a) — the v2.6 default. Produces a refit
-    Pipeline directly comparable to the candidate (both fit on the same
+    model directly comparable to the candidate (both fit on the same
     substrate distribution; no OOD scaler response).
 
-    The architecture is HARDCODED to the Phase 23-26 META-V22 canonical
-    spec (``StandardScaler + LogisticRegression(C=1.0)``) per
-    ``.planning/gate_methodology_v2.6.md`` §3.1. The canonical pipeline
-    object is intentionally NOT consulted; the architecture is pinned by
-    the methodology spec, not derived from the loaded model. This keeps
-    the refit reproducible regardless of (a) canonical Pipeline's
-    internal step naming, (b) whether the canonical is a plain sklearn
-    Pipeline or a ``MetaLearnerLogistic`` wrapper, or (c) any future
-    canonical hyperparameter drift.
+    The architecture is pinned to the canonical ``meta_v2.joblib`` config:
+    ``MetaLearnerLogistic(C=1.0)`` = ``PolynomialFeatures(degree=2,
+    interaction_only=True)`` + ``StandardScaler`` + ``LogisticRegression``
+    (verified by joblib-loading ``models/meta/meta_v2.joblib``; every
+    shipped meta candidate uses the same wrapper). It is built from the
+    class rather than cloned from the loaded canonical, so the refit is
+    reproducible regardless of the canonical's internal step naming.
+
+    S11 fix: this used to be ``StandardScaler + LogisticRegression``
+    (no interaction expansion) while claiming to mirror the canonical,
+    so ``aligned_delta`` compared the candidate against a different
+    model family.
+
+    This full-substrate fit is used for the ``refit_baseline_sha`` audit
+    trail only. The aligned per-slice Brier comes from
+    ``_cross_fit_baseline_predictions`` (out-of-sample); scoring this
+    model on the rows it was fit on is in-sample and optimistic.
 
     WR-03 fix: prior signature took a dead ``canonical_pipeline`` first
     argument that the body never read; callers were misleadingly led to
     believe the architecture was reflected from the loaded canonical.
     Parameter removed; both in-file callers updated.
 
-    Result is a NEW Pipeline instance; no input is mutated (audit-trail
+    Result is a NEW model instance; no input is mutated (audit-trail
     invariant).
     """
     import numpy as np
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.pipeline import Pipeline
-    from sklearn.preprocessing import StandardScaler
 
-    # Mirror canonical Pipeline architecture exactly. Phase 23-26
-    # META-V22 used (StandardScaler, LogisticRegression(C=1.0)) — pin
-    # those hyperparameters explicitly so the refit is reproducible
-    # regardless of canonical Pipeline's internal step naming.
-    refit = Pipeline(
-        [
-            ("scaler", StandardScaler()),
-            ("logreg", LogisticRegression(C=1.0, max_iter=10_000, random_state=0)),
-        ]
-    )
-    X = np.array(substrate_features)
-    y = np.array(substrate_outcomes)
-    refit.fit(X, y)
+    from ufc_prediction.ml.meta_learner import MetaLearnerLogistic
+
+    refit = MetaLearnerLogistic(C=REFIT_BASELINE_C, random_state=REFIT_BASELINE_RANDOM_STATE)
+    refit.fit(np.array(substrate_features, dtype=float), np.array(substrate_outcomes))
     return refit
+
+
+def _row_key(feature_vector: tuple[float, ...], outcome: int) -> tuple[str, ...]:
+    """Hashable identity for one substrate row.
+
+    Uses ``repr(float(v))`` (the ``compute_slice_sha`` convention) rather
+    than the raw floats because ``nan != nan``: a raw-tuple key would never
+    match a NaN-bearing row against its copy in another slice.
+    """
+    return (*(repr(float(v)) for v in feature_vector), str(int(outcome)))
+
+
+def _dedup_substrate_rows(
+    eval_slices: dict[str, EvalSlice],
+) -> tuple[list[tuple[float, ...]], list[int], dict[str, list[int]]]:
+    """Collapse the slices into their de-duplicated row union.
+
+    The eval slices overlap by construction (``most_recent_12mo`` is a
+    subset of ``most_recent_24mo``; ``random_15pct`` spans the whole
+    history). Returns ``(features, outcomes, index)`` where ``index[slice]``
+    maps each slice row, in order, to its position in the union. Slices are
+    visited in sorted-name order for determinism.
+    """
+    positions: dict[tuple[str, ...], int] = {}
+    features: list[tuple[float, ...]] = []
+    outcomes: list[int] = []
+    index: dict[str, list[int]] = {}
+    for slice_name in sorted(eval_slices):
+        sl = eval_slices[slice_name]
+        rows: list[int] = []
+        for fv, outcome in zip(sl.feature_vectors, sl.outcomes, strict=True):
+            key = _row_key(fv, outcome)
+            pos = positions.get(key)
+            if pos is None:
+                pos = len(features)
+                positions[key] = pos
+                features.append(fv)
+                outcomes.append(int(outcome))
+            rows.append(pos)
+        index[slice_name] = rows
+    return features, outcomes, index
+
+
+def _cross_fit_baseline_predictions(
+    eval_slices: dict[str, EvalSlice],
+) -> dict[str, list[float]]:
+    """Out-of-sample refit-baseline P(class=1) for every row of every slice.
+
+    S11 fix for the in-sample aligned baseline. The refit used to be fit on
+    the concatenation of all slices and then scored on those same rows,
+    which is optimistic: +0.0113 Brier summed over the 3 slices on the live
+    REF substrate (real elo_prob, canonical NaN policy; 5-fold x 5 repeats,
+    2026-09-29), about 3.8x the 0.003 total-margin hurdle, so every
+    candidate was graded against a baseline that looked better than it was.
+
+    Procedure: de-duplicate the slice rows (a fight in both 12mo and 24mo
+    is ONE row, so it cannot sit in the training fold that scores its own
+    copy), stratified K-fold over the union with a fixed seed, fit the
+    canonical architecture on K-1 folds, predict the held-out fold, then
+    read each slice's predictions back out of the union. Each baseline
+    model is trained on (K-1)/K of the substrate, a small pessimistic
+    learning-curve effect that is far smaller than the in-sample optimism
+    it replaces.
+    """
+    import numpy as np
+    from sklearn.model_selection import StratifiedKFold
+
+    features, outcomes, index = _dedup_substrate_rows(eval_slices)
+    X = np.array(features, dtype=float)
+    y = np.array(outcomes)
+    minority = int(min(np.bincount(y, minlength=2))) if len(y) else 0
+    n_folds = min(REFIT_BASELINE_N_FOLDS, minority)
+    if n_folds < 2:
+        raise ValueError(
+            "refit_baseline cross-fit needs at least 2 rows of each outcome "
+            f"across the de-duplicated eval slices; got {len(y)} rows with "
+            f"minority-class count {minority}."
+        )
+    folds = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=REFIT_BASELINE_FOLD_SEED)
+    held_out = np.empty(len(y), dtype=float)
+    for train_idx, test_idx in folds.split(X, y):
+        model = _refit_baseline_on_substrate(
+            tuple(map(tuple, X[train_idx])),
+            tuple(int(v) for v in y[train_idx]),
+        )
+        held_out[test_idx] = model.predict_proba(X[test_idx])[:, 1]
+    return {
+        slice_name: [float(held_out[pos]) for pos in rows] for slice_name, rows in index.items()
+    }
+
+
+def _refit_aligned_baseline(
+    eval_slices: dict[str, EvalSlice],
+) -> tuple[dict[str, list[float]], str]:
+    """Aligned-baseline predictions per slice (out of sample) + audit SHA.
+
+    The SHA is over the full-substrate refit (de-duplicated union), the
+    model an operator would reproduce; the per-slice predictions come from
+    the cross-fit so the aligned Brier is not scored in-sample.
+    """
+    features, outcomes, _index = _dedup_substrate_rows(eval_slices)
+    full_refit = _refit_baseline_on_substrate(tuple(features), tuple(outcomes))
+    return _cross_fit_baseline_predictions(eval_slices), _hash_refit_baseline(full_refit)
 
 
 # ── Verifier entry point ──────────────────────────────────────────────────
@@ -468,30 +595,14 @@ def verify_candidate_vs_canonical(
     # Aligned measurement: refit baseline on substrate; measure both
     # canonical (raw) and refit (aligned) for the meta-gate stage.
     refit_baseline_sha: str | None = None
+    aligned_preds_by_slice: dict[str, list[float]] | None = None
     if substrate_align_strategy == "refit_baseline":
-        # Aggregate substrate across all slices for the refit driver.
-        # Order is sorted by slice name for determinism.
-        agg_features: list[tuple[float, ...]] = []
-        agg_outcomes: list[int] = []
-        for slice_name in sorted(eval_slices):
-            sl = eval_slices[slice_name]
-            agg_features.extend(sl.feature_vectors)
-            agg_outcomes.extend(sl.outcomes)
-        # WR-03: canonical_pipeline no longer passed; architecture is
-        # pinned by methodology §3.1, not derived from the loaded model.
-        refit_baseline = _refit_baseline_on_substrate(
-            tuple(agg_features),
-            tuple(agg_outcomes),
-        )
-        # Audit trail: SHA the refit's serialized form.
-        refit_baseline_sha = _hash_refit_baseline(refit_baseline)
-    else:
-        # dual_test_set: aligned baseline = canonical applied to its own
-        # training-time substrate (Phase 26 partition). For Phase 55 ship,
-        # we accept the canonical's raw output as "aligned" under the
-        # assumption the caller has supplied dual-test eval_slices that
-        # are already substrate-stratified. v2.6.1 may tighten this.
-        refit_baseline = canonical_pipeline
+        # S11: canonical architecture, scored out of sample via cross-fit
+        # over the de-duplicated slice union (see
+        # _cross_fit_baseline_predictions). WR-03: canonical_pipeline is
+        # not consulted; the architecture is pinned in
+        # _refit_baseline_on_substrate.
+        aligned_preds_by_slice, refit_baseline_sha = _refit_aligned_baseline(eval_slices)
 
     candidate_predictions_full: list[float] = []
     candidate_outcomes_full: list[int] = []
@@ -504,11 +615,14 @@ def verify_candidate_vs_canonical(
         )
         raw_baseline_brier[slice_name] = _brier_score(raw_canon_preds, list(sl.outcomes))
 
-        # Aligned baseline (refit)
-        aligned_baseline_preds = _predict_proba_with_pipeline(
-            refit_baseline,
-            sl.feature_vectors,
-        )
+        # Aligned baseline: out-of-sample refit (refit_baseline), or, for
+        # dual_test_set, the canonical's raw output under the assumption
+        # the caller supplied dual-test eval_slices that are already
+        # substrate-stratified (Phase 55; v2.6.1 may tighten this).
+        if aligned_preds_by_slice is not None:
+            aligned_baseline_preds = aligned_preds_by_slice[slice_name]
+        else:
+            aligned_baseline_preds = raw_canon_preds
         aligned_baseline_brier[slice_name] = _brier_score(
             aligned_baseline_preds,
             list(sl.outcomes),
@@ -716,25 +830,11 @@ def _build_width_mismatch_verdict(
     debuggability (e.g., ``"width_mismatch_drift: canonical=13,
     candidate=15"``).
     """
-    # Refit baseline on the candidate-width substrate. This is the
-    # SAME helper Phase 55 uses; it retrains StandardScaler+LR on
-    # whatever width the substrate supplies, so no width error.
-    agg_features: list[tuple[float, ...]] = []
-    agg_outcomes: list[int] = []
-    for slice_name in sorted(eval_slices):
-        sl = eval_slices[slice_name]
-        agg_features.extend(sl.feature_vectors)
-        agg_outcomes.extend(sl.outcomes)
-    # WR-03: canonical_pipeline no longer passed; architecture is pinned
-    # by methodology §3.1. The width-mismatch confound path STILL relies
-    # on the refit producing a candidate-width-compatible Pipeline, which
-    # it does because the refit fits on the supplied substrate (which is
-    # already at candidate width).
-    refit_baseline = _refit_baseline_on_substrate(
-        tuple(agg_features),
-        tuple(agg_outcomes),
-    )
-    refit_baseline_sha = _hash_refit_baseline(refit_baseline)
+    # Refit baseline on the candidate-width substrate (same helper as the
+    # main path). WR-03: canonical_pipeline is not consulted; the refit
+    # fits on the supplied substrate, which is already at candidate width,
+    # so it cannot hit the width error. S11: scored out of sample.
+    aligned_preds_by_slice, refit_baseline_sha = _refit_aligned_baseline(eval_slices)
 
     raw_baseline_brier: dict[str, float] = {}
     raw_delta: dict[str, float] = {}
@@ -749,12 +849,8 @@ def _build_width_mismatch_verdict(
         raw_baseline_brier[slice_name] = None  # type: ignore[assignment]
         raw_delta[slice_name] = None  # type: ignore[assignment]
 
-        aligned_baseline_preds = _predict_proba_with_pipeline(
-            refit_baseline,
-            sl.feature_vectors,
-        )
         aligned_baseline_brier[slice_name] = _brier_score(
-            aligned_baseline_preds,
+            aligned_preds_by_slice[slice_name],
             list(sl.outcomes),
         )
 
@@ -857,17 +953,8 @@ def _build_candidate_width_mismatch_verdict(
     """
     # Refit baseline on the supplied substrate. The refit fits on whatever
     # width the substrate supplies, so no width error from this step.
-    agg_features: list[tuple[float, ...]] = []
-    agg_outcomes: list[int] = []
-    for slice_name in sorted(eval_slices):
-        sl = eval_slices[slice_name]
-        agg_features.extend(sl.feature_vectors)
-        agg_outcomes.extend(sl.outcomes)
-    refit_baseline = _refit_baseline_on_substrate(
-        tuple(agg_features),
-        tuple(agg_outcomes),
-    )
-    refit_baseline_sha = _hash_refit_baseline(refit_baseline)
+    # S11: scored out of sample.
+    aligned_preds_by_slice, refit_baseline_sha = _refit_aligned_baseline(eval_slices)
 
     raw_baseline_brier: dict[str, float] = {}
     raw_delta: dict[str, float] = {}
@@ -883,12 +970,8 @@ def _build_candidate_width_mismatch_verdict(
         raw_baseline_brier[slice_name] = None  # type: ignore[assignment]
         raw_delta[slice_name] = None  # type: ignore[assignment]
 
-        aligned_baseline_preds = _predict_proba_with_pipeline(
-            refit_baseline,
-            sl.feature_vectors,
-        )
         aligned_baseline_brier[slice_name] = _brier_score(
-            aligned_baseline_preds,
+            aligned_preds_by_slice[slice_name],
             list(sl.outcomes),
         )
 

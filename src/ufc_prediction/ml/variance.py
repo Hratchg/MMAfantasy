@@ -59,6 +59,7 @@ Implementation notes:
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from datetime import date
 
 import numpy as np
 
@@ -117,6 +118,8 @@ def multi_seed_metrics(
     fight_dates_eval: np.ndarray,
     seeds: Sequence[int],
     fit_fn: Callable[[np.ndarray, np.ndarray, int], object],
+    *,
+    today: date | None = None,
 ) -> dict[int, dict[str, dict[str, float]]]:
     """Per-seed bootstrap-fit + 3-slice evaluate per D-01 / D-02.
 
@@ -143,6 +146,12 @@ def multi_seed_metrics(
             expose `predict_proba` and `predict` so
             `evaluate_per_slice` can compute Brier / AUC / accuracy /
             calibration.
+        today: reference date for the 12mo / 24mo slice windows, passed
+            to `evaluate_per_slice`. Gate paths should pass
+            `evaluator.gate_reference_date(fight_dates_eval)` so the slices
+            do not slide with the wall clock. When None, `date.today()` is
+            read ONCE up front so every seed is scored on the same slice
+            masks even if the run crosses midnight.
 
     Returns:
         `{int(seed): {slice_name: {brier_score, auc_roc, accuracy,
@@ -161,6 +170,7 @@ def multi_seed_metrics(
     if not seeds_list:
         raise ValueError("multi_seed_metrics: seeds must be non-empty")
 
+    anchor = today if today is not None else date.today()
     per_seed: dict[int, dict[str, dict[str, float]]] = {}
     for seed in seeds_list:
         X_boot, y_boot = bootstrap_resample(X_train, y_train, seed=int(seed))
@@ -170,6 +180,7 @@ def multi_seed_metrics(
             X_eval,
             y_eval,
             fight_dates_eval,
+            today=anchor,
         )
     return per_seed
 
@@ -181,6 +192,7 @@ def aggregate_variance(
     X_eval: np.ndarray,
     y_eval: np.ndarray,
     fight_dates_eval: np.ndarray,
+    today: date | None = None,
 ) -> tuple[dict[str, dict[str, float]], list[str]]:
     """Per-slice variance aggregation per D-08 + Pitfall-B fallback.
 
@@ -211,6 +223,10 @@ def aggregate_variance(
         X_eval: meta-eval feature matrix (UNCHANGED across seeds).
         y_eval: meta-eval labels.
         fight_dates_eval: per-eval-row event dates.
+        today: reference date for the 12mo / 24mo slice windows, passed
+            to `bootstrap_per_slice_ci`. Must be the same anchor given to
+            `multi_seed_metrics`, or the CI half-widths are computed on
+            different slices than the per-seed metrics.
 
     Returns:
         (aggregated, warnings) where
@@ -261,6 +277,7 @@ def aggregate_variance(
         X_eval,
         y_eval,
         fight_dates_eval,
+        today=today,
     )
 
     # Apply max() rule + Pitfall-B fallback (verbatim from

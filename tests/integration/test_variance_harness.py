@@ -470,6 +470,7 @@ def test_no_bootstrap_does_not_emit_spurious_halt(tmp_path) -> None:
         fight_dates_eval,
         *,
         seeds,
+        today=None,
     ):
         # Return our pre-built identical-tuples dict (skips actual LR fit).
         return {int(s): fake_per_seed[int(s)] for s in seeds}

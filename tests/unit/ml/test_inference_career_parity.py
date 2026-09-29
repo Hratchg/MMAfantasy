@@ -344,8 +344,8 @@ def test_missing_physicals_imputed_like_training(monkeypatch):
     )
     monkeypatch.setattr(
         inference_features,
-        "_get_latest_computed_features",
-        lambda s, fid: dict(computed[(fid, tid)]),
+        "_get_pre_fight_performance",
+        lambda s, fa, fb, d: (dict(computed[(fa, tid)]), dict(computed[(fb, tid)])),
     )
     monkeypatch.setattr(inference_features, "_get_cached_odds", lambda *a: (None, None))
     monkeypatch.setattr(

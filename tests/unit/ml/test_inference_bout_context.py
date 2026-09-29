@@ -67,7 +67,7 @@ def _record(fight_id, day, a, b, wc, winner=None):
 def stub_db(monkeypatch):
     """Stub every DB reader ``build`` touches; tests override what they need."""
     monkeypatch.setattr(inference_features, "_get_latest_elo", lambda *a, **kw: 1500.0)
-    monkeypatch.setattr(inference_features, "_get_latest_computed_features", lambda s, fid: {})
+    monkeypatch.setattr(inference_features, "_get_pre_fight_performance", lambda *a: ({}, {}))
     monkeypatch.setattr(inference_features, "_get_cached_odds", lambda *a: (None, None))
     monkeypatch.setattr(
         inference_features, "_load_career_inputs", lambda *a: inference_features.CareerInputs()

@@ -3,7 +3,7 @@ name: sdk-codegen
 # API-V261-04 (Phase 70) — TypeScript SDK drift detection gate.
 #
 # CONTEXT.md decisions (LOCKED):
-#   - Trigger: pull_request + push to master, scoped to clients/typescript/**
+#   - Trigger: pull_request + push to main, scoped to clients/typescript/**
 #     and src/ufc_prediction/contracts/openapi*.json paths
 #   - Also workflow_dispatch (manual)
 #   - Node 20 (matches clients/typescript/package.json::engines.node ">=20.0.0")
@@ -15,7 +15,7 @@ name: sdk-codegen
 #
 # Branch protection (operator-managed via GitHub Settings → Branches per
 # CONTRIBUTING.md) requires this workflow status check to pass before PRs
-# touching the SDK surface can merge into master.
+# touching the SDK surface can merge into main.
 
 on:
   pull_request:
@@ -24,7 +24,7 @@ on:
       - "src/ufc_prediction/contracts/openapi*.json"
       - ".github/workflows/sdk-codegen.yml"
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - "clients/typescript/**"
       - "src/ufc_prediction/contracts/openapi*.json"

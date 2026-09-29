@@ -14,7 +14,7 @@ name: ci
 #
 # Branch protection (operator-managed via GitHub Settings → Branches per
 # CONTRIBUTING.md) requires BOTH workflow status checks to pass before
-# PRs into master can merge.
+# PRs into main can merge.
 
 on:
   pull_request:

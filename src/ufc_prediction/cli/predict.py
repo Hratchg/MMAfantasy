@@ -1119,7 +1119,9 @@ def predict_train(
     # Train
     console.print(f"[bold]Training XGBoost with {trials} Optuna trials...[/bold]")
     trainer = ModelTrainer(config)
-    calibrated_model, best_params, importances = trainer.train(X_train, y_train)
+    calibrated_model, best_params, importances = trainer.train(
+        X_train, y_train, feature_columns=feature_columns
+    )
 
     # Evaluate on test set
     console.print("[bold]Evaluating on test set...[/bold]")

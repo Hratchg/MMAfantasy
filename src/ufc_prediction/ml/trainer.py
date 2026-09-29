@@ -91,19 +91,43 @@ class ModelTrainer:
         self,
         X_train: np.ndarray,
         y_train: np.ndarray,
+        *,
+        feature_columns: list[str] | None = None,
     ) -> tuple[CalibratedClassifierCV, dict, dict]:
         """Train model with Optuna tuning and Platt calibration.
 
         Steps:
         1. Split train into train_proper (80%) and calibration_holdout (20%)
            -- no shuffling, chronological order preserved (RESEARCH Pitfall 7).
-        2. Optuna study to find best hyperparameters on train_proper.
+        2. Optuna study to find best hyperparameters on train_proper. The TPE
+           sampler is seeded from config.random_seed so the search is
+           reproducible.
         3. Train final model on full train_proper with best params.
         4. Platt calibration via CalibratedClassifierCV(FrozenEstimator) on calibration_holdout.
         5. Extract feature importances from the base XGBoost model.
 
+        ``feature_columns`` names X_train's columns (e.g. the CLI's
+        ``get_feature_columns(feature_set=...)``) and keys the importances.
+        When omitted, the 75-col FEATURE_COLUMNS is used if the width matches,
+        otherwise positional ``f{i}`` keys. A list whose length disagrees with
+        X_train's width raises ValueError before the Optuna search starts.
+
         Returns (calibrated_model, best_params, feature_importances).
         """
+        n_features = X_train.shape[1]
+        if feature_columns is None:
+            feature_columns = (
+                list(FEATURE_COLUMNS)
+                if n_features == len(FEATURE_COLUMNS)
+                else [f"f{i}" for i in range(n_features)]
+            )
+        elif len(feature_columns) != n_features:
+            msg = (
+                f"feature_columns has {len(feature_columns)} names but X_train has "
+                f"{n_features} columns"
+            )
+            raise ValueError(msg)
+
         # Step 1: Split into train_proper and calibration_holdout
         # Temporal split: first 80% for training, last 20% for calibration
         n_total = len(X_train)
@@ -115,7 +139,10 @@ class ModelTrainer:
 
         # Step 2: Optuna hyperparameter search
         optuna.logging.set_verbosity(optuna.logging.WARNING)
-        study = optuna.create_study(direction="minimize")
+        study = optuna.create_study(
+            direction="minimize",
+            sampler=optuna.samplers.TPESampler(seed=self.config.random_seed),
+        )
         study.optimize(
             lambda trial: self._objective(trial, X_proper, y_proper),
             n_trials=self.config.n_optuna_trials,
@@ -150,7 +177,7 @@ class ModelTrainer:
         # Step 5: Feature importances (gain-based) from the base XGBoost model
         raw_importances = final_model.feature_importances_
         feature_importances = dict(
-            zip(FEATURE_COLUMNS, [float(v) for v in raw_importances], strict=True)
+            zip(feature_columns, [float(v) for v in raw_importances], strict=True)
         )
 
         return calibrated_model, best_params, feature_importances
@@ -161,6 +188,7 @@ class ModelTrainer:
         y_train: np.ndarray,
         *,
         seeds: tuple[int, ...] = (42, 43, 44, 45, 46),
+        feature_columns: list[str] | None = None,
     ) -> dict:
         """Train n models with `n = len(seeds)` distinct random_seed values.
 
@@ -172,7 +200,9 @@ class ModelTrainer:
             X_train: Training feature matrix.
             y_train: Training target vector.
             seeds: Tuple of random_state values (default per D-16:
-                (42, 43, 44, 45, 46)).
+                (42, 43, 44, 45, 46)). Each seed drives both the XGB
+                random_state and the Optuna TPE sampler.
+            feature_columns: Column names for X_train, forwarded to train().
 
         Returns:
             dict with keys:
@@ -197,7 +227,9 @@ class ModelTrainer:
         try:
             for seed in seeds:
                 self.config = _dc_replace(original_config, random_seed=int(seed))
-                model, params, importances = self.train(X_train, y_train)
+                model, params, importances = self.train(
+                    X_train, y_train, feature_columns=feature_columns
+                )
                 results["models"].append(model)
                 results["params"].append(params)
                 results["importances"].append(importances)

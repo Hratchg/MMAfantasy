@@ -255,8 +255,18 @@ class TestTrainMultiSeed:
 
         sig = inspect.signature(ModelTrainer.train)
         # ModelTrainer.train(self, X_train, y_train) — 3 positional params.
-        params = list(sig.parameters.keys())
-        assert params == ["self", "X_train", "y_train"]
+        # Later additions (S02: feature_columns) are keyword-only with defaults,
+        # so every existing train(X, y) call keeps working.
+        positional = [
+            name
+            for name, p in sig.parameters.items()
+            if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+        ]
+        assert positional == ["self", "X_train", "y_train"]
+        for name, p in sig.parameters.items():
+            if name not in positional:
+                assert p.kind is p.KEYWORD_ONLY
+                assert p.default is not p.empty
 
 
 class TestMedianMetrics:
@@ -328,3 +338,120 @@ class TestMedianMetrics:
         assert result["a"]["brier_score"] == 0.22
         # Should preserve first seed's calibration curve verbatim.
         assert result["a"]["calibration_curve"] == per_seed[0]["a"]["calibration_curve"]
+
+
+class TestFeatureWidth:
+    """S02 finding 1: train() must not assume the 75-col FEATURE_COLUMNS width.
+
+    The CLI default --feature-set v2.1-no-net is 72 cols; v2.2 is 90. Before the
+    fix, train() zipped importances against FEATURE_COLUMNS with strict=True and
+    crashed AFTER the full Optuna search + calibration for every non-v1.0 set.
+    """
+
+    @pytest.mark.parametrize("feature_set", ["v2.1-no-net", "v2.2"])
+    def test_train_keys_importances_by_passed_columns(self, feature_set):
+        from ufc_prediction.ml.config import MLConfig, get_feature_columns
+        from ufc_prediction.ml.trainer import ModelTrainer
+
+        cols = get_feature_columns(feature_set=feature_set)
+        assert len(cols) != len(FEATURE_COLUMNS)
+        rng = np.random.RandomState(42)
+        X = rng.randn(100, len(cols))
+        y = rng.randint(0, 2, size=100)
+
+        trainer = ModelTrainer(config=MLConfig(n_optuna_trials=1, cv_splits=2))
+        _, _, importances = trainer.train(X, y, feature_columns=cols)
+
+        assert list(importances.keys()) == list(cols)
+
+    def test_train_without_columns_on_non_default_width_does_not_crash(self):
+        """No column list + a non-75 width falls back to positional f{i} keys."""
+        from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
+
+        rng = np.random.RandomState(42)
+        X = rng.randn(100, 72)
+        y = rng.randint(0, 2, size=100)
+
+        trainer = ModelTrainer(config=MLConfig(n_optuna_trials=1, cv_splits=2))
+        _, _, importances = trainer.train(X, y)
+
+        assert list(importances.keys()) == [f"f{i}" for i in range(72)]
+
+    def test_train_rejects_column_width_mismatch_before_search(self, monkeypatch):
+        """A wrong-width column list fails fast, before any Optuna trial runs."""
+        from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
+
+        rng = np.random.RandomState(42)
+        X = rng.randn(100, 72)
+        y = rng.randint(0, 2, size=100)
+        trainer = ModelTrainer(config=MLConfig(n_optuna_trials=1, cv_splits=2))
+
+        def _boom(*_a, **_k):
+            raise AssertionError("Optuna search must not start on a width mismatch")
+
+        monkeypatch.setattr(trainer, "_objective", _boom)
+        with pytest.raises(ValueError, match="72"):
+            trainer.train(X, y, feature_columns=list(FEATURE_COLUMNS))
+
+    def test_train_multi_seed_forwards_columns(self):
+        from ufc_prediction.ml.config import MLConfig, get_feature_columns
+        from ufc_prediction.ml.trainer import ModelTrainer
+
+        cols = get_feature_columns(feature_set="v2.1-no-net")
+        rng = np.random.RandomState(42)
+        X = rng.randn(100, len(cols))
+        y = rng.randint(0, 2, size=100)
+
+        trainer = ModelTrainer(config=MLConfig(n_optuna_trials=1, cv_splits=2))
+        results = trainer.train_multi_seed(X, y, seeds=(42, 43), feature_columns=cols)
+
+        for imp in results["importances"]:
+            assert list(imp.keys()) == list(cols)
+
+
+class TestSamplerSeeding:
+    """S02 finding 2: the Optuna sampler must be seeded from config.random_seed."""
+
+    def test_train_is_reproducible_for_same_seed(self, synthetic_train_data):
+        from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
+
+        X, y = synthetic_train_data
+        config = MLConfig(n_optuna_trials=3, cv_splits=2, random_seed=42)
+
+        _, params_a, _ = ModelTrainer(config=config).train(X, y)
+        _, params_b, _ = ModelTrainer(config=config).train(X, y)
+
+        assert params_a == params_b
+
+    def test_different_seeds_explore_different_params(self, synthetic_train_data):
+        from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.trainer import ModelTrainer
+
+        X, y = synthetic_train_data
+        _, params_a, _ = ModelTrainer(
+            config=MLConfig(n_optuna_trials=1, cv_splits=2, random_seed=42)
+        ).train(X, y)
+        _, params_b, _ = ModelTrainer(
+            config=MLConfig(n_optuna_trials=1, cv_splits=2, random_seed=43)
+        ).train(X, y)
+
+        assert params_a != params_b
+
+    @pytest.mark.parametrize("tuner", ["_tune_xgboost", "_tune_lightgbm", "_tune_catboost"])
+    def test_ensemble_tuners_are_reproducible_for_same_seed(
+        self, tuner, small_synthetic_data, tmp_path, monkeypatch
+    ):
+        from ufc_prediction.ml.config import MLConfig
+        from ufc_prediction.ml.ensemble import EnsembleTrainer
+
+        monkeypatch.chdir(tmp_path)  # CatBoost writes catboost_info/ into the cwd
+        X, y = small_synthetic_data
+        config = MLConfig(cv_splits=2, random_seed=42)
+
+        params_a = getattr(EnsembleTrainer(config=config), tuner)(X, y, 2)
+        params_b = getattr(EnsembleTrainer(config=config), tuner)(X, y, 2)
+
+        assert params_a == params_b

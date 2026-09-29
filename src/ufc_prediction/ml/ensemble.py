@@ -67,7 +67,10 @@ class EnsembleTrainer:
             return float(np.mean(scores))
 
         optuna.logging.set_verbosity(optuna.logging.WARNING)
-        study = optuna.create_study(direction="minimize")
+        study = optuna.create_study(
+            direction="minimize",
+            sampler=optuna.samplers.TPESampler(seed=self.config.random_seed),
+        )
         study.optimize(objective, n_trials=n_trials)
         return study.best_params
 
@@ -106,7 +109,10 @@ class EnsembleTrainer:
             return float(np.mean(scores))
 
         optuna.logging.set_verbosity(optuna.logging.WARNING)
-        study = optuna.create_study(direction="minimize")
+        study = optuna.create_study(
+            direction="minimize",
+            sampler=optuna.samplers.TPESampler(seed=self.config.random_seed),
+        )
         study.optimize(objective, n_trials=n_trials)
         return study.best_params
 
@@ -142,7 +148,10 @@ class EnsembleTrainer:
             return float(np.mean(scores))
 
         optuna.logging.set_verbosity(optuna.logging.WARNING)
-        study = optuna.create_study(direction="minimize")
+        study = optuna.create_study(
+            direction="minimize",
+            sampler=optuna.samplers.TPESampler(seed=self.config.random_seed),
+        )
         study.optimize(objective, n_trials=n_trials)
         return study.best_params
 

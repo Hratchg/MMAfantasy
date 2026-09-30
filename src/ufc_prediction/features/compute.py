@@ -6,7 +6,8 @@ EloEngine.compute_all (Phase 3).
 
 Multi-pass design:
   Pass 1: Compute raw features for every fighter at every fight.
-  Pass 2: Compute league-wide means, apply Bayesian shrinkage (D-12/D-13).
+  Pass 2: Bayesian shrinkage (D-12/D-13) of each row toward the league
+          means as of its date: rows dated strictly earlier only (D4).
   Pass 3: Compute PCA embeddings on latest feature vectors (D-09/D-10).
   Pass 4: Compute opponent-network features — PageRank + 2-hop SoS +
           is_debutant_in_graph (Phase 16-03 NET-01/02; operator-approved
@@ -15,6 +16,8 @@ Multi-pass design:
 
 from __future__ import annotations
 
+from bisect import bisect_left
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -68,6 +71,59 @@ class FighterAccumulator:
     career_sub_att: list[float] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class LeagueMeanHistory:
+    """Pass 2 shrinkage targets: league means of the numeric features as of
+    any date.
+
+    ``as_of(when)`` averages each feature over the unshrunk rows dated
+    strictly before ``when``. A row's own date is excluded, so neither its
+    own fight, any other bout that day, nor anything later enters the mean
+    it is shrunk toward (D4). ``before[i]`` holds the means over rows dated
+    before ``dates[i]``; one sorted pass of running sums builds them all.
+
+    Cold start: a feature with no value on an earlier date has no mean and
+    is absent from the dict, so ``apply_shrinkage_to_features`` leaves it
+    unshrunk; there is nothing to shrink toward without looking ahead. No
+    larger minimum is imposed: pulling a value with weight ``w`` toward the
+    mean of ``n >= 1`` exchangeable earlier rows leaves
+    ``(w**2 / n + (1 - w)**2)`` of its variance, never more than the raw
+    value's, so a minimum would only leave more rows unshrunk. On the live
+    corpus (2026-09) only the first row date is cold: 1994-03-11, 24 of
+    ~28.8k rows.
+    """
+
+    dates: tuple[Any, ...]
+    before: tuple[dict[str, float], ...]
+    overall: dict[str, float]
+
+    @classmethod
+    def from_rows(cls, rows: Iterable[dict[str, Any]]) -> LeagueMeanHistory:
+        by_date: dict[Any, list[dict[str, Any]]] = {}
+        for row in rows:
+            by_date.setdefault(row["as_of_date"], []).append(row["features"])
+
+        sums: dict[str, float] = {}
+        counts: dict[str, int] = {}
+        dates = sorted(by_date)
+        before: list[dict[str, float]] = []
+        for day in dates:
+            before.append({key: sums[key] / counts[key] for key in sums})
+            for feats in by_date[day]:
+                for key in CANONICAL_FEATURE_ORDER:
+                    val = feats.get(key)
+                    if val is not None and isinstance(val, (int, float)):
+                        sums[key] = sums.get(key, 0.0) + float(val)
+                        counts[key] = counts.get(key, 0) + 1
+        overall = {key: sums[key] / counts[key] for key in sums}
+        return cls(tuple(dates), tuple(before), overall)
+
+    def as_of(self, when: Any) -> dict[str, float]:
+        """League means over the rows dated strictly before ``when``."""
+        idx = bisect_left(self.dates, when)
+        return self.before[idx] if idx < len(self.dates) else self.overall
+
+
 class FeatureComputer:
     """Orchestrates feature computation across all fights.
 
@@ -105,9 +161,9 @@ class FeatureComputer:
         if not raw_results:
             return []
 
-        # ── Pass 2: League means + shrinkage ──────────────────────────
-        league_means = self._compute_league_means(raw_results)
-        self._shrink(raw_results, fight_count_at_feature, league_means)
+        # ── Pass 2: As-of league means + shrinkage ────────────────────
+        history = LeagueMeanHistory.from_rows(raw_results)
+        self._shrink(raw_results, fight_count_at_feature, history.as_of)
 
         # ── Pass 3: PCA embeddings on latest feature per fighter ──────
         self._apply_embeddings(raw_results)
@@ -123,11 +179,11 @@ class FeatureComputer:
 
         return raw_results
 
-    def league_means(
+    def league_mean_history(
         self,
         fights: list[dict[str, Any]],
         round_stats_by_fight: dict[int, list[dict[str, Any]]],
-    ) -> dict[str, float]:
+    ) -> LeagueMeanHistory:
         """The Pass 2 shrinkage targets ``compute_all`` derives from ``fights``.
 
         Serving needs them to shrink an upcoming-fight snapshot the same way
@@ -136,7 +192,20 @@ class FeatureComputer:
         means, so no domain Elo is needed.
         """
         raw_results, _ = self._raw_snapshots(fights, round_stats_by_fight, {})
-        return self._compute_league_means(raw_results) if raw_results else {}
+        return LeagueMeanHistory.from_rows(raw_results)
+
+    def league_means(
+        self,
+        fights: list[dict[str, Any]],
+        round_stats_by_fight: dict[int, list[dict[str, Any]]],
+        as_of: Any = None,
+    ) -> dict[str, float]:
+        """League means over the rows of ``fights`` dated strictly before
+        ``as_of``: what ``compute_all`` shrinks a row dated ``as_of`` toward.
+        ``None`` takes every row, i.e. the means for any date after the last
+        fight in ``fights``."""
+        history = self.league_mean_history(fights, round_stats_by_fight)
+        return history.overall if as_of is None else history.as_of(as_of)
 
     def compute_upcoming(
         self,
@@ -156,9 +225,11 @@ class FeatureComputer:
         fighter's snapshot is taken from the same accumulator state
         ``compute_all`` would reach for that fight: every prior fight folded
         in, the opponent's accumulator feeding ``opp_adj_*``. Pass 2 shrinks
-        with ``league_means`` (``compute_all`` derives them from the whole
-        corpus, see ``league_means``) and Pass 4 adds the NET keys as of
-        ``event_date``. Pass 3 (embeddings) is skipped; nothing serves it.
+        with ``league_means``, which must be the corpus means as of
+        ``event_date`` (``league_means(..., as_of=event_date)``, i.e. the
+        whole-corpus means when every stored fight is earlier). Pass 4 adds
+        the NET keys as of ``event_date``. Pass 3 (embeddings) is skipped;
+        nothing serves it.
 
         ``prior_fights`` must hold every fight of either fighter dated before
         ``event_date`` in the shape ``load_fights_with_duration`` returns.
@@ -190,7 +261,7 @@ class FeatureComputer:
             if row["fight_id"] == upcoming_id
         ]
         rows = [row for row, _ in picked]
-        self._shrink(rows, [count for _, count in picked], league_means)
+        self._shrink(rows, [count for _, count in picked], lambda _when: league_means)
         graph_fights = network_fights if network_fights is not None else ordered
         apply_network_features(rows, self._network_fights(graph_fights))
         return {row["fighter_id"]: row["features"] for row in rows}
@@ -288,13 +359,14 @@ class FeatureComputer:
         self,
         rows: list[dict[str, Any]],
         fight_counts: list[int],
-        league_means: dict[str, float],
+        league_means_as_of: Callable[[Any], dict[str, float]],
     ) -> None:
-        """Pass 2: Bayesian shrinkage toward ``league_means``, in place."""
+        """Pass 2: Bayesian shrinkage of each row toward the league means as
+        of its ``as_of_date``, in place."""
         for row, fcount in zip(rows, fight_counts, strict=True):
             row["features"] = apply_shrinkage_to_features(
                 row["features"],
-                league_means,
+                league_means_as_of(row["as_of_date"]),
                 fight_count=fcount,
                 min_fights=self.config.shrinkage_min_fights,
             )
@@ -485,26 +557,6 @@ class FeatureComputer:
         acc.career_sub_att.append(
             float(rates["sub_att_per_fight"]) if rates["sub_att_per_fight"] is not None else 0.0
         )
-
-    @staticmethod
-    def _compute_league_means(results: list[dict[str, Any]]) -> dict[str, float]:
-        """Compute league-wide mean for each numeric feature across all results."""
-        sums: dict[str, float] = {}
-        counts: dict[str, int] = {}
-
-        for row in results:
-            feats = row["features"]
-            for key in CANONICAL_FEATURE_ORDER:
-                val = feats.get(key)
-                if val is not None and isinstance(val, (int, float)):
-                    sums[key] = sums.get(key, 0.0) + float(val)
-                    counts[key] = counts.get(key, 0) + 1
-
-        means: dict[str, float] = {}
-        for key in sums:
-            if counts[key] > 0:
-                means[key] = sums[key] / counts[key]
-        return means
 
     def _apply_embeddings(self, results: list[dict[str, Any]]) -> None:
         """Compute PCA embeddings on latest feature vector per fighter.

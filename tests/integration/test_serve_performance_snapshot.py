@@ -171,10 +171,12 @@ def _serve_perf(session, fa, fb, event_date) -> dict[str, float]:
     return {c: float(vec[_COLS.index(c)]) for c in _PERF_COLS}
 
 
-def _expected_upcoming(session, fa_id, fb_id, event_date, *, league_means=None):
+def _expected_upcoming(session, fa_id, fb_id, event_date):
     """Per-fighter snapshots training will read for ``fa`` vs ``fb`` on
     ``event_date`` once that fight is in the corpus: ``compute_all`` over the
-    stored fights plus the new fight, keyed to the new fight."""
+    stored fights plus the new fight, keyed to the new fight. Its rows are
+    shrunk toward the league means over strictly earlier rows, so the new
+    fight's own rows never enter them."""
     fights = load_fights_with_duration(session)
     upcoming_id = max(f["fight_id"] for f in fights) + 1_000
     fights.append(
@@ -189,10 +191,7 @@ def _expected_upcoming(session, fa_id, fb_id, event_date, *, league_means=None):
             "num_rounds": 3,
         }
     )
-    computer = FeatureComputer()
-    if league_means is not None:
-        computer._compute_league_means = lambda _results: league_means  # type: ignore[method-assign]
-    rows = computer.compute_all(fights, load_all_round_stats(session), {})
+    rows = FeatureComputer().compute_all(fights, load_all_round_stats(session), {})
     return {r["fighter_id"]: r["features"] for r in rows if r["fight_id"] == upcoming_id}
 
 
@@ -223,15 +222,11 @@ def test_sophomore_gets_performance_features(session, corpus):
     nan_cols = [c for c, v in served.items() if v != v]
     assert not nan_cols, f"sophomore performance columns NaN at serve: {nan_cols}"
 
-    # Pin league means to the serve substrate's so the only difference left
-    # would be the replay itself (the upcoming fight's own two rows would
-    # otherwise nudge the corpus-wide means in this tiny corpus).
-    means = FeatureComputer().league_means(
-        load_fights_with_duration(session), load_all_round_stats(session)
-    )
-    expected = _expected_upcoming(
-        session, soph.id, v1.id, corpus["upcoming_date"], league_means=means
-    )
+    # The sophomore's row is shrunk (factor 1/5), so this also pins the
+    # league means: for a fight after the last stored event serving's as-of
+    # means are the whole stored corpus, which must be exactly what
+    # compute_all shrinks the row with once the fight is in the corpus.
+    expected = _expected_upcoming(session, soph.id, v1.id, corpus["upcoming_date"])
     _assert_perf_equal(served, expected[soph.id], expected[v1.id])
 
 

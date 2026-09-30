@@ -4,13 +4,13 @@ How to work in this codebase without breaking the load-bearing invariants. This 
 
 ## Branch Protection Requirements
 
-Branch protection on `master` is operator-managed via GitHub Settings → Branches. The required configuration is:
+Branch protection on `main` is operator-managed via GitHub Settings → Branches. The required configuration is:
 
 - **Required status checks** — the `ci.yml` workflow (see [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)) must pass on every pull request before merge.
 - **Required reviewers** — at least one approving review.
 - **Signed commits** — encouraged but not required for v2.4. (v2.5+ may upgrade to required.)
 - **Linear history** — recommended (squash-merge or rebase-merge).
-- **Force pushes** — disabled on `master`.
+- **Force pushes** — disabled on `main`.
 
 These settings are NOT enforced via repo-checked-in configuration in v2.4 (Terraform / repo-settings YAML is deferred per CONTEXT.md `<deferred>` "Branch protection automation"). Operator action required after merging Phase 38.
 
@@ -213,16 +213,16 @@ If you can't satisfy a feature request without breaking one of these, escalate t
 
 ## Pull Request Workflow
 
-1. Branch from `master`: `git switch -c feat/<short-description>` or `fix/<short-description>`.
+1. Branch from `main`: `git switch -c feat/<short-description>` or `fix/<short-description>`.
 2. Make your changes; run `uv run pytest -q` + `uv run ruff check` locally.
 3. Push the branch: `git push -u origin feat/<short-description>`.
-4. Open a PR against `master` via the GitHub UI (or `gh pr create`).
+4. Open a PR against `main` via the GitHub UI (or `gh pr create`).
 5. Wait for CI to run — `.github/workflows/ci.yml` reports back within ~2-5 minutes.
 6. Request review from at least one approver (branch protection enforces ≥1).
-7. Once CI is green AND review is approved, squash-merge or rebase-merge to `master`.
+7. Once CI is green AND review is approved, squash-merge or rebase-merge to `main`.
 8. Delete the feature branch after merge.
 
-Do not push directly to `master`; branch protection rejects it.
+Do not push directly to `main`; branch protection rejects it.
 
 For larger / phase-scope changes, the GSD workflow (`/gsd-plan-phase` → `/gsd-execute-phase` → `/gsd-verify-work`) applies; see [`CLAUDE.md`](./CLAUDE.md).
 

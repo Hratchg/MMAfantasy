@@ -158,6 +158,7 @@ def _compute_v23_variance_dict(
         _no_bootstrap_metrics,
     )
 
+    from ufc_prediction.ml.evaluator import gate_reference_date
     from ufc_prediction.ml.variance import (
         aggregate_variance,
         bootstrap_resample,
@@ -171,6 +172,9 @@ def _compute_v23_variance_dict(
         y_meta_eval,
         fight_dates_eval,
     ) = _load_meta_train_eval_matrices(dry_run=False)
+    # S11: same substrate-derived slice anchor spike_v23.main uses, so the
+    # contract values match the report values (WR-01 parity).
+    slice_anchor = gate_reference_date(fight_dates_eval)
 
     # WR-01 fix: honor --no-bootstrap. The CLI's outer spike subprocess
     # already routes through `_no_bootstrap_metrics` when bootstrap=False
@@ -186,6 +190,7 @@ def _compute_v23_variance_dict(
             fight_dates_eval,
             seeds=seed_list,
             fit_fn=_meta_fit_fn,
+            today=slice_anchor,
         )
         # Representative model: first-seed bootstrap fit (mirrors v22 spike line 1100).
         Xb, yb = bootstrap_resample(
@@ -204,6 +209,7 @@ def _compute_v23_variance_dict(
             y_meta_eval,
             fight_dates_eval,
             seeds=seed_list,
+            today=slice_anchor,
         )
         # Representative model: first-seed deterministic fit (no resample).
         representative = _meta_fit_fn(
@@ -217,6 +223,7 @@ def _compute_v23_variance_dict(
         X_eval=X_meta_eval,
         y_eval=y_meta_eval,
         fight_dates_eval=fight_dates_eval,
+        today=slice_anchor,
     )
     # Add per-slice median Brier + accuracy across seeds (needed for formula).
     medians = _compute_per_seed_medians(per_seed)

@@ -73,7 +73,7 @@ import argparse
 import hashlib
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -197,6 +197,7 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
     """
     from datetime import date as _date
 
+    from ufc_prediction.ml.evaluator import gate_reference_date
     from ufc_prediction.ml.meta_features_v22 import (
         META_V22_FEATURE_COLUMNS,
         build_meta_features_v22,
@@ -248,7 +249,8 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
             fight_records,
             base_cutoff=_date.fromisoformat(EXPECTED_CUTOFF_DATE),
             meta_eval_window_days=META_EVAL_WINDOW_DAYS,
-            today=_date.today(),
+            # S11: substrate-derived anchor (matches train_meta_v22).
+            today=gate_reference_date(fight_dates),
         )
     )
     if len(meta_train_fights) == 0 or len(meta_eval_fights) == 0:
@@ -370,6 +372,8 @@ def _no_bootstrap_metrics(
     X_eval: np.ndarray, y_eval: np.ndarray,
     fight_dates_eval: np.ndarray,
     seeds: list[int],
+    *,
+    today: date | None = None,
 ) -> dict[int, dict]:
     """Deterministic path (skips bootstrap_resample per --no-bootstrap).
 
@@ -400,7 +404,7 @@ def _no_bootstrap_metrics(
     for seed in seeds:
         model = _meta_fit_fn(X_train, y_train, int(seed))
         per_seed[int(seed)] = evaluate_per_slice(
-            model, X_eval, y_eval, fight_dates_eval,
+            model, X_eval, y_eval, fight_dates_eval, today=today,
         )
     return per_seed
 
@@ -786,6 +790,11 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # ── Multi-seed harness call (D-01 / D-02 / D-05) ─────────────────
+    # S11: one substrate-derived slice anchor for every seed + the BCa CIs
+    # (the `ufc predict gate-spike` in-process re-run derives the same one).
+    from ufc_prediction.ml.evaluator import gate_reference_date
+    slice_anchor = gate_reference_date(fight_dates_eval)
+    print(f"[spike-v23] slice anchor (latest eval event) = {slice_anchor}")
     seeds_list = [int(s) for s in args.seeds]
     if args.no_bootstrap:
         print(
@@ -797,7 +806,7 @@ def main(argv: list[str] | None = None) -> int:
         per_seed = _no_bootstrap_metrics(
             X_meta_train, y_meta_train,
             X_meta_eval, y_meta_eval, fight_dates_eval,
-            seeds=seeds_list,
+            seeds=seeds_list, today=slice_anchor,
         )
     else:
         print(
@@ -811,7 +820,7 @@ def main(argv: list[str] | None = None) -> int:
         per_seed = multi_seed_metrics(
             X_meta_train, y_meta_train,
             X_meta_eval, y_meta_eval, fight_dates_eval,
-            seeds=seeds_list, fit_fn=_meta_fit_fn,
+            seeds=seeds_list, fit_fn=_meta_fit_fn, today=slice_anchor,
         )
         # D-05 runtime check -- complements the unit-test guard.
         assert_distinct_seed_brier(per_seed)
@@ -858,6 +867,7 @@ def main(argv: list[str] | None = None) -> int:
         representative_model=representative_model,
         X_eval=X_meta_eval, y_eval=y_meta_eval,
         fight_dates_eval=fight_dates_eval,
+        today=slice_anchor,
     )
 
     # Log Pitfall-B warnings to stdout for operator visibility.

@@ -456,6 +456,7 @@ def _eval_meta_step(
     fight_dates_eval: np.ndarray,
     seeds: list[int],
     fit_factory,
+    today: date | None = None,
 ) -> dict[str, dict[str, float]]:
     """Fit per-seed + evaluate per slice; return median dict.
 
@@ -472,6 +473,7 @@ def _eval_meta_step(
             X_eval,
             y_eval,
             fight_dates_eval,
+            today=today,
         )
     return median_metrics(list(per_seed_results.values()))
 
@@ -544,7 +546,11 @@ def run_composition(args) -> dict:
     from sklearn.calibration import CalibratedClassifierCV
 
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
-    from ufc_prediction.ml.evaluator import evaluate_per_slice, gate_verdict
+    from ufc_prediction.ml.evaluator import (
+        evaluate_per_slice,
+        gate_reference_date,
+        gate_verdict,
+    )
     from ufc_prediction.ml.gate_contract import load_gate_contract
     from ufc_prediction.ml.meta_features_v22 import (
         META_V22_FEATURE_COLUMNS,
@@ -601,12 +607,16 @@ def run_composition(args) -> dict:
         print("[compose_v23] Loading data + assembling 90-col v2.2 feature matrix from DB...")
         X_v22, y, fight_dates, fight_records = _load_assembled_data_v22()
     print(f"[compose_v23] X_v22.shape={X_v22.shape}, n_records={len(fight_records)}")
+    # S11: one substrate-derived anchor for the split and every step's
+    # slices (matches train_meta_v22, whose spike JSON the pinned
+    # META_V22_BASELINE_BRIER constants come from).
+    reference_date = gate_reference_date(fight_dates)
 
     base_train_fights, meta_train_fights, meta_eval_fights = make_three_way_split(
         fight_records,
         base_cutoff=date.fromisoformat(EXPECTED_CUTOFF_DATE),
         meta_eval_window_days=365,
-        today=date.today(),
+        today=reference_date,
     )
     print(
         f"[compose_v23] split: base={len(base_train_fights)} "
@@ -745,6 +755,7 @@ def run_composition(args) -> dict:
             X_meta_eval_clean,
             y_meta_eval_clean,
             fight_dates_meta_eval,
+            today=reference_date,
         )
         per_seed_meta_models[seed] = m
     median_meta = median_metrics(list(per_seed_meta.values()))
@@ -870,6 +881,7 @@ def run_composition(args) -> dict:
                 X_meta_eval_clean,
                 y_meta_eval_clean,
                 fight_dates_meta_eval,
+                today=reference_date,
             )
             per_seed_calib_models[seed] = calibrated
         except Exception as e:
@@ -973,6 +985,7 @@ def run_composition(args) -> dict:
             X_ref_eval_clean,
             y_ref_eval_clean,
             fight_dates_ref_eval,
+            today=reference_date,
         )
         per_seed_ref_models[seed] = m
     median_ref = median_metrics(list(per_seed_ref.values()))
@@ -1074,6 +1087,7 @@ def run_composition(args) -> dict:
                 X_travel_eval_clean,
                 y_travel_eval_clean,
                 fight_dates_travel_eval,
+                today=reference_date,
             )
             per_seed_travel_models[seed] = m
 

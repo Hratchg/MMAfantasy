@@ -5,7 +5,8 @@ Covers four train/serve skews in ``inference_features.build``:
 1. Bout context (``weight_class``, ``num_rounds``, ``is_title_fight``) was
    never supplied by ``ModelPredictor.predict``, so every served fight was a
    3-round non-title bout. ``build`` now reads the scheduled ``Fight`` row for
-   ``(A, B, event_date)`` when the caller omits them (explicit args win).
+   ``(A, B, event_date)`` when the caller omits them (explicit args win), and
+   ``ModelPredictor.predict`` forwards caller-supplied context (D1).
 2. With no weight class, the division came from fighter A's last fight even
    when that was 'Catch Weight' / 'Open Weight', which zeroes B's Elo to the
    seed/1500 and falls ``weight_class_ordinal`` back to its default.
@@ -17,6 +18,8 @@ from __future__ import annotations
 
 import inspect
 from datetime import date
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -152,20 +155,71 @@ class TestScheduledBoutContext:
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "NEEDS OPERATOR APPROVAL (AUDIT01_OVERRIDE): ModelPredictor.predict "
-        "(AUDIT-01 protected predictor.py) does not yet accept/forward bout "
-        "context. Remove this marker once the PR's proposed diff is applied."
-    ),
-)
 def test_model_predictor_predict_accepts_bout_context():
     from ufc_prediction.ml.predictor import ModelPredictor
 
     params = inspect.signature(ModelPredictor.predict).parameters
     for name in ("weight_class", "num_rounds", "is_title_fight"):
         assert name in params, name
+        assert params[name].default is None, name
+
+
+@pytest.mark.skipif(
+    not Path("models/meta/meta_v2.joblib").exists(),
+    reason="promoted meta_v2.joblib not present in this checkout",
+)
+@pytest.mark.parametrize(
+    "context",
+    [{"weight_class": "Welterweight", "num_rounds": 5, "is_title_fight": True}, {}],
+    ids=["explicit", "omitted"],
+)
+def test_model_predictor_forwards_bout_context_to_both_builds(monkeypatch, context):
+    """Operator-approved D1: the base vector and the v2.2 meta vector both get
+    the caller's bout context. Omitted fields reach the builder as None, so it
+    keeps reading the stored fight row / fallback."""
+    from ufc_prediction.ml import predictor as pmod
+    from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
+
+    p = pmod.ModelPredictor(model_dir="models", version="v2", meta_dir="models/meta")
+    # Reach the v2.2 meta build as well; the meta-off guard is covered elsewhere.
+    p.META_DISABLED_NO_LIFT = False
+    fa, fb = SimpleNamespace(id=1, name="A"), SimpleNamespace(id=2, name="B")
+    monkeypatch.setattr(pmod, "_resolve_fighter", lambda _s, n: fa if n == "A" else fb)
+    monkeypatch.setattr(pmod, "fetch_matchup_odds", lambda *a, **k: None)
+    monkeypatch.setattr(pmod, "_get_latest_elo", lambda *a, **k: 1500.0)
+    monkeypatch.setattr(p, "_log_predict_call", lambda *a, **k: None)
+
+    seen: dict[str, tuple] = {}
+
+    def fake_build(
+        _s,
+        _a,
+        _b,
+        _ev,
+        *,
+        live_odds=None,
+        include_net=None,
+        feature_set="v1.0",
+        weight_class=None,
+        num_rounds=None,
+        is_title_fight=None,
+    ):
+        is_meta = feature_set == "v2.2"
+        seen["meta" if is_meta else "base"] = (weight_class, num_rounds, is_title_fight)
+        n = (
+            len(FEATURE_COLUMNS_V22)
+            if is_meta
+            else len(get_feature_columns(include_net=include_net))
+        )
+        return np.full((1, n), 0.1)
+
+    monkeypatch.setattr(pmod, "build_inference_features", fake_build)
+
+    res = p.predict(MagicMock(), "A", "B", **context)
+
+    expected = tuple(context.get(k) for k in ("weight_class", "num_rounds", "is_title_fight"))
+    assert seen == {"base": expected, "meta": expected}
+    assert res["meta_skipped"] is False, res.get("meta_skipped_reason")
 
 
 # ── Finding 2: catchweight / open-weight fallback ─────────────────────────────

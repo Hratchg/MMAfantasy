@@ -215,9 +215,51 @@ class TestPredictV1NoDB:
         assert resp.status_code == 200, resp.text
         assert all(set(kw) == {"event_date"} for kw in calls)
 
+    def test_bout_context_reaches_real_model_predictor_builds(self, monkeypatch):
+        """Operator-approved D1, end to end with the real ModelPredictor (not
+        a fake signature): request fields -> route -> predict_order_invariant
+        -> ModelPredictor.predict -> build_inference_features, on both
+        order-invariant runs. Only the DB/odds/Elo helpers are stubbed."""
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from ufc_prediction.ml import predictor as pmod
+        from ufc_prediction.ml.config import get_feature_columns
+
+        real = pmod.ModelPredictor(model_dir="models", version="v2")
+        fighters = {
+            name: SimpleNamespace(id=i, name=name)
+            for i, name in enumerate(("Khabib Nurmagomedov", "Conor McGregor"), start=1)
+        }
+        monkeypatch.setattr(pmod, "_resolve_fighter", lambda _s, name: fighters[name])
+        monkeypatch.setattr(pmod, "fetch_matchup_odds", lambda *a, **k: None)
+        monkeypatch.setattr(pmod, "_get_latest_elo", lambda *a, **k: 1500.0)
+        monkeypatch.setattr(real, "_log_predict_call", lambda *a, **k: None)
+
+        calls = []
+
+        def fake_build(_s, _a, _b, _ev, **kwargs):
+            calls.append({k: kwargs.get(k) for k in self._BOUT})
+            width = len(get_feature_columns(include_net=kwargs.get("include_net")))
+            return np.full((1, width), 0.1)
+
+        monkeypatch.setattr(pmod, "build_inference_features", fake_build)
+
+        c = _standalone_app_client()
+        with patch("ufc_prediction.api.v1.predict._get_predictor", return_value=real):
+            resp = c.post(
+                "/api/v1/predict",
+                json={"fighter_a": "Khabib Nurmagomedov", "fighter_b": "Conor McGregor"}
+                | self._BOUT,
+            )
+        assert resp.status_code == 200, resp.text
+        assert calls == [self._BOUT] * 2
+
     def test_bout_context_dropped_for_predictor_without_it(self):
-        """The AUDIT-01 predictor has no bout-context parameters yet; the
-        route must not crash it with unexpected kwargs."""
+        """A predictor whose predict() lacks the bout-context parameters (the
+        pre-D1 signature, or a test double) must not be crashed with
+        unexpected kwargs."""
         c = _standalone_app_client()
         with patch(
             "ufc_prediction.api.v1.predict._get_predictor",

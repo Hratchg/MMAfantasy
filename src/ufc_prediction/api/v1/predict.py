@@ -58,10 +58,11 @@ _BOUT_CONTEXT_FIELDS = ("weight_class", "num_rounds", "is_title_fight")
 def _bout_context_kwargs(predictor: Any, body: PredictMatchupRequestV1) -> dict[str, Any]:
     """Bout-context kwargs from the request that ``predictor.predict`` accepts.
 
-    Only fields the caller actually set are forwarded. ``ModelPredictor``
-    (AUDIT-01 protected) does not take them yet; until it does they are
-    dropped here rather than crashing the call, and the feature builder falls
-    back to the stored fight row for the matchup.
+    Only fields the caller actually set are forwarded; omitted ones leave the
+    feature builder to read the stored fight row for the matchup (or fall back
+    to 3 rounds / non-title / the fighters' division). ``ModelPredictor``
+    accepts all three (operator-approved D1). A predictor whose ``predict``
+    lacks them has them dropped with a warning rather than crashing the call.
     """
     requested = body.model_dump(include=set(_BOUT_CONTEXT_FIELDS), exclude_none=True)
     if not requested:

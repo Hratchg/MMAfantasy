@@ -29,6 +29,7 @@ pipeline or rebuilding/studying the models.
 | `bfo_backfill.py` | refresh BestFightOdds closing odds |
 | `scrape_referees_full.py` | scrape referee data |
 | `repair_ufcstats_round_stats_orientation.py` | one-off: swap ufcstats `round_stats` rows stored under the opponent by the pre-fix scraper (report-only by default; `--apply` writes) |
+| `split_merged_fighter.py` | one-off: move a same-name UFCStats fighter's bouts (fights, `round_stats`, `fight_odds`, optionally the Sherdog seed) off a merged ufcstats `fighters` row onto their own row (report-only by default; `--apply` writes in one transaction) |
 | `backfill_fighter_aliases_from_dedup_recon.py`, `backfill_venue_geocodes.py`, `refresh_fighters_names_v26.py`, `recon_dedup.py`, `ingest_pre_ufc_records_v25.py` | data backfills / ingest |
 | `emit_partner_contracts.py` | regenerate partner JSON contracts |
 | `generate_handoff_pdf.py`, `generate_business_handoff_pdf.py`, `generate_client_pdf.py` | render the handoff docs to PDF |

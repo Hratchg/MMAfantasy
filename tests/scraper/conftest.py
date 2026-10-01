@@ -55,3 +55,11 @@ def fighter_profile_html() -> str:
 def fighter_profile_missing_html() -> str:
     """Load the fighter profile with missing fields HTML fixture."""
     return fixture_path("fighter_profile_missing.html").read_text(encoding="utf-8")
+
+
+@pytest.fixture
+def fight_detail_superfight_belt_html() -> str:
+    """A real cached UFCStats fight page (UFC 8, Shamrock vs Kimo) whose title
+    cell carries belt.png but whose text ("UFC Superfight Championship Bout")
+    does not contain the word "Title"."""
+    return fixture_path("fight_detail_superfight_belt.html").read_text(encoding="utf-8")

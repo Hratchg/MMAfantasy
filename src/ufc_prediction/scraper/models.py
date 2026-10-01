@@ -96,6 +96,9 @@ class FightDetailPage(BaseModel):
     fighter_a_status: str  # "W", "L", "D", "NC"
     fighter_b_status: str
     bout_type: str  # "UFC Light Heavyweight Title Bout"
+    # belt.png in the fight-title cell: UFCStats' own title marker. Not every
+    # belt bout says "Title" ("UFC Superfight Championship Bout").
+    is_title_fight: bool = False
     method: str | None
     method_detail: str | None
     round_finished: int | None

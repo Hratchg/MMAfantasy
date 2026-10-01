@@ -241,6 +241,22 @@ def _orient_fight_detail(
     return None
 
 
+def title_flag_from_event_row(fight_summary: FightSummary) -> bool:
+    """Is this event-page bout a title fight?
+
+    UFCStats marks a title bout with a ``belt.png`` image in the event page's
+    weight cell, whose text is just the division ("Light Heavyweight"), so the
+    image is the signal; "Title" in the text is honoured as well.
+    """
+    return fight_summary.is_title_fight or parse_weight_class(fight_summary.weight_class_raw)[1]
+
+
+def title_flag_from_fight_page(fight_detail: FightDetailPage) -> bool:
+    """Is this fight-detail page a title fight? ``belt.png`` in its title cell,
+    or "Title" in the bout text ("UFC Lightweight Title Bout")."""
+    return fight_detail.is_title_fight or parse_weight_class(fight_detail.bout_type)[1]
+
+
 def _convert_fight(
     event_name: str,
     event_date_str: str,
@@ -259,7 +275,9 @@ def _convert_fight(
         msg = f"Could not parse event date: {event_date_str}"
         raise ValueError(msg)
 
-    weight_class, is_title = parse_weight_class(fight_summary.weight_class_raw)
+    weight_class, _ = parse_weight_class(fight_summary.weight_class_raw)
+    # Both pages carry UFCStats' belt marker; either one is enough.
+    is_title = title_flag_from_event_row(fight_summary) or title_flag_from_fight_page(fight_detail)
     num_rounds = parse_num_rounds(fight_detail.time_format)
 
     # Determine winner name

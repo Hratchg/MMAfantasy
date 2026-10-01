@@ -1115,3 +1115,107 @@ class TestChallengePageIsFetchFailure:
         assert fighter is not None
         assert fighter.name == "Carlos Ulberg"
         assert fighter.height_inches is None
+
+
+# ── Title-fight flag (S22, 2026-09-29) ───────────────────────────────────────
+#
+# The event page's weight cell holds only the division ("Light Heavyweight");
+# UFCStats marks a title bout with a belt.png image beside it (and in the
+# fight-detail page's title cell). Inferring the flag from the division text
+# stored every ufcstats fight as a non-title fight.
+
+
+def _summary(*, weight_class_raw: str, is_title_fight: bool) -> FightSummary:
+    return FightSummary(
+        fight_url=_FIGHT_URL_BRADY,
+        fighter_a_name="Sean Brady",
+        fighter_a_url="http://ufcstats.com/fighter-details/aa11bb22cc33dd44",
+        fighter_b_name="Kevin Holland",
+        fighter_b_url="http://ufcstats.com/fighter-details/ee55ff66aa77bb88",
+        winner="fighter_a",
+        outcome="win",
+        weight_class_raw=weight_class_raw,
+        is_title_fight=is_title_fight,
+        method="Decision - Unanimous",
+        method_detail=None,
+        round_finished=3,
+        time_finished="5:00",
+    )
+
+
+def _non_title_detail(**update: object) -> FightDetailPage:
+    from ufc_prediction.scraper.parse_fight_detail import parse_fight_detail
+
+    detail = parse_fight_detail(_load_fixture("fight_detail_3round.html"))
+    assert detail.bout_type == "Welterweight Bout"
+    return detail.model_copy(update=update)
+
+
+def _convert(summary: FightSummary, detail: FightDetailPage) -> FightRow:
+    from ufc_prediction.scraper.ingest import _convert_fight
+
+    return _convert_fight(
+        event_name="UFC 327",
+        event_date_str="April 11, 2026",
+        location="Miami, Florida, USA",
+        fight_summary=summary,
+        fight_detail=detail,
+    )
+
+
+class TestTitleFightFlag:
+    def test_event_page_belt_with_division_only_text_is_a_title_fight(self) -> None:
+        row = _convert(
+            _summary(weight_class_raw="Light Heavyweight", is_title_fight=True),
+            _non_title_detail(),
+        )
+        assert row.weight_class == "Light Heavyweight"
+        assert row.is_title_fight is True
+
+    def test_fight_page_belt_alone_is_a_title_fight(self) -> None:
+        row = _convert(
+            _summary(weight_class_raw="Welterweight", is_title_fight=False),
+            _non_title_detail(is_title_fight=True, bout_type="UFC Superfight Championship Bout"),
+        )
+        assert row.is_title_fight is True
+
+    def test_fight_page_title_text_alone_is_a_title_fight(self) -> None:
+        row = _convert(
+            _summary(weight_class_raw="Welterweight", is_title_fight=False),
+            _non_title_detail(bout_type="UFC Welterweight Title Bout"),
+        )
+        assert row.is_title_fight is True
+
+    def test_no_belt_and_no_title_text_is_not_a_title_fight(self) -> None:
+        row = _convert(
+            _summary(weight_class_raw="Welterweight", is_title_fight=False),
+            _non_title_detail(),
+        )
+        assert row.is_title_fight is False
+
+    def test_scraped_title_bout_is_stored_as_a_title_fight(self, session: Session) -> None:
+        # event_detail.html: Ulberg/Prochazka carries belt.png beside
+        # "Light Heavyweight"; the other two bouts carry none.
+        result, _ = _scrape_first_event(session, _make_mock_client())
+        assert result.accepted == 3
+
+        flags = {f.source_url: f.is_title_fight for f in session.query(Fight).all()}
+        assert flags == {
+            _FIGHT_URL_ULBERG: True,
+            _FIGHT_URL_BRADY: False,
+            _FIGHT_URL_MORALES: False,
+        }
+
+    def test_rescraping_an_existing_event_corrects_a_stale_flag(self, session: Session) -> None:
+        """``scrape all`` re-upserts existing fights, so it heals rows stored by
+        the old code; ``scrape latest`` skips events already in the DB, which
+        is why existing rows need scripts/backfill_ufcstats_title_flags.py."""
+        _scrape_first_event(session, _make_mock_client())
+        fight = session.query(Fight).filter(Fight.source_url == _FIGHT_URL_ULBERG).one()
+        fight.is_title_fight = False  # the pre-fix stored value
+        session.flush()
+
+        _scrape_first_event(session, _make_mock_client())
+        session.expire_all()
+        fight = session.query(Fight).filter(Fight.source_url == _FIGHT_URL_ULBERG).one()
+        assert fight.is_title_fight is True

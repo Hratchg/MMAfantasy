@@ -78,6 +78,7 @@ def parse_fight_detail(html: str) -> FightDetailPage:
     # -- Bout type --
     bout_el = soup.select_one("i.b-fight-details__fight-title")
     bout_type = bout_el.get_text(strip=True) if bout_el else ""
+    is_title_fight = bout_el is not None and bout_el.select_one("img[src*='belt.png']") is not None
 
     # -- Method, round, time, time_format, referee, method_detail --
     method, method_detail, round_finished, time_finished, time_format, referee = (
@@ -173,6 +174,7 @@ def parse_fight_detail(html: str) -> FightDetailPage:
         fighter_a_status=fighter_a_status,
         fighter_b_status=fighter_b_status,
         bout_type=bout_type,
+        is_title_fight=is_title_fight,
         method=method,
         method_detail=method_detail,
         round_finished=round_finished,

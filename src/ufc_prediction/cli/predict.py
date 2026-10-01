@@ -75,7 +75,7 @@ OPERATOR_FLOOR_V23: float = 0.70
 # AUDIT-01 baseline SHA — models/xgb_v2.joblib re-baselined to the corrected
 # dedup + Sherdog-seeded substrate (2026-07-06 promotion). MUST stay byte-identical
 # end-to-end at this new baseline.
-EXPECTED_XGB_V2_SHA: str = "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
+EXPECTED_XGB_V2_SHA: str = "760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a"
 
 # D-18 formula hash binding — carried forward from v2.1 + v2.2; no post-measurement
 # renegotiation.

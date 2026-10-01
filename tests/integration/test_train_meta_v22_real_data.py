@@ -82,7 +82,7 @@ def test_spike_json_has_gate_verdict():
     # AUDIT-01 SHA recorded — the spike records whichever xgb_v2 base it ran
     # against; post RETRAIN-V31-01 re-baseline that is the promoted model.
     assert spike["xgb_v2_sha256"] == (
-        "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
+        "760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a"
     )
 
 

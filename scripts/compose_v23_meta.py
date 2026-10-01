@@ -60,7 +60,7 @@ import numpy as np
 
 # ─────────────────────────── Phase 32 constants ──────────────────────────────
 
-EXPECTED_XGB_V2_SHA256: str = "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
+EXPECTED_XGB_V2_SHA256: str = "760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a"
 EXPECTED_CUTOFF_DATE: str = "2023-01-01"
 SEEDS_DEFAULT: tuple[int, ...] = (42, 43, 44, 45, 46)
 

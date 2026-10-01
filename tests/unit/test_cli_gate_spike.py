@@ -37,7 +37,7 @@ def test_cli_xgb_v2_sha_constant_matches_audit_01_baseline():
     """predict.EXPECTED_XGB_V2_SHA equals the AUDIT-01 baseline SHA."""
     from ufc_prediction.cli.predict import EXPECTED_XGB_V2_SHA
 
-    assert EXPECTED_XGB_V2_SHA == "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
+    assert EXPECTED_XGB_V2_SHA == "760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a"
 
 
 def test_cli_operator_floor_constant_is_path_a_0_70():
@@ -81,7 +81,7 @@ def _patch_spike_environment(
         return 0  # success path; spike "completes"
 
     def fake_assert_xgb_v2_sha(label):
-        return "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
+        return "760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a"
 
     # Patch the spike_noise_floor_v23 module surface (CLI uses module import)
     from ufc_prediction.cli import predict as pred_mod

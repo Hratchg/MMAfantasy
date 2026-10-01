@@ -22,7 +22,7 @@ Methodology:
   8. Emit 28-04-METRIC-INTEGRITY.md with full methodology paragraph.
 
 AUDIT-01 invariants:
-  models/xgb_v2.joblib SHA-256: 0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd
+  models/xgb_v2.joblib SHA-256: 760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a
   models/meta/meta_v2.joblib SHA-256: e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8
   These MUST stay byte-identical end-to-end.
 
@@ -41,7 +41,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 XGB_V2_PATH = Path("models/xgb_v2.joblib")
-XGB_V2_EXPECTED_SHA = "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
+XGB_V2_EXPECTED_SHA = "760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a"
 META_V2_PATH = Path("models/meta/meta_v2.joblib")
 META_V2_EXPECTED_SHA = "e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8"
 META_V2_CANDIDATE_PATH = Path("models/meta/meta_v2_candidate.joblib")

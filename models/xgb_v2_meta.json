@@ -1,6 +1,6 @@
 {
   "version": "v2",
-  "trained_at": "2026-07-06T17:06:58.719579+00:00",
+  "trained_at": "2026-10-01T21:36:32.636622+00:00",
   "xgboost_version": "3.2.0",
   "sklearn_version": "1.8.0",
   "python_version": "3.13.13 (main, Apr 14 2026, 14:32:41) [Clang 22.1.3 ]",
@@ -91,38 +91,38 @@
     "reg_lambda": 4.437482739059479e-05
   },
   "metrics": {
-    "brier_score": 0.20842878960208858,
-    "auc_roc": 0.7368963232444462,
-    "accuracy": 0.6629401900503075,
+    "brier_score": 0.2116088171361907,
+    "auc_roc": 0.7248452912275438,
+    "accuracy": 0.6634991615427613,
     "calibration_curve": {
       "fraction_of_positives": [
-        0.07692307692307693,
-        0.05555555555555555,
-        0.211340206185567,
-        0.34916201117318435,
-        0.4892703862660944,
-        0.50199203187251,
-        0.62,
-        0.76,
-        0.5,
-        0.864516129032258
+        0.21739130434782608,
+        0.11224489795918367,
+        0.2054794520547945,
+        0.34069400630914826,
+        0.45698924731182794,
+        0.5263157894736842,
+        0.6384976525821596,
+        0.625,
+        0.775609756097561,
+        0.9285714285714286
       ],
       "mean_predicted_value": [
-        0.07595970306115654,
-        0.11882716086175707,
-        0.2442748099565506,
-        0.375065766150059,
-        0.4120079298131967,
-        0.565223719731745,
-        0.6299649287973131,
-        0.7530440708001455,
-        0.842621922492981,
-        0.9338162560616771
+        0.05841927133176638,
+        0.16166560283424902,
+        0.23680249234176662,
+        0.34786118458874216,
+        0.4452724222053764,
+        0.5534465720779017,
+        0.655191870362546,
+        0.7442384511232376,
+        0.8126124922822161,
+        0.9473372584297544
       ]
     }
   },
   "cutoff_date": "2023-01-01",
   "n_training_fights": 6792,
   "n_test_fights": 1789,
-  "promotion_note": "Re-baselined 2026-07-06 from xgb_v2_corrected (dedup ufcstats corpus + corrected odds + Sherdog-seeded elo). Same locked best_params as the prior v2; substrate corrected. Prior v2 metrics (Brier 0.22062, n_train 13315) were on the 1.95x-inflated cross-source corpus."
+  "promotion_note": "Re-baselined 2026-10-01 (operator decision D6-B) from xgb_v2_corrected: pre-registered seed-42 refit of the locked config on the corrected dedup ufcstats substrate (round-stats orientation repair, Kaggle-twin odds backfill, no-contest Elo skip, NET features, DB-sourced Sherdog seeds, as-of shrinkage, ufcstats title-fight flags, Bruno Silva split). Same locked best_params. Replaces 0b0b40\u2026f6fecd, the 2026-07-06 RETRAIN-V31-01 artifact (temporal-holdout Brier 0.21288 / acc 0.6590 on this substrate); parity with the 10-seed dedup-refit baseline on all three gate slices."
 }

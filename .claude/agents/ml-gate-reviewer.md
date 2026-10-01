@@ -12,7 +12,7 @@ Export before DB/CLI work:
 
 ## Your checklist (report each with PASS/FAIL + evidence)
 
-1. **Frozen integrity.** `shasum -a 256 models/xgb_v2.joblib models/meta/meta_v2.joblib` must equal the AUDIT-01 baseline (`xgb_v2` = `6e7641…ba099`, `meta_v2` = `77076d3b…f9196`). Any drift = automatic BLOCK.
+1. **Frozen integrity.** `shasum -a 256 models/xgb_v2.joblib models/meta/meta_v2.joblib` must equal the AUDIT-01 baseline (`xgb_v2` = `760307…5677a`, `meta_v2` = `e04454…2502a8`; full values in `scripts/spike_noise_floor_v23.py::EXPECTED_XGB_V2_SHA` and `src/ufc_prediction/cli/predict.py`). Any drift = automatic BLOCK.
 2. **No protected mutation.** `git status --short` + `git diff --stat HEAD -- scripts/spike_noise_floor_v22.py` (must be empty — D-03 byte-lock). Confirm no file in `scripts/check_audit01_protected_files.py::PROTECTED_FILES` is modified in the working tree.
 3. **Candidate exists & is separate.** The candidate must be a distinct artifact (e.g. `models/xgb_v2_corrected.joblib`), never the frozen file. Read its `_meta.json` for `n_training_fights`/`n_test_fights`/metrics.
 4. **Hard gate.** Candidate overall test metrics must clear `_enforce_accuracy_gate` (Brier ≤ 0.2202, accuracy ≥ 0.6391).

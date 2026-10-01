@@ -102,7 +102,7 @@ def test_audit01_sha_constants_match_canonical() -> None:
     """Locked AUDIT-01 SHA constants equal the canonical hex values."""
     assert (
         refit_mod.EXPECTED_XGB_V2_SHA256
-        == "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
+        == "760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a"
     )
     assert (
         refit_mod.EXPECTED_META_V2_SHA256

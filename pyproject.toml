@@ -207,6 +207,7 @@ files = [
     "src/ufc_prediction/elo/fighter_queries.py",  # Phase 68 fix
     "src/ufc_prediction/elo/queries.py",  # Phase 68 fix
     "src/ufc_prediction/elo/seed.py",  # Phase 51 fix
+    "src/ufc_prediction/elo/seed_store.py",  # S19 D3 option C
     # features/
     "src/ufc_prediction/features/__init__.py",
     "src/ufc_prediction/features/config.py",
@@ -247,6 +248,7 @@ files = [
     # models/
     "src/ufc_prediction/models/__init__.py",
     "src/ufc_prediction/models/computed_feature.py",  # Phase 51 fix
+    "src/ufc_prediction/models/debutant_seed_input.py",  # S19 D3 option C
     "src/ufc_prediction/models/elo_snapshot.py",
     "src/ufc_prediction/models/event.py",
     "src/ufc_prediction/models/fight_odds.py",

@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session as SASession
 from ufc_prediction.config import settings
 
 DEFAULT_DUMP_PATH = Path("data/seed/ufc_corpus_v30.dump")
+DEFAULT_PRE_UFC_SEEDS_CSV = Path("data/sherdog/pre_ufc_records.csv")
 
 CANONICAL_TABLES = (
     "events",
@@ -30,6 +31,7 @@ CANONICAL_TABLES = (
     "computed_features",
     "referees",
     "venues",
+    "debutant_seed_inputs",
     "model_runs",
     "alembic_version",
 )
@@ -282,3 +284,85 @@ def status() -> None:
         except Exception:
             head = None
     console.print(f"alembic head: [cyan]{head or '(unknown)'}[/cyan]")
+
+
+@db_app.command("backfill-pre-ufc-seeds")
+def backfill_pre_ufc_seeds(
+    csv_path: Path = typer.Option(
+        DEFAULT_PRE_UFC_SEEDS_CSV,
+        "--csv",
+        help=(
+            "Sherdog pre-UFC records CSV (scripts/ingest_pre_ufc_records_v25.py "
+            "output; default: data/sherdog/pre_ufc_records.csv)"
+        ),
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Validate the CSV and the fighter ids in a read-only transaction; write nothing",
+    ),
+) -> None:
+    """Load the Sherdog debutant Elo seed inputs from CSV into debutant_seed_inputs.
+
+    Idempotent upsert keyed on fighter_id: re-running reports every row
+    unchanged and rewrites nothing; rows not in the CSV are left alone. The
+    whole CSV is validated, and every fighter_id checked against fighters,
+    before anything is written (all-or-nothing, one transaction).
+    """
+    from ufc_prediction.elo.seed import SeedDerivationError
+    from ufc_prediction.elo.seed_store import (
+        SEED_TABLE,
+        parse_seed_csv,
+        unknown_fighter_ids,
+        upsert_seed_rows,
+    )
+
+    if not csv_path.exists():
+        console.print(
+            f"[red]Seed CSV not found:[/red] {csv_path} (pass --csv to override)", soft_wrap=True
+        )
+        raise typer.Exit(1)
+    try:
+        rows = parse_seed_csv(csv_path)
+    except SeedDerivationError as exc:
+        console.print(f"[red]Malformed seed CSV {csv_path}:[/red] {exc}", soft_wrap=True)
+        raise typer.Exit(1) from exc
+    if not rows:
+        console.print(
+            f"[red]Seed CSV {csv_path} has no data rows; nothing to backfill.[/red]", soft_wrap=True
+        )
+        raise typer.Exit(1)
+
+    url = _check_database_url()
+    _check_reachable(url)
+    with _session_for(url) as session:
+        if dry_run:
+            # Belt and braces: Postgres itself rejects any write in this transaction.
+            session.execute(text("SET TRANSACTION READ ONLY"))
+        unknown = unknown_fighter_ids(session, (r["fighter_id"] for r in rows))
+        if unknown:
+            shown = ", ".join(str(fid) for fid in sorted(unknown)[:20])
+            more = f" (+{len(unknown) - 20} more)" if len(unknown) > 20 else ""
+            console.print(
+                f"[red]{len(unknown)} fighter_id(s) in {csv_path} have no fighters row: "
+                f"{shown}{more}. Nothing written.[/red]",
+                soft_wrap=True,
+            )
+            raise typer.Exit(1)
+        if dry_run:
+            session.rollback()
+            console.print(
+                f"[green]Dry run:[/green] {len(rows)} valid seed rows in {csv_path}, "
+                "every fighter_id present in fighters. Nothing written.",
+                soft_wrap=True,
+            )
+            return
+        result = upsert_seed_rows(session, rows)
+        total = session.execute(text(f"SELECT COUNT(*) FROM {SEED_TABLE}")).scalar() or 0
+        session.commit()
+    console.print(
+        f"[green]Backfilled {len(rows)} seed rows from {csv_path}:[/green] "
+        f"{result.inserted} inserted, {result.updated} updated, "
+        f"{result.unchanged} unchanged; {SEED_TABLE} now has {total} rows.",
+        soft_wrap=True,
+    )

@@ -282,6 +282,9 @@ class ModelPredictor:
         *,
         event_date: date | None = None,
         refresh: bool = False,
+        weight_class: str | None = None,
+        num_rounds: int | None = None,
+        is_title_fight: bool | None = None,
     ) -> dict:
         """Predict fight outcome for two fighters.
 
@@ -298,6 +301,10 @@ class ModelPredictor:
             event_date: As-of event date. Defaults to today (per D-09 the
                 cache lookup keys on ``(A, B, event_date)``).
             refresh: Per D-10, force a live BFO fetch even on cache hit.
+            weight_class, num_rounds, is_title_fight: Bout context, forwarded
+                to ``build_inference_features``. ``None`` reads the stored
+                Fight row for ``(A, B, event_date)`` when one exists, else
+                falls back to 3 rounds / non-title / resolved division.
 
         Returns:
             Dict with fighter names, model probabilities, Elo probabilities,
@@ -329,10 +336,16 @@ class ModelPredictor:
         # Phase 18 NET-V2-01: include_net is dispatched from self._include_net
         # so 72-col (ablation/xgb_v2) and 75-col (time-decayed) models receive
         # the matching feature space at predict-time (Pitfall #12 parity).
+        bout_context = {
+            "weight_class": weight_class,
+            "num_rounds": num_rounds,
+            "is_title_fight": is_title_fight,
+        }
         feature_vector = build_inference_features(
             session, fighter_a, fighter_b, ev_date,
             live_odds=live_odds,
             include_net=self._include_net,
+            **bout_context,
         )
 
         # Step 6: XGBoost prediction (base model output)
@@ -427,6 +440,7 @@ class ModelPredictor:
                     session, fighter_a, fighter_b, ev_date,
                     live_odds=live_odds,
                     feature_set="v2.2",
+                    **bout_context,
                 )
                 meta_input = build_meta_features_v22(
                     np.array([prob_a]), np.array([elo_prob_a]), x_v22

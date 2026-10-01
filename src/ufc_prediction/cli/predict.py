@@ -21,6 +21,7 @@ import subprocess
 import sys
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import get_args
 
 import numpy as np
 import typer
@@ -28,6 +29,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from ufc_prediction.api.v1.models import WeightClass
 from ufc_prediction.db.session import SessionLocal
 from ufc_prediction.ml.config import FEATURE_COLUMNS, MLConfig, get_feature_columns
 from ufc_prediction.ml.evaluator import evaluate_model, format_evaluation_report
@@ -1332,11 +1334,49 @@ def predict_matchup(
         "--no-use-meta",
         help="Disable meta-learner blender; return base XGBoost prob (D-05(P19) kill switch).",
     ),
+    weight_class: str | None = typer.Option(
+        None,
+        "--weight-class",
+        help=(
+            "Bout division, e.g. 'Welterweight'. Omit to use the scheduled "
+            "fight's, else the fighters' most recent shared division."
+        ),
+    ),
+    rounds: int | None = typer.Option(
+        None,
+        "--rounds",
+        help="Scheduled rounds (3 or 5). Omit to use the scheduled fight's, else 3.",
+    ),
+    title: bool | None = typer.Option(
+        None,
+        "--title/--no-title",
+        help="Title fight. Omit to use the scheduled fight's, else non-title.",
+    ),
 ) -> None:
     """Predict fight outcome: ufc predict matchup 'Fighter A' vs 'Fighter B' (D-10)."""
     if vs.lower() != "vs":
         console.print(f"[red]Expected 'vs' between fighter names, got '{vs}'[/red]")
         raise typer.Exit(code=1)
+    if weight_class is not None and weight_class not in get_args(WeightClass):
+        raise typer.BadParameter(
+            f"unknown division {weight_class!r}; expected one of: "
+            + ", ".join(get_args(WeightClass)),
+            param_hint="--weight-class",
+        )
+    if rounds is not None and rounds not in (3, 5):
+        raise typer.BadParameter("must be 3 or 5", param_hint="--rounds")
+
+    # Bout context (operator-approved D1): forward only what was given, so an
+    # omitted flag keeps the stored-fight-row / fallback behaviour.
+    bout_context = {
+        k: v
+        for k, v in (
+            ("weight_class", weight_class),
+            ("num_rounds", rounds),
+            ("is_title_fight", title),
+        )
+        if v is not None
+    }
 
     try:
         predictor = ModelPredictor(
@@ -1355,7 +1395,7 @@ def predict_matchup(
 
     session = SessionLocal()
     try:
-        result = predict_order_invariant(predictor, session, fighter_a, fighter_b)
+        result = predict_order_invariant(predictor, session, fighter_a, fighter_b, **bout_context)
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(code=1) from e

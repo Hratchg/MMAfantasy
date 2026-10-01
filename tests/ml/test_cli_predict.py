@@ -64,6 +64,78 @@ class TestPredictAppRegistration:
         assert "predict" in sub_app_names
 
 
+class TestPredictMatchupBoutContext:
+    """Operator-approved D1: `ufc predict matchup` forwards --weight-class,
+    --rounds and --title/--no-title to ModelPredictor.predict on both
+    order-invariant runs. Omitted flags forward nothing, so the feature builder
+    keeps the stored-row / fallback behaviour."""
+
+    _RESULT = {
+        "fighter_a": "Fighter A",
+        "fighter_b": "Fighter B",
+        "win_probability": 0.6,
+        "model_probability_a": 0.6,
+        "base_prob": 0.6,
+        "meta_prob": None,
+    }
+
+    def _invoke(self, *extra):
+        from unittest.mock import MagicMock, patch
+
+        from typer.testing import CliRunner
+
+        from ufc_prediction.cli.predict import predict_app
+
+        mod = "ufc_prediction.cli.predict"
+        # autospec: the mocked predict() enforces the real ModelPredictor.predict
+        # signature, so a misnamed kwarg raises instead of passing silently.
+        with (
+            patch(f"{mod}.ModelPredictor", autospec=True) as mock_predictor_cls,
+            patch(f"{mod}.SessionLocal", return_value=MagicMock()),
+            patch(f"{mod}._display_prediction"),
+        ):
+            predict = mock_predictor_cls.return_value.predict
+            predict.return_value = dict(self._RESULT)
+            result = CliRunner().invoke(
+                predict_app, ["matchup", "Fighter A", "vs", "Fighter B", *extra]
+            )
+        return result, predict
+
+    def test_flags_forwarded_to_both_runs(self):
+        result, predict = self._invoke("--weight-class", "Welterweight", "--rounds", "5", "--title")
+        assert result.exit_code == 0, (result.output, result.exception)
+        assert predict.call_count == 2
+        for call in predict.call_args_list:
+            assert call.kwargs == {
+                "weight_class": "Welterweight",
+                "num_rounds": 5,
+                "is_title_fight": True,
+            }
+
+    def test_no_title_forwards_false(self):
+        result, predict = self._invoke("--rounds", "3", "--no-title")
+        assert result.exit_code == 0, (result.output, result.exception)
+        for call in predict.call_args_list:
+            assert call.kwargs == {"num_rounds": 3, "is_title_fight": False}
+
+    def test_omitted_flags_forward_nothing(self):
+        result, predict = self._invoke()
+        assert result.exit_code == 0, (result.output, result.exception)
+        assert predict.call_count == 2
+        for call in predict.call_args_list:
+            assert call.kwargs == {}
+
+    def test_rejects_rounds_other_than_3_or_5(self):
+        result, predict = self._invoke("--rounds", "4")
+        assert result.exit_code == 2, result.output
+        predict.assert_not_called()
+
+    def test_rejects_unknown_weight_class(self):
+        result, predict = self._invoke("--weight-class", "welterweight")
+        assert result.exit_code == 2, result.output
+        predict.assert_not_called()
+
+
 class TestPredictTrainPassesFeatureColumns:
     """S02 finding 1: `predict train` must hand its --feature-set column list to
     ModelTrainer.train so importances are keyed at the trained width (72 for the

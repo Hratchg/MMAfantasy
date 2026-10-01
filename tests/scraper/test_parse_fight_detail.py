@@ -201,3 +201,31 @@ class TestParseFightDetailDraw:
         page = parse_fight_detail(fight_detail_draw_html)
         assert len(page.per_round_totals) == 3
         assert len(page.per_round_sig_strikes) == 3
+
+
+# -- Title belt (S22: ufcstats title-fight flag) -----------------------------
+
+
+class TestParseFightDetailTitleBelt:
+    """UFCStats marks a title bout with a belt.png image in the fight-title
+    cell. The flag must come from the image, not the text: "UFC Superfight
+    Championship Bout" carries the belt but not the word "Title"."""
+
+    def test_belt_image_sets_title_flag(self, fight_detail_superfight_belt_html: str) -> None:
+        page = parse_fight_detail(fight_detail_superfight_belt_html)
+        assert page.is_title_fight is True
+        assert page.bout_type == "UFC Superfight Championship Bout"
+        assert "title" not in page.bout_type.lower()
+
+    def test_no_belt_image_is_not_flagged(self, fight_detail_3round_html: str) -> None:
+        page = parse_fight_detail(fight_detail_3round_html)
+        assert page.is_title_fight is False
+
+    def test_title_text_without_belt_does_not_set_the_image_flag(
+        self, fight_detail_1round_html: str
+    ) -> None:
+        # The fixture says "UFC Light Heavyweight Title Bout" but has no
+        # belt.png; the parser reports the image only (ingest ORs the text).
+        page = parse_fight_detail(fight_detail_1round_html)
+        assert "Title" in page.bout_type
+        assert page.is_title_fight is False

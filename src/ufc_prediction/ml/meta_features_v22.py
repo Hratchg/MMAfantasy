@@ -76,13 +76,20 @@ def build_meta_features_v22(
 def elo_prob_from_v22_matrix(X_v22: np.ndarray) -> np.ndarray:
     """As-of-fight-date Elo P(row's fighter A wins) from an assembled matrix.
 
-    Reads the row's own ``elo_overall_diff`` (``elo_before`` overall ratings,
-    1500 default — the same inputs the per-fight ``_compute_elo_prob_for_fight``
-    driver helpers use) and applies ``EloEngine.expected_win_probability``.
-    Deriving it from the assembled row keeps it in the row's orientation: the
-    assembler swaps fighter A/B for ~half the fights (md5(fight_id) coin flip)
-    and labels the row from the swapped A, whereas a helper keyed on
-    ``fight_record["fighter_a_id"]`` returns ``1 - p`` on every swapped row.
+    The one source of the meta ``elo_prob`` column for every driver and
+    substrate builder (S18 / D5). It reads the row's own ``elo_overall_diff``
+    (pre-fight ``elo_before`` overall ratings, 1500 default) and applies
+    ``EloEngine.expected_win_probability``. Deriving it from the assembled row
+    keeps it in the row's orientation. The assembler swaps fighter A/B for
+    about half the fights (an md5(fight_id) coin flip) and labels the row from
+    the swapped A. A lookup keyed on ``fight_record["fighter_a_id"]`` returns
+    ``1 - p`` on every swapped row. On ufcstats the record's fighter A is
+    always the winner, so that lookup disagrees with ``elo_overall_diff``
+    exactly on the rows labelled 0, and the meta features then encode the label.
+
+    ``X_v22`` is in ``FEATURE_COLUMNS_V22`` order. Any view that keeps the
+    leading columns also works: the 72-col v2.1-no-net matrix is the v2.2
+    prefix, and a v2.5 matrix starts with the 90 v2.2 columns.
     """
     from ufc_prediction.elo.config import EloConfig
     from ufc_prediction.elo.engine import EloEngine

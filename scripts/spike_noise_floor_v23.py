@@ -73,7 +73,7 @@ import argparse
 import hashlib
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -197,9 +197,11 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
     """
     from datetime import date as _date
 
+    from ufc_prediction.ml.evaluator import gate_reference_date
     from ufc_prediction.ml.meta_features_v22 import (
         META_V22_FEATURE_COLUMNS,
         build_meta_features_v22,
+        elo_prob_from_v22_matrix,
     )
     from ufc_prediction.ml.oof import (
         _make_oof_estimator,
@@ -218,7 +220,6 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
         META_OOF_PARQUET_PATH,
         _build_meta_eval_xgb_probs,
         _build_synthetic_data_v22,
-        _compute_elo_prob_for_fight,
         _enforce_72col_view,
         _load_assembled_data_v22,
     )
@@ -248,7 +249,8 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
             fight_records,
             base_cutoff=_date.fromisoformat(EXPECTED_CUTOFF_DATE),
             meta_eval_window_days=META_EVAL_WINDOW_DAYS,
-            today=_date.today(),
+            # S11: substrate-derived anchor (matches train_meta_v22).
+            today=gate_reference_date(fight_dates),
         )
     )
     if len(meta_train_fights) == 0 or len(meta_eval_fights) == 0:
@@ -289,21 +291,13 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
         elo_prob_train = rng.uniform(0.3, 0.7, size=len(meta_train_idx))
         elo_prob_eval = rng.uniform(0.3, 0.7, size=len(meta_eval_idx))
     else:
-        from ufc_prediction.db.session import SessionLocal
-        from ufc_prediction.ml.queries import load_elo_features
-        _session = SessionLocal()
-        try:
-            _elo_features = load_elo_features(_session)
-        finally:
-            _session.close()
-        elo_prob_train = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_train_idx
-        ])
-        elo_prob_eval = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_eval_idx
-        ])
+        # S18 / D5: elo_prob comes from the assembled row's own
+        # elo_overall_diff. The assembler swaps fighter A/B per fight and
+        # labels the row from the swapped A. A lookup keyed on the record's
+        # fighter_a returned 1 - p on every swapped row, so elo_prob and
+        # elo_overall_diff disagreed exactly when the label was 0.
+        elo_prob_train = elo_prob_from_v22_matrix(X_v22[meta_train_idx])
+        elo_prob_eval = elo_prob_from_v22_matrix(X_v22[meta_eval_idx])
 
     X_meta_train = build_meta_features_v22(
         xgb_oof_aligned, elo_prob_train, X_v22[meta_train_idx],
@@ -370,6 +364,8 @@ def _no_bootstrap_metrics(
     X_eval: np.ndarray, y_eval: np.ndarray,
     fight_dates_eval: np.ndarray,
     seeds: list[int],
+    *,
+    today: date | None = None,
 ) -> dict[int, dict]:
     """Deterministic path (skips bootstrap_resample per --no-bootstrap).
 
@@ -400,7 +396,7 @@ def _no_bootstrap_metrics(
     for seed in seeds:
         model = _meta_fit_fn(X_train, y_train, int(seed))
         per_seed[int(seed)] = evaluate_per_slice(
-            model, X_eval, y_eval, fight_dates_eval,
+            model, X_eval, y_eval, fight_dates_eval, today=today,
         )
     return per_seed
 
@@ -786,6 +782,11 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # ── Multi-seed harness call (D-01 / D-02 / D-05) ─────────────────
+    # S11: one substrate-derived slice anchor for every seed + the BCa CIs
+    # (the `ufc predict gate-spike` in-process re-run derives the same one).
+    from ufc_prediction.ml.evaluator import gate_reference_date
+    slice_anchor = gate_reference_date(fight_dates_eval)
+    print(f"[spike-v23] slice anchor (latest eval event) = {slice_anchor}")
     seeds_list = [int(s) for s in args.seeds]
     if args.no_bootstrap:
         print(
@@ -797,7 +798,7 @@ def main(argv: list[str] | None = None) -> int:
         per_seed = _no_bootstrap_metrics(
             X_meta_train, y_meta_train,
             X_meta_eval, y_meta_eval, fight_dates_eval,
-            seeds=seeds_list,
+            seeds=seeds_list, today=slice_anchor,
         )
     else:
         print(
@@ -811,7 +812,7 @@ def main(argv: list[str] | None = None) -> int:
         per_seed = multi_seed_metrics(
             X_meta_train, y_meta_train,
             X_meta_eval, y_meta_eval, fight_dates_eval,
-            seeds=seeds_list, fit_fn=_meta_fit_fn,
+            seeds=seeds_list, fit_fn=_meta_fit_fn, today=slice_anchor,
         )
         # D-05 runtime check -- complements the unit-test guard.
         assert_distinct_seed_brier(per_seed)
@@ -858,6 +859,7 @@ def main(argv: list[str] | None = None) -> int:
         representative_model=representative_model,
         X_eval=X_meta_eval, y_eval=y_meta_eval,
         fight_dates_eval=fight_dates_eval,
+        today=slice_anchor,
     )
 
     # Log Pitfall-B warnings to stdout for operator visibility.

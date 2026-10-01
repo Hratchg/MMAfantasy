@@ -164,22 +164,6 @@ def _build_synthetic_data_v22(n: int = 600):
     return X_v22, y, np.array(dates), fight_ids, base_cutoff, today
 
 
-def _compute_elo_prob_for_fight(fight: dict, elo_features: dict) -> float:
-    """As-of-fight-date Elo P(A wins) — same pattern as train_meta_v1.py:267-289."""
-    from ufc_prediction.elo.config import EloConfig
-    from ufc_prediction.elo.engine import EloEngine
-
-    fight_id = fight["fight_id"]
-    fa_id = fight["fighter_a_id"]
-    fb_id = fight["fighter_b_id"]
-    elo_a_dict = elo_features.get((fa_id, fight_id), {"elo_overall": 1500.0})
-    elo_b_dict = elo_features.get((fb_id, fight_id), {"elo_overall": 1500.0})
-    rating_a = float(elo_a_dict.get("elo_overall", 1500.0))
-    rating_b = float(elo_b_dict.get("elo_overall", 1500.0))
-    engine = EloEngine(EloConfig())
-    return float(engine.expected_win_probability(rating_a, rating_b))
-
-
 def _build_meta_eval_xgb_probs(
     base_estimator, X_train_72: np.ndarray, y_train: np.ndarray,
     X_eval_72: np.ndarray,
@@ -307,11 +291,16 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
         coefficient_stability_report,
         write_coefficient_stability_json,
     )
-    from ufc_prediction.ml.evaluator import evaluate_per_slice, gate_verdict
+    from ufc_prediction.ml.evaluator import (
+        evaluate_per_slice,
+        gate_reference_date,
+        gate_verdict,
+    )
     from ufc_prediction.ml.gate_contract import load_gate_contract
     from ufc_prediction.ml.meta_features_v22 import (
         META_V22_FEATURE_COLUMNS,
         build_meta_features_v22,
+        elo_prob_from_v22_matrix,
     )
     from ufc_prediction.ml.meta_learner import MetaLearnerLogistic
     from ufc_prediction.ml.oof import (
@@ -355,11 +344,17 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
     # widening meta_eval to span at least the 24mo slice window. D-04 locks
     # slice windows (12mo / 24mo / random_15pct), not the meta_eval window.
     META_EVAL_WINDOW_DAYS = 730
+    # S11: anchor the meta_eval window AND the 12mo / 24mo slices to the
+    # latest event in the substrate, not the wall clock, so the spike (and
+    # META_V22_SPIKE.json / the META_V22_BASELINE_BRIER anchors derived from
+    # it) only move when the substrate changes.
+    reference_date = gate_reference_date(fight_dates)
+    print(f"[train_meta_v22] reference_date (latest event) = {reference_date}")
     base_train_fights, meta_train_fights, meta_eval_fights = make_three_way_split(
         fight_records,
         base_cutoff=date.fromisoformat(EXPECTED_CUTOFF_DATE),
         meta_eval_window_days=META_EVAL_WINDOW_DAYS,
-        today=date.today(),
+        today=reference_date,
     )
     print(
         f"[train_meta_v22] split sizes (meta_eval_window={META_EVAL_WINDOW_DAYS}d): "
@@ -410,21 +405,13 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
         elo_prob_train = rng.uniform(0.3, 0.7, size=len(meta_train_idx))
         elo_prob_eval = rng.uniform(0.3, 0.7, size=len(meta_eval_idx))
     else:
-        from ufc_prediction.db.session import SessionLocal
-        from ufc_prediction.ml.queries import load_elo_features
-        _session = SessionLocal()
-        try:
-            _elo_features = load_elo_features(_session)
-        finally:
-            _session.close()
-        elo_prob_train = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_train_idx
-        ])
-        elo_prob_eval = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_eval_idx
-        ])
+        # S18 / D5: elo_prob comes from the assembled row's own
+        # elo_overall_diff. The assembler swaps fighter A/B per fight and
+        # labels the row from the swapped A. A lookup keyed on the record's
+        # fighter_a returned 1 - p on every swapped row, so elo_prob and
+        # elo_overall_diff disagreed exactly when the label was 0.
+        elo_prob_train = elo_prob_from_v22_matrix(X_v22[meta_train_idx])
+        elo_prob_eval = elo_prob_from_v22_matrix(X_v22[meta_eval_idx])
 
     X_meta_train = build_meta_features_v22(
         xgb_oof_aligned, elo_prob_train, X_v22[meta_train_idx],
@@ -543,6 +530,7 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
         meta = MetaLearnerLogistic(random_state=seed).fit(X_meta_train_clean, y_meta_train_clean)
         per_seed_results[seed] = evaluate_per_slice(
             meta, X_meta_eval, y_meta_eval, fight_dates_eval,
+            today=reference_date,
         )
         per_seed_meta[seed] = meta
 
@@ -602,7 +590,7 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
     # Recompute slice masks using the SAME semantics as evaluator.evaluate_per_slice
     # (12mo / 24mo windows + seed=42 random_15pct). Truncate to first 5000 ids per
     # slice to bound JSON size (T-29-02-05 disposition: accept).
-    today_for_slices = date.today()
+    today_for_slices = reference_date
     cutoff_12mo = today_for_slices - _datetime.timedelta(days=365)
     cutoff_24mo = today_for_slices - _datetime.timedelta(days=730)
     mask_12mo = np.array([d >= cutoff_12mo for d in fight_dates_eval])
@@ -684,6 +672,7 @@ def run_spike(args) -> int:  # noqa: C901, PLR0912, PLR0915
         "seeds": list(args.seeds),
         "feature_columns": META_V22_FEATURE_COLUMNS,
         "nan_drop_policy": NAN_DROP_POLICY,
+        "slice_reference_date": reference_date.isoformat(),
         "nan_imputation_medians": nan_imputation_medians,
         "n_meta_train": int(len(meta_train_fights)),
         "n_meta_eval": int(len(meta_eval_fights)),
@@ -727,11 +716,16 @@ def _read_xgb_v2_sha() -> str:
 def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
     """REF + TRAVEL forward-stepwise verdicts (Plan 26-03 Task 2)."""
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
-    from ufc_prediction.ml.evaluator import evaluate_per_slice, gate_verdict
+    from ufc_prediction.ml.evaluator import (
+        evaluate_per_slice,
+        gate_reference_date,
+        gate_verdict,
+    )
     from ufc_prediction.ml.gate_contract import load_gate_contract
     from ufc_prediction.ml.meta_features_v22 import (
         META_V22_FEATURE_COLUMNS,
         build_meta_features_v22,
+        elo_prob_from_v22_matrix,
     )
     from ufc_prediction.ml.meta_learner import MetaLearnerLogistic
     from ufc_prediction.ml.oof import (
@@ -775,11 +769,12 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
     else:
         X_v22, y, fight_dates, fight_records = _load_assembled_data_v22()
 
+    reference_date = gate_reference_date(fight_dates)  # S11: not date.today()
     base_train_fights, meta_train_fights, meta_eval_fights = make_three_way_split(
         fight_records,
         base_cutoff=date.fromisoformat(EXPECTED_CUTOFF_DATE),
         meta_eval_window_days=365,
-        today=date.today(),
+        today=reference_date,
     )
     meta_train_ids = {f["fight_id"] for f in meta_train_fights}
     meta_eval_ids = {f["fight_id"] for f in meta_eval_fights}
@@ -809,21 +804,13 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
         elo_prob_train = rng.uniform(0.3, 0.7, size=len(meta_train_idx))
         elo_prob_eval = rng.uniform(0.3, 0.7, size=len(meta_eval_idx))
     else:
-        from ufc_prediction.db.session import SessionLocal
-        from ufc_prediction.ml.queries import load_elo_features
-        _session = SessionLocal()
-        try:
-            _elo_features = load_elo_features(_session)
-        finally:
-            _session.close()
-        elo_prob_train = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_train_idx
-        ])
-        elo_prob_eval = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_eval_idx
-        ])
+        # S18 / D5: elo_prob comes from the assembled row's own
+        # elo_overall_diff. The assembler swaps fighter A/B per fight and
+        # labels the row from the swapped A. A lookup keyed on the record's
+        # fighter_a returned 1 - p on every swapped row, so elo_prob and
+        # elo_overall_diff disagreed exactly when the label was 0.
+        elo_prob_train = elo_prob_from_v22_matrix(X_v22[meta_train_idx])
+        elo_prob_eval = elo_prob_from_v22_matrix(X_v22[meta_eval_idx])
 
     base_estimator = _make_oof_estimator(seed=42)
     xgb_eval_prob = _build_meta_eval_xgb_probs(
@@ -866,6 +853,7 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
         meta = MetaLearnerLogistic(random_state=seed).fit(X_ref_train_clean, y_ref_train_clean)
         per_seed_ref[seed] = evaluate_per_slice(
             meta, X_ref_eval_clean, y_ref_eval_clean, fight_dates_ref_eval,
+            today=reference_date,
         )
     median_ref = median_metrics(list(per_seed_ref.values()))
     ref_gate_pass, ref_gate_failures = gate_verdict(median_ref, contract)
@@ -945,6 +933,7 @@ def run_stepwise(args) -> int:  # noqa: C901, PLR0912, PLR0915
             )
             per_seed_travel[seed] = evaluate_per_slice(
                 meta, X_travel_eval_clean, y_travel_eval_clean, fight_dates_travel_eval,
+                today=reference_date,
             )
 
     if per_seed_travel:

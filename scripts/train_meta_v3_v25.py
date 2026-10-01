@@ -266,14 +266,15 @@ def _load_level1_substrate_from_db() -> pd.DataFrame:
     xgb_v3 OOF for xgb_v2 OOF at that slot.
     """
     from ufc_prediction.db.session import SessionLocal
-    from ufc_prediction.elo.config import EloConfig
-    from ufc_prediction.elo.engine import EloEngine
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22, MLConfig
     from ufc_prediction.ml.feature_matrix import (
         FeatureMatrixAssembler,
         compute_division_medians,
     )
-    from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
+    from ufc_prediction.ml.meta_features_v22 import (
+        META_V22_FEATURE_COLUMNS,
+        elo_prob_from_v22_matrix,
+    )
     from ufc_prediction.ml.queries import (
         load_computed_features,
         load_elo_features,
@@ -317,27 +318,10 @@ def _load_level1_substrate_from_db() -> pd.DataFrame:
     )
     assert X_v22.shape[1] == 90, f"v2.2 expected 90 cols, got {X_v22.shape[1]}"
 
-    # Compute as-of-date Elo probability per fight (D-CONTEXT pattern — same
-    # EloEngine.expected_win_probability as META-V22 + Plan 45-02).
-    engine = EloEngine(EloConfig())
-    elo_probs: list[float] = []
-    for f in fight_records:
-        fa_id = f["fighter_a_id"]
-        fb_id = f["fighter_b_id"]
-        fid = f["fight_id"]
-        ra = float(
-            elo_features.get((fa_id, fid), {"elo_overall": 1500.0}).get(
-                "elo_overall",
-                1500.0,
-            )
-        )
-        rb = float(
-            elo_features.get((fb_id, fid), {"elo_overall": 1500.0}).get(
-                "elo_overall",
-                1500.0,
-            )
-        )
-        elo_probs.append(float(engine.expected_win_probability(ra, rb)))
+    # As-of-date Elo P(row's A wins) from the assembled row's own
+    # elo_overall_diff (S18 / D5: shares the row's post-swap orientation with
+    # the label; a lookup keyed on the record's fighter_a did not).
+    elo_probs = elo_prob_from_v22_matrix(X_v22)
 
     # Pull the 11 v2.2-substrate cols by NAME via FEATURE_COLUMNS_V22.index()
     # (Pitfall #1 guard from meta_features_v22 — no hardcoded indices).

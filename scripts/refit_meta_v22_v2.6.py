@@ -272,12 +272,15 @@ def _build_live_13col_matrix() -> tuple[Any, Any]:
     """Build the live-DB 13-col training matrix for ``--mode full``.
 
     Reuses ``scripts/train_meta_v22.py::_load_assembled_data_v22`` for the
-    canonical v2.2 90-col substrate and ``_compute_elo_prob_for_fight`` for
-    col[1]. col[0] is sourced from canonical xgb_v2 OOF (not Plan 65-02 OOF
-    — the refit baseline by definition uses the canonical xgb distribution).
+    canonical v2.2 90-col substrate and
+    ``meta_features_v22.elo_prob_from_v22_matrix`` for col[1] (the row's own
+    elo_overall_diff, so it shares the row's post-swap orientation with the
+    label; S18 / D5). col[0] is sourced from canonical xgb_v2 OOF (not Plan
+    65-02 OOF — the refit baseline by definition uses the canonical xgb
+    distribution).
 
-    Note: live mode is heavier (DB round-trip + per-fight Elo computation).
-    Synthetic mode is sufficient for the test suite + canonical demonstration.
+    Note: live mode is heavier (DB round-trip). Synthetic mode is sufficient
+    for the test suite + canonical demonstration.
     """
     import numpy as np
     import train_meta_v22 as _tm  # type: ignore[import-not-found]
@@ -287,19 +290,9 @@ def _build_live_13col_matrix() -> tuple[Any, Any]:
     X_v22, y, _fight_dates, fight_records = _tm._load_assembled_data_v22()
     assert X_v22.shape[1] == 90, f"v2.2 substrate must be 90 cols; got {X_v22.shape[1]}"
 
-    from ufc_prediction.db.session import SessionLocal
-    from ufc_prediction.ml.queries import load_elo_features
+    from ufc_prediction.ml.meta_features_v22 import elo_prob_from_v22_matrix
 
-    session = SessionLocal()
-    try:
-        elo_features = load_elo_features(session)
-    finally:
-        session.close()
-
-    elo_prob_arr = np.array(
-        [_tm._compute_elo_prob_for_fight(rec, elo_features) for rec in fight_records],
-        dtype=np.float64,
-    )
+    elo_prob_arr = elo_prob_from_v22_matrix(X_v22).astype(np.float64)
 
     # col[0] — canonical xgb_v2 OOF. Live mode would need access to the
     # canonical OOF parquet at data/intermediate/xgb_v2_oof.parquet. For Phase

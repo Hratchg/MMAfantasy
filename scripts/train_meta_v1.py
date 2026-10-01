@@ -263,31 +263,6 @@ def _load_assembled_data() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[dic
     return X, y, fight_dates, fight_records
 
 
-def _compute_elo_prob_for_fight(fight: dict, elo_features: dict) -> float:
-    """Return as-of-fight-date Elo expected_win_probability for fighter A.
-
-    Per RESEARCH.md F3: elo_prob MUST be as-of fight-date (NOT post-fight).
-    ``elo_features`` is the dict returned by ``queries.load_elo_features``,
-    keyed by ``(fighter_id, fight_id)`` and storing ``elo_before`` (pre-fight
-    snapshot — leakage-safe by construction).
-
-    Encapsulated as a separate helper so the Plan 19-02 Task 1a integration
-    tests can mock this single function with a deterministic stub.
-    """
-    from ufc_prediction.elo.config import EloConfig
-    from ufc_prediction.elo.engine import EloEngine
-
-    fight_id = fight["fight_id"]
-    fa_id = fight["fighter_a_id"]
-    fb_id = fight["fighter_b_id"]
-    elo_a_dict = elo_features.get((fa_id, fight_id), {"elo_overall": 1500.0})
-    elo_b_dict = elo_features.get((fb_id, fight_id), {"elo_overall": 1500.0})
-    rating_a = float(elo_a_dict.get("elo_overall", 1500.0))
-    rating_b = float(elo_b_dict.get("elo_overall", 1500.0))
-    engine = EloEngine(EloConfig())
-    return float(engine.expected_win_probability(rating_a, rating_b))
-
-
 def _build_meta_eval_xgb_probs(
     base_estimator,
     X_meta_train: np.ndarray,
@@ -438,6 +413,7 @@ def main(argv: list[str] | None = None) -> int:
     from ufc_prediction.ml.config import FEATURE_COLUMNS_NO_NET
     from ufc_prediction.ml.evaluator import evaluate_per_slice
     from ufc_prediction.ml.gate_contract import load_gate_contract
+    from ufc_prediction.ml.meta_features_v22 import elo_prob_from_v22_matrix
     from ufc_prediction.ml.meta_learner import (
         META_FEATURE_COLUMNS,
         MetaLearnerLogistic,
@@ -498,23 +474,11 @@ def main(argv: list[str] | None = None) -> int:
         force_rebuild=args.no_cache_oof,
         fight_ids=[fight_records[i]["fight_id"] for i in meta_train_idx],
     )
-    # Pre-load elo_features once for the elo_prob lookups (real path); the
-    # mocked test path bypasses this entirely via patch.object.
-    try:
-        from ufc_prediction.db.session import SessionLocal
-        from ufc_prediction.ml.queries import load_elo_features
-
-        _session = SessionLocal()
-        try:
-            _elo_features = load_elo_features(_session)
-        finally:
-            _session.close()
-    except Exception:
-        _elo_features = {}
-
-    elo_prob_train = np.array(
-        [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_train_idx]
-    )
+    # As-of-fight-date Elo P(row's A wins) (RESEARCH.md F3: pre-fight
+    # elo_before). S18 / D5: taken from the assembled row's own
+    # elo_overall_diff so it shares the row's post-swap orientation with the
+    # label. The 72-col v2.1-no-net matrix is the v2.2 prefix.
+    elo_prob_train = elo_prob_from_v22_matrix(X[meta_train_idx])
     closing_prob_diff_train = X[meta_train_idx, closing_idx]
 
     # NOTE: generate_oof_predictions sorts internally by fight_dates, so
@@ -540,9 +504,7 @@ def main(argv: list[str] | None = None) -> int:
         y[meta_train_idx],
         X[meta_eval_idx],
     )
-    elo_prob_eval = np.array(
-        [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_eval_idx]
-    )
+    elo_prob_eval = elo_prob_from_v22_matrix(X[meta_eval_idx])
     closing_prob_diff_eval = X[meta_eval_idx, closing_idx]
     X_meta_eval = build_meta_features(
         xgb_eval_prob,

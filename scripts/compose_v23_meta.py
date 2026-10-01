@@ -427,22 +427,6 @@ def _build_synthetic_data_v22(n: int = 600):
     return X_v22, y, np.array(dates), fight_ids, base_cutoff, today
 
 
-def _compute_elo_prob_for_fight(fight: dict, elo_features: dict) -> float:
-    """As-of-fight-date Elo P(A wins). Port of train_meta_v22._compute_elo_prob_for_fight."""
-    from ufc_prediction.elo.config import EloConfig
-    from ufc_prediction.elo.engine import EloEngine
-
-    fight_id = fight["fight_id"]
-    fa_id = fight["fighter_a_id"]
-    fb_id = fight["fighter_b_id"]
-    elo_a_dict = elo_features.get((fa_id, fight_id), {"elo_overall": 1500.0})
-    elo_b_dict = elo_features.get((fb_id, fight_id), {"elo_overall": 1500.0})
-    rating_a = float(elo_a_dict.get("elo_overall", 1500.0))
-    rating_b = float(elo_b_dict.get("elo_overall", 1500.0))
-    engine = EloEngine(EloConfig())
-    return float(engine.expected_win_probability(rating_a, rating_b))
-
-
 # ─────────────────────────── Step driver ─────────────────────────────────────
 
 
@@ -456,6 +440,7 @@ def _eval_meta_step(
     fight_dates_eval: np.ndarray,
     seeds: list[int],
     fit_factory,
+    today: date | None = None,
 ) -> dict[str, dict[str, float]]:
     """Fit per-seed + evaluate per slice; return median dict.
 
@@ -472,6 +457,7 @@ def _eval_meta_step(
             X_eval,
             y_eval,
             fight_dates_eval,
+            today=today,
         )
     return median_metrics(list(per_seed_results.values()))
 
@@ -544,11 +530,16 @@ def run_composition(args) -> dict:
     from sklearn.calibration import CalibratedClassifierCV
 
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
-    from ufc_prediction.ml.evaluator import evaluate_per_slice, gate_verdict
+    from ufc_prediction.ml.evaluator import (
+        evaluate_per_slice,
+        gate_reference_date,
+        gate_verdict,
+    )
     from ufc_prediction.ml.gate_contract import load_gate_contract
     from ufc_prediction.ml.meta_features_v22 import (
         META_V22_FEATURE_COLUMNS,
         build_meta_features_v22,
+        elo_prob_from_v22_matrix,
     )
     from ufc_prediction.ml.meta_learner import MetaLearnerLogistic
     from ufc_prediction.ml.meta_persistence import (
@@ -601,12 +592,16 @@ def run_composition(args) -> dict:
         print("[compose_v23] Loading data + assembling 90-col v2.2 feature matrix from DB...")
         X_v22, y, fight_dates, fight_records = _load_assembled_data_v22()
     print(f"[compose_v23] X_v22.shape={X_v22.shape}, n_records={len(fight_records)}")
+    # S11: one substrate-derived anchor for the split and every step's
+    # slices (matches train_meta_v22, whose spike JSON the pinned
+    # META_V22_BASELINE_BRIER constants come from).
+    reference_date = gate_reference_date(fight_dates)
 
     base_train_fights, meta_train_fights, meta_eval_fights = make_three_way_split(
         fight_records,
         base_cutoff=date.fromisoformat(EXPECTED_CUTOFF_DATE),
         meta_eval_window_days=365,
-        today=date.today(),
+        today=reference_date,
     )
     print(
         f"[compose_v23] split: base={len(base_train_fights)} "
@@ -648,20 +643,10 @@ def run_composition(args) -> dict:
         elo_prob_train = rng.uniform(0.3, 0.7, size=len(meta_train_idx))
         elo_prob_eval = rng.uniform(0.3, 0.7, size=len(meta_eval_idx))
     else:
-        from ufc_prediction.db.session import SessionLocal
-        from ufc_prediction.ml.queries import load_elo_features
-
-        _session = SessionLocal()
-        try:
-            _elo_features = load_elo_features(_session)
-        finally:
-            _session.close()
-        elo_prob_train = np.array(
-            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_train_idx]
-        )
-        elo_prob_eval = np.array(
-            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_eval_idx]
-        )
+        # S18 / D5: from the assembled row, so elo_prob shares the row's
+        # post-swap orientation with the label (see elo_prob_from_v22_matrix).
+        elo_prob_train = elo_prob_from_v22_matrix(X_v22[meta_train_idx])
+        elo_prob_eval = elo_prob_from_v22_matrix(X_v22[meta_eval_idx])
 
     # Build meta_eval Level-1 (single transient base train, per Phase 26 pattern).
     print("[compose_v23] Building meta_eval Level-1 (1 base train + Elo lookups)...")
@@ -745,6 +730,7 @@ def run_composition(args) -> dict:
             X_meta_eval_clean,
             y_meta_eval_clean,
             fight_dates_meta_eval,
+            today=reference_date,
         )
         per_seed_meta_models[seed] = m
     median_meta = median_metrics(list(per_seed_meta.values()))
@@ -870,6 +856,7 @@ def run_composition(args) -> dict:
                 X_meta_eval_clean,
                 y_meta_eval_clean,
                 fight_dates_meta_eval,
+                today=reference_date,
             )
             per_seed_calib_models[seed] = calibrated
         except Exception as e:
@@ -973,6 +960,7 @@ def run_composition(args) -> dict:
             X_ref_eval_clean,
             y_ref_eval_clean,
             fight_dates_ref_eval,
+            today=reference_date,
         )
         per_seed_ref_models[seed] = m
     median_ref = median_metrics(list(per_seed_ref.values()))
@@ -1074,6 +1062,7 @@ def run_composition(args) -> dict:
                 X_travel_eval_clean,
                 y_travel_eval_clean,
                 fight_dates_travel_eval,
+                today=reference_date,
             )
             per_seed_travel_models[seed] = m
 

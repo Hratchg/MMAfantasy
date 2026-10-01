@@ -239,16 +239,14 @@ def test_build_live_13col_matrix_nan_guard_fires_when_col0_has_nan() -> None:
     LogisticRegression fit and produce degenerate coefficients.
     """
     import sys as _sys
-    import types
 
     import numpy as np
     import pandas as pd
     import train_meta_v2_refv2 as mod
 
-    # Stub out the heavy dependencies that _build_live_13col_matrix imports
-    # at runtime: train_meta_v22 (DB loader + elo helper) + ufc_prediction
-    # session + queries. We replace them with minimal mocks before invoking
-    # the function under test.
+    # Stub out the heavy dependency that _build_live_13col_matrix imports at
+    # runtime: train_meta_v22's DB loader. elo_prob comes from the matrix's
+    # own elo_overall_diff column, so no Elo DB lookup needs stubbing.
 
     class _FakeTM:
         @staticmethod
@@ -268,31 +266,9 @@ def test_build_live_13col_matrix_nan_guard_fires_when_col0_has_nan() -> None:
                 ],
             )
 
-        @staticmethod
-        def _compute_elo_prob_for_fight(rec: dict, elo_features: Any) -> float:
-            return 0.5
-
     # Inject the fake module under the same name the function imports.
+    _real_tm = _sys.modules.get("train_meta_v22")
     _sys.modules["train_meta_v22"] = _FakeTM  # type: ignore[assignment]
-
-    # Stub queries/session — _build_live_13col_matrix imports them at
-    # function scope. We monkeypatch via direct sys.modules injection.
-    fake_queries = types.ModuleType("ufc_prediction.ml.queries")
-    fake_queries.load_elo_features = lambda session: None  # type: ignore[attr-defined]
-    _sys.modules["ufc_prediction.ml.queries"] = fake_queries
-
-    fake_session = types.ModuleType("ufc_prediction.db.session")
-
-    class _FakeSessionLocal:
-        def __call__(self):
-            class _S:
-                def close(self):
-                    pass
-
-            return _S()
-
-    fake_session.SessionLocal = _FakeSessionLocal()  # type: ignore[attr-defined]
-    _sys.modules["ufc_prediction.db.session"] = fake_session
 
     # Drive the mask/nan misalignment: monkeypatch keep_mask construction
     # so both rows pass the mask but only ONE is actually in oof_by_fid.
@@ -338,13 +314,11 @@ def test_build_live_13col_matrix_nan_guard_fires_when_col0_has_nan() -> None:
         finally:
             numpy.array = orig_np_array  # type: ignore[assignment]
     finally:
-        # Clean up the stubs to avoid leaking into other tests.
-        for k in (
-            "train_meta_v22",
-            "ufc_prediction.ml.queries",
-            "ufc_prediction.db.session",
-        ):
-            _sys.modules.pop(k, None)
+        # Restore the real module so the stub cannot leak into other tests.
+        if _real_tm is None:
+            _sys.modules.pop("train_meta_v22", None)
+        else:
+            _sys.modules["train_meta_v22"] = _real_tm
 
 
 def test_build_live_13col_matrix_uses_unique_sentinel_for_missing_fight_id() -> None:

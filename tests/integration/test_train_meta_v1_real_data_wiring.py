@@ -6,10 +6,9 @@ Per OQ-5 lock (Plan 19-01) and the Plan 19-02 Task 1a action contract, all
 
   - the script's data loader (``_load_assembled_data``) — returns synthetic
     600-row (X, y, fight_dates, fight_records) suitable for the three-way
-    split with non-empty meta_train + meta_eval partitions;
-  - the script's Elo-prob lookup (``_compute_elo_prob_for_fight``) — returns
-    a deterministic value so tests do not require a live ``EloEngine`` or
-    DB session;
+    split with non-empty meta_train + meta_eval partitions (elo_prob is
+    derived from the matrix's own elo_overall_diff column, so no Elo DB
+    lookup is involved);
   - ``save_meta_model`` — captured as a MagicMock so test 3 can inspect the
     full kwargs schema.
 
@@ -118,17 +117,12 @@ def _build_synthetic_real_data(
     return X, y, fight_dates, fight_records
 
 
-def _deterministic_elo_prob(*args, **kwargs) -> float:
-    """Stub — returns 0.5 (no-information Elo)."""
-    return 0.5
-
-
 # ── Common patcher fixture ──────────────────────────────────────────────────
 
 
 @pytest.fixture
 def patched_main_environment(tmp_path, monkeypatch):
-    """Patch the data loader, Elo-prob lookup, and save_meta_model so
+    """Patch the data loader and save_meta_model so
     ``train_meta_v1.main()`` runs end-to-end without DB / live odds.
 
     Re-routes the OOF cache + META artifact + report paths to ``tmp_path``
@@ -159,11 +153,6 @@ def patched_main_environment(tmp_path, monkeypatch):
             train_meta_v1,
             "_load_assembled_data",
             return_value=(X, y, fight_dates, fight_records),
-        ),
-        patch.object(
-            train_meta_v1,
-            "_compute_elo_prob_for_fight",
-            side_effect=_deterministic_elo_prob,
         ),
         patch.object(
             train_meta_v1,

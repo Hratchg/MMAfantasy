@@ -40,7 +40,7 @@ from ufc_prediction.elo.config import EloConfig
 from ufc_prediction.elo.engine import _NON_TRANSFER_DIVISIONS
 from ufc_prediction.elo.seed import load_seeds
 from ufc_prediction.features import queries as feature_queries
-from ufc_prediction.features.compute import FeatureComputer
+from ufc_prediction.features.compute import FeatureComputer, LeagueMeanHistory
 from ufc_prediction.ml import queries as ml_queries
 from ufc_prediction.ml.config import (
     FEATURE_COLUMNS_V22,
@@ -197,12 +197,12 @@ class PerformanceSubstrate:
 
     ``fights`` / ``round_stats`` are the ``features.queries`` loader outputs
     (every source, as ``features compute`` loads them); ``league_means`` are
-    the Pass 2 shrinkage targets over that whole corpus.
+    the Pass 2 shrinkage targets over that corpus, as of any date.
     """
 
     fights: list[dict[str, Any]]
     round_stats: dict[int, list[dict[str, Any]]]
-    league_means: dict[str, float]
+    league_means: LeagueMeanHistory
 
 
 def _load_performance_substrate(session: Session) -> PerformanceSubstrate:
@@ -221,7 +221,7 @@ def _load_performance_substrate(session: Session) -> PerformanceSubstrate:
     substrate = PerformanceSubstrate(
         fights=fights,
         round_stats=round_stats,
-        league_means=FeatureComputer().league_means(fights, round_stats),
+        league_means=FeatureComputer().league_mean_history(fights, round_stats),
     )
     session.info[_PERFORMANCE_SUBSTRATE_KEY] = substrate
     return substrate
@@ -252,8 +252,10 @@ def _get_pre_fight_performance(
 
     This replays ``FeatureComputer`` over both fighters' fights dated
     strictly before ``event_date`` plus the upcoming fight
-    (``FeatureComputer.compute_upcoming``), shrinking with the corpus-wide
-    league means, so the result is the row ``features compute`` would store
+    (``FeatureComputer.compute_upcoming``), shrinking with the league means
+    over the stored rows dated strictly before ``event_date`` as
+    ``compute_all`` does (for a fight after the last stored event that is the
+    whole corpus), so the result is the row ``features compute`` would store
     for this fight. Returns ``({}, …)`` for a debutant (NaN per Pattern D),
     exactly as training has no row for a debut.
     """
@@ -273,7 +275,7 @@ def _get_pre_fight_performance(
         fa_id,
         fb_id,
         event_date,
-        substrate.league_means,
+        substrate.league_means.as_of(event_date),
         network_fights=substrate.fights,
     )
     return _serve_keys(snapshots.get(fa_id)), _serve_keys(snapshots.get(fb_id))

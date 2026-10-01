@@ -14,11 +14,12 @@ Operator-approved configuration (per NET-00 spike, gsd-checkpoint resolved
     XGBoost handles NaN natively (D-04(P14)); the model learns the
     debutant-specific split rather than treating debutants as pickem.
 
-Per Pitfall #1 / Gotcha 4 countermeasure: pre-filter via
-``graph.edge_subgraph(...)`` BEFORE ``nx.pagerank(...)``. ``nx.pagerank``
-does NOT respect any temporal attribute on edges; the temporal subgraph
-must be constructed first. NET-03 makes this a permanent CI regression
-test (``tests/regression/test_temporal_leakage.py``).
+Per Pitfall #1 / Gotcha 4 countermeasure: pre-filter to the bouts dated
+before ``as_of_date`` (``_temporal_subgraph``) BEFORE ``nx.pagerank(...)``.
+The graph keeps one edge per bout, so a rematch only counts once it has
+happened. ``nx.pagerank`` does NOT respect any temporal attribute on edges;
+the temporal subgraph must be constructed first. NET-03 makes this a
+permanent CI regression test (``tests/regression/test_temporal_leakage.py``).
 
 Per CONTEXT.md ``<deferred>``: 2-hop SoS aggregation = mean of in-neighbors'
 PageRank values. Sum and weighted-by-recency variants are v2.1+ scope.
@@ -101,7 +102,7 @@ def build_fight_graph(
     *,
     scope: str = APPROVED_SCOPE,
     weight_mode: str = APPROVED_WEIGHT,
-) -> nx.DiGraph:
+) -> nx.MultiDiGraph:
     """Build a directed fight graph (loser -> winner; PageRank "votes for who beat me").
 
     Args:
@@ -113,15 +114,16 @@ def build_fight_graph(
         weight_mode: ``"mov"`` (operator default) or ``"binary"``.
 
     Returns:
-        ``nx.DiGraph`` with edges loser -> winner. Each edge carries
-        ``weight`` and ``earliest_date`` (a ``datetime.date``).
+        ``nx.MultiDiGraph`` with one edge loser -> winner per fight, carrying
+        ``weight`` and ``event_date`` (a ``datetime.date``).
 
-    Rematches accumulate weight on the same edge (matches the spike's
-    "evidence aggregates" interpretation); ``earliest_date`` keeps the
-    earliest occurrence so the temporal subgraph filter admits the edge
-    as soon as either rematch is in scope.
+    Rematches still aggregate evidence (the spike's interpretation):
+    ``_temporal_subgraph`` sums the weights of the bouts it admits. Keeping
+    one edge per bout means each bout counts only once it is in scope. A
+    single edge holding the summed weight under its earliest date let a
+    future same-direction rematch weigh on PageRank from the first bout on.
     """
-    G: nx.DiGraph = nx.DiGraph()
+    G: nx.MultiDiGraph = nx.MultiDiGraph()
 
     for f in fights:
         if scope == "pan-mma":
@@ -135,13 +137,7 @@ def build_fight_graph(
             raise ValueError(f"unknown scope: {scope!r}")
 
         w = _compute_edge_weight(f.get("method"), weight_mode)
-        evt_date = f["event_date"]
-
-        if G.has_edge(u, v):
-            G[u][v]["weight"] += w
-            G[u][v]["earliest_date"] = min(G[u][v]["earliest_date"], evt_date)
-        else:
-            G.add_edge(u, v, weight=w, earliest_date=evt_date)
+        G.add_edge(u, v, weight=w, event_date=f["event_date"])
 
     return G
 
@@ -149,24 +145,33 @@ def build_fight_graph(
 # ── Temporal subgraph (Pitfall #1 / Gotcha 4 countermeasure) ──────────────
 
 
-def _temporal_subgraph(graph: nx.DiGraph, as_of_date: date) -> nx.DiGraph:
-    """Filter graph to edges with ``earliest_date < as_of_date``.
+def _temporal_subgraph(graph: nx.MultiDiGraph, as_of_date: date) -> nx.DiGraph:
+    """The fight graph as of ``as_of_date``: only the bouts (edges) with
+    ``event_date < as_of_date``, the weights of a pair's bouts summed onto
+    one loser -> winner edge.
 
     This is the Pitfall #1 / Gotcha 4 countermeasure. ``compute_pagerank_at``
     and ``compute_2hop_sos_at`` both call this so they share a single
     consistent temporal-filter definition (Test 6 in
-    ``tests/unit/features/test_network.py::TestTwoHopSoS``).
+    ``tests/unit/features/test_network.py::TestTwoHopSoS``). A fresh
+    ``DiGraph`` gives the same PageRank as an ``edge_subgraph`` view of the
+    multigraph and is faster to rank.
     """
-    return graph.edge_subgraph(
-        (u, v) for u, v, d in graph.edges(data=True) if d["earliest_date"] < as_of_date
-    )
+    sub: nx.DiGraph = nx.DiGraph()
+    for u, v, d in graph.edges(data=True):
+        if d["event_date"] < as_of_date:
+            if sub.has_edge(u, v):
+                sub[u][v]["weight"] += d["weight"]
+            else:
+                sub.add_edge(u, v, weight=d["weight"])
+    return sub
 
 
 # ── Pure-function feature computers ────────────────────────────────────────
 
 
 def compute_pagerank_at(
-    graph: nx.DiGraph,
+    graph: nx.MultiDiGraph,
     fighter_id: Any,
     as_of_date: date,
     *,
@@ -175,8 +180,8 @@ def compute_pagerank_at(
     """PageRank for one fighter, computed against the temporal subgraph.
 
     Returns ``None`` for debutants (caller maps to NaN +
-    ``is_debutant_in_graph=1.0`` per D-06). The pre-filter via
-    ``edge_subgraph`` happens BEFORE ``nx.pagerank`` per Gotcha 4.
+    ``is_debutant_in_graph=1.0`` per D-06). The temporal pre-filter
+    (``_temporal_subgraph``) happens BEFORE ``nx.pagerank`` per Gotcha 4.
     """
     sub = _temporal_subgraph(graph, as_of_date)
     if fighter_id not in sub.nodes:
@@ -187,7 +192,7 @@ def compute_pagerank_at(
 
 
 def compute_2hop_sos_at(
-    graph: nx.DiGraph,
+    graph: nx.MultiDiGraph,
     fighter_id: Any,
     as_of_date: date,
     *,

@@ -245,8 +245,8 @@ def test_multi_era_spot_check(toy_graph):
 
 
 def test_subgraph_identity(toy_graph):
-    """``_temporal_subgraph(G, as_of)`` includes EXACTLY the edges with
-    ``earliest_date < as_of`` and excludes the rest.
+    """``_temporal_subgraph(G, as_of)`` includes EXACTLY the edges (bouts)
+    with ``event_date < as_of`` and excludes the rest.
 
     Direct identity check — the strict-less-than predicate is the Pitfall #1
     countermeasure; an off-by-one (e.g. ``<=``) would silently leak the
@@ -255,15 +255,12 @@ def test_subgraph_identity(toy_graph):
     as_of = date(2011, 6, 1)  # exactly fight 4's date
     sub = network._temporal_subgraph(toy_graph, as_of)
 
-    expected_included_dates = {
-        date(2010, 1, 1),
-        date(2010, 6, 1),
-        date(2011, 1, 1),
-    }
-    actual_dates = {d["earliest_date"] for _, _, d in sub.edges(data=True)}
-    assert actual_dates == expected_included_dates, (
-        f"Expected subgraph edges with earliest_date < {as_of} to be "
-        f"{expected_included_dates}; got {actual_dates}. The strict-"
+    # Fights 1-3 (2010-01-01, 2010-06-01, 2011-01-01), loser -> winner.
+    expected_edges = {(2, 1): 1.2, (3, 1): 1.0, (3, 2): 1.2}
+    actual_edges = {(u, v): d["weight"] for u, v, d in sub.edges(data=True)}
+    assert actual_edges == pytest.approx(expected_edges), (
+        f"Expected the subgraph at {as_of} to hold exactly the bouts dated "
+        f"before it, {expected_edges}; got {actual_edges}. The strict-"
         "less-than predicate is the Pitfall #1 countermeasure — any "
         "drift to <= leaks the snapshot fight's own edge."
     )
@@ -275,6 +272,34 @@ def test_subgraph_identity(toy_graph):
         "Fight 4 (F1 -> F4 on 2011-06-01) leaked into the subgraph at "
         "as_of=2011-06-01. Strict-less-than filter is broken."
     )
+
+
+def test_rematch_weight_counts_only_earlier_bouts(toy_fights):
+    """A same-direction rematch must not weigh on the graph before it
+    happens: every NET value as of a date equals the one computed from a
+    graph of only the fights dated before it.
+
+    ``build_fight_graph`` used to add a rematch's weight onto the first
+    bout's edge and keep only the earliest date, so from the first bout on
+    the edge already carried the future rematch's weight.
+    """
+    # F2 beats F3 again. F3 also lost to F1, so the extra weight on F3 -> F2
+    # shifts F3's vote between F1 and F2 (a lone out-edge would normalise away).
+    first = next(f for f in toy_fights if f["fight_id"] == 3)
+    fights = [*toy_fights, {**first, "fight_id": 9, "event_date": date(2020, 1, 1)}]
+    graph = network.build_fight_graph(fights, scope="pan-mma", weight_mode="mov")
+
+    for as_of in (date(2011, 7, 1), date(2019, 1, 1), date(2020, 1, 1), date(2025, 1, 1)):
+        past = network.build_fight_graph(
+            [f for f in fights if f["event_date"] < as_of], scope="pan-mma", weight_mode="mov"
+        )
+        for fighter in (1, 2, 3, 4, 5):
+            for fn in (network.compute_pagerank_at, network.compute_2hop_sos_at):
+                got, want = fn(graph, fighter, as_of), fn(past, fighter, as_of)
+                if want is None:
+                    assert got is None, (fn.__name__, fighter, as_of)
+                else:
+                    assert got == pytest.approx(want, abs=1e-12), (fn.__name__, fighter, as_of)
 
 
 def test_d_08_threshold_constant_present():

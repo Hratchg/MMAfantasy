@@ -2,7 +2,9 @@
 
 Implements the same shrinkage pattern as EloEngine._compute_shrinkage (Phase 3):
 fighters with fewer than min_fights have their feature values pulled toward
-the league-wide mean. Per D-12, D-13.
+the league-wide mean. Per D-12, D-13. The caller supplies the means; the
+feature pipeline passes the means as of the row's date (rows dated strictly
+earlier, ``features.compute.LeagueMeanHistory``), so no row looks ahead.
 """
 
 from __future__ import annotations

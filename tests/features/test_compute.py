@@ -401,6 +401,188 @@ class TestShrinkage:
         assert isinstance(feats["sig_str_per_minute"], float)
 
 
+# The 20 numeric performance keys Pass 2 shrinks.
+_SHRUNK_KEYS = (
+    "sig_str_per_minute",
+    "sig_str_per_minute_ewma",
+    "total_str_per_minute",
+    "total_str_per_minute_ewma",
+    "td_rate",
+    "td_rate_ewma",
+    "td_accuracy",
+    "td_accuracy_ewma",
+    "td_defense",
+    "td_defense_ewma",
+    "strike_defense",
+    "strike_defense_ewma",
+    "ctrl_time_per_fight",
+    "ctrl_time_per_fight_ewma",
+    "sub_att_per_fight",
+    "sub_att_per_fight_ewma",
+    "opp_adj_sig_str",
+    "opp_adj_td",
+    "opp_adj_strike_def",
+    "opp_adj_ctrl_time",
+)
+
+
+def _scheduled_corpus(
+    schedule: tuple[tuple[date, int, int], ...],
+    *,
+    first_id: int,
+    seed: int,
+    scale: int = 1,
+) -> tuple[list[dict], dict[int, list[dict]]]:
+    """Fights for ``(date, a, b)`` entries with random per-round stats;
+    ``scale`` multiplies the striking/control volume."""
+    import random
+
+    rng = random.Random(seed)
+    fights, entries = [], []
+    for i, (day, a, b) in enumerate(schedule):
+        fid = first_id + i
+        fights.append(_make_fight(fid, day, a, b))
+        for fighter in (a, b):
+            sig_att = rng.randint(8, 30) * scale
+            td_att = rng.randint(0, 4)
+            entries.append(
+                (
+                    fid,
+                    fighter,
+                    {
+                        "sig_strikes_attempted": sig_att,
+                        "sig_strikes_landed": rng.randint(0, sig_att),
+                        "head_strikes_landed": rng.randint(0, 10) * scale,
+                        "body_strikes_landed": rng.randint(0, 5),
+                        "leg_strikes_landed": rng.randint(0, 5),
+                        "takedowns_attempted": td_att,
+                        "takedowns_landed": rng.randint(0, td_att),
+                        "control_time_seconds": rng.randint(0, 150) * scale,
+                        "submission_attempts": rng.randint(0, 2),
+                    },
+                )
+            )
+    return fights, _build_round_stats_by_fight(*entries)
+
+
+def _by_row(results: list[dict]) -> dict[tuple[int, int], dict]:
+    return {(r["fighter_id"], r["fight_id"]): r["features"] for r in results}
+
+
+class TestAsOfShrinkage:
+    """Pass 2 shrinks each row toward the league mean over rows dated
+    strictly before it (operator decision D4), so a row never depends on
+    fights on or after its own date. The league means used to be taken once
+    over the whole corpus, which pulled a 2012 row toward 2013-2026 fights."""
+
+    # Two bouts share most dates so there are same-day rows. Everyone
+    # debuts on the first date, so the first rows appear on 2020-03-01.
+    _SCHEDULE: tuple[tuple[date, int, int], ...] = (
+        (date(2020, 1, 1), FIGHTER_A, FIGHTER_B),
+        (date(2020, 1, 1), FIGHTER_C, FIGHTER_D),
+        (date(2020, 3, 1), FIGHTER_A, FIGHTER_C),
+        (date(2020, 3, 1), FIGHTER_B, FIGHTER_D),
+        (date(2020, 5, 1), FIGHTER_A, FIGHTER_D),
+        (date(2020, 5, 1), FIGHTER_B, FIGHTER_C),
+        (date(2020, 7, 1), FIGHTER_A, FIGHTER_B),  # fight 106
+        (date(2020, 9, 1), FIGHTER_C, FIGHTER_D),
+    )
+    _LATER: tuple[tuple[date, int, int], ...] = (
+        (date(2021, 2, 1), FIGHTER_A, FIGHTER_C),
+        (date(2021, 2, 1), FIGHTER_B, FIGHTER_D),
+        (date(2021, 6, 1), FIGHTER_A, FIGHTER_D),
+    )
+
+    def test_later_fights_do_not_move_earlier_rows(self) -> None:
+        """Adding only fights dated after every existing row must leave
+        every existing row's shrunk values unchanged."""
+        from ufc_prediction.features.compute import FeatureComputer
+
+        fights, rs = _scheduled_corpus(self._SCHEDULE, first_id=100, seed=7)
+        later, later_rs = _scheduled_corpus(self._LATER, first_id=200, seed=8, scale=25)
+
+        before = _by_row(FeatureComputer().compute_all(fights, rs, {}))
+        after = _by_row(FeatureComputer().compute_all([*fights, *later], {**rs, **later_rs}, {}))
+
+        moved = [
+            (row, key, feats[key], after[row][key])
+            for row, feats in before.items()
+            for key in _SHRUNK_KEYS
+            if after[row][key] != pytest.approx(feats[key], abs=1e-12)
+        ]
+        assert not moved, f"later fights moved earlier shrunk rows: {moved[:5]}"
+
+    def test_same_day_rows_do_not_enter_the_mean(self) -> None:
+        """Another bout on the target's own date must not move the target
+        row: its rows are not strictly earlier."""
+        from ufc_prediction.features.compute import FeatureComputer
+
+        fights, rs = _scheduled_corpus(self._SCHEDULE, first_id=100, seed=7)
+        same_day, same_day_rs = _scheduled_corpus(
+            ((date(2020, 7, 1), FIGHTER_C, FIGHTER_D),), first_id=300, seed=9, scale=25
+        )
+        before = _by_row(FeatureComputer().compute_all(fights, rs, {}))
+        after = _by_row(
+            FeatureComputer().compute_all(
+                sorted([*fights, *same_day], key=lambda f: (f["event_date"], f["fight_id"])),
+                {**rs, **same_day_rs},
+                {},
+            )
+        )
+        for row in ((FIGHTER_A, 106), (FIGHTER_B, 106)):
+            for key in _SHRUNK_KEYS:
+                assert after[row][key] == pytest.approx(before[row][key], abs=1e-12), (row, key)
+
+    def test_matches_reference_as_of_mean(self) -> None:
+        """Every row equals Bayesian shrinkage of its raw value toward the
+        mean of the raw values on strictly earlier dates (brute force)."""
+        from collections import Counter
+
+        from ufc_prediction.features.compute import FeatureComputer
+        from ufc_prediction.features.config import FeatureConfig
+
+        fights, rs = _scheduled_corpus(
+            (*self._SCHEDULE, *self._LATER), first_id=100, seed=7, scale=1
+        )
+        # min_fights=1 makes the shrinkage factor 1 for every row: raw values.
+        raw = FeatureComputer(FeatureConfig(shrinkage_min_fights=1)).compute_all(fights, rs, {})
+        shrunk = FeatureComputer().compute_all(fights, rs, {})
+
+        prior_fights: Counter[int] = Counter()
+        for raw_row, row in zip(raw, shrunk, strict=True):
+            prior_fights[row["fighter_id"]] += 1
+            factor = min(prior_fights[row["fighter_id"]] / 5, 1.0)
+            earlier = [r["features"] for r in raw if r["as_of_date"] < row["as_of_date"]]
+            for key in _SHRUNK_KEYS:
+                value = raw_row["features"][key]
+                seen = [f[key] for f in earlier if f[key] is not None]
+                if value is None or not seen:
+                    want = value
+                else:
+                    mean = sum(seen) / len(seen)
+                    want = mean + (value - mean) * factor
+                got = row["features"][key]
+                assert got == pytest.approx(want, abs=1e-12), (row["fight_id"], key)
+
+    def test_cold_start_rows_keep_raw_values(self) -> None:
+        """Rows on the first date that has any rows have no earlier league
+        data; they are left unshrunk rather than shrunk toward a mean that
+        would have to look ahead."""
+        from ufc_prediction.features.compute import FeatureComputer
+        from ufc_prediction.features.config import FeatureConfig
+
+        fights, rs = _scheduled_corpus(self._SCHEDULE, first_id=100, seed=7)
+        raw = _by_row(
+            FeatureComputer(FeatureConfig(shrinkage_min_fights=1)).compute_all(fights, rs, {})
+        )
+        shrunk = FeatureComputer().compute_all(fights, rs, {})
+        first_rows = [r for r in shrunk if r["as_of_date"] == date(2020, 3, 1)]
+        assert len(first_rows) == 4
+        for row in first_rows:
+            for key in _SHRUNK_KEYS:
+                assert row["features"][key] == raw[(row["fighter_id"], row["fight_id"])][key]
+
+
 class TestNoRoundStats:
     """Fights with no round stats: accumulator not updated, but feature row
     still produced using existing accumulator state if fighter has prior data."""
@@ -532,9 +714,8 @@ class TestOpponentAdjustedNoLeak:
 
 class TestComputeUpcoming:
     """``compute_upcoming`` (the serve-time replay) must reproduce the row
-    ``compute_all`` stores for the same fight: same accumulators, same
-    corpus-wide shrinkage, same NET keys, and nothing dated on or after the
-    fight."""
+    ``compute_all`` stores for the same fight: same accumulators, same as-of
+    shrinkage, same NET keys, and nothing dated on or after the fight."""
 
     @staticmethod
     def _corpus() -> tuple[list[dict], dict[int, list[dict]]]:
@@ -589,10 +770,46 @@ class TestComputeUpcoming:
             FIGHTER_A,
             FIGHTER_B,
             target["event_date"],
+            computer.league_means(fights, rs, as_of=target["event_date"]),
+            network_fights=fights,
+        )
+        self._assert_same(served, stored)
+
+    def test_upcoming_after_last_event_matches_compute_all(self) -> None:
+        """For a fight after the last stored event, the whole-corpus league
+        means ARE the as-of means, so serving with ``league_means(fights,
+        rs)`` equals the row ``compute_all`` stores once the fight is in the
+        corpus (its own same-day rows are not in their shrinkage mean)."""
+        from ufc_prediction.features.compute import FeatureComputer
+
+        fights, rs = self._corpus()
+        upcoming_date = date(2021, 3, 1)
+        assert all(f["event_date"] < upcoming_date for f in fights)
+        computer = FeatureComputer()
+        served = computer.compute_upcoming(
+            fights,
+            rs,
+            FIGHTER_A,
+            FIGHTER_B,
+            upcoming_date,
             computer.league_means(fights, rs),
             network_fights=fights,
         )
-        assert set(served) == {FIGHTER_A, FIGHTER_B}
+        upcoming = {
+            **_make_fight(999, upcoming_date, FIGHTER_A, FIGHTER_B),
+            "round_finished": None,
+            "time_finished": None,
+        }
+        stored = {
+            r["fighter_id"]: r["features"]
+            for r in FeatureComputer().compute_all([*fights, upcoming], rs, {})
+            if r["fight_id"] == 999
+        }
+        self._assert_same(served, stored)
+
+    @staticmethod
+    def _assert_same(served: dict[int, dict], stored: dict[int, dict]) -> None:
+        assert set(served) == set(stored) == {FIGHTER_A, FIGHTER_B}
         for fighter in (FIGHTER_A, FIGHTER_B):
             for key, want in stored[fighter].items():
                 if key in ("style_tag", "embedding"):
@@ -603,21 +820,28 @@ class TestComputeUpcoming:
                 else:
                     assert got == pytest.approx(want, abs=1e-12), (fighter, key)
 
-    def test_league_means_are_the_ones_compute_all_shrinks_with(self, monkeypatch) -> None:
+    def test_league_means_as_of_are_over_strictly_earlier_rows(self) -> None:
         from ufc_prediction.features.compute import FeatureComputer
+        from ufc_prediction.features.config import FeatureConfig
 
         fights, rs = self._corpus()
-        seen: list[dict] = []
-        original = FeatureComputer._compute_league_means
-
-        def spy(results):
-            means = original(results)
-            seen.append(means)
-            return means
-
-        monkeypatch.setattr(FeatureComputer, "_compute_league_means", staticmethod(spy))
-        FeatureComputer().compute_all(fights, rs, {})
-        assert FeatureComputer().league_means(fights, rs) == seen[0]
+        raw = FeatureComputer(FeatureConfig(shrinkage_min_fights=1)).compute_all(fights, rs, {})
+        computer = FeatureComputer()
+        # 2020-05-01 has rows; the day after sees them, the day itself does not.
+        for as_of in (date(2020, 5, 1), date(2020, 5, 2), date(2021, 1, 1)):
+            earlier = [r["features"] for r in raw if r["as_of_date"] < as_of]
+            means = computer.league_means(fights, rs, as_of=as_of)
+            assert set(means) == set(_SHRUNK_KEYS)
+            for key in _SHRUNK_KEYS:
+                seen = [f[key] for f in earlier if f[key] is not None]
+                assert means[key] == pytest.approx(sum(seen) / len(seen), abs=1e-12), key
+        # Default: every stored row, i.e. the means as of any later date.
+        assert computer.league_means(fights, rs) == computer.league_means(
+            fights, rs, as_of=date(2099, 1, 1)
+        )
+        # Nothing earlier than the first row: no league means (cold start).
+        first_row_date = min(r["as_of_date"] for r in raw)
+        assert computer.league_means(fights, rs, as_of=first_row_date) == {}
 
     def test_debutant_absent_like_compute_all(self) -> None:
         from ufc_prediction.features.compute import FeatureComputer

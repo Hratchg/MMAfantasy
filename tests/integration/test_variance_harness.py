@@ -66,8 +66,8 @@ FIXTURE_NPZ: Path = REPO_ROOT / "tests" / "fixtures" / "variance" / "meta_train_
 FIXTURE_SLICES: Path = REPO_ROOT / "tests" / "fixtures" / "variance" / "eval_slices.json"
 
 EXPECTED_XGB_V2_SHA: str = "760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a"
-# Re-anchored 2026-09-25 on the corrected substrate (see spike_noise_floor_v23.py).
-PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.126097
+# Re-anchored 2026-10-01 after the D5 elo_prob leak fix + D6-B re-baseline (see spike_noise_floor_v23.py).
+PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.232182
 PLAN_29_03_TOLERANCE: float = 0.0001
 
 

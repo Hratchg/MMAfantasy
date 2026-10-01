@@ -110,8 +110,10 @@ SEEDS_DEFAULT: tuple[int, ...] = (42, 43, 44, 45, 46, 47, 48, 49, 50, 51)
 # AUDIT-01 lineage. Plan 29-03 measured 0.1409; the value moved to 0.1244 at
 # the 2026-07 xgb_v2 re-baseline (never re-anchored) and to 0.126097 on
 # 2026-09-25 after the opp_adj leak fix + per-domain Elo bookkeeping fix
-# regenerated elo_snapshots, computed_features and the META OOF cache.
-PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.126097
+# regenerated elo_snapshots, computed_features and the META OOF cache, and to
+# 0.232182 on 2026-10-01 after the elo_prob orientation leak fix (D5) and the
+# D6-B xgb_v2 re-baseline (the old value was inflated by that leak).
+PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.232182
 PLAN_29_03_TOLERANCE: float = 0.0001
 
 # Per-slice keys (mirrors evaluator.PER_SLICE_KEYS).

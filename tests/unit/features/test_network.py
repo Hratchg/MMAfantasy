@@ -238,14 +238,15 @@ class TestPageRankAsOfDate:
         # F2 -> F1 came from a KO/TKO win (fight 1) — weight should be 1.2.
         # F3 -> F1 came from a Decision win (fight 2) — weight should be 1.0.
         # NB: edges are loser → winner.
-        assert g_mov[2][1]["weight"] == pytest.approx(1.2)  # KO/TKO
-        assert g_mov[3][1]["weight"] == pytest.approx(1.0)  # Decision
-        assert g_mov[1][4]["weight"] == pytest.approx(1.1)  # Submission
+        # One edge per bout (key 0: each pair meets once in the toy list).
+        assert g_mov[2][1][0]["weight"] == pytest.approx(1.2)  # KO/TKO
+        assert g_mov[3][1][0]["weight"] == pytest.approx(1.0)  # Decision
+        assert g_mov[1][4][0]["weight"] == pytest.approx(1.1)  # Submission
 
         # In binary graph, every edge has weight 1.0.
-        assert g_bin[2][1]["weight"] == pytest.approx(1.0)
-        assert g_bin[3][1]["weight"] == pytest.approx(1.0)
-        assert g_bin[1][4]["weight"] == pytest.approx(1.0)
+        assert g_bin[2][1][0]["weight"] == pytest.approx(1.0)
+        assert g_bin[3][1][0]["weight"] == pytest.approx(1.0)
+        assert g_bin[1][4][0]["weight"] == pytest.approx(1.0)
 
         # PageRank values differ between MOV and binary configurations
         # for at least one fighter — confirms the weight is consumed.

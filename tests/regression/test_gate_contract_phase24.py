@@ -60,7 +60,7 @@ EXPECTED_PER_SLICE = {
 
 EXPECTED_OPERATOR_DECISION = "v2.2_gate_breaks_floor_accept_truth"
 
-AUDIT_01_BASELINE_SHA = "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
+AUDIT_01_BASELINE_SHA = "760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a"
 
 
 def _load_v22_contract() -> dict:

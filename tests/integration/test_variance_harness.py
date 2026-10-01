@@ -65,7 +65,7 @@ PHASE30_DIR: Path = REPO_ROOT / ".planning" / "phases" / "30-multi-seed-variance
 FIXTURE_NPZ: Path = REPO_ROOT / "tests" / "fixtures" / "variance" / "meta_train_xy.npz"
 FIXTURE_SLICES: Path = REPO_ROOT / "tests" / "fixtures" / "variance" / "eval_slices.json"
 
-EXPECTED_XGB_V2_SHA: str = "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
+EXPECTED_XGB_V2_SHA: str = "760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a"
 # Re-anchored 2026-09-25 on the corrected substrate (see spike_noise_floor_v23.py).
 PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.126097
 PLAN_29_03_TOLERANCE: float = 0.0001

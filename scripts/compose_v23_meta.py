@@ -427,22 +427,6 @@ def _build_synthetic_data_v22(n: int = 600):
     return X_v22, y, np.array(dates), fight_ids, base_cutoff, today
 
 
-def _compute_elo_prob_for_fight(fight: dict, elo_features: dict) -> float:
-    """As-of-fight-date Elo P(A wins). Port of train_meta_v22._compute_elo_prob_for_fight."""
-    from ufc_prediction.elo.config import EloConfig
-    from ufc_prediction.elo.engine import EloEngine
-
-    fight_id = fight["fight_id"]
-    fa_id = fight["fighter_a_id"]
-    fb_id = fight["fighter_b_id"]
-    elo_a_dict = elo_features.get((fa_id, fight_id), {"elo_overall": 1500.0})
-    elo_b_dict = elo_features.get((fb_id, fight_id), {"elo_overall": 1500.0})
-    rating_a = float(elo_a_dict.get("elo_overall", 1500.0))
-    rating_b = float(elo_b_dict.get("elo_overall", 1500.0))
-    engine = EloEngine(EloConfig())
-    return float(engine.expected_win_probability(rating_a, rating_b))
-
-
 # ─────────────────────────── Step driver ─────────────────────────────────────
 
 
@@ -555,6 +539,7 @@ def run_composition(args) -> dict:
     from ufc_prediction.ml.meta_features_v22 import (
         META_V22_FEATURE_COLUMNS,
         build_meta_features_v22,
+        elo_prob_from_v22_matrix,
     )
     from ufc_prediction.ml.meta_learner import MetaLearnerLogistic
     from ufc_prediction.ml.meta_persistence import (
@@ -658,20 +643,10 @@ def run_composition(args) -> dict:
         elo_prob_train = rng.uniform(0.3, 0.7, size=len(meta_train_idx))
         elo_prob_eval = rng.uniform(0.3, 0.7, size=len(meta_eval_idx))
     else:
-        from ufc_prediction.db.session import SessionLocal
-        from ufc_prediction.ml.queries import load_elo_features
-
-        _session = SessionLocal()
-        try:
-            _elo_features = load_elo_features(_session)
-        finally:
-            _session.close()
-        elo_prob_train = np.array(
-            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_train_idx]
-        )
-        elo_prob_eval = np.array(
-            [_compute_elo_prob_for_fight(fight_records[i], _elo_features) for i in meta_eval_idx]
-        )
+        # S18 / D5: from the assembled row, so elo_prob shares the row's
+        # post-swap orientation with the label (see elo_prob_from_v22_matrix).
+        elo_prob_train = elo_prob_from_v22_matrix(X_v22[meta_train_idx])
+        elo_prob_eval = elo_prob_from_v22_matrix(X_v22[meta_eval_idx])
 
     # Build meta_eval Level-1 (single transient base train, per Phase 26 pattern).
     print("[compose_v23] Building meta_eval Level-1 (1 base train + Elo lookups)...")

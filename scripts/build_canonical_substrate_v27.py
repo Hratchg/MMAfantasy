@@ -269,6 +269,29 @@ def _load_canonical_oof_map(
     return {int(row.fight_id): float(row.xgb_oof_prob) for row in df.itertuples(index=False)}
 
 
+def _overlay_canonical_oof(
+    fight_records: list[dict],
+    canonical_oof_map: dict[int, float],
+    fallback: np.ndarray,
+) -> np.ndarray:
+    """col[0] (``xgb_oof_prob``): the canonical OOF where it has a finite value.
+
+    Each row keeps ``fallback[i]`` (the caller's seeded draw) when its fight
+    is absent from the canonical OOF or carries NaN there. The Phase 26
+    archive has 119 NaN rows out of 714. The Phase 63 loader allows NaN in
+    feature_vector (A2 accept rule), but the dual-test verifier's downstream
+    Pipeline imputer needs a finite col[0] for the comparison to be
+    meaningful. The parquet's probabilities are in the assembled row's
+    orientation (P(row's A wins)). Shared by this builder and the live mode
+    of ``build_travel_substrate_v261``.
+    """
+    xgb_oof_prob = np.empty(len(fight_records), dtype=float)
+    for i, rec in enumerate(fight_records):
+        val = canonical_oof_map.get(int(rec.get("fight_id", i)), float("nan"))
+        xgb_oof_prob[i] = val if not np.isnan(val) else float(fallback[i])
+    return xgb_oof_prob
+
+
 # ── Paired candidate-substrate sidecar loader (D-02 cross-reference) ──────
 
 
@@ -473,23 +496,7 @@ def build_eval_matrix(
     # signal that the dual-test methodology detects).
     fallback_rng = np.random.default_rng(RANDOM_15PCT_SEED + 1)
     fallback_oof = fallback_rng.uniform(0.10, 0.90, size=n_rows)
-    xgb_oof_prob = np.empty(n_rows, dtype=float)
-    for i, rec in enumerate(fight_records):
-        fid = int(rec.get("fight_id", i))
-        if fid in canonical_oof_map:
-            val = canonical_oof_map[fid]
-            # NaN in canonical OOF (Phase 26 has 119 NaN rows in current
-            # 714-row archive) → fallback to seeded RNG so the substrate
-            # has no NaN col[0] entries. Phase 63 loader allows NaN in
-            # feature_vector (A2 accept rule) but the dual-test verifier's
-            # downstream Pipeline imputer expects a finite col[0] for the
-            # comparison to be meaningful.
-            if not np.isnan(val):
-                xgb_oof_prob[i] = val
-            else:
-                xgb_oof_prob[i] = float(fallback_oof[i])
-        else:
-            xgb_oof_prob[i] = float(fallback_oof[i])
+    xgb_oof_prob = _overlay_canonical_oof(fight_records, canonical_oof_map, fallback_oof)
 
     # col[1] = elo_prob. Synthetic mode: deterministic per-fight seed.
     # Live mode replaces it with the real as-of-fight Elo P(row's A wins),

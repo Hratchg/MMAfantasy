@@ -201,6 +201,7 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
     from ufc_prediction.ml.meta_features_v22 import (
         META_V22_FEATURE_COLUMNS,
         build_meta_features_v22,
+        elo_prob_from_v22_matrix,
     )
     from ufc_prediction.ml.oof import (
         _make_oof_estimator,
@@ -219,7 +220,6 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
         META_OOF_PARQUET_PATH,
         _build_meta_eval_xgb_probs,
         _build_synthetic_data_v22,
-        _compute_elo_prob_for_fight,
         _enforce_72col_view,
         _load_assembled_data_v22,
     )
@@ -291,21 +291,13 @@ def _load_meta_train_eval_matrices(*, dry_run: bool):
         elo_prob_train = rng.uniform(0.3, 0.7, size=len(meta_train_idx))
         elo_prob_eval = rng.uniform(0.3, 0.7, size=len(meta_eval_idx))
     else:
-        from ufc_prediction.db.session import SessionLocal
-        from ufc_prediction.ml.queries import load_elo_features
-        _session = SessionLocal()
-        try:
-            _elo_features = load_elo_features(_session)
-        finally:
-            _session.close()
-        elo_prob_train = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_train_idx
-        ])
-        elo_prob_eval = np.array([
-            _compute_elo_prob_for_fight(fight_records[i], _elo_features)
-            for i in meta_eval_idx
-        ])
+        # S18 / D5: elo_prob comes from the assembled row's own
+        # elo_overall_diff. The assembler swaps fighter A/B per fight and
+        # labels the row from the swapped A. A lookup keyed on the record's
+        # fighter_a returned 1 - p on every swapped row, so elo_prob and
+        # elo_overall_diff disagreed exactly when the label was 0.
+        elo_prob_train = elo_prob_from_v22_matrix(X_v22[meta_train_idx])
+        elo_prob_eval = elo_prob_from_v22_matrix(X_v22[meta_eval_idx])
 
     X_meta_train = build_meta_features_v22(
         xgb_oof_aligned, elo_prob_train, X_v22[meta_train_idx],

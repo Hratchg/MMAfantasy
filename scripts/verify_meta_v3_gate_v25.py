@@ -304,66 +304,31 @@ def _load_v25_substrate(
     return X72, X_v22, y, fight_dates, fight_records
 
 
-def _compute_elo_prob_per_fight(
-    fight_records: list[dict],
-) -> np.ndarray:
-    """As-of-fight-date Elo P(A wins) via EloEngine.expected_win_probability.
-
-    Mirrors scripts/train_meta_v3_v25.py::_load_level1_substrate_from_db.
-    """
-    from ufc_prediction.db.session import SessionLocal
-    from ufc_prediction.elo.config import EloConfig
-    from ufc_prediction.elo.engine import EloEngine
-    from ufc_prediction.ml.queries import load_elo_features
-
-    session = SessionLocal()
-    try:
-        elo_features = load_elo_features(session)
-    finally:
-        session.close()
-
-    engine = EloEngine(EloConfig())
-    out: list[float] = []
-    for f in fight_records:
-        fid = f["fight_id"]
-        fa_id = f["fighter_a_id"]
-        fb_id = f["fighter_b_id"]
-        ra = float(
-            elo_features.get(
-                (fa_id, fid),
-                {"elo_overall": 1500.0},
-            ).get("elo_overall", 1500.0)
-        )
-        rb = float(
-            elo_features.get(
-                (fb_id, fid),
-                {"elo_overall": 1500.0},
-            ).get("elo_overall", 1500.0)
-        )
-        out.append(float(engine.expected_win_probability(ra, rb)))
-    return np.asarray(out, dtype=float)
-
-
 def _build_level1_df(
     X_v22: np.ndarray,
     y: np.ndarray,
     fight_records: list[dict],
-    elo_prob: np.ndarray,
 ) -> pd.DataFrame:
     """Build Level-1 substrate DataFrame keyed by fight_id.
 
     Columns: [fight_id, event_date, y, elo_prob, <11 non-xgb META-V22 cols>].
     The xgb_oof_prob col is supplied SEPARATELY (xgb_v2 or xgb_v3 predict).
+    elo_prob is the as-of-date Elo P(row's A wins) derived from the row's own
+    elo_overall_diff, so it shares the row's post-swap orientation with ``y``
+    (S18 / D5; mirrors train_meta_v3_v25._load_level1_substrate_from_db).
     """
     from ufc_prediction.ml.config import FEATURE_COLUMNS_V22
-    from ufc_prediction.ml.meta_features_v22 import META_V22_FEATURE_COLUMNS
+    from ufc_prediction.ml.meta_features_v22 import (
+        META_V22_FEATURE_COLUMNS,
+        elo_prob_from_v22_matrix,
+    )
 
     df = pd.DataFrame(
         {
             "fight_id": [f["fight_id"] for f in fight_records],
             "event_date": [f["event_date"] for f in fight_records],
             "y": y.astype(int),
-            "elo_prob": elo_prob,
+            "elo_prob": elo_prob_from_v22_matrix(X_v22),
         }
     )
     for col in META_V22_FEATURE_COLUMNS[2:]:  # skip xgb_oof_prob + elo_prob
@@ -956,12 +921,8 @@ def main(argv: list[str] | None = None) -> int:
         f"X_v22={X_v22.shape} y={y.shape} n_records={len(fight_records)}"
     )
 
-    # ── Compute as-of-date Elo prob per fight ──
-    print("[verify_meta_v3_gate] Computing as-of-date Elo P(A wins)...")
-    elo_prob = _compute_elo_prob_per_fight(fight_records)
-
-    # ── Build Level-1 substrate DataFrame ──
-    level1_df = _build_level1_df(X_v22, y, fight_records, elo_prob)
+    # ── Build Level-1 substrate DataFrame (incl. as-of-date Elo P(row's A wins)) ──
+    level1_df = _build_level1_df(X_v22, y, fight_records)
     print(
         f"[verify_meta_v3_gate] Level-1 substrate: {len(level1_df)} rows, "
         f"{len(level1_df.columns)} cols"

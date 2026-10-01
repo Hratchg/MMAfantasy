@@ -125,7 +125,9 @@ def build_eval_matrix(*, source: str = "synthetic") -> tuple[np.ndarray, np.ndar
       - ``live``: invokes ``_load_assembled_data_v25_travel`` against the
         live PostgreSQL DB. Required for the Plan 64-04 verifier run when
         an apples-to-apples comparison against Phase 42 ground-truth is
-        needed.
+        needed. col[0] comes from the canonical Phase 26 OOF where it covers
+        the fight (seeded draw elsewhere). col[1] is the row-oriented Elo
+        probability.
 
     Args:
         source: ``"synthetic"`` or ``"live"``.
@@ -182,7 +184,7 @@ def build_eval_matrix(*, source: str = "synthetic") -> tuple[np.ndarray, np.ndar
         _orig_date = _cv.date
         _cv.date = _FixedDate
         try:
-            X_v25, y, fight_dates, _records = _build_synthetic_v25(n=SYNTHETIC_N_FIGHTS)
+            X_v25, y, fight_dates, fight_records = _build_synthetic_v25(n=SYNTHETIC_N_FIGHTS)
         finally:
             _cv.date = _orig_date
     elif source == "live":
@@ -190,7 +192,7 @@ def build_eval_matrix(*, source: str = "synthetic") -> tuple[np.ndarray, np.ndar
             _load_assembled_data_v25_travel,
         )
 
-        X_v25, y, fight_dates, _records = _load_assembled_data_v25_travel()
+        X_v25, y, fight_dates, fight_records = _load_assembled_data_v25_travel()
     else:
         raise ValueError(
             f"build_eval_matrix: unknown source {source!r} (expected 'synthetic' or 'live')"
@@ -229,13 +231,29 @@ def build_eval_matrix(*, source: str = "synthetic") -> tuple[np.ndarray, np.ndar
     n_rows = X_v25.shape[0]
     xgb_oof_prob = eval_rng.uniform(0.05, 0.95, size=n_rows)
     elo_prob = eval_rng.uniform(0.2, 0.8, size=n_rows)
-    # Live mode replaces elo_prob with the real as-of-fight Elo P(row's A wins),
-    # derived from the row's own elo_overall_diff so it shares the row's
-    # (post A/B-swap) orientation with the outcome. Synthetic mode keeps the
-    # seeded RNG (explicit: DB-free fixture, byte-stable across re-runs).
-    # (The RNG draw above still happens in live mode so the draw order is
-    # unchanged; xgb_oof_prob remains RNG-filled in both modes.)
+    # Live mode replaces both external columns with real values. Synthetic
+    # mode keeps the seeded RNG (DB-free fixture, byte-stable across
+    # re-runs). The RNG draws above still happen in live mode, so the draw
+    # order is unchanged.
+    #   - xgb_oof_prob: the canonical Phase 26 OOF, which is the lineage
+    #     meta_v22_travel was trained on (compose_v25_travel's
+    #     META_OOF_PARQUET_PATH). It uses the same loader (SHA-pinned) and
+    #     fallback rule as build_canonical_substrate_v27: a row missing from
+    #     the OOF or NaN there keeps its seeded draw. The archive covers
+    #     ~595 fights between 2023-01 and 2024-05. Rows outside that window,
+    #     including every row in the recent slices, stay RNG-filled.
+    #   - elo_prob: the real as-of-fight Elo P(row's A wins), from the row's
+    #     own elo_overall_diff so it shares the row's (post A/B-swap)
+    #     orientation with the outcome.
     if source == "live":
+        from build_canonical_substrate_v27 import (  # type: ignore[import-not-found]
+            _load_canonical_oof_map,
+            _overlay_canonical_oof,
+        )
+
+        xgb_oof_prob = _overlay_canonical_oof(
+            fight_records, _load_canonical_oof_map(), xgb_oof_prob
+        )
         elo_prob = elo_prob_from_v22_matrix(X_v22)
 
     # Build the 11 internal META-V22 cols by name lookup against FEATURE_COLUMNS_V22.

@@ -123,6 +123,33 @@ def test_live_mode_elo_prob_is_real(builder: Any, fake_live: np.ndarray) -> None
     assert np.all(np.diff(X_out[:, 1]) > 0)
 
 
+def test_travel_live_mode_uses_the_canonical_oof(
+    monkeypatch: pytest.MonkeyPatch, fake_live: np.ndarray
+) -> None:
+    """S18: the travel builder also filled col[0] (``xgb_oof_prob``) from its
+    seeded RNG in live mode. Live mode now takes the canonical Phase 26 OOF,
+    the same source and fallback rule as ``build_canonical_substrate_v27``.
+    Rows the OOF covers with a finite value use it. Every other row keeps the
+    seeded draw, so the draw order and synthetic mode stay unchanged."""
+    ids = [900_000 + i for i in range(N_ROWS)]
+    oof = {ids[i]: 0.01 * i for i in range(0, N_ROWS, 2)}  # every other row covered
+    oof[ids[4]] = float("nan")  # the canonical parquet carries NaN rows
+    monkeypatch.setattr(canonical_builder, "_load_canonical_oof_map", lambda *a, **k: oof)
+
+    X_out = _build(travel_builder, "live")
+
+    seeded = np.random.default_rng(travel_builder.RANDOM_15PCT_SEED).uniform(
+        0.05, 0.95, size=N_ROWS
+    )
+    expected = np.array(
+        [
+            oof[fid] if fid in oof and not np.isnan(oof[fid]) else seeded[i]
+            for i, fid in enumerate(ids)
+        ]
+    )
+    np.testing.assert_array_equal(X_out[:, 0], expected)
+
+
 @pytest.mark.parametrize("builder", BUILDERS)
 def test_synthetic_mode_keeps_seeded_rng(builder: Any, fake_live: np.ndarray) -> None:
     first = _build(builder, "synthetic")

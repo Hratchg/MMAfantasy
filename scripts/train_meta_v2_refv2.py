@@ -327,13 +327,14 @@ def _build_live_13col_matrix(*, xgb_refv2_oof_df: Any) -> tuple[Any, Any]:
     """Build the live-DB 13-col training matrix for ``--mode full``.
 
     Reuses ``scripts/train_meta_v22.py::_load_assembled_data_v22`` for the
-    v2.2 90-col substrate and ``_compute_elo_prob_for_fight`` for the
-    elo_prob column. Overrides col[0] with Plan 65-02's candidate-OOF
-    column joined on ``fight_id``.
+    v2.2 90-col substrate and ``meta_features_v22.elo_prob_from_v22_matrix``
+    for the elo_prob column (the row's own elo_overall_diff, so it shares the
+    row's post-swap orientation with the label; S18 / D5). Overrides col[0]
+    with Plan 65-02's candidate-OOF column joined on ``fight_id``.
 
-    Note: live mode is heavier (DB round-trip + per-fight Elo computation)
-    and is intended for the actual sibling-artifact emission. Synthetic mode
-    is sufficient for the test suite.
+    Note: live mode is heavier (DB round-trip) and is intended for the actual
+    sibling-artifact emission. Synthetic mode is sufficient for the test
+    suite.
 
     Returns ``(X_13, y)`` aligned with the rows present in the OOF parquet.
     """
@@ -346,20 +347,10 @@ def _build_live_13col_matrix(*, xgb_refv2_oof_df: Any) -> tuple[Any, Any]:
     X_v22, y, fight_dates, fight_records = _tm._load_assembled_data_v22()
     assert X_v22.shape[1] == 90, f"v2.2 substrate must be 90 cols; got {X_v22.shape[1]}"
 
-    # 2. Elo P(A wins) per fight (canonical helper).
-    from ufc_prediction.db.session import SessionLocal
-    from ufc_prediction.ml.queries import load_elo_features
+    # 2. Elo P(row's A wins) from the assembled row (shared helper).
+    from ufc_prediction.ml.meta_features_v22 import elo_prob_from_v22_matrix
 
-    session = SessionLocal()
-    try:
-        elo_features = load_elo_features(session)
-    finally:
-        session.close()
-
-    elo_prob_arr = np.array(
-        [_tm._compute_elo_prob_for_fight(rec, elo_features) for rec in fight_records],
-        dtype=np.float64,
-    )
+    elo_prob_arr = elo_prob_from_v22_matrix(X_v22).astype(np.float64)
 
     # 3. Join Plan 65-02 OOF on fight_id. Drop rows not in the OOF parquet
     # (the OOF was trained on the same ~8473 corpus so coverage should be

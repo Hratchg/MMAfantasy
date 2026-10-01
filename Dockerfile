@@ -55,6 +55,9 @@ WORKDIR /app
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
 
 # Copy source + migrations + alembic.ini + models (runtime needs these at /app)
+# No data/ directory: debutant Elo seeds are read from the database's
+# debutant_seed_inputs table (run `alembic upgrade head`, then load it once with
+# `ufc db backfill-pre-ufc-seeds` if `ufc db status` shows it empty).
 COPY --from=builder --chown=app:app /app/src /app/src
 COPY --from=builder --chown=app:app /app/migrations /app/migrations
 COPY --from=builder --chown=app:app /app/alembic.ini /app/alembic.ini

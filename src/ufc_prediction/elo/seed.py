@@ -13,8 +13,15 @@ This module is pure-function and stdlib-only by design:
 
 Consumer contract (Plan 43-03 EloEngine init):
 
-    SEEDS: dict[int, float] = load_seeds(Path("data/sherdog/pre_ufc_records.csv"))
+    SEEDS: dict[int, float] = load_seeds_from_db(session)  # elo.seed_store
     rating = SEEDS.get(fighter_id, config.initial_rating)
+
+Since operator decision D3 option C (2026-09-29), ``ufc elo compute`` and the
+serve path read seeds from the ``debutant_seed_inputs`` table via
+``ufc_prediction.elo.seed_store.load_seeds_from_db``, which applies this same
+``derive_seed``. ``load_seeds`` (CSV) stays as the reference reader that the
+DB-equivalence test compares against; the CSV now only feeds
+``ufc db backfill-pre-ufc-seeds``.
 """
 
 from __future__ import annotations
@@ -106,13 +113,12 @@ def derive_seed(record: dict[str, Any]) -> float:
 def load_seeds(csv_path: Path | str) -> dict[int, float]:
     """Load `pre_ufc_records.csv` and return ``{fighter_id: seed_value}``.
 
-    Returns an empty dict if `csv_path` does not exist — this is the graceful
-    fallback contract that Plan 43-03's EloEngine dispatch logic depends on.
-    An empty result means flat-1500 debutants, which diverges from the seeded
-    stored substrate, so callers must not accept it silently: ``ufc elo
-    compute`` exits 1 unless ``--allow-unseeded`` is passed, and the serve
-    path (``ml.inference_features._load_debutant_seeds``) logs an error and
-    does not cache the empty result.
+    Returns an empty dict if `csv_path` does not exist. Runtime callers no
+    longer use this reader: ``ufc elo compute`` and the serve path load seeds
+    from the ``debutant_seed_inputs`` table (``seed_store.load_seeds_from_db``,
+    the same contract over the same records) and fail closed on an empty
+    table — ``elo compute`` exits 1 unless ``--allow-unseeded`` is passed, and
+    serving logs an error and does not cache the empty result.
 
     Raises SeedDerivationError if any row is missing one of the required
     columns ({fighter_id, n_pre_ufc_fights, win_rate, org_tier}) or holds an

@@ -133,7 +133,7 @@ Run, Render, Railway, Kubernetes, etc.) — point it at a PostgreSQL database vi
 ### Prerequisites
 
 - A container host that can run the `Dockerfile`.
-- A reachable PostgreSQL database (managed Postgres — RDS / Cloud SQL / Supabase / Neon — or your own). Load the corpus into it once with `ufc db seed` (see [`docs/INSTALL.md`](docs/INSTALL.md)).
+- A reachable PostgreSQL database (managed Postgres — RDS / Cloud SQL / Supabase / Neon — or your own). Load the corpus into it once with `ufc db seed` (see [`docs/INSTALL.md`](docs/INSTALL.md)). Apply migrations with `alembic upgrade head` (the image ships `alembic` and `migrations/`). Debutant Elo seeds are read from the database's `debutant_seed_inputs` table, so the image needs no `data/` files; if that table is empty, load it once with `ufc db backfill-pre-ufc-seeds --csv data/sherdog/pre_ufc_records.csv` (otherwise the API serves flat-1500 debutant ratings and logs an ERROR).
 
 ### Configuration (environment variables)
 

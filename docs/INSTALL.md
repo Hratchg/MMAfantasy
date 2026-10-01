@@ -91,6 +91,25 @@ meta_v2) to catch the predictor-default-version regression early — see
 Use `uv run ufc db status` after restore to verify per-table row counts and
 the alembic head pointer landed cleanly.
 
+**Debutant Elo seeds.** The Sherdog pre-UFC records that seed a debutant's
+first Elo rating live in the `debutant_seed_inputs` table; no CSV is read at
+runtime. `ufc db seed` creates the table (its `alembic upgrade head` step). A
+dump regenerated after this table landed restores its 1,673 rows; the current
+`ufc_corpus_v30.dump` predates it, so `ufc db status` shows
+`debutant_seed_inputs` at 0 after a restore. With 0 rows, `ufc elo compute`
+exits 1 and the API serves flat-1500 ratings to debutants (logging an ERROR).
+Load the seeds from the Sherdog CSV:
+
+```bash
+uv run ufc db backfill-pre-ufc-seeds --csv data/sherdog/pre_ufc_records.csv --dry-run  # validate, read-only
+uv run ufc db backfill-pre-ufc-seeds --csv data/sherdog/pre_ufc_records.csv
+```
+
+The CSV is not tracked in git. It is produced by
+`scripts/ingest_pre_ufc_records_v25.py` (a ~1.5h Sherdog scrape that also
+writes the table directly). The backfill is idempotent: a re-run reports every
+row unchanged.
+
 Secondary — empty-schema bootstrap (no corpus data):
 
 ```bash
@@ -102,7 +121,7 @@ empty. You can then ingest data manually via the scrapers under
 `src/ufc_prediction/data/` if you do not want to wait for the corpus dump.
 
 **What you should see:** `ufc db seed` completes with row counts per table
-(12 rows, ending with `alembic_version=1`) followed by the green
+(13 rows, ending with `alembic_version=1`) followed by the green
 `✓ ModelPredictor v2 instantiated` line. `alembic upgrade head` reports a sequence of
 `Running upgrade … -> …` lines and exits 0.
 

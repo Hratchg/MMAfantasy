@@ -4,6 +4,23 @@
 **Generated:** 2026-09-25 (regenerated after the opp_adj leak fix + per-domain Elo bookkeeping fix; previously 2026-07-06 `RETRAIN-V31-01` / `SEED-REBASE-01`)
 **Phase:** 88 — HANDOFF-V30-02 DB Dump Packaging (regenerated on the promoted substrate)
 
+> **Pending regeneration (debutant seeds, 2026-10-01):** migration
+> `9fc47fdd75b6` adds a 13th table, `debutant_seed_inputs`. It holds the
+> Sherdog pre-UFC records behind debutant Elo seeding, which used to be read
+> from the untracked `data/sherdog/pre_ufc_records.csv`. `elo compute` and
+> serving now read only this table. This dump predates the table, so restoring
+> it with `ufc db seed` creates the table empty (via `alembic upgrade head`).
+> Load it with `ufc db backfill-pre-ufc-seeds --csv data/sherdog/pre_ufc_records.csv`.
+> The next regeneration must run `alembic upgrade head` and that backfill on
+> the source DB before the `pg_dump` below, so the dump carries the seeds
+> (1,673 rows: local 1,374 / regional 178 / major 112 / none 9). It must then:
+> - add `debutant_seed_inputs` to the table list below;
+> - add `debutant_seed_inputs: 1673` to `EXPECTED_ROW_COUNTS` in
+>   `tests/integration/test_db_seed.py`.
+>
+> Per the operator's 2026-09-29 ordering, the shrinkage-lookahead fix (D4) lands
+> before this rebuild.
+>
 > **Regeneration note (2026-09-25):** this dump was regenerated on the same
 > corpus after two substrate fixes: `features compute` no longer leaks the
 > current fight into the opponent-adjusted (`opp_adj_*`) rates, and the domain

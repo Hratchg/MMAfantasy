@@ -303,7 +303,7 @@ class TestDivisionFallback:
             "_load_elo_history",
             lambda s, fid, et, before: histories[fid],
         )
-        monkeypatch.setattr(inference_features, "_load_debutant_seeds", lambda: {})
+        monkeypatch.setattr(inference_features, "_load_debutant_seeds", lambda _session: {})
         monkeypatch.setattr(inference_features, "_get_latest_elo", _REAL_GET_LATEST_ELO)
         ev = date(2026, 10, 3)
 

@@ -4,7 +4,11 @@ Enumerates every UFC debutant (every fighter, at their first UFC appearance
 they have 0 prior UFC fights), scrapes their Sherdog profile via the existing
 ScraperClient (>=2.0s polite rate-limit), filters to pre-UFC fights only,
 computes a PreUFCRecord, derives last_organization + org_tier, and
-UPSERTs into ``data/sherdog/pre_ufc_records.csv`` (14-column locked schema).
+UPSERTs each row into the ``debutant_seed_inputs`` table — the single source
+of truth ``ufc elo compute`` and the serve path read debutant seeds from
+(operator decision D3 option C) — and into ``data/sherdog/pre_ufc_records.csv``
+(14-column locked schema), which is kept as an export and as the input of
+``ufc db backfill-pre-ufc-seeds``.
 
 Reuse: ``filter_pre_ufc_fights`` + ``compute_pre_ufc_stats`` from
 ``src/ufc_prediction/scraper/sherdog.py`` (Phase 22-04 substrate).
@@ -17,14 +21,20 @@ Failure handling: per-fighter exceptions land in
 ``data/sherdog/pre_ufc_records_failures.csv`` with a ``reason`` column;
 the main run continues.
 
-Idempotency: ``upsert_csv()`` keys on ``fighter_id`` — re-running the
-script does NOT duplicate rows (replaces in place).
+Idempotency: ``upsert_db()`` and ``upsert_csv()`` both key on ``fighter_id``
+— re-running the script does NOT duplicate rows (replaces in place). The CSV
+export is written before the DB at every flush, so if the DB write fails the
+scraped rows survive in the CSV and ``ufc db backfill-pre-ufc-seeds --csv
+<output>`` reconciles the table.
+
+Going forward (new debutants after ``ufc scrape sherdog`` has found their
+Sherdog URL): ``--only-missing`` scrapes only fighters without a seed row.
 
 CLI:
     python scripts/ingest_pre_ufc_records_v25.py \\
         --output data/sherdog/pre_ufc_records.csv \\
         --failures-output data/sherdog/pre_ufc_records_failures.csv \\
-        [--limit N] [--start-from-fighter-id N]
+        [--limit N] [--start-from-fighter-id N] [--only-missing]
 """
 
 from __future__ import annotations
@@ -35,9 +45,10 @@ import logging
 import os
 import re
 import sys
+from collections.abc import Callable
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 # Project source on path when invoked as `python scripts/...`.
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -45,6 +56,12 @@ _SRC = _PROJECT_ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
+from ufc_prediction.elo.seed_store import (
+    UpsertResult,
+    seed_row_from_csv,
+    seeded_fighter_ids,
+    upsert_seed_rows,
+)
 from ufc_prediction.scraper.antibot import detect_antibot
 from ufc_prediction.scraper.sherdog import (
     compute_pre_ufc_stats,
@@ -257,6 +274,44 @@ def upsert_csv(path: Path, rows: list[dict]) -> int:
     return len(sorted_rows)
 
 
+def upsert_db(
+    rows: list[dict],
+    session_factory: Callable[[], Any] | None = None,
+) -> UpsertResult | None:
+    """UPSERT rows into ``debutant_seed_inputs`` (the seed source of truth).
+
+    Converts the ``build_csv_row`` dicts with ``seed_row_from_csv`` (which
+    fails closed on a malformed row or missing provenance) and commits in one
+    transaction; rolls back and re-raises on error. Returns ``None`` for an
+    empty batch without opening a session.
+    """
+    if not rows:
+        return None
+    db_rows = [seed_row_from_csv(row) for row in rows]
+    if session_factory is None:
+        from ufc_prediction.db.session import SessionLocal
+
+        session_factory = SessionLocal
+    session = session_factory()
+    try:
+        result = upsert_seed_rows(session, db_rows)
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+    return result
+
+
+def drop_already_seeded(
+    debutants: list[tuple[int, str | None, date]],
+    seeded_ids: set[int],
+) -> list[tuple[int, str | None, date]]:
+    """``--only-missing``: keep the debutants that have no seed row yet."""
+    return [d for d in debutants if d[0] not in seeded_ids]
+
+
 def write_failures_csv(path: Path, failures: list[dict]) -> int:
     """Overwrite the failures CSV with the current run's failure list."""
     path = Path(path)
@@ -375,14 +430,15 @@ def main(argv: list[str] | None = None) -> int:
         prog="ingest_pre_ufc_records_v25",
         description=(
             "Scrape Sherdog pre-UFC records across all UFC debutants and "
-            "UPSERT into data/sherdog/pre_ufc_records.csv (Plan 43-01)."
+            "UPSERT into the debutant_seed_inputs table and the "
+            "data/sherdog/pre_ufc_records.csv export (Plan 43-01)."
         ),
     )
     parser.add_argument(
         "--output",
         type=Path,
         default=Path("data/sherdog/pre_ufc_records.csv"),
-        help="Output CSV path (default: data/sherdog/pre_ufc_records.csv)",
+        help="CSV export path (default: data/sherdog/pre_ufc_records.csv)",
     )
     parser.add_argument(
         "--failures-output",
@@ -401,6 +457,12 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         default=None,
         help="Skip every fighter with id < this value (resumption helper)",
+    )
+    parser.add_argument(
+        "--only-missing",
+        action="store_true",
+        help="Skip debutants that already have a debutant_seed_inputs row "
+        "(incremental run for new debutants)",
     )
     parser.add_argument(
         "--delay",
@@ -443,10 +505,15 @@ def main(argv: list[str] | None = None) -> int:
     session = SessionLocal()
     try:
         debutants = enumerate_debutants(session)
+        seeded_ids = seeded_fighter_ids(session) if args.only_missing else set()
     finally:
         session.close()
     total_enumerated = len(debutants)
     logger.info("enumerated debutants: %d", total_enumerated)
+
+    if args.only_missing:
+        debutants = drop_already_seeded(debutants, seeded_ids)
+        logger.info("after --only-missing filter: %d", len(debutants))
 
     if args.start_from_fighter_id is not None:
         debutants = [d for d in debutants if d[0] >= args.start_from_fighter_id]
@@ -454,6 +521,19 @@ def main(argv: list[str] | None = None) -> int:
     if args.limit is not None:
         debutants = debutants[: args.limit]
         logger.info("after --limit: %d", len(debutants))
+
+    def _persist(rows: list[dict]) -> int:
+        """CSV export first (survives a DB failure), then the DB source of truth."""
+        csv_count = upsert_csv(args.output, rows)
+        result = upsert_db(rows)
+        if result is not None:
+            logger.info(
+                "debutant_seed_inputs: inserted=%d updated=%d unchanged=%d",
+                result.inserted,
+                result.updated,
+                result.unchanged,
+            )
+        return csv_count
 
     client = ScraperClient(delay=args.delay)
     new_rows: list[dict] = []
@@ -512,7 +592,7 @@ def main(argv: list[str] | None = None) -> int:
                     halt_path,
                 )
                 # Persist what we have so far (atomic UPSERT) before exit.
-                upsert_csv(args.output, new_rows)
+                _persist(new_rows)
                 write_failures_csv(args.failures_output, failures)
                 return 2
 
@@ -544,7 +624,7 @@ def main(argv: list[str] | None = None) -> int:
 
             # Periodic flush every 100 successful scrapes (resilience).
             if ok_count and (ok_count % 100) == 0 and new_rows:
-                upsert_csv(args.output, new_rows)
+                _persist(new_rows)
                 new_rows = []
                 write_failures_csv(args.failures_output, failures)
                 logger.info(
@@ -556,7 +636,7 @@ def main(argv: list[str] | None = None) -> int:
         client.close()
 
     # Final flush
-    final_count = upsert_csv(args.output, new_rows)
+    final_count = _persist(new_rows)
     write_failures_csv(args.failures_output, failures)
 
     elapsed = (datetime.now(UTC) - started).total_seconds()

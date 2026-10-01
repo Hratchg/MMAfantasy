@@ -13,9 +13,12 @@ from datetime import date as date_type
 from pathlib import Path
 from typing import Annotated
 
+import psycopg
 import typer
 from rich.console import Console
 from rich.table import Table
+from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from ufc_prediction.cli.db import db_app
 from ufc_prediction.cli.export import export_app
@@ -42,17 +45,6 @@ from ufc_prediction.elo.backtesting import (
 from ufc_prediction.elo.config import EloConfig
 from ufc_prediction.elo.domain import DomainEloComputer
 from ufc_prediction.elo.engine import EloEngine
-from ufc_prediction.elo.seed import SeedDerivationError, load_seeds
-
-# DEBUT-V25-03 (Phase 43): canonical Sherdog pre-UFC records substrate path.
-# compute_elo loads seeds from this CSV at engine construction. load_seeds
-# returns {} for a missing file; compute_elo refuses to run on that (it would
-# overwrite the seeded substrate with flat-1500 debutants) unless the operator
-# passes --allow-unseeded.
-# Anchored to the repo root (not the CWD) so `ufc elo compute` finds the seeds
-# from any working directory; mirrors ml/inference_features._SHERDOG_PRE_UFC_CSV.
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SHERDOG_PRE_UFC_CSV = _REPO_ROOT / "data" / "sherdog" / "pre_ufc_records.csv"
 from ufc_prediction.elo.fighter_queries import (
     get_division_rankings,
     get_fighter_detail,
@@ -68,6 +60,13 @@ from ufc_prediction.elo.queries import (
     load_fights_chronological,
     load_round_stats_by_fight,
 )
+
+# DEBUT-V25-03 (Phase 43) / D3 option C: debutant Elo seeds are read from the
+# debutant_seed_inputs table (single source of truth; the Sherdog CSV only
+# feeds `ufc db backfill-pre-ufc-seeds`). compute_elo refuses to run on an
+# empty or missing table (it would overwrite the seeded substrate with
+# flat-1500 debutants) unless the operator passes --allow-unseeded.
+from ufc_prediction.elo.seed_store import SEED_TABLE, load_seeds_from_db
 from ufc_prediction.ml.predictor import _prefer_canonical
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.scraper.bfo_scraper import BFOScraper
@@ -985,6 +984,59 @@ def _emit_unmatched_venues_md(output_path: Path, unmatched: dict[str, int]) -> N
 # ── Elo Commands ─────────────────────────────────────────────────────────────
 
 
+def _load_elo_seeds_or_exit(session: Session, *, allow_unseeded: bool) -> dict[int, float]:
+    """Debutant Elo seeds from the DB, or ``SystemExit(1)`` before any write.
+
+    An empty table, or one that does not exist yet (migration not applied),
+    is refused unless ``allow_unseeded``; any other DB error always exits.
+    """
+    missing_table = False
+    try:
+        seeds = load_seeds_from_db(session)
+    except ProgrammingError as exc:
+        if not isinstance(getattr(exc, "orig", None), psycopg.errors.UndefinedTable):
+            console.print(
+                f"[red]Could not read debutant Elo seeds from {SEED_TABLE}: {exc}[/red]",
+                soft_wrap=True,
+            )
+            raise SystemExit(1) from exc
+        session.rollback()
+        seeds, missing_table = {}, True
+    except SQLAlchemyError as exc:
+        console.print(
+            f"[red]Could not read debutant Elo seeds from {SEED_TABLE}: {exc}[/red]",
+            soft_wrap=True,
+        )
+        raise SystemExit(1) from exc
+
+    n_seeded = len(seeds)
+    if not n_seeded and not allow_unseeded:
+        problem = (
+            f"the {SEED_TABLE} table does not exist (run `uv run alembic upgrade head`)"
+            if missing_table
+            else f"the {SEED_TABLE} table is empty"
+        )
+        console.print(
+            f"[red]No debutant Elo seeds loaded: {problem}. Refusing to overwrite "
+            "elo_snapshots with flat-1500 debutant ratings. Load the seeds with "
+            "`uv run ufc db backfill-pre-ufc-seeds --csv data/sherdog/pre_ufc_records.csv` "
+            "(or scripts/ingest_pre_ufc_records_v25.py), or pass --allow-unseeded for an "
+            "intentional unseeded run.[/red]",
+            soft_wrap=True,
+        )
+        raise SystemExit(1)
+    dispatch_note = (
+        "will dispatch seeds on first-encounter"
+        if n_seeded
+        else "empty -- --allow-unseeded: falling back to flat 1500 default"
+    )
+    console.print(
+        f"Loaded {n_seeded} debutant Elo seeds from {SEED_TABLE} ({dispatch_note})",
+        soft_wrap=True,
+    )
+    return seeds
+
+
 @elo_app.command("compute")
 def compute_elo(
     domain: Annotated[
@@ -995,7 +1047,7 @@ def compute_elo(
         typer.Option(
             "--allow-unseeded",
             help=(
-                "Run even when data/sherdog/pre_ufc_records.csv is missing or empty, "
+                "Run even when the debutant_seed_inputs table is empty or missing, "
                 "giving every debutant the flat 1500 default. Overwrites the seeded "
                 "substrate; only for an intentional flat-1500 regression run."
             ),
@@ -1010,42 +1062,21 @@ def compute_elo(
     With --domain (default), also runs a second pass computing
     striking and grappling Elo from round-by-round stats (D-09).
 
-    Fails closed (exit 1, no DB access) when the Sherdog debutant-seed CSV is
-    missing, empty or malformed, unless --allow-unseeded is passed.
+    Fails closed (exit 1, before loading fights or writing anything) when the
+    debutant_seed_inputs table is empty or missing, unless --allow-unseeded is
+    passed.
     """
     console.print("[bold]Computing Elo ratings...[/bold]")
 
-    # DEBUT-V25-03 (Phase 43): seeded debutant init. Loaded before the DB
-    # session opens so a missing seed file can't reach flush_snapshots, which
-    # deletes and rewrites every overall snapshot. load_seeds returns {} for a
-    # missing file; EloEngine then uses the pre-Phase-43 flat-1500 default
-    # (Test 3 bit-exact regression invariant), reachable via --allow-unseeded.
-    try:
-        seeds = load_seeds(_SHERDOG_PRE_UFC_CSV)
-    except SeedDerivationError as exc:
-        console.print(f"[red]Malformed debutant seed file {_SHERDOG_PRE_UFC_CSV}: {exc}[/red]")
-        raise SystemExit(1) from exc
-    n_seeded = len(seeds)
-    if not n_seeded and not allow_unseeded:
-        console.print(
-            f"[red]No debutant Elo seeds loaded from {_SHERDOG_PRE_UFC_CSV} "
-            "(file missing or empty). Refusing to overwrite elo_snapshots with "
-            "flat-1500 debutant ratings. Restore the file (see CLAUDE.md: "
-            "scripts/ingest_pre_ufc_records_v25.py) or pass --allow-unseeded "
-            "for an intentional unseeded run.[/red]"
-        )
-        raise SystemExit(1)
-    dispatch_note = (
-        "will dispatch seeds on first-encounter"
-        if n_seeded
-        else "empty -- --allow-unseeded: falling back to flat 1500 default"
-    )
-    console.print(
-        f"Loaded {n_seeded} debutant Elo seeds from {_SHERDOG_PRE_UFC_CSV} ({dispatch_note})"
-    )
-
     session = SessionLocal()
     try:
+        # DEBUT-V25-03 (Phase 43): seeded debutant init. Read before any fight
+        # is loaded so an unseeded DB can't reach flush_snapshots, which
+        # deletes and rewrites every overall snapshot. An empty seed map makes
+        # EloEngine use the pre-Phase-43 flat-1500 default (Test 3 bit-exact
+        # regression invariant), reachable only via --allow-unseeded.
+        seeds = _load_elo_seeds_or_exit(session, allow_unseeded=allow_unseeded)
+
         fights = load_fights_chronological(session)
         console.print(f"Loaded {len(fights)} fights")
 

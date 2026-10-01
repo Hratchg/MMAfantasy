@@ -388,6 +388,193 @@ def test_detect_antibot_clean_page_passes(ingest_module):
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# Test 7: the DB (debutant_seed_inputs) is written; the CSV is an export
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class _FakeSession:
+    def __init__(self) -> None:
+        self.committed = 0
+        self.rolled_back = 0
+        self.closed = 0
+
+    def commit(self) -> None:
+        self.committed += 1
+
+    def rollback(self) -> None:
+        self.rolled_back += 1
+
+    def close(self) -> None:
+        self.closed += 1
+
+
+def test_upsert_db_converts_rows_and_commits(ingest_module, monkeypatch):
+    from ufc_prediction.elo.seed_store import UpsertResult
+
+    sess = _FakeSession()
+    written: list[list[dict]] = []
+
+    def _upsert(session, rows):
+        assert session is sess
+        written.append(list(rows))
+        return UpsertResult(inserted=len(rows), updated=0, unchanged=0)
+
+    monkeypatch.setattr(ingest_module, "upsert_seed_rows", _upsert)
+    result = ingest_module.upsert_db(
+        [_stub_row(ingest_module, fighter_id=1, wins=5)], session_factory=lambda: sess
+    )
+
+    assert result.inserted == 1
+    (rows,) = written
+    assert rows[0]["fighter_id"] == 1
+    assert rows[0]["org_tier"] == "major"
+    assert rows[0]["win_rate"] == 1.0
+    assert rows[0]["scraped_at"].isoformat() == "2026-06-02T12:00:00+00:00"
+    assert (sess.committed, sess.rolled_back, sess.closed) == (1, 0, 1)
+
+
+def test_upsert_db_rolls_back_and_raises_on_error(ingest_module, monkeypatch):
+    sess = _FakeSession()
+
+    def _boom(session, rows):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(ingest_module, "upsert_seed_rows", _boom)
+    with pytest.raises(RuntimeError, match="db down"):
+        ingest_module.upsert_db(
+            [_stub_row(ingest_module, fighter_id=1, wins=5)], session_factory=lambda: sess
+        )
+    assert (sess.committed, sess.rolled_back, sess.closed) == (0, 1, 1)
+
+
+def test_upsert_db_rejects_a_row_without_provenance(ingest_module):
+    from ufc_prediction.elo.seed import SeedDerivationError
+
+    row = _stub_row(ingest_module, fighter_id=1, wins=5)
+    row["sherdog_url"] = ""
+    with pytest.raises(SeedDerivationError, match="sherdog_url"):
+        ingest_module.upsert_db([row], session_factory=_FakeSession)
+
+
+def test_upsert_db_empty_batch_opens_no_session(ingest_module):
+    def _factory():
+        raise AssertionError("no session for an empty batch")
+
+    assert ingest_module.upsert_db([], session_factory=_factory) is None
+
+
+def test_drop_already_seeded_filters_only_seeded_ids(ingest_module):
+    debutants = [
+        (1, "https://sherdog.com/fighter/a-1", date(2010, 1, 1)),
+        (2, "https://sherdog.com/fighter/b-2", date(2011, 1, 1)),
+        (3, None, date(2012, 1, 1)),
+    ]
+    assert ingest_module.drop_already_seeded(debutants, {2}) == [debutants[0], debutants[2]]
+
+
+def test_main_writes_the_db_and_the_csv_export(ingest_module, monkeypatch, tmp_path):
+    """One successful scrape lands in debutant_seed_inputs AND the CSV export."""
+    import ufc_prediction.db.session as db_session
+    import ufc_prediction.scraper.client as scraper_client
+    from ufc_prediction.scraper.sherdog_models import SherdogFight, SherdogFighterProfile
+
+    url = "https://www.sherdog.com/fighter/Test-Fighter-1"
+
+    class _Client:
+        def __init__(self, *a, **k) -> None:
+            pass
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(db_session, "SessionLocal", _FakeSession)
+    monkeypatch.setattr(scraper_client, "ScraperClient", _Client)
+    monkeypatch.setattr(
+        ingest_module, "enumerate_debutants", lambda _s: [(1, url, date(2015, 1, 1))]
+    )
+    monkeypatch.setattr(ingest_module, "_fetch_with_status", lambda _c, _u: ("<html/>", 200))
+    monkeypatch.setattr(
+        ingest_module,
+        "parse_sherdog_fighter_page",
+        lambda _h, _u: SherdogFighterProfile(
+            name="Test Fighter",
+            sherdog_url=url,
+            fights=[
+                SherdogFight(
+                    result="win",
+                    opponent_name="Opp",
+                    method="KO/TKO",
+                    event_name="Bellator 12: Something",
+                    event_date=date(2014, 6, 1),
+                )
+            ],
+        ),
+    )
+    db_rows: list[dict] = []
+    monkeypatch.setattr(
+        ingest_module,
+        "upsert_db",
+        lambda rows, session_factory=None: db_rows.extend(rows),
+    )
+    out = tmp_path / "pre_ufc_records.csv"
+
+    rc = ingest_module.main(
+        ["--output", str(out), "--failures-output", str(tmp_path / "failures.csv")]
+    )
+
+    assert rc == 0
+    assert [r["fighter_id"] for r in db_rows] == [1]
+    assert db_rows[0]["org_tier"] == "major"
+    exported = _read_csv(out)
+    assert [int(r["fighter_id"]) for r in exported] == [1]
+
+
+def test_main_only_missing_skips_seeded_fighters(ingest_module, monkeypatch, tmp_path):
+    import ufc_prediction.db.session as db_session
+    import ufc_prediction.scraper.client as scraper_client
+
+    fetched: list[str] = []
+
+    class _Client:
+        def __init__(self, *a, **k) -> None:
+            pass
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(db_session, "SessionLocal", _FakeSession)
+    monkeypatch.setattr(scraper_client, "ScraperClient", _Client)
+    monkeypatch.setattr(
+        ingest_module,
+        "enumerate_debutants",
+        lambda _s: [
+            (1, "https://www.sherdog.com/fighter/a-1", date(2015, 1, 1)),
+            (2, "https://www.sherdog.com/fighter/b-2", date(2016, 1, 1)),
+        ],
+    )
+    monkeypatch.setattr(ingest_module, "seeded_fighter_ids", lambda _s: {1})
+    monkeypatch.setattr(
+        ingest_module,
+        "_fetch_with_status",
+        lambda _c, u: (fetched.append(u), ("<html/>", 404))[1],
+    )
+    monkeypatch.setattr(ingest_module, "upsert_db", lambda rows, session_factory=None: None)
+
+    rc = ingest_module.main(
+        [
+            "--output",
+            str(tmp_path / "out.csv"),
+            "--failures-output",
+            str(tmp_path / "failures.csv"),
+            "--only-missing",
+        ]
+    )
+
+    assert rc == 0
+    assert fetched == ["https://www.sherdog.com/fighter/b-2"]
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────
 

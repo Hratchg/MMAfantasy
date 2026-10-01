@@ -27,18 +27,19 @@ import logging
 import math
 from dataclasses import dataclass, field
 from datetime import date
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+import psycopg
 from sqlalchemy import case, select
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
 from ufc_prediction.dedup.source_priority import prefer_canonical
 from ufc_prediction.elo.asof import RatedFight, pre_fight_rating
 from ufc_prediction.elo.config import EloConfig
 from ufc_prediction.elo.engine import _NON_TRANSFER_DIVISIONS
-from ufc_prediction.elo.seed import load_seeds
+from ufc_prediction.elo.seed_store import SEED_TABLE, load_seeds_from_db
 from ufc_prediction.features import queries as feature_queries
 from ufc_prediction.features.compute import FeatureComputer, LeagueMeanHistory
 from ufc_prediction.ml import queries as ml_queries
@@ -85,41 +86,48 @@ logger = logging.getLogger(__name__)
 # ── DB-reading helpers ──────────────────────────────────────────────────────
 
 
-# Anchored to the repo root (src/ufc_prediction/ml/<this file> → parents[3]),
-# matching cli/predict.py's WR-05 anchoring rather than the CWD-relative path
-# cli/main.py uses for ``elo compute``.
-_REPO_ROOT: Path = Path(__file__).resolve().parents[3]
-_SHERDOG_PRE_UFC_CSV: Path = _REPO_ROOT / "data" / "sherdog" / "pre_ufc_records.csv"
-
-
-# Only a non-empty seed map is cached: an empty result (missing CSV) is
-# re-checked on every call so a file restored while a long-running API
-# process is up gets picked up instead of being masked for the process life.
+# Only a non-empty seed map is cached: an empty result (empty or not yet
+# migrated debutant_seed_inputs table) is re-checked on every call so seeds
+# backfilled while a long-running API process is up get picked up instead of
+# being masked for the process life.
 _debutant_seeds_cache: dict[int, float] | None = None
 _warned_missing_seeds: bool = False
 
 
-def _load_debutant_seeds() -> dict[int, float]:
-    """Debutant Elo seeds (DEBUT-V25-03), the same CSV ``elo compute`` reads.
+def _load_debutant_seeds(session: Session) -> dict[int, float]:
+    """Debutant Elo seeds (DEBUT-V25-03), from the same table ``elo compute`` reads.
 
-    ``load_seeds`` returns ``{}`` when the file is absent. Serving still
-    works then, but debutants get the flat-1500 default while the stored
-    ``elo_before`` substrate was built with seeds (train/serve skew on
-    ``elo_overall_diff``), so the miss is logged at ERROR (once per process).
+    The ``debutant_seed_inputs`` table is the single source of truth (D3
+    option C), so the Docker serving image needs no Sherdog CSV. An empty
+    table, or a missing one (``alembic upgrade head`` not applied), yields
+    ``{}``: serving still works, but debutants get the flat-1500 default while
+    the stored ``elo_before`` substrate was built with seeds (train/serve skew
+    on ``elo_overall_diff``), so the miss is logged at ERROR (once per
+    process). The query runs in a SAVEPOINT so a missing table cannot abort
+    the request's transaction.
     """
     global _debutant_seeds_cache, _warned_missing_seeds
     if _debutant_seeds_cache is not None:
         return _debutant_seeds_cache
-    seeds = load_seeds(_SHERDOG_PRE_UFC_CSV)
+    problem = f"the {SEED_TABLE} table is empty"
+    try:
+        with session.begin_nested():
+            seeds = load_seeds_from_db(session)
+    except ProgrammingError as exc:
+        if not isinstance(getattr(exc, "orig", None), psycopg.errors.UndefinedTable):
+            raise
+        seeds = {}
+        problem = f"the {SEED_TABLE} table does not exist (run `alembic upgrade head`)"
     if seeds:
         _debutant_seeds_cache = seeds
     elif not _warned_missing_seeds:
         _warned_missing_seeds = True
         logger.error(
-            "No debutant Elo seeds loaded from %s (file missing or empty): debutant "
-            "overall Elo falls back to flat 1500 while the stored elo_snapshots "
-            "substrate is seeded, skewing elo_overall_diff for debutants.",
-            _SHERDOG_PRE_UFC_CSV,
+            "No debutant Elo seeds loaded (%s; load them with `ufc db "
+            "backfill-pre-ufc-seeds`): debutant overall Elo falls back to flat 1500 "
+            "while the stored elo_snapshots substrate is seeded, skewing "
+            "elo_overall_diff for debutants.",
+            problem,
         )
     return seeds
 
@@ -175,7 +183,9 @@ def _get_latest_elo(
     """
     as_of = as_of or date.today()
     history = _load_elo_history(session, fighter_id, elo_type, as_of)
-    seed: float | None = _load_debutant_seeds().get(fighter_id) if elo_type == "overall" else None
+    seed: float | None = (
+        _load_debutant_seeds(session).get(fighter_id) if elo_type == "overall" else None
+    )
     return pre_fight_rating(
         history,
         as_of,

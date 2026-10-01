@@ -84,9 +84,11 @@ def test_sqlalchemy_url_passthrough_for_explicit_drivers():
 
 
 def test_canonical_tables_count():
-    assert len(CANONICAL_TABLES) == 12
+    assert len(CANONICAL_TABLES) == 13
     assert CANONICAL_TABLES[0] == "events"
     assert CANONICAL_TABLES[-1] == "alembic_version"
+    # The Sherdog debutant seeds live in the DB (and so in the seed dump).
+    assert "debutant_seed_inputs" in CANONICAL_TABLES
 
 
 def test_default_dump_path():
@@ -326,3 +328,57 @@ def test_seed_surfaces_alembic_upgrade_failure(
     assert result.exit_code == 1
     assert "alembic upgrade head FAILED" in result.stdout
     mock_sanity.assert_not_called()
+
+
+# ── backfill-pre-ufc-seeds ────────────────────────────────────────────────
+
+
+def test_backfill_help_advertises_flags():
+    result = runner.invoke(db_app, ["backfill-pre-ufc-seeds", "--help"])
+    assert result.exit_code == 0
+    assert "--csv" in result.stdout
+    assert "--dry-run" in result.stdout
+
+
+def test_backfill_missing_csv_exits_1_without_touching_db(tmp_path):
+    with (
+        patch("ufc_prediction.cli.db._check_reachable") as reach,
+        patch("ufc_prediction.cli.db._session_for") as sess,
+    ):
+        result = runner.invoke(
+            db_app, ["backfill-pre-ufc-seeds", "--csv", str(tmp_path / "absent.csv")]
+        )
+    assert result.exit_code == 1
+    assert "absent.csv" in result.stdout
+    reach.assert_not_called()
+    sess.assert_not_called()
+
+
+def test_backfill_malformed_csv_exits_1_without_touching_db(tmp_path):
+    csv_path = tmp_path / "pre_ufc_records.csv"
+    csv_path.write_text(
+        "fighter_id,sherdog_url,n_pre_ufc_fights,win_rate,org_tier,scraped_at\n"
+        "1,https://www.sherdog.com/fighter/X-1,,0.5,major,2026-07-03T23:38:16+00:00\n"
+    )
+    with (
+        patch("ufc_prediction.cli.db._check_reachable") as reach,
+        patch("ufc_prediction.cli.db._session_for") as sess,
+    ):
+        result = runner.invoke(db_app, ["backfill-pre-ufc-seeds", "--csv", str(csv_path)])
+    assert result.exit_code == 1
+    assert "n_pre_ufc_fights" in result.stdout
+    reach.assert_not_called()
+    sess.assert_not_called()
+
+
+def test_backfill_header_only_csv_exits_1_without_touching_db(tmp_path):
+    csv_path = tmp_path / "pre_ufc_records.csv"
+    csv_path.write_text("fighter_id,sherdog_url,n_pre_ufc_fights,win_rate,org_tier,scraped_at\n")
+    with (
+        patch("ufc_prediction.cli.db._check_reachable") as reach,
+        patch("ufc_prediction.cli.db._session_for") as sess,
+    ):
+        result = runner.invoke(db_app, ["backfill-pre-ufc-seeds", "--csv", str(csv_path)])
+    assert result.exit_code == 1
+    reach.assert_not_called()
+    sess.assert_not_called()

@@ -44,6 +44,8 @@ def test_alembic_upgrade_downgrade(postgres_container):
         "model_runs",
         "referees",
         "venues",
+        # Sherdog debutant Elo seed inputs (S19 / D3 option C):
+        "debutant_seed_inputs",
     ]
     for table in expected_tables:
         assert table in tables, f"Table '{table}' not found after upgrade"

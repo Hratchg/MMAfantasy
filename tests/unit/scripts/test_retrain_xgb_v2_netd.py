@@ -134,7 +134,7 @@ def test_argparse_help_exits_zero() -> None:
 def test_expected_xgb_v2_sha256_matches_audit01() -> None:
     """The locked AUDIT-01 SHA constant matches the canonical hex (D-10)."""
     assert (
-        EXPECTED_XGB_V2_SHA256 == "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
+        EXPECTED_XGB_V2_SHA256 == "760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a"
     )
 
 

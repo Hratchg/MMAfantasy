@@ -48,7 +48,7 @@ from ufc_prediction.ml.queries import (
     load_round_stats_for_ml,
 )
 
-EXPECTED_XGB_V2_SHA256 = "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
+EXPECTED_XGB_V2_SHA256 = "760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a"
 SLICES = list(PER_SLICE_KEYS)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

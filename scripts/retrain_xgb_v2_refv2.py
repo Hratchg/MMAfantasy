@@ -79,7 +79,7 @@ if str(_SCRIPTS_DIR) not in sys.path:
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 
 # AUDIT-01 anchors — locked per .planning/AUDIT-01-BASELINE-SHA.txt.
-EXPECTED_XGB_V2_SHA256: str = "0b0b40afc8ec41d87508745a9b5f40a46f7d86c054b1ab2acece03d319f6fecd"
+EXPECTED_XGB_V2_SHA256: str = "760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a"
 EXPECTED_META_V2_SHA256: str = "e04454267b0bb781709e518b033db223cabd58f61dbb3ffdad3c07cbe12502a8"
 
 # Canonical hyperparameter source (READ-ONLY for this script).

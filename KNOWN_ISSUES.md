@@ -8,6 +8,18 @@ If you are setting up the project for the first time, read `docs/INSTALL.md`
 first; the install walkthrough forward-links here from steps 5 and 6 and from
 its "Next steps" section.
 
+## Model re-baseline — 2026-10-01 (operator decision D6-B)
+
+`xgb_v2` was refit (locked config, seed 42) on the substrate corrected by the
+September code review and promoted. The frozen sha256 changed
+`0b0b40…f6fecd` → `760307…5677a`. The model is at parity with the dedup-refit
+baseline, not a measured lift. Open follow-ups:
+
+| ID | Severity | Issue | Required before |
+|---|---|---|---|
+| `META-REBASE-02` (OPEN) | Medium | `meta_v2_meta.json::base_model_sha256` was **relabeled, not retrained**, so the predictor's base-binding check passes. `meta_v2.joblib` (`e04454…2502a8`) and its OOF lineage still come from the previous base. Its meta features also used the leaky unswapped `elo_prob`, which is now fixed in the meta scripts. Meta is disabled, so serving is unaffected. | `META-ENABLE-01`: retrain and honestly re-gate meta on the new base. Then re-anchor `META_V22_BASELINE_BRIER` (unblocking the `test_compose_v23_*` files) and `PLAN_29_03_RANDOM_15PCT_BRIER`. |
+| `SEED-REBASE-02` (OPEN) | Medium | `data/seed/ufc_corpus_v30.dump` predates the corrected substrate and lacks the new `debutant_seed_inputs` table. A fresh `ufc db seed` restores the pre-fix corpus and an empty seed table, so `elo compute` exits 1 there. | Regenerating the dump per `data/seed/PROVENANCE.md` and updating the `test_db_seed.py` goldens. |
+
 ## Model re-baseline — 2026-07-06 (`RETRAIN-V31-01`)
 
 `xgb_v2` was re-baselined onto the corrected substrate (dedup ufcstats corpus +

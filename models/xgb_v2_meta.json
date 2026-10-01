@@ -124,5 +124,5 @@
   "cutoff_date": "2023-01-01",
   "n_training_fights": 6792,
   "n_test_fights": 1789,
-  "promotion_note": "Re-baselined 2026-10-01 (operator decision D6-B) from xgb_v2_corrected: pre-registered seed-42 refit of the locked config on the corrected dedup ufcstats substrate (round-stats orientation repair, Kaggle-twin odds backfill, no-contest Elo skip, NET features, DB-sourced Sherdog seeds, as-of shrinkage, ufcstats title-fight flags, Bruno Silva split). Same locked best_params. Replaces 760307333de18b97729e5a7663413e0e19ab63bf7c1f1bfd9f57d04d2d15677a (temporal-holdout Brier 0.21288 / acc 0.6590 on this substrate); parity with the 10-seed dedup-refit baseline on all three gate slices."
+  "promotion_note": "Re-baselined 2026-10-01 (operator decision D6-B) from xgb_v2_corrected: pre-registered seed-42 refit of the locked config on the corrected dedup ufcstats substrate (round-stats orientation repair, Kaggle-twin odds backfill, no-contest Elo skip, NET features, DB-sourced Sherdog seeds, as-of shrinkage, ufcstats title-fight flags, Bruno Silva split). Same locked best_params. Replaces 0b0b40\u2026f6fecd, the 2026-07-06 RETRAIN-V31-01 artifact (temporal-holdout Brier 0.21288 / acc 0.6590 on this substrate); parity with the 10-seed dedup-refit baseline on all three gate slices."
 }

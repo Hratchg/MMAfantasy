@@ -15,6 +15,14 @@ The project follows a continuous-milestone format. Each milestone delivers a coh
 - **ufcstats title-fight flag (substrate):** the scraper inferred `fights.is_title_fight` from the event page's weight cell, which holds only the division ("Light Heavyweight"); UFCStats marks a title bout with a `belt.png` image instead. Every ufcstats fight was stored as a non-title fight (0 of 8,736), so after the Plan 28-04 dedup the training feature `is_title_fight` was constant 0. Ingest now ORs the event-page belt, the fight-detail page's belt (newly parsed into `FightDetailPage.is_title_fight`) and "Title" in either page's text; the belt matters because "UFC Superfight Championship Bout" carries it without the word "Title". `ufc scrape all` heals stored rows on re-upsert, but `scrape latest` never revisits stored events, so new `scripts/backfill_ufcstats_title_flags.py` sets the flag on existing ufcstats fights. Its evidence is cached fight-detail pages, kaggle twins (±1 day) and, with `--backend browser`, ufcstats event pages. It runs as a read-only dry run unless `--apply`, never writes kaggle rows, and is idempotent. On the live DB the dry run settles all 8,736 fights offline (3,323 by page, 5,413 by twin) and sets 490 to title, 480 of them in the 8,581-fight training corpus. UFCStats belts tournament finals (TUF / Road to UFC), so those count as title fights; kaggle-mdabbert does not (its 11 disagreements with the pages).
 - **`OPS-V30-01`** — the pre-commit git hook was missing on fresh clones because setup only ran `uv sync`. `pre-commit` now ships in the dev dependency group (so `uv sync` provides it) and CONTRIBUTING.md's first-time setup documents `uv run pre-commit install`. Correctness was never at risk — the CI `pre-commit` job runs every hook on each PR — but the local AUDIT-01 guard is now reliably installable in two documented steps.
 
+**Seed dump — `SEED-REBASE-02` (2026-10-01):**
+- Regenerated `data/seed/ufc_corpus_v30.dump` on the D6-B substrate (sha `d695404f…`, 11.07 MB, PG16 custom format). It now includes the `debutant_seed_inputs` table (1,673 rows), so `ufc db seed` → `elo compute` works on a fresh install without the untracked Sherdog CSV. Row-count goldens moved:
+  - `elo_snapshots` 90,642 → 90,090 (no-contest skip);
+  - `fight_odds` 25,812 → 26,302 (Kaggle-twin backfill);
+  - `fighters` 6,846 → 6,847 (Bruno Silva split);
+  - `computed_features` 28,816 → 28,815.
+- Verified by a `pg_restore 16` round trip into a fresh postgres:16.
+
 **Meta — honest re-gate after the `elo_prob` leak fix (operator decision D5, 2026-10-01):**
 - Re-ran the meta gates on the D6-B `xgb_v2` with the label leak removed: `train_meta_v22` spike, `spike_noise_floor_v23`, `ufc predict gate-spike`, `compose_v23_meta` and `compose_v25_travel`. **Meta shows no honest lift.**
   - The META-V22 spike fails and is worse than the base on all slices.

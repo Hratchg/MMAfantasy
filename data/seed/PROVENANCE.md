@@ -1,25 +1,27 @@
 # UFC Corpus v3.0 Seed — Provenance
 
 **Artifact:** `data/seed/ufc_corpus_v30.dump`
-**Generated:** 2026-09-25 (regenerated after the opp_adj leak fix + per-domain Elo bookkeeping fix; previously 2026-07-06 `RETRAIN-V31-01` / `SEED-REBASE-01`)
+**Generated:** 2026-10-01 (`SEED-REBASE-02`: regenerated on the D6-B substrate with the `debutant_seed_inputs` table; previously 2026-09-25 and 2026-07-06 `RETRAIN-V31-01` / `SEED-REBASE-01`)
 **Phase:** 88 — HANDOFF-V30-02 DB Dump Packaging (regenerated on the promoted substrate)
 
-> **Pending regeneration (debutant seeds, 2026-10-01):** migration
-> `9fc47fdd75b6` adds a 13th table, `debutant_seed_inputs`. It holds the
-> Sherdog pre-UFC records behind debutant Elo seeding, which used to be read
-> from the untracked `data/sherdog/pre_ufc_records.csv`. `elo compute` and
-> serving now read only this table. This dump predates the table, so restoring
-> it with `ufc db seed` creates the table empty (via `alembic upgrade head`).
-> Load it with `ufc db backfill-pre-ufc-seeds --csv data/sherdog/pre_ufc_records.csv`.
-> The next regeneration must run `alembic upgrade head` and that backfill on
-> the source DB before the `pg_dump` below, so the dump carries the seeds
-> (1,673 rows: local 1,374 / regional 178 / major 112 / none 9). It must then:
-> - add `debutant_seed_inputs` to the table list below;
-> - add `debutant_seed_inputs: 1673` to `EXPECTED_ROW_COUNTS` in
->   `tests/integration/test_db_seed.py`.
+> **Regeneration note (2026-10-01, `SEED-REBASE-02`):** regenerated on the
+> substrate that produced the D6-B `xgb_v2` (sha256 `760307…5677a`). The dump
+> now carries a 13th table, `debutant_seed_inputs` (migration `9fc47fdd75b6`).
+> It holds the Sherdog pre-UFC records behind debutant Elo seeding: 1,673 rows,
+> made up of local 1,374, regional 178, major 112 and none 9. So a fresh
+> `ufc db seed` followed by `elo compute` works without the untracked
+> `data/sherdog/pre_ufc_records.csv`. Substrate changes since 2026-09-25:
+> - ufcstats round-stat orientation repair;
+> - Kaggle-twin odds backfill (`fight_odds` 25,812 → 26,302);
+> - no-contest fights skipped by Elo (`elo_snapshots` 90,642 → 90,090);
+> - as-of league-mean shrinkage;
+> - ufcstats title-fight flags (489 title fights);
+> - the merged "Bruno Silva" record split in two (`fighters` 6,846 → 6,847;
+>   `computed_features` 28,816 → 28,815).
 >
-> Per the operator's 2026-09-29 ordering, the shrinkage-lookahead fix (D4) lands
-> before this rebuild.
+> The source DB is postgres:18. The dump was bridged through postgres:16
+> exactly as below, and a `pg_restore 16` round trip into a fresh postgres:16
+> reproduced every count in the table list.
 >
 > **Regeneration note (2026-09-25):** this dump was regenerated on the same
 > corpus after two substrate fixes: `features compute` no longer leaks the
@@ -80,42 +82,43 @@ with the exact per-table counts below.
 
 | Field | Value |
 |-------|-------|
-| Compressed dump size | 11,194,884 bytes (10.68 MB) |
-| SHA256 | `8ea95041f60bc8fae698496688e9b19c851d556649d8fdc3a054e29f3c7a1901` |
+| Compressed dump size | 11,612,692 bytes (11.07 MB) |
+| SHA256 | `d695404fb38120448043803356d26afda134c99ce32951d3adc0ec513da6b12b` |
 
 ## Hosting route
 
 Committed in repo (≤ 30 MB threshold per D-B1).
 
-The compressed dump (10.68 MB) sits well under the 30 MB cutoff, so the
+The compressed dump (11.07 MB) sits well under the 30 MB cutoff, so the
 binary lives directly in the repo alongside this provenance file and the
 SHA256 sidecar. No external GitHub Release hosting required for v3.0.
 
-## Tables included (12)
+## Tables included (13)
 
 Per-table exact row counts in the dump (`SELECT COUNT(*)`). These are exact
 counts (not `pg_stat_user_tables` planner estimates) and match the goldens in
 `tests/integration/test_db_seed.py`:
 
 ```
-      relname      |   count
--------------------+------------
- elo_snapshots     |      90642
- round_stats       |      69684
- computed_features |      28816
- fight_odds        |      25812
- fights            |      17011
- fighters          |       6846
- events            |       1881
- fighter_aliases   |        399
- venues            |        174
- referees          |         39
- alembic_version   |          1
- model_runs        |          0
-(12 rows)
+       relname        |   count
+----------------------+------------
+ elo_snapshots        |      90090
+ round_stats          |      69684
+ computed_features    |      28815
+ fight_odds           |      26302
+ fights               |      17011
+ fighters             |       6847
+ events               |       1881
+ debutant_seed_inputs |       1673
+ fighter_aliases      |        399
+ venues               |        174
+ referees             |         39
+ alembic_version      |          1
+ model_runs           |          0
+(13 rows)
 ```
 
-All 12 user tables included per D-A3. `model_runs` is empty by design
+All 13 user tables included per D-A3. `model_runs` is empty by design
 (filled in by downstream model-training workflows; not part of the seed
 corpus). `alembic_version` carries the migration head stamp so a fresh
 restore lands on the same schema revision as the source DB.

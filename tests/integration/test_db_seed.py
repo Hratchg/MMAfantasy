@@ -40,16 +40,18 @@ pytestmark = [
 ]
 
 EXPECTED_ROW_COUNTS = {
-    # Re-baselined 2026-07-06 (RETRAIN-V31-01 / SEED-REBASE-01): dump regenerated
-    # on the promoted substrate (dedup ufcstats corpus current to 2026-06-27,
-    # corrected odds, Sherdog-seeded elo). Exact COUNT(*) per table.
-    "elo_snapshots": 90_642,
+    # Re-baselined 2026-10-01 (SEED-REBASE-02): dump regenerated on the D6-B
+    # substrate (no-contest Elo skip, Kaggle-twin odds backfill, Bruno Silva
+    # split, as-of shrinkage) and now carries the debutant_seed_inputs table
+    # (migration 9fc47fdd75b6). Exact COUNT(*) per table.
+    "elo_snapshots": 90_090,
     "round_stats": 69_684,
-    "computed_features": 28_816,
-    "fight_odds": 25_812,
+    "computed_features": 28_815,
+    "fight_odds": 26_302,
     "fights": 17_011,
-    "fighters": 6_846,
+    "fighters": 6_847,
     "events": 1_881,
+    "debutant_seed_inputs": 1_673,
     "fighter_aliases": 399,
     "venues": 174,
     "referees": 39,

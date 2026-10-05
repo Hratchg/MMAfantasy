@@ -90,9 +90,12 @@ META_V22_BASELINE_BRIER: dict[str, float] = {
     # source of truth; re-anchor these whenever the training substrate changes.
     # 2026-09-25: re-anchored after the opp_adj leak fix and the per-domain Elo
     # bookkeeping fix regenerated elo_snapshots + computed_features.
-    "most_recent_12mo": 0.13259296636537393,
-    "most_recent_24mo": 0.13875065056589686,
-    "random_15pct": 0.12609749093558936,
+    # 2026-10-01: re-anchored after the elo_prob orientation leak fix (D5) and
+    # the D6-B xgb_v2 re-baseline (760307…5677a). The jump from ~0.13 is the
+    # leak's removal: the old elo_prob column encoded the label.
+    "most_recent_12mo": 0.22030084340114645,
+    "most_recent_24mo": 0.22446220130370892,
+    "random_15pct": 0.23218238345496195,
 }
 
 

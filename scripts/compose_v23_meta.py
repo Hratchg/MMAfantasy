@@ -93,9 +93,11 @@ META_V22_BASELINE_BRIER: dict[str, float] = {
     # 2026-10-01: re-anchored after the elo_prob orientation leak fix (D5) and
     # the D6-B xgb_v2 re-baseline (760307…5677a). The jump from ~0.13 is the
     # leak's removal: the old elo_prob column encoded the label.
-    "most_recent_12mo": 0.22030084340114645,
-    "most_recent_24mo": 0.22446220130370892,
-    "random_15pct": 0.23218238345496195,
+    # 2026-11-17: re-anchored after the UFCStats refresh through 2026-11-14
+    # (19 events, 245 fights) regenerated elo_snapshots + computed_features.
+    "most_recent_12mo": 0.2057161168021346,
+    "most_recent_24mo": 0.21815522903101608,
+    "random_15pct": 0.22478849712762133,
 }
 
 

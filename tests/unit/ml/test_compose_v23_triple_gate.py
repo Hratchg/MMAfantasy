@@ -98,10 +98,10 @@ def test_meta_v22_baseline_per_slice_present() -> None:
         assert slc in META_V22_BASELINE_BRIER
         assert isinstance(META_V22_BASELINE_BRIER[slc], float)
     # Values reconciled with current META_V22_SPIKE.json::median_per_slice
-    # (2026-10-01 substrate: D5 elo_prob leak fix + D6-B xgb_v2 re-baseline).
-    assert abs(META_V22_BASELINE_BRIER["most_recent_12mo"] - 0.22030084340114645) < 1e-9
-    assert abs(META_V22_BASELINE_BRIER["most_recent_24mo"] - 0.22446220130370892) < 1e-9
-    assert abs(META_V22_BASELINE_BRIER["random_15pct"] - 0.23218238345496195) < 1e-9
+    # (2026-11-17 substrate: UFCStats refresh through 2026-11-14).
+    assert abs(META_V22_BASELINE_BRIER["most_recent_12mo"] - 0.2057161168021346) < 1e-9
+    assert abs(META_V22_BASELINE_BRIER["most_recent_24mo"] - 0.21815522903101608) < 1e-9
+    assert abs(META_V22_BASELINE_BRIER["random_15pct"] - 0.22478849712762133) < 1e-9
 
 
 # ───────────────────────────── Path A (all 3 legs clear) ─────────────────────

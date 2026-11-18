@@ -1,9 +1,26 @@
 # UFC Corpus v3.0 Seed — Provenance
 
 **Artifact:** `data/seed/ufc_corpus_v30.dump`
-**Generated:** 2026-10-01 (`SEED-REBASE-02`: regenerated on the D6-B substrate with the `debutant_seed_inputs` table; previously 2026-09-25 and 2026-07-06 `RETRAIN-V31-01` / `SEED-REBASE-01`)
+**Generated:** 2026-11-17 (data refresh through UFC 334, 2026-11-14; previously 2026-10-01 `SEED-REBASE-02`, 2026-09-25 and 2026-07-06 `RETRAIN-V31-01` / `SEED-REBASE-01`)
 **Phase:** 88 — HANDOFF-V30-02 DB Dump Packaging (regenerated on the promoted substrate)
 
+> **Regeneration note (2026-11-17, data refresh):** the corpus now runs
+> through UFC 334 (2026-11-14). Changes since 2026-10-01:
+> - 19 UFCStats events (2026-07-11 → 2026-11-14) and 245 fights, scraped with
+>   `ufc scrape latest --backend browser` (`fights` 17,011 → 17,256);
+> - BFO fighter-profile odds for 223 of the 245 new fights
+>   (`fight_odds` 26,302 → 26,748);
+> - 81 new Sherdog debutant seeds (`debutant_seed_inputs` 1,673 → 1,754:
+>   local 1,442, regional 189, major 114, none 9);
+> - venues for Belgrade and Shanghai (`venues` 174 → 176) and one new referee;
+> - `elo compute` + `features compute` re-run (`elo_snapshots` 90,090 → 91,560,
+>   `computed_features` 28,815 → 29,234).
+>
+> The frozen `xgb_v2` (sha256 `760307…5677a`) was NOT re-promoted: on this
+> substrate it sits at parity with the 10-seed dedup-refit baseline on all
+> three slices. The dump was bridged through postgres:16 as below, and a
+> `pg_restore 16` round trip reproduced every count in the table list.
+>
 > **Regeneration note (2026-10-01, `SEED-REBASE-02`):** regenerated on the
 > substrate that produced the D6-B `xgb_v2` (sha256 `760307…5677a`). The dump
 > now carries a 13th table, `debutant_seed_inputs` (migration `9fc47fdd75b6`).
@@ -53,7 +70,7 @@
 | Database | `ufc_prediction` |
 | User | `ufc` |
 | Postgres server version | `PostgreSQL 18.4 (Debian 18.4-1.pgdg13+1)` |
-| Raw DB size | 116 MB |
+| Raw DB size | 122 MB |
 
 ## Dump command
 
@@ -82,8 +99,8 @@ with the exact per-table counts below.
 
 | Field | Value |
 |-------|-------|
-| Compressed dump size | 11,612,692 bytes (11.07 MB) |
-| SHA256 | `d695404fb38120448043803356d26afda134c99ce32951d3adc0ec513da6b12b` |
+| Compressed dump size | 11,831,213 bytes (11.28 MB) |
+| SHA256 | `30f5720184af4e59913303f30aa6fd2e287d64f456df1c2b92526e7040c8d890` |
 
 ## Hosting route
 
@@ -102,17 +119,17 @@ counts (not `pg_stat_user_tables` planner estimates) and match the goldens in
 ```
        relname        |   count
 ----------------------+------------
- elo_snapshots        |      90090
- round_stats          |      69684
- computed_features    |      28815
- fight_odds           |      26302
- fights               |      17011
- fighters             |       6847
- events               |       1881
- debutant_seed_inputs |       1673
+ elo_snapshots        |      91560
+ round_stats          |      71258
+ computed_features    |      29234
+ fight_odds           |      26748
+ fights               |      17256
+ fighters             |       6918
+ events               |       1900
+ debutant_seed_inputs |       1754
  fighter_aliases      |        399
- venues               |        174
- referees             |         39
+ venues               |        176
+ referees             |         40
  alembic_version      |          1
  model_runs           |          0
 (13 rows)

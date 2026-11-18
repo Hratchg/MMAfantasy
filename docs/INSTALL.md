@@ -94,9 +94,9 @@ the alembic head pointer landed cleanly.
 **Debutant Elo seeds.** The Sherdog pre-UFC records that seed a debutant's
 first Elo rating live in the `debutant_seed_inputs` table; no CSV is read at
 runtime. `ufc db seed` creates the table (its `alembic upgrade head` step). A
-dump regenerated after this table landed restores its 1,673 rows; the current
-`ufc_corpus_v30.dump` predates it, so `ufc db status` shows
-`debutant_seed_inputs` at 0 after a restore. With 0 rows, `ufc elo compute`
+dump regenerated after this table landed restores its rows (the current
+`ufc_corpus_v30.dump` carries 1,754). An older dump that predates it leaves
+`debutant_seed_inputs` at 0 in `ufc db status` after a restore. With 0 rows, `ufc elo compute`
 exits 1 and the API serves flat-1500 ratings to debutants (logging an ERROR).
 Load the seeds from the Sherdog CSV:
 

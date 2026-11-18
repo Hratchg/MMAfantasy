@@ -112,8 +112,9 @@ SEEDS_DEFAULT: tuple[int, ...] = (42, 43, 44, 45, 46, 47, 48, 49, 50, 51)
 # 2026-09-25 after the opp_adj leak fix + per-domain Elo bookkeeping fix
 # regenerated elo_snapshots, computed_features and the META OOF cache, and to
 # 0.232182 on 2026-10-01 after the elo_prob orientation leak fix (D5) and the
-# D6-B xgb_v2 re-baseline (the old value was inflated by that leak).
-PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.232182
+# D6-B xgb_v2 re-baseline (the old value was inflated by that leak), and to
+# 0.224788 on 2026-11-17 after the UFCStats refresh through 2026-11-14.
+PLAN_29_03_RANDOM_15PCT_BRIER: float = 0.224788
 PLAN_29_03_TOLERANCE: float = 0.0001
 
 # Per-slice keys (mirrors evaluator.PER_SLICE_KEYS).

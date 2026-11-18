@@ -40,11 +40,13 @@ jobs:
     # Many regression/spike tests connect to the configured Postgres
     # (settings.database_url default localhost:5433) rather than spinning up
     # their own testcontainer. Provide a seeded DB on 5433 so they pass.
-    # Postgres 16 matches the shipped corpus dump (data/seed/PROVENANCE.md), so
-    # the runner's preinstalled pg_restore 16 restores it natively.
+    # postgres:18 so the server is never older than the runner's pg_restore
+    # client: a pg_restore 17+ emits `SET transaction_timeout`, which a PG16
+    # server rejects (this broke `ufc db seed` once the runner image's client
+    # moved past 16). The PG16-format shipped dump restores fine on 18.
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: ufc
           POSTGRES_PASSWORD: ufc

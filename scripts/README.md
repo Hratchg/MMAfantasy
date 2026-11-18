@@ -25,6 +25,7 @@ pipeline or rebuilding/studying the models.
 
 | Script | Purpose |
 |---|---|
+| `refresh_corpus.py` | incremental refresh: new UFCStats events, debutant seeds, scoped BFO odds, venues, elo/features, then the PG16 seed dump + goldens. Run weekly by `.github/workflows/refresh-corpus.yml`; locally pass `--source-container mmafantasy-db-1` |
 | `dump_db.sh` / `restore_db.sh` | dump / restore the Postgres corpus |
 | `bfo_backfill.py` | refresh BestFightOdds closing odds |
 | `scrape_referees_full.py` | scrape referee data |

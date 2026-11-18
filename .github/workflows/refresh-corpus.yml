@@ -1,0 +1,167 @@
+name: refresh-corpus
+
+# Weekly incremental corpus refresh. Restores the shipped seed dump, runs
+# scripts/refresh_corpus.py (new UFCStats events -> Sherdog seeds -> scoped BFO
+# odds -> venues -> elo/features -> PG16 seed dump + goldens), and opens a PR
+# with the regenerated dump. Replaces the odds-only refresh-odds.yml, which
+# could not attach odds to fights missing from the dump and diffed a
+# gitignored CSV, so it never produced a change.
+#
+# The PR does NOT re-anchor the pinned gate baselines: the operator restores
+# the dump locally and runs /retrain-gate before merging (see the PR body).
+#
+# PRs opened with GITHUB_TOKEN do not trigger other workflows, so CI does not
+# start on the bot PR by itself; close/reopen it or push a commit to run CI.
+
+on:
+  schedule:
+    - cron: '0 14 * * 1'   # Mondays 14:00 UTC — UFCStats has Saturday's card by then
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-corpus
+  cancel-in-progress: false
+
+# See ci.yml: without the pin uv resolves CPython 3.14, where lxml has no wheel.
+env:
+  UV_PYTHON: "3.13"
+  DATABASE_URL: "postgresql+psycopg://ufc:ufc@localhost:5432/ufc_prediction"
+
+permissions:
+  contents: write          # create-pull-request branch push
+  pull-requests: write     # create-pull-request PR open
+  issues: write            # create-issue on refresh failure
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    # postgres:18 so the server is never older than the runner's pg_restore
+    # client (a pg_restore 17+ emits `SET transaction_timeout`, which a PG16
+    # server rejects). The shipped dump stays PG16 format; the refresh script
+    # bridges through a postgres:16 container to produce it.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ufc
+          POSTGRES_PASSWORD: ufc
+          POSTGRES_DB: ufc_prediction
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ufc -d ufc_prediction"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      # UFCStats sits behind a JS proof-of-work challenge that only the
+      # Playwright browser backend solves.
+      - name: Install Chromium for the browser scrape backend
+        run: uv run playwright install --with-deps chromium
+
+      - name: Seed corpus into Postgres
+        run: >-
+          uv run ufc db seed
+          --from data/seed/ufc_corpus_v30.dump
+          --no-migrate --force
+
+      # pg_dump runs inside the service container: a host pg_dump older than
+      # the server refuses to dump it.
+      - name: Refresh corpus and regenerate the seed dump
+        id: refresh
+        run: >-
+          uv run python scripts/refresh_corpus.py
+          --summary "$RUNNER_TEMP/refresh_summary.md"
+          --source-container "${{ job.services.postgres.id }}"
+
+      - name: Upload refresh logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: refresh-corpus-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/refresh_summary.md
+            ${{ runner.temp }}/refresh-unmatched-venues.md
+            data/sherdog/pre_ufc_records_failures.csv
+          if-no-files-found: ignore
+
+      - name: Compute refresh date
+        if: steps.refresh.outputs.new_events != '0'
+        id: refresh-date
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR with the regenerated dump
+        if: steps.refresh.outputs.new_events != '0'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: bot/refresh-corpus-${{ steps.refresh-date.outputs.date }}
+          add-paths: |
+            data/seed/ufc_corpus_v30.dump
+            data/seed/ufc_corpus_v30.dump.sha256
+            data/seed/PROVENANCE.md
+            tests/integration/test_db_seed.py
+          title: 'chore(data): weekly corpus refresh ${{ steps.refresh-date.outputs.date }}'
+          commit-message: |
+            chore(data): weekly corpus refresh ${{ steps.refresh-date.outputs.date }}
+
+            Automated via .github/workflows/refresh-corpus.yml
+            (scripts/refresh_corpus.py). Re-anchor the gate baselines before merging.
+          body-path: ${{ runner.temp }}/refresh_summary.md
+          labels: |
+            bot:refresh
+            automated
+
+      - name: File issue on refresh failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const refreshDate = new Date().toISOString().slice(0, 10);
+            const titlePrefix = '[refresh] Weekly corpus refresh failed';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'bot:refresh',
+            });
+            const existing = issues.find(i => i.title.startsWith(titlePrefix));
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `Recurrence on ${refreshDate}: ${runUrl}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `${titlePrefix} ${refreshDate}`,
+                body: [
+                  `Weekly corpus refresh failed on ${refreshDate}.`,
+                  '',
+                  `Workflow run: ${runUrl}`,
+                  '',
+                  'Exit code 2 from `ufc scrape latest` means UFCStats served its anti-bot page to the runner.',
+                  'Triage, then rerun via workflow_dispatch, or run `scripts/refresh_corpus.py` locally.',
+                ].join('\n'),
+                labels: ['bot:refresh', 'priority:high'],
+              });
+            }

@@ -612,6 +612,15 @@ def scrape_odds(
             help=("Skip the BFOScraper network scrape; only ingest existing CSVs."),
         ),
     ] = False,
+    fighters_since: Annotated[
+        str | None,
+        typer.Option(
+            help=(
+                "Only search BFO for fighters with a UFCStats fight on or after "
+                "YYYY-MM-DD (incremental refresh). Default: every ufcstats fighter."
+            ),
+        ),
+    ] = None,
 ) -> None:
     """Scrape BestFightOdds and ingest into the fight_odds table.
 
@@ -644,9 +653,18 @@ def scrape_odds(
         except ValueError as exc:
             console.print(f"[red]Invalid --min-date {min_date!r}: {exc}[/red]")
             raise SystemExit(1) from exc
+        parsed_fighters_since: _dt.date | None = None
+        if fighters_since is not None:
+            try:
+                parsed_fighters_since = _dt.datetime.strptime(fighters_since, "%Y-%m-%d").date()
+            except ValueError as exc:
+                console.print(f"[red]Invalid --fighters-since {fighters_since!r}: {exc}[/red]")
+                raise SystemExit(1) from exc
 
         console.print(f"[bold]Scraping BestFightOdds to {resolved}...[/bold]")
         console.print(f"  Delay: {delay}s · Workers: 4 · Min date: {min_date}")
+        if parsed_fighters_since is not None:
+            console.print(f"  Fighters: UFCStats fight on or after {fighters_since}")
         client = ScraperClient(delay=delay, workers=4)
         scrape_session = SessionLocal()
         try:
@@ -656,7 +674,9 @@ def scrape_odds(
                 data_folder=resolved,
                 workers=4,
             )
-            scrape_summary = scraper.scrape_all(min_date=parsed_min_date)
+            scrape_summary = scraper.scrape_all(
+                min_date=parsed_min_date, fighters_since=parsed_fighters_since
+            )
         finally:
             client.close()
             scrape_session.close()

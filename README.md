@@ -176,7 +176,7 @@ The model is built on three external data sources. Each is acknowledged below wi
 
 - **UFCStats** — <https://ufcstats.com>. Public per-fight statistics. Pure-fantasy framing. Cache lives under `data/ufcstats_event_detail_cache/` (runtime-only).
 - **Sherdog** — <https://www.sherdog.com>. Public fight database used for fighter-career profile reconstruction. Pure-fantasy framing. Cache under `data/sherdog_html_cache/` (runtime-only).
-- **BestFightOdds** — <https://www.bestfightodds.com>. Closing-odds aggregator; commercial use assumed contractually OK per the operator. Refreshed weekly via [`.github/workflows/refresh-odds.yml`](.github/workflows/refresh-odds.yml). Pure-fantasy framing; this is not a sportsbook.
+- **BestFightOdds** — <https://www.bestfightodds.com>. Closing-odds aggregator; commercial use assumed contractually OK per the operator. Refreshed weekly with the rest of the corpus via [`.github/workflows/refresh-corpus.yml`](.github/workflows/refresh-corpus.yml), which opens a PR with the regenerated seed dump. Pure-fantasy framing; this is not a sportsbook.
 
 ## Disclaimer
 

@@ -44,17 +44,19 @@ EXPECTED_ROW_COUNTS = {
     # substrate (no-contest Elo skip, Kaggle-twin odds backfill, Bruno Silva
     # split, as-of shrinkage) and now carries the debutant_seed_inputs table
     # (migration 9fc47fdd75b6). Exact COUNT(*) per table.
-    "elo_snapshots": 90_090,
-    "round_stats": 69_684,
-    "computed_features": 28_815,
-    "fight_odds": 26_302,
-    "fights": 17_011,
-    "fighters": 6_847,
-    "events": 1_881,
-    "debutant_seed_inputs": 1_673,
+    # Re-baselined 2026-11-17: UFCStats refresh through 2026-11-14 (19 events,
+    # 245 fights), their BFO odds, venues and debutant seeds.
+    "elo_snapshots": 91_560,
+    "round_stats": 71_258,
+    "computed_features": 29_234,
+    "fight_odds": 26_748,
+    "fights": 17_256,
+    "fighters": 6_918,
+    "events": 1_900,
+    "debutant_seed_inputs": 1_754,
     "fighter_aliases": 399,
-    "venues": 174,
-    "referees": 39,
+    "venues": 176,
+    "referees": 40,
     "alembic_version": 1,
     "model_runs": 0,
 }

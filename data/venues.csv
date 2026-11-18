@@ -173,3 +173,5 @@ venue_id,name,city,state,country,lat,lon,timezone_iana,n_events,geocode_source
 172,"Chiba, Japan",,,日本,35.549399,140.2647303,Asia/Tokyo,1,nominatim:2026-05-19
 173,"Mobile, Alabama, USA",Mobile,Alabama,United States,30.6913462,-88.0437509,America/Chicago,1,nominatim:2026-05-19
 174,"Bossier City, Louisiana, USA",Bossier City,Louisiana,United States,32.515887,-93.7336536,America/Chicago,1,nominatim:2026-05-19
+175,"Belgrade, Vojvodina, Serbia",Београд,,Србија,44.8153318,20.4456588,Europe/Belgrade,1,nominatim:2026-11-17
+176,"Shanghai, China",,上海市,中国,31.2312707,121.4700152,Asia/Shanghai,1,nominatim:2026-11-17

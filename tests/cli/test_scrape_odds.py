@@ -196,6 +196,56 @@ class TestScrapeOddsDefaultInvokesScraper:
         # min_date is now passed to scrape_all (not to the constructor)
         _, scrape_call_kwargs = scraper_cls.return_value.scrape_all.call_args
         assert scrape_call_kwargs.get("min_date") == _dt.date(2010, 1, 1)
+        assert scrape_call_kwargs.get("fighters_since") is None
+
+    @patch("ufc_prediction.cli.main.SessionLocal")
+    def test_scrape_odds_passes_fighters_since_to_scraper(
+        self, mock_session_local: MagicMock
+    ) -> None:
+        import datetime as _dt
+
+        mock_session_local.return_value = MagicMock()
+        ingester_cls = _make_ingester_returning(_FakeSummary())
+        scraper_cls = _make_bfo_scraper_returning(_FakeScrapeSummary())
+
+        with (
+            patch("ufc_prediction.scraper.bfo_ingest.BFOOddsIngester", ingester_cls),
+            patch("ufc_prediction.cli.main.BFOScraper", scraper_cls),
+            patch("ufc_prediction.cli.main.ScraperClient"),
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "scrape",
+                    "odds",
+                    "--fighters-since",
+                    "2026-06-28",
+                    "--data-folder",
+                    "tests/scraper/fixtures",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        _, scrape_call_kwargs = scraper_cls.return_value.scrape_all.call_args
+        assert scrape_call_kwargs.get("fighters_since") == _dt.date(2026, 6, 28)
+
+    def test_scrape_odds_rejects_bad_fighters_since(self) -> None:
+        scraper_cls = _make_bfo_scraper_returning(_FakeScrapeSummary())
+        with patch("ufc_prediction.cli.main.BFOScraper", scraper_cls):
+            result = runner.invoke(
+                app,
+                [
+                    "scrape",
+                    "odds",
+                    "--fighters-since",
+                    "06/28/2026",
+                    "--data-folder",
+                    "tests/scraper/fixtures",
+                ],
+            )
+
+        assert result.exit_code == 1
+        scraper_cls.assert_not_called()
 
 
 class TestScrapeOddsOutput:

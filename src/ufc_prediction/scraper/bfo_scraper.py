@@ -57,8 +57,10 @@ from pathlib import Path
 import httpx
 from bs4 import BeautifulSoup, Tag
 from rapidfuzz import fuzz
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
+from ufc_prediction.models.event import Event
+from ufc_prediction.models.fight import Fight
 from ufc_prediction.models.fighter import Fighter
 from ufc_prediction.scraper.bfo_matcher import (
     normalize_name,
@@ -873,6 +875,7 @@ class BFOScraper:
         self,
         min_date: date | None = None,
         progress_callback: Callable[[int, int], None] | None = None,
+        fighters_since: date | None = None,
     ) -> ScrapeSummary:
         """Run the full discovery + scrape + CSV-emit pipeline.
 
@@ -882,6 +885,10 @@ class BFOScraper:
                 ``date(2008, 8, 1)`` (BFO launched 2007).
             progress_callback: Optional ``callable(processed, emitted)``
                 invoked once per parsed profile page.
+            fighters_since: If provided, only search BFO for fighters with
+                a ufcstats fight on or after this date (an incremental
+                refresh touches ~400 fighters instead of the whole roster).
+                No fallback to the full table when nothing matches.
 
         Returns:
             :class:`ScrapeSummary` aggregate counts and unmatched names.
@@ -889,12 +896,21 @@ class BFOScraper:
         summary = ScrapeSummary()
 
         # 1. Read fighter list (D-02 + Phase 14 canonical-source filter).
-        db_fighters: list[tuple[int, str]] = list(
-            self._session.execute(
-                select(Fighter.id, Fighter.name).where(Fighter.source == "ufcstats")
-            ).all()
-        )
-        if not db_fighters:
+        stmt = select(Fighter.id, Fighter.name).where(Fighter.source == "ufcstats")
+        if fighters_since is not None:
+            recent_fight = (
+                select(Fight.id)
+                .join(Event, Fight.event_id == Event.id)
+                .where(
+                    or_(Fight.fighter_a_id == Fighter.id, Fight.fighter_b_id == Fighter.id),
+                    Event.source == "ufcstats",
+                    Event.date >= fighters_since,
+                )
+                .exists()
+            )
+            stmt = stmt.where(recent_fight)
+        db_fighters: list[tuple[int, str]] = list(self._session.execute(stmt).all())
+        if not db_fighters and fighters_since is None:
             # Fallback: no fighters tagged ufcstats — read the whole table.
             logger.warning("No fighters with source='ufcstats'; falling back to full table.")
             db_fighters = list(self._session.execute(select(Fighter.id, Fighter.name)).all())

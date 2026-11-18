@@ -235,6 +235,42 @@ def test_uses_thread_pool(bfo) -> None:
     assert callable(first_call_args[0]), "client.map must be called with a callable"
 
 
+def _scrape_with_roster(bfo, tmp_path: Path, roster: list, **kwargs) -> MagicMock:
+    """Run ``scrape_all`` against a mocked session returning ``roster``; return the session."""
+    client = MagicMock()
+    client.map.return_value = []
+    session = MagicMock()
+    session.execute.return_value.all.return_value = roster
+    bfo.BFOScraper(client=client, session=session, data_folder=tmp_path, workers=1).scrape_all(
+        **kwargs
+    )
+    return session
+
+
+def test_fighters_since_scopes_roster_to_recent_ufcstats_fights(bfo, tmp_path: Path) -> None:
+    import datetime as _dt
+
+    from sqlalchemy.dialects import postgresql
+
+    session = _scrape_with_roster(
+        bfo, tmp_path, [(1, "Jon Jones")], fighters_since=_dt.date(2026, 6, 28)
+    )
+
+    stmt = session.execute.call_args_list[0].args[0]
+    sql = str(stmt.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}))
+    assert "EXISTS" in sql
+    assert "events.date >= '2026-06-28'" in sql
+    assert "events.source = 'ufcstats'" in sql
+
+
+def test_fighters_since_with_no_recent_fighters_does_not_fall_back(bfo, tmp_path: Path) -> None:
+    import datetime as _dt
+
+    session = _scrape_with_roster(bfo, tmp_path, [], fighters_since=_dt.date(2099, 1, 1))
+
+    assert session.execute.call_count == 1
+
+
 def test_no_multiprocessing() -> None:
     """The bfo_scraper module must not import ``multiprocessing`` (ODDS-01).
 
